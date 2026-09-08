@@ -1,0 +1,512 @@
+<title>일일계도상소</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Song+Myung&family=Nanum+Myeongjo:wght@400;700;800&display=swap');
+
+  :root{
+    --bg:#EFE6D2;
+    --bg-vignette:#DED0AC;
+    --paper:#F1E6C9;
+    --paper-edge:#E4D6AE;
+    --ink:#2A2216;
+    --ink-soft:#6B5D45;
+    --ink-faint:#8C7C5C;
+    --vermillion:#A8341F;
+    --vermillion-ink:#F4E4D2;
+    --wood:#5B4128;
+    --wood-dark:#3E2C1A;
+    --gold:#9C7A3C;
+    --divider:#B79A63;
+    --card-shadow: 0 30px 60px -20px rgba(41,30,10,0.35), 0 2px 0 rgba(41,30,10,0.08);
+    --focus: #7A4B22;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0F0C08;
+      --bg-vignette:#050403;
+      --paper:#241D14;
+      --paper-edge:#1A140D;
+      --ink:#E8DAB8;
+      --ink-soft:#B8A57E;
+      --ink-faint:#8A7B5C;
+      --vermillion:#C1492E;
+      --vermillion-ink:#2A140D;
+      --wood:#2A1D11;
+      --wood-dark:#170F09;
+      --gold:#C9A063;
+      --divider:#5B4A2E;
+      --card-shadow: 0 30px 70px -20px rgba(0,0,0,0.6), 0 2px 0 rgba(0,0,0,0.3);
+      --focus: #D9AE6E;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0F0C08;
+    --bg-vignette:#050403;
+    --paper:#241D14;
+    --paper-edge:#1A140D;
+    --ink:#E8DAB8;
+    --ink-soft:#B8A57E;
+    --ink-faint:#8A7B5C;
+    --vermillion:#C1492E;
+    --vermillion-ink:#2A140D;
+    --wood:#2A1D11;
+    --wood-dark:#170F09;
+    --gold:#C9A063;
+    --divider:#5B4A2E;
+    --card-shadow: 0 30px 70px -20px rgba(0,0,0,0.6), 0 2px 0 rgba(0,0,0,0.3);
+    --focus: #D9AE6E;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:
+      radial-gradient(ellipse 90% 60% at 50% 0%, var(--bg) 0%, var(--bg-vignette) 100%);
+    color:var(--ink);
+    font-family:"Nanum Myeongjo", "Noto Serif KR", serif;
+    padding: 48px 16px 96px;
+    display:flex;
+    justify-content:center;
+    min-height:100vh;
+  }
+  @media (prefers-reduced-motion: no-preference){
+    .scroll-wrap{ animation: unroll 900ms cubic-bezier(.2,.7,.2,1) both; }
+    .memorial p{ animation: inkin 700ms ease both; animation-delay: calc(var(--i,0) * 40ms); }
+  }
+  @keyframes unroll{
+    from{ transform: scaleY(.92); opacity:0; }
+    to{ transform: scaleY(1); opacity:1; }
+  }
+  @keyframes inkin{
+    from{ opacity:0; transform: translateY(4px); }
+    to{ opacity:1; transform: translateY(0); }
+  }
+
+  .page{ width:100%; max-width: 760px; display:flex; flex-direction:column; align-items:center; gap:18px; }
+
+  /* ---------- control strip ---------- */
+  .controls{
+    width:100%;
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .seal-btn{
+    font-family:"Nanum Myeongjo", serif;
+    font-size:13px;
+    letter-spacing:.02em;
+    color:var(--vermillion-ink);
+    background:var(--vermillion);
+    border:none;
+    border-radius:999px;
+    padding:8px 16px;
+    cursor:pointer;
+    box-shadow: 0 4px 14px -6px rgba(168,52,31,.6);
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .seal-btn:hover{ transform: translateY(-1px); box-shadow: 0 8px 18px -6px rgba(168,52,31,.55); }
+  .seal-btn:focus-visible{ outline: 2px solid var(--focus); outline-offset: 2px; }
+  .seal-btn.ghost{
+    background:transparent;
+    color:var(--ink-soft);
+    border:1px solid var(--divider);
+    box-shadow:none;
+  }
+  .seal-btn.ghost:hover{ color:var(--ink); border-color: var(--gold); }
+  .status-line{
+    width:100%;
+    text-align:right;
+    font-size:12px;
+    color:var(--ink-faint);
+    letter-spacing:.02em;
+  }
+
+  /* ---------- the scroll ---------- */
+  .scroll-wrap{ width:100%; transform-origin: top center; }
+  .rod{
+    height:22px;
+    border-radius:11px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.18), rgba(0,0,0,0) 30%),
+      linear-gradient(90deg, var(--wood-dark), var(--wood) 15%, var(--wood) 85%, var(--wood-dark));
+    box-shadow: var(--card-shadow);
+    position:relative;
+    z-index:2;
+  }
+  .rod::before, .rod::after{
+    content:"";
+    position:absolute;
+    top:-6px;
+    width:34px; height:34px;
+    border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, var(--gold), var(--wood) 70%);
+    box-shadow: inset 0 -4px 6px rgba(0,0,0,.35), 0 2px 6px rgba(0,0,0,.3);
+  }
+  .rod::before{ left:-8px; }
+  .rod::after{ right:-8px; }
+  .rod.top{ margin-bottom:-4px; }
+  .rod.bottom{ margin-top:-4px; }
+
+  .paper{
+    position:relative;
+    background:
+      radial-gradient(120% 60% at 15% 0%, rgba(255,255,255,.08), transparent 55%),
+      repeating-linear-gradient(90deg, rgba(0,0,0,.015) 0 2px, transparent 2px 5px),
+      var(--paper);
+    border-left: 1px solid var(--paper-edge);
+    border-right: 1px solid var(--paper-edge);
+    box-shadow: var(--card-shadow);
+    padding: 8px 8px 26px;
+  }
+  .frame{
+    border: 1px solid var(--gold);
+    outline: 1px solid var(--divider);
+    outline-offset: 5px;
+    padding: 34px clamp(20px, 5vw, 56px) 10px;
+  }
+
+  .masthead{ position:relative; text-align:center; padding-bottom:22px; }
+  .masthead .eyebrow{
+    font-family:"Song Myung", serif;
+    font-size:13px;
+    letter-spacing:.35em;
+    color:var(--ink-soft);
+    margin:0 0 10px;
+  }
+  .masthead h1{
+    font-family:"Song Myung", serif;
+    font-size: clamp(28px, 5vw, 40px);
+    margin:0;
+    color:var(--ink);
+    letter-spacing:.06em;
+    text-wrap: balance;
+  }
+  .masthead .subtitle{
+    margin:10px 0 0;
+    font-size:14px;
+    color:var(--ink-soft);
+    letter-spacing:.05em;
+  }
+  .corner-seal{
+    position:absolute;
+    top:-6px; right:0;
+    width:52px; height:52px;
+    background:var(--vermillion);
+    color:var(--vermillion-ink);
+    display:flex; align-items:center; justify-content:center;
+    font-family:"Song Myung", serif;
+    font-size:11px;
+    line-height:1.15;
+    text-align:center;
+    transform:rotate(4deg);
+    box-shadow: 1px 2px 4px rgba(0,0,0,.25) inset, 0 3px 6px rgba(0,0,0,.25);
+    border-radius:3px;
+  }
+  .date-glyph{
+    position:absolute; top:-2px; left:0;
+    font-size:11px;
+    color:var(--ink-faint);
+    letter-spacing:.08em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .divider{
+    display:flex; align-items:center; gap:10px;
+    margin: 26px 0;
+    color:var(--divider);
+  }
+  .divider::before, .divider::after{
+    content:"";
+    flex:1; height:1px;
+    background: linear-gradient(90deg, transparent, var(--divider), transparent);
+  }
+  .divider .mark{ font-family:"Song Myung", serif; font-size:14px; color:var(--gold); }
+
+  .memorial h2{
+    font-family:"Song Myung", serif;
+    font-size: clamp(18px, 3vw, 22px);
+    color:var(--ink);
+    margin: 0 0 4px;
+    letter-spacing:.04em;
+  }
+  .memorial .h2-sub{
+    display:block;
+    font-family:"Nanum Myeongjo", serif;
+    font-size:12.5px;
+    color:var(--ink-faint);
+    font-weight:400;
+    letter-spacing:.03em;
+    margin-bottom:20px;
+  }
+  .memorial p{
+    max-width: 64ch;
+    margin: 0 0 20px;
+    font-size: 16.5px;
+    line-height: 1.95;
+    color: var(--ink);
+    text-indent: 1em;
+  }
+  .memorial p:first-of-type{ text-indent:0; }
+  .memorial p:first-of-type::first-letter{
+    font-family:"Song Myung", serif;
+    font-size: 2.6em;
+    float:left;
+    line-height:.8;
+    padding: .06em .12em 0 0;
+    color: var(--vermillion);
+  }
+
+  .closing{ text-align:right; margin-top: 10px; }
+  .closing .date{ font-size:13px; color:var(--ink-soft); margin-bottom:14px; letter-spacing:.03em; }
+  .closing .stamp-row{ display:flex; justify-content:flex-end; align-items:center; gap:16px; }
+  .closing .sign{ font-size:15px; color:var(--ink); font-style:normal; }
+  .big-seal{
+    width:74px; height:74px;
+    background:var(--vermillion);
+    color:var(--vermillion-ink);
+    border-radius:4px;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    grid-template-rows:1fr 1fr;
+    place-items:center;
+    font-family:"Song Myung", serif;
+    font-size:19px;
+    transform:rotate(-3deg);
+    box-shadow: 2px 2px 5px rgba(0,0,0,.3) inset, 0 4px 10px rgba(0,0,0,.3);
+    flex:none;
+  }
+  .big-seal span{ opacity:.96; }
+
+  /* ---------- appendix card ---------- */
+  .appendix{
+    width:100%;
+    background:var(--paper);
+    border:1px solid var(--paper-edge);
+    box-shadow: var(--card-shadow);
+    padding: 26px clamp(18px,4vw,34px) 30px;
+    border-radius: 3px;
+  }
+  .appendix h3{
+    font-family:"Song Myung", serif;
+    font-size:16px;
+    margin:0 0 6px;
+    color:var(--ink);
+  }
+  .appendix p.lead{
+    margin:0 0 18px;
+    font-size:13.5px;
+    color:var(--ink-soft);
+    line-height:1.8;
+    max-width:60ch;
+  }
+  .os-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px,1fr));
+    gap:14px;
+  }
+  .os-card{
+    border:1px solid var(--divider);
+    border-radius:4px;
+    padding:14px 16px;
+    background: color-mix(in srgb, var(--paper) 92%, var(--ink) 8%);
+  }
+  .os-card h4{
+    margin:0 0 6px;
+    font-size:13px;
+    color:var(--ink);
+    letter-spacing:.04em;
+  }
+  .os-card code{
+    display:block;
+    font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+    font-size:11.5px;
+    color:var(--ink-soft);
+    background: color-mix(in srgb, var(--paper) 80%, black 6%);
+    padding:8px 9px;
+    border-radius:3px;
+    overflow-x:auto;
+    white-space:pre;
+    line-height:1.6;
+  }
+  .appendix .foot-note{
+    margin-top:16px;
+    font-size:12px;
+    color:var(--ink-faint);
+    line-height:1.7;
+  }
+
+  footer.page-foot{
+    width:100%;
+    text-align:center;
+    font-size:11.5px;
+    color:var(--ink-faint);
+    letter-spacing:.04em;
+    margin-top:4px;
+  }
+</style>
+
+<div class="page">
+
+  <div class="controls">
+    <button class="seal-btn ghost" id="notifyBtn" type="button">매일 아침 알림 청하기</button>
+    <button class="seal-btn" id="reopenBtn" type="button">오늘의 상소 다시 열람</button>
+  </div>
+  <div class="status-line" id="statusLine" role="status" aria-live="polite"></div>
+
+  <div class="scroll-wrap" id="scrollWrap">
+    <div class="rod top" aria-hidden="true"></div>
+    <div class="paper">
+      <div class="frame">
+
+        <div class="masthead">
+          <span class="date-glyph" id="dateGlyph"></span>
+          <div class="corner-seal">諸葛<br>之印</div>
+          <p class="eyebrow">臣 亮 誠惶誠恐 頓首謹言</p>
+          <h1>日日誡導上疏</h1>
+          <p class="subtitle">일일계도상소 — 제갈량이 주공께 날마다 올리는 훈계</p>
+        </div>
+
+        <section class="memorial" id="memorial1">
+          <h2>제일소 · 클로드 코드를 씀에 대하여
+            <span class="h2-sub">초심자 주공을 위해 올리는 열 가지 계책</span>
+          </h2>
+        </section>
+
+        <div class="divider" aria-hidden="true"><span class="mark">※</span></div>
+
+        <section class="memorial" id="memorial2">
+          <h2>제이소 · 대업과 살아가는 길에 대하여
+            <span class="h2-sub">사업의 방향과 삶의 태도에 관한 헤아림</span>
+          </h2>
+        </section>
+
+        <div class="closing">
+          <div class="date" id="closingDate"></div>
+          <div class="stamp-row">
+            <span class="sign">신 량, 삼가 두 번 절하고 이 글을 올리옵니다</span>
+            <div class="big-seal" aria-hidden="true"><span>諸</span><span>葛</span><span>亮</span><span>印</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="rod bottom" aria-hidden="true"></div>
+  </div>
+
+  <div class="appendix">
+    <h3>부기(附記) · 이 상소를 매일 저절로 펼치는 법</h3>
+    <p class="lead">이 화면을 열어 둔 채로 두시면 매일 오전 7시에 알림이 울리도록 할 수 있사오나, 컴퓨터를 새로 켤 때나 화면을 닫아둔 뒤에도 저절로 열리게 하시려면, 운영체제의 예약 기능으로 이 문서의 주소를 아래와 같이 등록해 두시기를 권하옵니다.</p>
+    <div class="os-grid">
+      <div class="os-card">
+        <h4>Windows</h4>
+        <code>schtasks /create /tn "일일계도상소" ^
+ /tr "cmd /c start https://claude.ai/code/artifact/8002ebd9-e494-45af-a5f5-036e9b51a6b2" ^
+ /sc daily /st 07:00</code>
+      </div>
+      <div class="os-card">
+        <h4>macOS</h4>
+        <code>crontab -e
+0 7 * * * open "https://claude.ai/code/artifact/8002ebd9-e494-45af-a5f5-036e9b51a6b2"</code>
+      </div>
+      <div class="os-card">
+        <h4>Linux</h4>
+        <code>crontab -e
+@reboot xdg-open "https://claude.ai/code/artifact/8002ebd9-e494-45af-a5f5-036e9b51a6b2"
+0 7 * * * xdg-open "https://claude.ai/code/artifact/8002ebd9-e494-45af-a5f5-036e9b51a6b2"</code>
+      </div>
+    </div>
+    <p class="foot-note">위 명령의 "https://claude.ai/code/artifact/8002ebd9-e494-45af-a5f5-036e9b51a6b2"를 지금 이 화면의 주소로 바꾸어 등록하시면, 컴퓨터를 켤 때와 매일 아침 7시, 이 문이 저절로 열리옵니다. 화면을 열어 둔 채 "매일 아침 알림 청하기"를 함께 눌러 두시면, 창을 닫아 두어도 오전 7시에 알림으로 다시 알려 드리옵니다.</p>
+  </div>
+
+  <footer class="page-foot">신 제갈량, 오늘도 주공의 앞길을 살피옵니다</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var PART1 = "신(臣) 량(亮), 삼가 두 번 절하고 아뢰옵니다.\n\n무릇 병법에 이르기를, 병사를 부리는 자는 먼저 지형을 살피고 그 다음에 군을 움직인다 하였습니다. 주공께서 새로이 얻으신 '클로드 코드'라는 것도 이와 다르지 않사옵니다. 이는 붓과 같아 손에 익지 않으면 종이를 찢을 뿐이나, 한 번 그 결을 알면 능히 천군만마를 그려낼 수 있는 신묘한 도구이옵니다. 신이 오늘 아뢰고자 하는 것은 바로 이 도구를 다루는 다섯 가지 계책이옵니다.\n\n첫째, 먼저 진(陣)을 그리고 나서 군사를 움직이소서. 초심자는 흔히 마음이 급하여 생각나는 대로 명을 내리고 곧바로 군을 몰아 나아가려 하나, 이는 지도 없이 산을 넘는 것과 같아 반드시 길을 잃사옵니다. 클로드에게 무엇을 만들라 이르시기 전에, 먼저 무엇을 이루고자 하는지 한두 문장으로 정리하시고, 계획(플랜) 모드로 그 그림을 함께 그려보게 하소서. 초안이 마음에 들지 않으면 그 자리에서 고치면 그만이니, 이는 군사를 잃기 전에 지도 위에서 패배를 미리 겪어보는 것과 같아 실로 값진 일이옵니다.\n\n둘째, 대군을 한 번에 몰아치지 마시고 작은 부대로 나누어 하나씩 취하소서. 큰 성을 단번에 함락하려 하면 병사도 지치고 장수도 흐트러지는 법이옵니다. 하오나 이를 열 개의 작은 진지로 나누어 하나씩 점령해 나가면, 매번 승전보를 확인하며 나아갈 수 있고, 설령 한 곳에서 패하더라도 전군이 무너지지 않사옵니다. 클로드에게 큰 일을 통째로 맡기지 마시고, 작은 단위로 쪼개어 하나씩 확인하며 나아가게 하소서. 이것이 실패의 비용을 낮추는 유일한 길이옵니다.\n\n셋째, 정찰병을 앞세우소서. 낯선 땅을 나아갈 때 척후 없이 본진부터 들이미는 장수는 매복에 걸려 스러지는 법이옵니다. 클로드로 하여금 먼저 기존의 문서와 자료를 읽고 지형을 살피게 하시고, 그 뒤에 비로소 손을 대어 고치게 하소서. 낯선 땅에 먼저 서지 않고 무기를 휘두르면 반드시 아군의 담을 허물게 되옵니다.\n\n넷째, 부장(副將)에게 맡기더라도 반드시 몸소 살피소서. 신이 아무리 지혜롭다 하나 관우, 장비 같은 맹장에게 병권을 맡길 때는 반드시 군령과 경계를 분명히 하고, 돌아온 보고를 눈으로 확인하였사옵니다. 클로드가 대신 일을 처리하는 것을 지켜보되, 그 결과물을 그대로 믿지 마시고 반드시 주공의 눈으로 한 번 더 확인하소서. 도구는 지치지 않으나 실수는 하는 법이니, 마지막 판단은 언제나 사람의 몫이옵니다.\n\n다섯째, 같은 진법은 병사들에게 익혀 외우게 하소서. 매번 같은 명을 새로 풀어 설명하는 것은 시간과 힘을 헛되이 버리는 일이옵니다. 자주 쓰는 명령이나 절차가 있다면 이를 하나의 정해진 진법(스킬, 슬래시 명령)으로 만들어 두시면, 다음에는 그저 신호 하나로 전군이 일사불란하게 움직이게 되옵니다.\n\n여섯째, 퇴로를 항상 열어 두소서. 옛말에 이르기를 물러설 곳이 없는 군사는 오히려 죽기로 싸운다 하나, 이는 전장의 이치일 뿐 일하는 이치는 아니옵니다. 일이 뜻대로 되지 않을 때를 대비하여 걸음마다 발자국을 남겨두소서(버전 기록을 자주 남기소서). 그리하면 한 걸음이 잘못되어도 곧 이전으로 돌아가 다시 설 수 있으니, 이는 겁이 많음이 아니라 지혜로움이옵니다.\n\n일곱째, 적의 격문을 두려워 마시고 오히려 자세히 읽으소서. 클로드가 오류를 아뢰거나 뜻대로 되지 않았다 고할 때, 이를 성가시다 여겨 밀어내지 마시고 그 글자 하나하나를 찬찬히 읽으소서. 패전의 소식 속에 다음 승리의 열쇠가 숨어 있는 법이오니, 오류의 말이야말로 가장 정직한 책사이옵니다.\n\n여덟째, 어리석은 질문을 부끄러워 마소서. 예로부터 장수가 참모에게 묻기를 꺼리면 그 군은 반드시 병폐를 키우는 법이오나, 이 도구는 지치지도 않고 낯빛을 바꾸지도 않사옵니다. 하오니 아무리 사소한 것이라도 주저 말고 물으시고, 답이 미심쩍으면 다시 캐물으소서. 백 번 묻는 것이 한 번 잘못 나아가는 것보다 낫사옵니다.\n\n아홉째, 처음부터 완벽한 진을 그리려 하지 마소서. 신도 처음 융중(隆中)에서 세상에 나올 때는 그저 초려(草廬)의 서생에 불과하였사옵니다. 하물며 처음 잡는 도구에 능숙하기를 바라는 것은 이치에 맞지 않사옵니다. 하루는 지도를 그려보고, 하루는 작은 진지 하나를 얻어보고, 하루는 실수로 진을 무너뜨려보소서. 이 모든 것이 훗날 큰 싸움을 이끌 밑거름이 되옵니다.\n\n열째, 남의 진법과 주공의 진법을 함부로 견주지 마소서. 저잣거리에 떠도는 이야기를 들으면 누구는 하루 만에 성 하나를 통째로 쌓았다 하고, 누구는 한마디 명으로 천군을 부렸다 하나, 그 뒤에 숨은 시행착오는 아무도 말하지 않는 법이옵니다. 주공께서는 어제의 주공과 오늘의 주공만을 견주소서. 어제보다 한 뼘이라도 능숙해졌다면 그것으로 족하옵니다.\n\n신은 재주가 미천하나 오랜 세월 진을 치고 물러섬을 반복하며 이 몇 가지를 깨달았사옵니다. 주공께서 처음 이 도구를 손에 쥐셨을 때는 서투름이 있는 것이 당연하오니, 부디 조급해하지 마시고 하루하루 작은 승리를 쌓아가소서. 작은 성 열 개를 안전하게 취하는 자가, 결국 큰 나라를 얻는 법이옵니다.";
+  var PART2 = "신 량, 이어서 주공의 대업과 살아가시는 길에 대하여 감히 아뢰옵니다.\n\n신이 늘 아뢰던 말이 있으니, 무릇 큰 일을 이루려는 자는 천시(天時)와 지리(地利)와 인화(人和) 이 세 가지를 갖추어야 한다 하였사옵니다. 천시는 때를 아는 것이요, 지리는 자리를 아는 것이요, 인화는 사람을 얻는 것이옵니다. 주공께서 지금 사업의 갈림길에서 고심하고 계심을 신이 어찌 모르겠사옵니까. 하오나 세 가지 중 사람이 가장 더디게 갖추어지고 가장 쉽게 무너지니, 신은 먼저 인화에 대하여 아뢰고자 하옵니다.\n\n무릇 유비 황숙께서 관우, 장비와 형제의 의를 맺지 않으셨던들, 또한 신을 삼고초려로 얻지 않으셨던들, 어찌 촉한의 기틀을 세울 수 있었겠사옵니까. 사업이라는 것도 결국 사람이 사람을 얻어 이루는 것이오니, 주공께서 홀로 모든 것을 짊어지려 하지 마시고, 믿을 수 있는 이를 곁에 두고 그 재주를 믿어 맡기소서. 다만 사람을 얻을 때는 그 재주만 보지 마시고 그 마음을 먼저 살피소서. 재주는 가르칠 수 있으나 마음은 가르칠 수 없는 법이옵니다.\n\n다음으로 천시에 대하여 아뢰옵니다. 신이 출사표에서 이르기를, 지금이 위태롭고도 존망이 갈리는 가을이라 하였듯이, 모든 때에는 나아갈 때와 물러설 때가 따로 있사옵니다. 하오나 세상 사람들이 흔히 저지르는 잘못은 때를 기다린다는 핑계로 아무것도 하지 않거나, 혹은 때가 무르익기도 전에 조급히 뛰쳐나가는 것이옵니다. 주공께서 사업의 방향을 정하실 때, 먼저 스스로에게 물으소서. 이 일이 세상의 흐름을 거스르는 것인가, 아니면 그 흐름 위에 올라타는 것인가. 흐름을 거스르는 자는 제아무리 힘이 세어도 결국 지치고, 흐름을 탄 자는 작은 힘으로도 멀리 가는 법이옵니다.\n\n지리에 대하여도 한 말씀 올리옵니다. 신이 융중에서 초려대책을 논할 때, 형주와 익주의 지리를 먼저 살핀 연후에 계책을 세웠사옵니다. 이는 무턱대고 큰 꿈을 좇지 말고, 먼저 발 딛고 선 자리의 강점과 약점을 정직하게 헤아리라는 뜻이옵니다. 주공의 사업이 서 있는 자리에는 어떤 산과 강이 있사옵니까. 그 산이 주공을 막는 장애인지, 혹은 적을 막아주는 방벽인지 먼저 분별하소서. 남과 같은 길을 가려 하지 마시고, 주공만이 가진 자리, 주공만이 가진 강을 찾아 그곳에 성을 쌓으소서. 작은 나라 촉한이 큰 위나라에 맞설 수 있었던 것도, 스스로의 험준한 지리를 알고 그에 맞는 계책을 썼기 때문이옵니다.\n\n이제 삶의 방향에 대하여도 아뢰옵니다. 사람이 한평생 살아감에 있어 가장 두려워해야 할 것은 실패가 아니라 방향을 잃고 우왕좌왕하는 것이옵니다. 신이 병을 이끌고 여섯 번 기산으로 나아갔으되(육출기산·六出祁山), 뜻을 다 이루지 못하고 오장원에서 눈을 감았사옵니다. 세상은 이를 두고 신의 북벌이 실패하였다 이르나, 신은 이를 부끄러워하지 않사옵니다. 왜냐하면 신은 방향을 잃은 적이 없었고, 옳다고 믿는 길을 마지막 숨이 다하는 날까지 걸었기 때문이옵니다. 사람의 성패는 결과 하나로만 논할 수 없으니, 스스로 부끄럽지 않은 길을 걸었는가를 먼저 물으소서.\n\n주공께 감히 아뢰옵건대, 대업이든 삶이든 다음 세 가지를 늘 품고 계시기를 바라옵니다.\n\n첫째는 담박함(澹泊)으로 뜻을 밝히는 것이옵니다(비담박무이명지·非澹泊無以明志). 사람이 눈앞의 작은 이익과 남의 평판에 휘둘리면 스스로 무엇을 원하는지조차 잊게 되옵니다. 하루에 한 번은 고요히 앉아, 지금 이 선택이 남에게 보이기 위함인지, 참으로 주공 스스로 바라는 바인지를 되물으소서. 담박한 마음이라야 비로소 먼 길의 뜻이 또렷해지옵니다.\n\n둘째는 고요함(寧靜)으로 멀리 이르는 것이옵니다(비녕정무이치원·非寧靜無以致遠). 사업이 흔들릴 때마다 함께 흔들리는 자는 결코 먼 곳에 이르지 못하옵니다. 폭풍이 몰아쳐도 뿌리 깊은 나무는 흔들리되 꺾이지 않는 법이오니, 주공께서도 하루하루의 작은 성패에 일희일비하지 마시고, 멀리 십 년 뒤를 그리며 오늘의 풍파를 지나가는 구름처럼 흘려보내소서.\n\n셋째는 배움을 게을리하지 않는 것이옵니다(비학무이광재·非學無以廣才). 오늘 옳았던 계책이 내일도 옳으리라는 법은 없사옵니다. 세상은 쉼 없이 변하고 적의 진법도 날마다 새로워지니, 어제의 성공에 안주하는 장수는 반드시 새로운 적에게 무너지옵니다. 주공께서도 지금 이루신 것에 만족하지 마시고, 날마다 새로이 배우고 낡은 생각을 버리는 것을 두려워하지 마소서.\n\n신이 부끄러운 고사를 하나 더 아뢰옵니다. 일찍이 오장원에서 대치할 때, 적장 사마의가 신의 사자에게 넌지시 일과를 물은 적이 있었사옵니다. 사자가 답하기를, 승상께서는 새벽에 일어나 밤늦도록 일하시되 곤장 스무 대 넘는 벌조차 몸소 살피시고, 그러면서도 드시는 것은 하루 몇 되에 지나지 않는다 하였사옵니다. 이를 듣고 사마의는 웃으며 사람들에게 이르기를, 먹는 것은 적고 일은 번다하니(식소사번·食少事煩) 저 사람이 어찌 오래갈 수 있겠는가 하였사옵니다. 훗날 그 말대로 신은 오장원의 가을바람 속에서 병들어 눈을 감았사옵니다. 신은 이를 후회로 여기옵니다. 큰 뜻을 품은 자일수록 스스로를 갈아 넣는 것을 충성이나 성실로 착각하기 쉬우나, 몸이 먼저 무너지면 아무리 옳은 계책도 펼칠 자가 없게 되옵니다. 주공께서는 부디 신의 전철을 밟지 마시고, 크고 작은 일을 가려 아랫사람과 나누어 맡기시며, 잠을 줄여 얻은 하루보다 몸을 지켜 얻는 십 년이 훨씬 크다는 것을 마음에 새기소서. 사업은 단거리가 아니라 오래달리기이오니, 숨을 고르는 자만이 결승선을 보게 되옵니다.\n\n끝으로 신이 감히 한 말씀 더 올리옵니다. 사람은 홀로 강해지려 애쓰다 지치기 쉬우나, 실은 자기 곁의 사람과 도구를 얼마나 잘 부리느냐에 큰 힘이 달려 있사옵니다. 오늘 신이 앞서 아뢴 클로드라는 도구도 그러하고, 곁에 두신 사람들도 그러하옵니다. 이들을 믿어 맡기되 게을리 살피지 않으시고, 주공 스스로는 늘 방향을 놓지 않는 키잡이로 서 계시면, 배는 비록 더디더라도 반드시 뭍에 닿사옵니다.\n\n신이 오늘 올린 글은 두루 통하는 이치에 기대어 썼을 뿐이니, 주공의 사업이 구체적으로 어떤 것을 팔고 어떤 이를 상대하시는지, 또한 지금 가장 무거운 근심이 무엇인지 신에게 자세히 일러 주신다면, 다음 상소에서는 훨씬 촘촘한 계책으로 아뢰겠나이다.\n\n신은 이제 붓을 놓으려 하나, 마음은 놓지 못하옵니다. 주공께서 매일 아침 이 글을 마주하실 때마다, 오늘 하루도 담박한 마음으로 뜻을 밝히시고, 고요함으로 먼 곳을 그리시며, 배움으로 그 그릇을 넓혀 가시기를 엎드려 바라옵니다. 신 량, 삼가 두 번 절하고 이 글을 올리옵니다.";
+
+  function renderParagraphs(container, text){
+    var paras = text.split(/\n\s*\n/).filter(function(p){ return p.trim().length; });
+    paras.forEach(function(p, i){
+      var el = document.createElement("p");
+      el.style.setProperty("--i", i);
+      el.textContent = p.trim();
+      container.appendChild(el);
+    });
+  }
+  renderParagraphs(document.getElementById("memorial1"), PART1);
+  renderParagraphs(document.getElementById("memorial2"), PART2);
+
+  function formatDate(d){
+    var y = d.getFullYear(), m = d.getMonth()+1, day = d.getDate();
+    var week = ["일","월","화","수","목","금","토"][d.getDay()];
+    return y + "년 " + m + "월 " + day + "일 (" + week + "요일)";
+  }
+  var today = new Date();
+  var dateStr = formatDate(today);
+  document.getElementById("dateGlyph").textContent = dateStr;
+  document.getElementById("closingDate").textContent = dateStr + " · 융중에서 신 량 올림";
+
+  function todayKey(d){
+    return d.getFullYear() + "-" + (d.getMonth()+1) + "-" + d.getDate();
+  }
+
+  var statusLine = document.getElementById("statusLine");
+  var notifyBtn = document.getElementById("notifyBtn");
+  var reopenBtn = document.getElementById("reopenBtn");
+  var scrollWrap = document.getElementById("scrollWrap");
+
+  function updateStatus(){
+    if (!("Notification" in window)){
+      statusLine.textContent = "이 화면은 알림을 지원하지 않으니, 부기에 적힌 대로 예약 기능을 등록해 두소서.";
+      return;
+    }
+    if (Notification.permission === "granted"){
+      statusLine.textContent = "알림이 허락되었사옵니다 — 이 창을 열어 두시면 매일 오전 7시에 다시 아뢰옵니다.";
+    } else if (Notification.permission === "denied"){
+      statusLine.textContent = "알림이 물리쳐졌사옵니다 — 부기의 예약 기능으로 매일 아침 문을 열게 하소서.";
+    } else {
+      statusLine.textContent = "";
+    }
+  }
+  updateStatus();
+
+  notifyBtn.addEventListener("click", function(){
+    if (!("Notification" in window)){
+      updateStatus();
+      return;
+    }
+    Notification.requestPermission().then(function(){ updateStatus(); });
+  });
+
+  reopenBtn.addEventListener("click", function(){
+    try { localStorage.setItem("zhuge.lastShown", todayKey(new Date())); } catch(e){}
+    scrollWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+      scrollWrap.style.animation = "none";
+      void scrollWrap.offsetWidth;
+      scrollWrap.style.animation = "unroll 700ms cubic-bezier(.2,.7,.2,1) both";
+    }
+  });
+
+  try { localStorage.setItem("zhuge.lastShown", todayKey(new Date())); } catch(e){}
+
+  setInterval(function(){
+    var now = new Date();
+    if (now.getHours() !== 7) return;
+    var key;
+    try { key = localStorage.getItem("zhuge.lastNotified"); } catch(e){ key = null; }
+    var tk = todayKey(now);
+    if (key === tk) return;
+    try { localStorage.setItem("zhuge.lastNotified", tk); } catch(e){}
+    if ("Notification" in window && Notification.permission === "granted"){
+      new Notification("일일계도상소가 도착하였사옵니다", {
+        body: "제갈량이 오늘의 훈계를 올렸사옵니다. 화면을 열어 살펴보소서.",
+      });
+    }
+  }, 30000);
+})();
+</script>
