@@ -394,8 +394,8 @@
   </div>
 
   <div class="appendix">
-    <h3>부기(附記) · 이 상소를 매일 저절로 펼치는 법</h3>
-    <p class="lead">이 화면을 열어 둔 채로 두시면 매일 오전 7시에 알림이 울리도록 할 수 있사오나, 컴퓨터를 새로 켤 때나 화면을 닫아둔 뒤에도 저절로 열리게 하시려면, 운영체제의 예약 기능으로 이 문서의 주소를 아래와 같이 등록해 두시기를 권하옵니다.</p>
+    <h3>이 화면을 매일 아침 저절로 여는 법</h3>
+    <p class="lead">이 화면을 열어 둔 채로 두시면 매일 오전 7시에 알림이 울리게 할 수 있어요. 컴퓨터를 새로 켤 때나 화면을 닫아둔 뒤에도 저절로 열리게 하시려면, 운영체제의 예약 기능에 이 화면 주소를 아래처럼 등록해두세요.</p>
     <div class="os-grid">
       <div class="os-card">
         <h4>Windows</h4>
@@ -415,10 +415,10 @@
 0 7 * * * xdg-open "https://claude.ai/code/artifact/8002ebd9-e494-45af-a5f5-036e9b51a6b2"</code>
       </div>
     </div>
-    <p class="foot-note">위 명령의 "https://claude.ai/code/artifact/8002ebd9-e494-45af-a5f5-036e9b51a6b2"를 지금 이 화면의 주소로 바꾸어 등록하시면, 컴퓨터를 켤 때와 매일 아침 7시, 이 문이 저절로 열리옵니다. 화면을 열어 둔 채 "매일 아침 알림 청하기"를 함께 눌러 두시면, 창을 닫아 두어도 오전 7시에 알림으로 다시 알려 드리옵니다.</p>
+    <p class="foot-note">위 명령을 그대로 등록해두시면, 컴퓨터를 켤 때와 매일 아침 7시에 이 화면이 저절로 열려요. 화면을 열어 둔 채로 "매일 아침 알림 청하기"도 함께 눌러두시면, 창을 닫아 두어도 오전 7시에 알림으로 다시 알려드려요.</p>
   </div>
 
-  <footer class="page-foot">신 제갈량, 오늘도 주공의 앞길을 살피옵니다</footer>
+  <footer class="page-foot">제갈량이 매일 아침 여기서 기다릴게요</footer>
 </div>
 
 <script>
@@ -448,7 +448,7 @@
   var today = new Date();
   var dateStr = formatDate(today);
   document.getElementById("dateGlyph").textContent = dateStr;
-  document.getElementById("closingDate").textContent = dateStr + " · 융중에서 신 량 올림";
+  document.getElementById("closingDate").textContent = dateStr;
 
   function todayKey(d){
     return d.getFullYear() + "-" + (d.getMonth()+1) + "-" + d.getDate();
@@ -461,13 +461,13 @@
 
   function updateStatus(){
     if (!("Notification" in window)){
-      statusLine.textContent = "이 화면은 알림을 지원하지 않으니, 부기에 적힌 대로 예약 기능을 등록해 두소서.";
+      statusLine.textContent = "이 화면은 알림을 지원하지 않아요. 아래 설명대로 예약 기능을 등록해두세요.";
       return;
     }
     if (Notification.permission === "granted"){
-      statusLine.textContent = "알림이 허락되었사옵니다 — 이 창을 열어 두시면 매일 오전 7시에 다시 아뢰옵니다.";
+      statusLine.textContent = "알림이 허락됐어요 — 이 창을 열어 두시면 매일 오전 7시에 다시 알려드릴게요.";
     } else if (Notification.permission === "denied"){
-      statusLine.textContent = "알림이 물리쳐졌사옵니다 — 부기의 예약 기능으로 매일 아침 문을 열게 하소서.";
+      statusLine.textContent = "알림이 거부됐어요 — 아래 예약 기능으로 매일 아침 화면을 열어보세요.";
     } else {
       statusLine.textContent = "";
     }
@@ -503,8 +503,8 @@
     if (key === tk) return;
     try { localStorage.setItem("zhuge.lastNotified", tk); } catch(e){}
     if ("Notification" in window && Notification.permission === "granted"){
-      new Notification("일일계도상소가 도착하였사옵니다", {
-        body: "제갈량이 오늘의 훈계를 올렸사옵니다. 화면을 열어 살펴보소서.",
+      new Notification("오늘의 일일계도상소가 도착했어요", {
+        body: "제갈량이 오늘 이야기를 올렸어요. 화면을 열어 확인해보세요.",
       });
     }
   }, 30000);
