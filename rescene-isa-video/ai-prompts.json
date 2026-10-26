@@ -1,0 +1,15 @@
+{
+  "_note": "실존 인물의 얼굴은 AI로 만들지 않습니다(초상권·딥페이크 방지). 손, 뒷모습, 사물, 공간만 생성합니다.",
+  "style": "cinematic film still, 35mm, shallow depth of field, soft warm practical light, subtle film grain, muted teal and rose palette, no text, no logos, no recognizable faces",
+  "images": {
+    "berklee_piano": "close-up of a young woman's hands playing a grand piano in a dim music school practice room at night, sheet music with handwritten notes, warm desk lamp",
+    "ai_inear": "backstage corridor of a TV music show, a hand holding a pair of in-ear monitors with a tangled cable, blurred staff silhouettes in background, nervous mood",
+    "school_field": "a small portable stage on a dusty elementary school sports field in a Korean seaside town, colorful sports-day flags, children seen from behind sitting on the ground, afternoon sun haze"
+  },
+  "video": {
+    "_note": "선택: Kling / Runway / Veo 등 이미지→영상 도구에 위 이미지를 넣고 아래 모션 프롬프트로 5초 클립 생성 → public/ai/<slot>.mp4",
+    "berklee_piano": "slow dolly in, fingers press keys gently, dust particles float in lamp light",
+    "ai_inear": "handheld camera, slight shake, cable sways, staff walk past out of focus",
+    "school_field": "slow lateral pan, flags flutter in wind, dust drifts across the field"
+  }
+}

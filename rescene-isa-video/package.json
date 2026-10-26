@@ -1,0 +1,29 @@
+{
+  "name": "rescene-isa-video",
+  "version": "1.0.0",
+  "scripts": {
+    "assets": "node scripts/scan-assets.mjs",
+    "narration": "node --env-file-if-exists=.env scripts/gen-narration.mjs",
+    "measure": "node scripts/measure-narration.mjs",
+    "music": "node --env-file-if-exists=.env scripts/gen-music.mjs",
+    "images": "node --env-file-if-exists=.env scripts/gen-images.mjs",
+    "studio": "npm run assets && remotion studio src/index.ts",
+    "render": "npm run assets && remotion render src/index.ts RescenIsa out/rescene-isa.mp4 --codec=h264 --crf=18",
+    "all": "npm run narration && npm run measure && npm run music && npm run images && npm run render"
+  },
+  "dependencies": {
+    "@fontsource/noto-sans-kr": "^5.3.1",
+    "@fontsource/noto-serif-kr": "^5.3.1",
+    "@remotion/cli": "^4.0.538",
+    "@remotion/google-fonts": "^4.0.538",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.538"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "typescript": "^7.0.2"
+  },
+  "type": "module",
+  "private": true
+}

@@ -1,0 +1,17 @@
+[
+ "ai/.gitkeep",
+ "bgm/.gitkeep",
+ "images/.gitkeep",
+ "narration/.gitkeep",
+ "sfx/cheer.wav",
+ "sfx/chime.wav",
+ "sfx/ding.wav",
+ "sfx/heartbeat.wav",
+ "sfx/impact.wav",
+ "sfx/piano.wav",
+ "sfx/pop.wav",
+ "sfx/riser.wav",
+ "sfx/shutter.wav",
+ "sfx/tick.wav",
+ "sfx/whoosh.wav"
+]
