@@ -1,0 +1,24 @@
+@font-face { font-family: "NotoKR"; font-weight: 500; src: url(fonts/noto-sans-kr-latin-500-normal.woff2); }
+@font-face { font-family: "NotoKR"; font-weight: 500; src: url(fonts/noto-sans-kr-korean-500-normal.woff2); unicode-range: U+AC00-D7A3, U+3131-318E, U+1100-11FF, U+2018-201D, U+2026, U+00B7; }
+@font-face { font-family: "NotoKR"; font-weight: 800; src: url(fonts/noto-sans-kr-latin-800-normal.woff2); }
+@font-face { font-family: "NotoKR"; font-weight: 800; src: url(fonts/noto-sans-kr-korean-800-normal.woff2); unicode-range: U+AC00-D7A3, U+3131-318E, U+1100-11FF, U+2018-201D, U+2026, U+00B7; }
+@font-face { font-family: "NotoKR"; font-weight: 900; src: url(fonts/noto-sans-kr-latin-900-normal.woff2); }
+@font-face { font-family: "NotoKR"; font-weight: 900; src: url(fonts/noto-sans-kr-korean-900-normal.woff2); unicode-range: U+AC00-D7A3, U+3131-318E, U+1100-11FF, U+2018-201D, U+2026, U+00B7; }
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1080px; height: 1350px; background: #0f1115; }
+body { font-family: "NotoKR", "WenQuanYi Zen Hei", sans-serif; color: #fff; overflow: hidden; }
+.card { position: relative; width: 1080px; height: 1350px; }
+.photo { position: absolute; inset: 0 0 auto 0; height: 880px; overflow: hidden; }
+.photo.has-image { background-size: cover !important; background-position: center !important; }
+.fade { position: absolute; left: 0; right: 0; top: 700px; height: 200px; background: linear-gradient(to bottom, rgba(15,17,21,0), #0f1115); }
+.tag { position: absolute; left: 64px; top: 56px; background: #e0342b; color: #fff; font-weight: 900; font-size: 34px; padding: 10px 24px; border-radius: 8px; }
+.brand { position: absolute; right: 64px; top: 52px; text-align: right; }
+.brand b { display: block; font-weight: 900; font-size: 30px; color: #ffd23f; }
+.brand span { font-weight: 800; font-size: 24px; color: rgba(255,255,255,.8); }
+.title { position: absolute; left: 64px; right: 64px; top: 905px; }
+.title p { white-space: nowrap; font-weight: 900; font-size: 82px; line-height: 1.22; letter-spacing: -4px; }
+.title p:first-child { font-size: 76px; font-weight: 800; color: #e9e9e9; letter-spacing: -3px; }
+.hl { color: #ffd23f; }
+.note { position: absolute; left: 64px; right: 64px; top: 1140px; font-weight: 500; font-size: 26px; color: #c3c9d4; }
+.meta { position: absolute; left: 64px; right: 64px; bottom: 54px; display: flex; justify-content: space-between; font-weight: 500; font-size: 26px; color: #9aa3b2; }

@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>프로필 사진</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  html, body { width: 1080px; height: 1080px; background: #13233d; }
+  .pf { position: relative; width: 1080px; height: 1080px; background: radial-gradient(circle at 50% 40%, #1f3a63 0%, #13233d 70%); }
+  /* 원형 크롭 안전영역(지름 ~900px) 안에 모든 요소 배치 */
+  .num { position: absolute; left: 0; right: 0; top: 250px; text-align: center; font-weight: 900; font-size: 330px; letter-spacing: -14px; color: #ffd23f; line-height: 1; }
+  .sub { position: absolute; left: 0; right: 0; top: 610px; text-align: center; font-weight: 900; font-size: 130px; letter-spacing: -4px; color: #fff; line-height: 1; }
+  .dot { position: absolute; left: 50%; top: 175px; transform: translateX(-50%); width: 64px; height: 64px; border-radius: 50%; background: #e0342b; }
+</style>
+</head>
+<body>
+<div class="pf">
+  <div class="dot"></div>
+  <div class="num">4050</div>
+  <div class="sub">돈·안전</div>
+</div>
+</body>
+</html>

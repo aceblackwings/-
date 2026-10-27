@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>기준금리 동결 카드</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  .photo { background: radial-gradient(circle at 60% 35%, #1e3350 0%, #152033 55%, #0f1115 100%); }
+  .board { position: absolute; left: 120px; top: 170px; width: 840px; height: 600px; }
+  .rate { position: absolute; left: 0; top: 0; font-weight: 900; font-size: 210px; letter-spacing: -8px; color: #fff; line-height: 1; }
+  .rate small { font-size: 90px; letter-spacing: -2px; }
+  .lbl { position: absolute; left: 10px; top: 225px; font-weight: 800; font-size: 34px; color: #9fb4d4; }
+  .bars { position: absolute; left: 0; bottom: 40px; width: 840px; height: 300px; display: flex; align-items: flex-end; gap: 34px; }
+  .bar { flex: 1; background: #36557f; border-radius: 10px 10px 0 0; position: relative; }
+  .bar span { position: absolute; bottom: -44px; left: 0; right: 0; text-align: center; font-weight: 800; font-size: 26px; color: #9fb4d4; }
+  .bar em { position: absolute; top: -42px; left: 0; right: 0; text-align: center; font-style: normal; font-weight: 900; font-size: 26px; color: #fff; }
+  .bar.now { background: #ffd23f; }
+  .bar.now em { color: #ffd23f; }
+  .bar.next { background: repeating-linear-gradient(45deg, rgba(224,52,43,.55) 0 14px, rgba(224,52,43,.25) 14px 28px); border: 3px dashed #e0342b; }
+  .bar.next em { color: #ff6b62; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="photo" id="photo">
+    <div id="illust" class="board">
+      <div class="rate">3.00<small>%</small></div>
+      <div class="lbl">한국은행 기준금리 · 10월 동결</div>
+      <div class="bars">
+        <div class="bar" style="height:120px"><em>2.50</em><span>5월</span></div>
+        <div class="bar" style="height:150px"><em>2.75</em><span>7월</span></div>
+        <div class="bar" style="height:180px"><em>3.00</em><span>8월</span></div>
+        <div class="bar now" style="height:180px"><em>3.00</em><span>10월</span></div>
+        <div class="bar next" style="height:210px"><em>?</em><span>11월</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="fade"></div>
+  <div class="tag">금리</div>
+  <div class="brand"><b>4050 돈·안전 뉴스</b><span>@acesamdole2</span></div>
+  <div class="title">
+    <p>금리 3% 동결, 11월엔 또?</p>
+    <p>대출 3억, 이자 <span class="hl">월 6만원</span>↑</p>
+  </div>
+  <div class="note">※ 변동금리 대출 3억 원에 금리 0.25%p 인상이 그대로 반영될 때 (단순 계산)</div>
+  <div class="meta"><span>출처: 한국은행 금통위 결정(2026.10.22)</span><span>2026.10.27</span></div>
+</div>
+<script src="photo.js"></script>
+</body>
+</html>

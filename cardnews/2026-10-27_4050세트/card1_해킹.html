@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>보험사 해킹 카드</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  .photo { background: radial-gradient(circle at 50% 40%, #3b1d22 0%, #1b1418 55%, #0f1115 100%); }
+  .phone {
+    position: absolute; left: 300px; top: 150px; width: 480px; height: 820px;
+    background: #111; border-radius: 62px; padding: 20px; transform: rotate(-5deg);
+    box-shadow: 0 40px 90px rgba(0,0,0,.6), 0 0 0 3px #2c2c2c;
+  }
+  .screen { width: 100%; height: 100%; border-radius: 44px; background: #fbfaf7; color: #1d1d1d; overflow: hidden; padding: 70px 34px 0; text-align: center; }
+  .warn { width: 150px; height: 150px; margin: 0 auto; border-radius: 50%; background: #e0342b; color: #fff; font-weight: 900; font-size: 110px; line-height: 150px; }
+  .screen h4 { margin-top: 30px; font-weight: 900; font-size: 42px; letter-spacing: -1px; }
+  .screen p { margin-top: 16px; font-weight: 500; font-size: 24px; color: #555; line-height: 1.5; }
+  .chip { display: inline-block; margin-top: 26px; background: #f1e2e1; color: #c62a22; font-weight: 800; font-size: 22px; padding: 8px 18px; border-radius: 30px; }
+  .logos { position: absolute; left: 60px; top: 260px; display: flex; flex-direction: column; gap: 22px; }
+  .logos div { background: rgba(255,255,255,.1); border: 2px solid rgba(255,255,255,.25); color: #fff; font-weight: 800; font-size: 28px; padding: 10px 22px; border-radius: 10px; transform: rotate(-4deg); }
+  .logos div.x { border-color: #e0342b; background: rgba(224,52,43,.25); }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="photo" id="photo">
+    <div id="illust">
+      <div class="logos"><div>은행 ✕</div><div>저축은행 ✕</div><div class="x">보험사 ✕</div></div>
+      <div class="phone"><div class="screen">
+        <div class="warn">!</div>
+        <h4>고객정보 유출 안내</h4>
+        <p>사이버 침해사고로<br>고객님의 정보가<br>유출되었을 수 있습니다</p>
+        <div class="chip">명의도용 · 스미싱 주의</div>
+      </div></div>
+    </div>
+  </div>
+  <div class="fade"></div>
+  <div class="tag">긴급 · 해킹</div>
+  <div class="brand"><b>4050 돈·안전 뉴스</b><span>@acesamdole2</span></div>
+  <div class="title">
+    <p>은행 이어 보험사도 뚫렸다</p>
+    <p>지금 꼭 켜야 할 것 <span class="hl">2가지</span></p>
+  </div>
+  <div class="meta"><span>출처: 금감원 현장점검 관련 보도(EBN·신아일보 등)</span><span>2026.10.27</span></div>
+</div>
+<script src="photo.js"></script>
+</body>
+</html>

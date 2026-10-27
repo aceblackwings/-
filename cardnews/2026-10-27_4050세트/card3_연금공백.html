@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>연금 소득공백 카드</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  .photo { background: radial-gradient(circle at 50% 40%, #2b2f3a 0%, #191c23 55%, #0f1115 100%); }
+  .tl { position: absolute; left: 90px; top: 270px; width: 900px; height: 460px; }
+  .seg { position: absolute; top: 150px; height: 120px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 40px; }
+  .work { left: 0; width: 300px; background: #3d6fb6; }
+  .gap { left: 300px; width: 400px; background: repeating-linear-gradient(45deg, #3a2a2c 0 18px, #2a2022 18px 36px); border: 4px dashed #e0342b; color: #ff6b62; border-radius: 0; }
+  .pen { left: 700px; width: 200px; background: #3aa76d; }
+  .age { position: absolute; top: 300px; font-weight: 900; font-size: 46px; transform: translateX(-50%); }
+  .cap { position: absolute; top: 60px; font-weight: 800; font-size: 30px; color: #c3c9d4; transform: translateX(-50%); white-space: nowrap; }
+  .money { position: absolute; left: 500px; top: 380px; transform: translateX(-50%); font-weight: 900; font-size: 54px; color: #ff6b62; white-space: nowrap; }
+  .gavel { position: absolute; left: 0; right: 0; top: -150px; text-align: center; }
+  .gavel span { display: inline-block; border: 6px solid #ffd23f; color: #ffd23f; font-weight: 900; font-size: 46px; padding: 6px 30px; border-radius: 12px; transform: rotate(-4deg); }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="photo" id="photo">
+    <div id="illust" class="tl">
+      <div class="gavel"><span>헌재 4 : 4 → 합헌</span></div>
+      <div class="cap" style="left:150px">월급</div>
+      <div class="cap" style="left:500px">소득 공백</div>
+      <div class="cap" style="left:800px">연금</div>
+      <div class="seg work">근무</div>
+      <div class="seg gap">최대 5년</div>
+      <div class="seg pen">수령</div>
+      <div class="age" style="left:300px">60세</div>
+      <div class="age" style="left:700px">65세</div>
+      <div class="money">월 소득 0원?</div>
+    </div>
+  </div>
+  <div class="fade"></div>
+  <div class="tag">헌재 결정</div>
+  <div class="brand"><b>4050 돈·안전 뉴스</b><span>@acesamdole2</span></div>
+  <div class="title">
+    <p>60세 퇴직, 연금은 65세</p>
+    <p><span class="hl">5년</span> 소득공백 '합헌'</p>
+  </div>
+  <div class="note">※ 공무원연금 지급연령 상향 조항 · 국민연금도 1969년생부터 65세 수령</div>
+  <div class="meta"><span>출처: 헌법재판소 결정 보도(경향신문·한국일보 등)</span><span>2026.10.27</span></div>
+</div>
+<script src="photo.js"></script>
+</body>
+</html>
