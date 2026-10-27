@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>기초연금 감액 카드뉴스</title>
+<style>
+  @font-face { font-family: "NotoKR"; font-weight: 500; src: url(fonts/noto-sans-kr-latin-500-normal.woff2), url(fonts/noto-sans-kr-korean-500-normal.woff2); }
+  @font-face { font-family: "NotoKR"; font-weight: 500; src: url(fonts/noto-sans-kr-korean-500-normal.woff2); unicode-range: U+AC00-D7A3, U+3131-318E, U+1100-11FF; }
+  @font-face { font-family: "NotoKR"; font-weight: 800; src: url(fonts/noto-sans-kr-latin-800-normal.woff2); }
+  @font-face { font-family: "NotoKR"; font-weight: 800; src: url(fonts/noto-sans-kr-korean-800-normal.woff2); unicode-range: U+AC00-D7A3, U+3131-318E, U+1100-11FF, U+2018-201D, U+2026; }
+  @font-face { font-family: "NotoKR"; font-weight: 900; src: url(fonts/noto-sans-kr-latin-900-normal.woff2); }
+  @font-face { font-family: "NotoKR"; font-weight: 900; src: url(fonts/noto-sans-kr-korean-900-normal.woff2); unicode-range: U+AC00-D7A3, U+3131-318E, U+1100-11FF, U+2018-201D, U+2026; }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1080px; height: 1350px; background: #0f1115; }
+  body { font-family: "NotoKR", "WenQuanYi Zen Hei", sans-serif; color: #fff; overflow: hidden; }
+
+  .card { position: relative; width: 1080px; height: 1350px; }
+
+  /* 상단 65%: 사진 영역 (실사 사진으로 교체 가능) */
+  .photo {
+    position: absolute; inset: 0 0 auto 0; height: 880px;
+    background:
+      radial-gradient(circle at 70% 30%, #3a4a63 0%, #1d2533 55%, #12161d 100%);
+    overflow: hidden;
+  }
+  .photo.has-image { background-size: cover; background-position: center; }
+
+  /* 기본 일러스트: 연금 지급 통지서 */
+  .notice {
+    position: absolute; left: 150px; top: 150px; width: 780px; height: 620px;
+    background: #f4f1ea; color: #222; border-radius: 14px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.55);
+    transform: rotate(-4deg);
+    padding: 54px 60px;
+  }
+  .notice h3 { font-weight: 800; font-size: 40px; letter-spacing: -1px; color: #2b2b2b; }
+  .notice .sub { font-weight: 500; font-size: 24px; color: #777; margin-top: 8px; }
+  .notice hr { border: none; border-top: 3px solid #d8d2c4; margin: 34px 0; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; font-size: 32px; font-weight: 500; margin-bottom: 22px; }
+  .row b { font-weight: 900; font-size: 42px; }
+  .strike { position: relative; color: #999; }
+  .strike::after { content: ""; position: absolute; left: -8px; right: -8px; top: 52%; height: 7px; background: #e0342b; transform: rotate(-6deg); border-radius: 4px; }
+  .minus { color: #e0342b; }
+  .stamp {
+    position: absolute; left: 60px; bottom: 40px;
+    border: 7px solid #e0342b; color: #e0342b; border-radius: 12px;
+    font-weight: 900; font-size: 54px; padding: 4px 24px; transform: rotate(-8deg);
+    letter-spacing: 4px; opacity: .92;
+  }
+
+  /* 사진 → 텍스트 전환 그라데이션 */
+  .fade { position: absolute; left: 0; right: 0; top: 700px; height: 200px; background: linear-gradient(to bottom, rgba(15,17,21,0), #0f1115); }
+
+  .tag {
+    position: absolute; left: 64px; top: 56px;
+    background: #e0342b; color: #fff; font-weight: 900; font-size: 34px;
+    padding: 10px 24px; border-radius: 8px; letter-spacing: -0.5px;
+  }
+  .handle { position: absolute; right: 64px; top: 64px; font-weight: 800; font-size: 28px; color: rgba(255,255,255,.85); }
+
+  /* 하단: 2줄 제목 */
+  .title { position: absolute; left: 64px; right: 64px; top: 905px; }
+  .title p { white-space: nowrap; font-weight: 900; font-size: 84px; line-height: 1.22; letter-spacing: -4px; }
+  .title p:first-child { font-size: 78px; font-weight: 800; color: #e9e9e9; letter-spacing: -3px; }
+  .hl { color: #ffd23f; }
+
+  .meta { position: absolute; left: 64px; right: 64px; bottom: 54px; display: flex; justify-content: space-between; font-weight: 500; font-size: 26px; color: #9aa3b2; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="photo" id="photo">
+    <div class="notice" id="notice">
+      <h3>기초연금 지급 안내</h3>
+      <div class="sub">2026년 · 단독가구 기준</div>
+      <hr>
+      <div class="row"><span>기준연금액</span><b class="strike">349,700원</b></div>
+      <div class="row"><span>국민연금 연계감액</span><b class="minus">− 감액</b></div>
+      <div class="row"><span>국민연금 월 수령액</span><b>52만4,550원↑</b></div>
+      <div class="stamp">감액</div>
+    </div>
+  </div>
+  <div class="fade"></div>
+  <div class="tag">국정감사</div>
+  <div class="handle">@acesamdole2</div>
+
+  <div class="title">
+    <p>국민연금 월 <span class="hl">52만원</span> 넘으면</p>
+    <p>기초연금 깎입니다</p>
+  </div>
+
+  <div class="meta"><span>출처: 보건복지부 국감 자료(남인순 의원실)</span><span>2026.10.26 보도</span></div>
+</div>
+<script>
+  // ?photo=파일경로 로 실사 사진을 넣으면 일러스트 대신 사진이 들어갑니다.
+  const p = new URLSearchParams(location.search).get("photo");
+  if (p) {
+    const el = document.getElementById("photo");
+    el.classList.add("has-image");
+    el.style.backgroundImage = `url("${p}")`;
+    document.getElementById("notice").remove();
+  }
+</script>
+</body>
+</html>
