@@ -1,0 +1,63 @@
+==================================================
+실사 사진 준비 가이드 (v2 카드용)
+==================================================
+파일 이름: photo1.jpg(해킹) / photo2.jpg(금리) / photo3.jpg(연금공백)
+크기: 세로 사진 권장 (최소 가로 1080px), 위쪽 60%에 핵심 피사체
+공통 조건
+ - 얼굴이 정면으로 크게 나오지 않는 사진 (손·뒷모습·실루엣)
+ - 특정 회사 로고·간판이 보이지 않는 사진
+ - 너무 밝은 사진보다 약간 어둡고 대비가 강한 사진 (위에 흰 글씨가 잘 보임)
+ - 픽사베이·펙셀 사진은 상업적 이용 가능, 출처 표기 의무 없음 (카드에는 '자료사진' 자동 표기)
+
+--------------------------------------------------
+[photo1.jpg] 카드① 해킹 — 은행 이어 보험사도 뚫렸다
+--------------------------------------------------
+검색어 (위에서부터 시도)
+ 1) smartphone security warning
+ 2) hacker dark hoodie laptop
+ 3) phone scam hand
+ 4) cyber security alert
+고르는 기준: 어두운 배경 + 빨간/파란 화면 빛, 손에 든 휴대폰 클로즈업
+
+힉스필드 프롬프트 (스톡에서 마음에 드는 게 없을 때)
+ Close-up of a Korean person's hand in their 40s holding a smartphone, the screen glowing with a red warning alert, dark room at night, red and blue light reflections, tense mood, cinematic, shallow depth of field, photorealistic, no readable text, no logos, face out of frame, vertical 4:5
+
+--------------------------------------------------
+[photo2.jpg] 카드② 금리 — 대출 3억 이자 월 6만원
+--------------------------------------------------
+검색어
+ 1) couple paying bills calculator
+ 2) loan documents calculator hands
+ 3) worried couple finances kitchen table
+ 4) asian couple bills
+고르는 기준: 식탁 위 서류·계산기, 두 사람의 손이나 어깨, 따뜻한 조명
+
+힉스필드 프롬프트
+ Korean married couple in their late 40s sitting at a kitchen table at night, reviewing a bank loan statement with a calculator, worried posture, only hands and shoulders visible, warm pendant lamp light, documentary photography, photorealistic, no readable text, no logos, vertical 4:5
+
+--------------------------------------------------
+[photo3.jpg] 카드③ 연금공백 — 5년간 월급 0원?
+--------------------------------------------------
+검색어
+ 1) man leaving office box
+ 2) retirement businessman walking away
+ 3) senior man walking alone city sunset
+ 4) lonely businessman back view
+고르는 기준: 뒷모습, 노을·저녁빛, 서류 상자나 서류가방, 쓸쓸한 분위기
+
+힉스필드 프롬프트
+ Korean office worker in his late 50s seen from behind, carrying a cardboard box of personal belongings, walking out of a glass office building at golden hour, long shadow, melancholic mood, cinematic, photorealistic, no readable text, no logos, vertical 4:5
+
+==================================================
+사진을 넣는 방법
+==================================================
+가장 쉬운 방법: 사진 3장을 이 대화창에 그대로 올려 주세요.
+ → 제가 카드에 합성해서 완성본(jpg) 3장으로 돌려드립니다.
+
+==================================================
+v2에서 바뀐 대체 텍스트 (게시할 때 이것으로 교체)
+==================================================
+카드①: 어두운 방에서 경고 화면이 뜬 휴대폰 자료사진. 은행 이어 보험사도 뚫렸다, 지금 꼭 켜야 할 2가지.
+카드②: 대출 서류와 계산기 자료사진. 금리 3% 동결, 11월엔? 대출 3억 이자 월 6만원 더 낼 수도.
+카드③: 퇴근하는 직장인 뒷모습 자료사진. 60세 퇴직, 연금은 65세, 5년간 월급 0원? 헌재 4대4 합헌.
+설명란·고정 댓글은 기존 UPLOAD.txt 그대로 사용하면 됩니다.

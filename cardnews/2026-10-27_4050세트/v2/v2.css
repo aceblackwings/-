@@ -17,3 +17,24 @@ body { font-family: "K", "WenQuanYi Zen Hei", sans-serif; overflow: hidden; }
 .box { position: absolute; left: 60px; right: 60px; font-weight: 900; font-size: 54px; letter-spacing: -2px; padding: 24px 34px; border-radius: 18px; display: flex; justify-content: space-between; align-items: center; }
 .foot { position: absolute; left: 60px; right: 60px; bottom: 48px; display: flex; justify-content: space-between; font-weight: 500; font-size: 25px; }
 .note { position: absolute; left: 60px; right: 60px; font-weight: 500; font-size: 26px; }
+
+/* ---- 실사 + 대형 문구 레이아웃 ---- */
+body { background: #0d0f13; color: #fff; }
+.photo { position: absolute; left: 0; right: 0; top: 0; height: 860px; background: #2a2f38 center/cover no-repeat; }
+.photo .ph { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  border: 6px dashed rgba(255,255,255,.35); margin: 160px 60px 220px; border-radius: 24px; color: rgba(255,255,255,.7); text-align: center; }
+.photo .ph b { font-weight: 900; font-size: 46px; }
+.photo .ph span { font-weight: 500; font-size: 28px; }
+.has-photo .ph { display: none; }
+.shade { position: absolute; left: 0; right: 0; top: 0; height: 860px;
+  background: linear-gradient(to bottom, rgba(0,0,0,.55) 0, rgba(0,0,0,0) 22%, rgba(0,0,0,0) 50%, rgba(13,15,19,.85) 82%, #0d0f13 100%); }
+.label { position: absolute; right: 60px; top: 790px; font-weight: 500; font-size: 22px; color: rgba(255,255,255,.75); }
+.top .brand { text-shadow: 0 2px 10px rgba(0,0,0,.6); color: #fff; }
+.kicker { top: 770px; font-size: 58px; color: #fff; }
+.kicker i { font-style: normal; padding: 0 14px; border-radius: 8px; }
+.big { top: 880px; font-size: 128px; letter-spacing: -7px; color: #fff; }
+.mark { padding: 0 16px; border-radius: 12px; display: inline-block; line-height: 1.12; }
+.box { top: 1060px; }
+.note { top: 1205px; color: #b8bfcc; font-size: 25px; }
+.foot { color: #8b93a2; }
+.stamp { position: absolute; font-weight: 900; border: 8px solid; border-radius: 16px; padding: 4px 28px; transform: rotate(-8deg); background: rgba(13,15,19,.6); }
