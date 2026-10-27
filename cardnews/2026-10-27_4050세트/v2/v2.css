@@ -1,0 +1,19 @@
+@font-face { font-family: "K"; font-weight: 500; src: url(fonts/noto-sans-kr-latin-500-normal.woff2); }
+@font-face { font-family: "K"; font-weight: 500; src: url(fonts/noto-sans-kr-korean-500-normal.woff2); unicode-range: U+AC00-D7A3, U+3131-318E, U+1100-11FF, U+2018-201D, U+2026, U+00B7; }
+@font-face { font-family: "K"; font-weight: 800; src: url(fonts/noto-sans-kr-latin-800-normal.woff2); }
+@font-face { font-family: "K"; font-weight: 800; src: url(fonts/noto-sans-kr-korean-800-normal.woff2); unicode-range: U+AC00-D7A3, U+3131-318E, U+1100-11FF, U+2018-201D, U+2026, U+00B7; }
+@font-face { font-family: "K"; font-weight: 900; src: url(fonts/noto-sans-kr-latin-900-normal.woff2); }
+@font-face { font-family: "K"; font-weight: 900; src: url(fonts/noto-sans-kr-korean-900-normal.woff2); unicode-range: U+AC00-D7A3, U+3131-318E, U+1100-11FF, U+2018-201D, U+2026, U+00B7; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1080px; height: 1350px; }
+body { font-family: "K", "WenQuanYi Zen Hei", sans-serif; overflow: hidden; }
+.card { position: relative; width: 1080px; height: 1350px; overflow: hidden; }
+.top { position: absolute; left: 60px; right: 60px; top: 56px; display: flex; justify-content: space-between; align-items: center; }
+.tag { font-weight: 900; font-size: 38px; padding: 10px 26px; border-radius: 10px; }
+.brand { font-weight: 900; font-size: 30px; text-align: right; line-height: 1.25; }
+.brand span { display: block; font-weight: 800; font-size: 26px; opacity: .8; }
+.kicker { position: absolute; left: 60px; right: 60px; font-weight: 900; font-size: 60px; letter-spacing: -2px; }
+.big { position: absolute; left: 52px; right: 40px; font-weight: 900; letter-spacing: -10px; line-height: 1.02; white-space: nowrap; }
+.box { position: absolute; left: 60px; right: 60px; font-weight: 900; font-size: 54px; letter-spacing: -2px; padding: 24px 34px; border-radius: 18px; display: flex; justify-content: space-between; align-items: center; }
+.foot { position: absolute; left: 60px; right: 60px; bottom: 48px; display: flex; justify-content: space-between; font-weight: 500; font-size: 25px; }
+.note { position: absolute; left: 60px; right: 60px; font-weight: 500; font-size: 26px; }
