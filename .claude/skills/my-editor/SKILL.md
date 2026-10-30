@@ -6,8 +6,14 @@ description: 내 쇼츠 편집 스킬. 음성/영상 파일을 주면 받아쓰�
 # 내 편집 스킬
 
 `SKILL_DIR` = 이 파일이 있는 폴더. 스크립트는 전부 `SKILL_DIR/scripts/` 에 있다.
-Python 스크립트는 `SKILL_DIR/.venv/bin/python` 으로 실행한다(없으면 `python3`).
-준비물이 없으면 먼저 `bash SKILL_DIR/setup/install.sh` 를 실행한다.
+Python 스크립트는 가상환경의 파이썬으로 실행한다(없으면 `python3`).
+- macOS·Linux: `SKILL_DIR/.venv/bin/python`
+- Windows: `SKILL_DIR\.venv\Scripts\python.exe` (Git Bash에서는 `SKILL_DIR/.venv/Scripts/python.exe`)
+
+아래 명령의 `python` 은 이 경로를 뜻한다.
+준비물이 없으면 먼저 `bash SKILL_DIR/setup/install.sh` 를 실행한다(macOS·Linux 전용).
+Windows는 winget(Gyan.FFmpeg · UB-Mannheim.TesseractOCR)으로 설치하고, 한국어 데이터 `kor.traineddata` 는
+`TESSDATA_PREFIX` 가 가리키는 폴더에 둔다. 셸 스크립트(`normalize_loudness.sh`)는 Git Bash로 실행한다.
 
 ## 절대 규칙 (내가 준 피드백, 날짜순으로 계속 추가)
 - 화면은 실제 사이트 캡처·실제 실행 녹화만. 목업 카드·가짜 터미널 금지.
