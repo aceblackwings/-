@@ -22,18 +22,28 @@ if (!shotsFile) {
   process.exit(1);
 }
 
+const winDirs = [process.env.PROGRAMFILES, process.env["PROGRAMFILES(X86)"], process.env.LOCALAPPDATA].filter(Boolean);
 const candidates = [
   process.env.CHROME_PATH,
   "/opt/pw-browsers/chromium",
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   "/usr/bin/google-chrome",
   "/usr/bin/chromium",
+  ...winDirs.flatMap((d) => [
+    path.join(d, "Google", "Chrome", "Application", "chrome.exe"),
+    path.join(d, "Microsoft", "Edge", "Application", "msedge.exe"),
+  ]),
 ].filter(Boolean);
+const pwDir = "/opt/pw-browsers";
 const executablePath = candidates.find((p) => fs.existsSync(p) && fs.statSync(p).isFile())
-  ?? fs.readdirSync("/opt/pw-browsers", { withFileTypes: true })
+  ?? (fs.existsSync(pwDir) ? fs.readdirSync(pwDir, { withFileTypes: true }) : [])
     .filter((d) => d.name.startsWith("chromium-"))
-    .map((d) => path.join("/opt/pw-browsers", d.name, "chrome-linux64", "chrome"))
+    .map((d) => path.join(pwDir, d.name, "chrome-linux64", "chrome"))
     .find((p) => fs.existsSync(p));
+if (!executablePath) {
+  console.error("Chrome/Edge를 찾지 못했습니다. CHROME_PATH 환경 변수에 브라우저 실행 파일 경로를 지정하세요.");
+  process.exit(1);
+}
 
 const viewport = { width: 1280, height: 800, deviceScaleFactor: 2 };
 const shots = JSON.parse(fs.readFileSync(shotsFile, "utf8"));
