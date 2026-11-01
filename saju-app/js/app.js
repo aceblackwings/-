@@ -24,6 +24,7 @@ import { ASCENSION, abilitiesAt, nextAscension, ascensionOf, trialProgress, grow
 import { journeyStep, emptyJourney, completeStep, JOURNEY_DAYS, JOURNEYS } from './journey.js';
 import { isCrisis, crisisReply, buildInstructions, buildMessages, offlineReply, QUICK_ASKS, FREE_CHATS } from './chat.js';
 import { festivalStatus } from './festivals.js';
+import { makeCode, normalizeCode, publicCard, cardToSaju, cleanCard, pendingCheers, joinTeamRoom, openMailbox, CHEER_MESSAGES, CHEER_DAILY_LIMIT, CHEER_CHARGE, cheerText, cheerId } from './realtime.js';
 import { dailySpots, distanceM, treasureRarity, bearingName, ARRIVE_RADIUS, DEMO_CENTER, PARTNER_SAMPLES } from './fengshui.js';
 import { renderStoryCanvas, shareStory, STORY_TEMPLATES } from './story.js';
 import {
@@ -49,6 +50,7 @@ const JOURNEY_KEY = 'unmyeong2099.journey';
 const FENG_KEY = 'unmyeong2099.feng';
 const SOC_KEY = 'unmyeong2099.social';
 const CHAT_KEY = 'unmyeong2099.chat';
+const RT_KEY = 'unmyeong2099.realtime';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
 const EL_COLORS = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
 
@@ -137,6 +139,7 @@ function start(profile, mode = 'today') {
   grow((g) => checkIn(g, state.fortune.dateKey));
   renderToday();
   setTimeout(() => { processDexRewards(); renderCompat(); }, 2600);
+  setTimeout(initRealtime, 900);
   const abS = abilitiesAt(loadGrowth().evolved);
   if (abS.autoCharge) setTimeout(() => { const { fills } = luckNow(); const low = fills.indexOf(Math.min(...fills)); charge(low, abS.autoCharge, 'taeguk', '☯ 태극 순환'); }, 5200);
 }
@@ -1022,13 +1025,21 @@ async function sendChat(text) {
 
 function teamMembers() {
   const me = { name: state.profile.name || '나', saju: state.saju, info: characterInfo(state.saju, state.profile), me: true, stage: heroOptions().stage };
-  const fr = load(FRIENDS_KEY, []).slice(0, 7).map((x) => { const fs = friendSaju(x); return fs.error ? null : { name: x.name, saju: fs, info: characterInfo(fs, { gender: x.gender, concern: 'people' }), stage: 2 }; }).filter(Boolean);
+  const fr = load(FRIENDS_KEY, []).slice(0, 7).map((x) => { const fs = friendSaju(x); return fs.error ? null : { name: x.name, saju: fs, info: characterInfo(fs, { gender: x.gender, concern: 'people' }), stage: x.card?.stage || 2 }; }).filter(Boolean);
   return [me, ...fr];
 }
 
-function teamRoom() {
-  const mem = teamMembers();
-  if (mem.length < 3) return null;
+/** 실시간 방 멤버(공개 카드) → 궁합 지도 멤버 */
+function liveMembers() {
+  const list = state.rt?.members || [];
+  const mine = list.find((m) => m.isMe);
+  const others = list.filter((m) => !m.isMe && m.card.code !== myCode()).slice(0, 7);
+  const me = { name: state.profile.name || '나', saju: state.saju, info: characterInfo(state.saju, state.profile), me: true, stage: heroOptions().stage, peer: mine?.peer };
+  return [me, ...others.map((m) => { const sj = cardToSaju(m.card); return { name: m.card.name, saju: sj, info: characterInfo(sj, { gender: m.card.gender, concern: 'people' }), stage: m.card.stage, code: m.card.code, peer: m.peer, live: true }; })];
+}
+
+function teamRoom(mem = teamMembers(), min = 3) {
+  if (mem.length < min) return null;
   const pairs = [];
   for (let i = 0; i < mem.length; i++) for (let j = i + 1; j < mem.length; j++) pairs.push({ i, j, score: computeCompat(mem[i].saju, mem[j].saju, state.fortune.date).score });
   pairs.sort((a, b) => b.score - a.score);
@@ -1062,26 +1073,182 @@ function teamSVG(t) {
 }
 
 function teamCardHTML() {
-  const t = teamRoom();
-  if (!t) return `<div class="card"><h3>👥 단톡 궁합방</h3><p class="muted" style="margin:0">친구를 2명 이상 추가하면 나까지 3명 이상의 단톡 궁합 지도가 만들어져요. 오늘의 행운 멤버, 찰떡 듀오, 팀 부적까지!</p></div>`;
-  state.team = t;
-  const nm = (k) => t.mem[k].name;
-  return `<div class="card team">
-    <h3>👥 단톡 궁합방 <span class="tag">${t.mem.length}명</span></h3>
-    <div class="team-map">${teamSVG(t)}</div>
+  const rt = state.rt || {};
+  const inRoom = !!rt.room;
+  const live = inRoom ? liveMembers() : null;
+  const t = inRoom ? teamRoom(live, 2) : teamRoom();
+  const status = rt.roomCap === false ? '로컬 체험' : inRoom ? `🟢 실시간 ${live.length}명` : '대기';
+  const roomBox = inRoom
+    ? `<div class="rt-room"><span>방 코드 <b class="code">${esc(rt.room.name)}</b> · 접속 ${live.length}명</span>
+        <div class="actions"><button class="ghost" type="button" id="btn-room-invite">초대 문구 복사</button><button class="ghost" type="button" id="btn-room-leave">나가기</button></div></div>`
+    : `<form class="rt-join" id="room-form" autocomplete="off">
+        <input name="code" type="text" maxlength="8" placeholder="방 코드 6자리" aria-label="방 코드">
+        <button class="primary" type="submit">입장</button>
+        <button class="ghost" type="button" id="btn-room-new">새 방 만들기</button>
+      </form>`;
+  const liveList = inRoom ? `<div class="rt-members">${live.map((m, i) => `<div class="rt-mem${m.me ? ' me' : ''}">
+      <span class="nm">${m.me ? '⭐ ' : ''}${esc(m.name)}</span><span class="muted">${esc(m.info.zodiac.name)}띠 · ${esc(stageName(m.stage || 1, m.info.female))}</span>
+      ${m.me ? '<span class="tag">나</span>' : `<button class="chip" type="button" data-live-cheer="${i}" ${rt.roomCheered?.[m.code] ? 'disabled' : ''}>${rt.roomCheered?.[m.code] ? '응원 완료' : '📣 응원'}</button>`}
+    </div>`).join('')}</div>` : '';
+  if (t) state.team = t;
+  const mapPart = t ? (() => {
+    const nm = (k) => t.mem[k].name;
+    return `<div class="team-map">${teamSVG(t)}</div>
     <ul class="reasons">
       <li><b>👑 오늘의 행운 멤버</b> ${esc(nm(t.lucky))} — 오늘 점심 메뉴는 ${esc(nm(t.lucky))}가 정해!</li>
       <li><b>💗 찰떡 듀오</b> ${esc(nm(t.best.i))} × ${esc(nm(t.best.j))} <em>${t.best.score}점</em></li>
-      <li><b>⚡ 티격태격 듀오</b> ${esc(nm(t.worst.i))} × ${esc(nm(t.worst.j))} <em>${t.worst.score}점</em></li>
+      ${t.pairs.length > 1 ? `<li><b>⚡ 티격태격 듀오</b> ${esc(nm(t.worst.i))} × ${esc(nm(t.worst.j))} <em>${t.worst.score}점</em></li>` : ''}
       <li><b>☯ 팀에 부족한 기운</b> ${ELEMENT_HANJA[t.teamWeak]} ${ELEMENT_KO[t.teamWeak]} → 팀 부적으로 채워요</li>
     </ul>
     <div class="actions" style="margin-top:10px">
       <button class="primary" type="button" id="btn-team-png">궁합 지도 이미지 저장</button>
-      <button class="ghost" type="button" id="btn-team-invite">단톡방 초대 문구 복사</button>
+      ${inRoom ? '' : '<button class="ghost" type="button" id="btn-team-invite">단톡방 초대 문구 복사</button>'}
       <button class="ghost" type="button" id="btn-team-charm">팀 부적 받기</button>
-    </div>
-    <p class="muted" style="font-size:0.74rem;margin:6px 0 0">정식 버전에서는 링크 하나로 단톡방 친구들이 가입 없이 함께 들어와 실시간 궁합 지도가 완성됩니다.</p>
+    </div>`;
+  })() : `<p class="muted" style="margin:8px 0 0">${inRoom ? '친구가 같은 방 코드로 들어오면 궁합 지도가 실시간으로 그려져요. 초대 문구를 단톡방에 붙여 넣어 보세요!' : '방 코드로 친구들과 실시간 입장하거나, 친구를 2명 이상 추가하면 단톡 궁합 지도가 만들어져요.'}</p>`;
+  return `<div class="card team">
+    <h3>👥 단톡 궁합방 <span class="tag">${status}</span></h3>
+    ${rt.roomCap === false ? '<p class="muted" style="font-size:0.78rem;margin:0 0 8px">이 화면에서는 실시간 연결을 쓸 수 없어 추가한 친구들로 궁합 지도를 보여 드려요.</p>' : roomBox}
+    ${inRoom ? `<label class="rt-msg">응원 메시지 <select id="cheer-msg">${CHEER_MESSAGES.map((m) => `<option value="${m.key}" ${state.cheerMsg === m.key ? 'selected' : ''}>${esc(m.text)}</option>`).join('')}</select></label>` : ''}
+    ${liveList}
+    ${mapPart}
+    <p class="muted" style="font-size:0.74rem;margin:6px 0 0">방에는 이름·띠·오행 비율·캐릭터 단계만 공유돼요. 생년월일과 사주 원본은 이 기기에만 남습니다.</p>
   </div>`;
+}
+
+// ---------- 실시간 연결 · 응원 우편함 ----------
+
+function loadRT() { return { code: null, claimed: [], used: { date: null, n: 0 }, inbox: [], sent: {}, ...(load(RT_KEY, null) || {}) }; }
+function myCode() {
+  const rt = loadRT();
+  if (!rt.code) { rt.code = makeCode(); save(RT_KEY, rt); }
+  return rt.code;
+}
+function myCard() { return publicCard(state.saju, state.profile, heroOptions().stage, myCode()); }
+function appUrl() { return location.href.split('?')[0].split('#')[0]; }
+async function copyText(msg, ok) { try { await navigator.clipboard.writeText(msg); toast(ok); } catch { toast(msg); } }
+
+async function initRealtime() {
+  if (!state.saju) return;
+  state.rt = state.rt || {};
+  myCode();
+  // URL ?room=xxxxxx 로 들어오면 바로 입장
+  const q = normalizeCode(new URLSearchParams(location.search).get('room'));
+  if (q && !state.rt.room) enterRoom(q);
+  if (state.rt.mailboxTried) return;
+  state.rt.mailboxTried = true;
+  const mb = await openMailbox();
+  state.rt.mailbox = mb;
+  if (!mb) { renderCompat(); return; }
+  try { await mb.register(myCard()); state.rt.registered = true; } catch { state.rt.registered = false; }
+  state.rt.unlisten?.();
+  try {
+    state.rt.unlisten = mb.listen(myCode(), (list) => receiveCheers(list.map((c) => ({ ...c, name: c.fromName }))), () => { state.rt.mailboxError = true; });
+  } catch { state.rt.mailboxError = true; }
+  renderCompat();
+}
+
+/** 받은 응원 → 하루 5번까지 부족한 기운 충전 */
+function receiveCheers(list) {
+  const rt = loadRT();
+  const dk = state.fortune.dateKey;
+  if (rt.used.date !== dk) rt.used = { date: dk, n: 0 };
+  const fresh = pendingCheers(list, rt.claimed, dk, rt.used.n);
+  // 한도를 넘은 오늘 응원도 우편함에는 보여 줌
+  const extra = list.filter((c) => c.date === dk && !rt.claimed.includes(c.id) && !fresh.includes(c));
+  if (!fresh.length && !extra.length) return;
+  fresh.forEach((c, i) => {
+    rt.claimed.push(c.id); rt.used.n += 1;
+    rt.inbox.unshift({ id: c.id, name: c.name, msg: c.msg, date: dk, charged: true });
+    setTimeout(() => charge(state.saju.weakest, CHEER_CHARGE, `cheer-in-${c.id}`, `📣 ${c.name}의 응원 "${c.msg}"`), 400 + i * 2600);
+  });
+  extra.forEach((c) => { rt.claimed.push(c.id); rt.inbox.unshift({ id: c.id, name: c.name, msg: c.msg, date: dk, charged: false }); });
+  rt.claimed = rt.claimed.slice(-300); rt.inbox = rt.inbox.slice(0, 20);
+  save(RT_KEY, rt);
+  if (fresh.length) grow((g) => complete(g, dk, 'social', qBonus('social')));
+  renderCompat();
+}
+
+async function enterRoom(code) {
+  state.rt = state.rt || {};
+  if (state.rt.room) { if (state.rt.room.name === code) return; state.rt.room.leave(); state.rt.room = null; }
+  toast('단톡 궁합방에 연결하는 중…');
+  const room = await joinTeamRoom(code, myCard(), {
+    onMembers: (list) => {
+      const before = (state.rt.members || []).length;
+      state.rt.members = list;
+      if (list.length > before && before) toast(`👋 새 친구가 궁합방에 들어왔어요 (${list.length}명)`);
+      const typing = document.activeElement?.matches?.('[data-panel="compat"] input, [data-panel="compat"] select');
+      if (state.lastTab === 'compat' && !typing) renderCompat();
+    },
+    onCheer: ({ from, msg }) => receiveCheers([{ id: from.code ? cheerId(myCode(), from.code, state.fortune.dateKey) : `room-${from.name}-${state.fortune.dateKey}`, name: from.name, msg, date: state.fortune.dateKey, at: Date.now() }]),
+  });
+  if (!room) { state.rt.roomCap = false; toast('이 화면에서는 실시간 방을 열 수 없어요. 추가한 친구들로 궁합 지도를 보여 드릴게요'); renderCompat(); return; }
+  state.rt.roomCap = true;
+  state.rt.room = room;
+  state.rt.roomCheered = {};
+  toast(`🟢 방 ${code}에 입장했어요. 초대 문구를 단톡방에 공유해 보세요!`);
+  grow((g) => complete(g, state.fortune.dateKey, 'social', qBonus('social')));
+  renderCompat();
+}
+
+function leaveRoom() {
+  state.rt?.room?.leave();
+  if (state.rt) { state.rt.room = null; state.rt.members = []; }
+  renderCompat();
+}
+
+function liveCheer(i) {
+  const m = liveMembers()[i];
+  if (!m || m.me || !state.rt?.room) return;
+  state.rt.roomCheered = state.rt.roomCheered || {};
+  if (state.rt.roomCheered[m.code]) return;
+  state.rt.roomCheered[m.code] = true;
+  const key = state.cheerMsg || CHEER_MESSAGES[0].key;
+  state.rt.room.cheer(m.code, key);
+  // 방 밖에 있어도 받도록 우편함에도 남김
+  state.rt.mailbox?.send(m.code, myCard(), key, state.fortune.dateKey).catch(() => {});
+  grow((g) => complete(g, state.fortune.dateKey, 'social', qBonus('social')), `📣 ${m.name}에게 "${cheerText(key)}" 응원이 실시간으로 도착했어요!`);
+  setTimeout(() => charge(state.saju.yongsin, 1, 'cheer-out', '💞 베푼 응원의 기운'), 2300);
+  renderCompat();
+}
+
+function mailboxHTML() {
+  const rt = loadRT(); const st = state.rt || {};
+  const dk = state.fortune.dateKey;
+  const used = rt.used.date === dk ? rt.used.n : 0;
+  const online = st.mailbox && st.registered;
+  const inbox = rt.inbox.slice(0, 5);
+  return `<div class="card mailbox">
+    <h3>📮 응원 우편함 <span class="tag">${online ? '🟢 실제 전달' : st.mailboxTried ? '로컬 체험' : '연결 중…'}</span></h3>
+    <div class="rt-code">내 수호신 코드 <b class="code">${esc(myCode())}</b> <button class="ghost" type="button" id="btn-code-copy">코드 공유</button></div>
+    <form class="rt-join" id="code-friend-form" autocomplete="off">
+      <input name="code" type="text" maxlength="8" placeholder="친구의 수호신 코드" aria-label="친구 수호신 코드">
+      <button class="primary" type="submit">코드로 친구 추가</button>
+    </form>
+    <p class="muted" style="font-size:0.78rem;margin:6px 0">받은 응원 오늘 <b>${used}/${CHEER_DAILY_LIMIT}</b> · 응원 1번마다 부족한 기운 ${ELEMENT_HANJA[state.saju.weakest]} ${ELEMENT_KO[state.saju.weakest]} +${CHEER_CHARGE} 충전</p>
+    ${inbox.length ? `<ul class="inbox">${inbox.map((c) => `<li><b>${esc(c.name)}</b> ${esc(c.msg)} <span class="muted">${c.date === dk ? (c.charged ? '충전 완료' : '오늘 한도 초과') : esc(c.date)}</span></li>`).join('')}</ul>` : '<p class="muted" style="margin:0;font-size:0.82rem">아직 받은 응원이 없어요. 코드를 친구에게 보내 서로 응원을 주고받아 보세요!</p>'}
+    ${online ? '' : '<p class="muted" style="font-size:0.72rem;margin:6px 0 0">실제 전달은 로그인된 미리보기·정식 앱에서 작동해요. 지금은 응원을 보내면 답례 응원을 바로 체험할 수 있어요.</p>'}
+  </div>`;
+}
+
+async function addFriendByCode(raw) {
+  const code = normalizeCode(raw);
+  if (!code) { toast('수호신 코드는 6자리예요 (예: k3m9qa)'); return; }
+  if (code === myCode()) { toast('내 코드예요. 친구의 코드를 넣어 주세요'); return; }
+  const mb = state.rt?.mailbox;
+  if (!mb) { toast('지금은 코드 조회를 쓸 수 없어요. 생일로 친구를 추가해 주세요'); return; }
+  let card = null;
+  try { card = await mb.lookup(code); } catch { /* 아래에서 안내 */ }
+  if (!card) { toast('그 코드의 수호신을 찾지 못했어요. 친구가 앱을 한 번 열었는지 확인해 주세요'); return; }
+  const list = load(FRIENDS_KEY, []).filter((f) => f.code !== code);
+  list.unshift({ name: card.name, gender: card.gender, code, card });
+  save(FRIENDS_KEY, list.slice(0, 12));
+  state.compatIdx = 0;
+  toast(`💞 ${card.name}의 ${ZODIAC[card.branch].name} 수호신과 친구가 되었어요!`);
+  renderCompat();
+  grow((g) => complete(g, state.fortune.dateKey, 'compat', qBonus('compat')));
+  setTimeout(() => { processDexRewards(); renderCompat(); }, 50);
 }
 
 function friendSocialHTML(fr, idx) {
@@ -1094,7 +1261,9 @@ function friendSocialHTML(fr, idx) {
       <button class="${cheered ? 'ghost' : 'primary'}" type="button" data-cheer="${idx}" ${cheered ? 'disabled' : ''}>${cheered ? '오늘 응원 완료' : `📣 ${esc(fr.name)} 응원하기`}</button>
       <button class="ghost" type="button" data-gift="${idx}" ${gifted ? 'disabled' : ''}>${gifted ? '오늘 선물 완료' : '🎁 부적 선물하기'}</button>
     </div>
-    <p class="muted" style="font-size:0.74rem;margin:6px 0 0">응원을 보내면 친구의 답례 응원이 돌아와 <b>내 부족한 기운이 충전</b>돼요. (프로토타입은 답례를 바로 체험, 정식 버전은 친구가 실제로 보낸 응원이 도착)</p>
+    ${fr.code && state.rt?.mailbox ? `<label class="rt-msg">응원 메시지 <select id="cheer-msg">${CHEER_MESSAGES.map((m) => `<option value="${m.key}" ${state.cheerMsg === m.key ? 'selected' : ''}>${esc(m.text)}</option>`).join('')}</select></label>
+    <p class="muted" style="font-size:0.74rem;margin:6px 0 0">🟢 ${esc(fr.name)}의 우편함으로 <b>실제로 전달</b>돼요. 친구가 응원을 보내 주면 내 부족한 기운이 충전됩니다.</p>`
+    : `<p class="muted" style="font-size:0.74rem;margin:6px 0 0">응원을 보내면 친구의 답례 응원이 돌아와 <b>내 부족한 기운이 충전</b>돼요. ${fr.code ? '(지금은 연결이 없어 답례를 바로 체험)' : '(생일로 추가한 친구는 체험 모드 · 📮 수호신 코드로 추가하면 실제 전달)'}</p>`}
   </div>`;
 }
 
@@ -1104,6 +1273,21 @@ function doCheer(idx) {
   const k = `${state.fortune.dateKey}|${fr.name}`; if (soc.cheers[k]) return;
   soc.cheers[k] = true; soc.cheerCount = (soc.cheerCount || 0) + 1; save(SOC_KEY, soc);
   const fs = friendSaju(fr);
+  const mb = state.rt?.mailbox;
+  if (fr.code && mb) {
+    const key = state.cheerMsg || CHEER_MESSAGES[0].key;
+    mb.send(fr.code, myCard(), key, state.fortune.dateKey)
+      .then(() => {
+        grow((g) => complete(g, state.fortune.dateKey, 'social', qBonus('social')), `📮 ${fr.name}의 우편함에 "${cheerText(key)}" 응원이 도착했어요!`);
+        setTimeout(() => charge(state.saju.yongsin, 1, 'cheer-out', '💞 베푼 응원의 기운'), 2300);
+      })
+      .catch(() => {
+        const s2 = load(SOC_KEY, { stickers: 0, cheers: {}, gifts: {} }); delete s2.cheers[k]; save(SOC_KEY, s2);
+        toast('응원 전달에 실패했어요. 잠시 뒤 다시 보내 주세요'); renderCompat();
+      });
+    renderCompat();
+    return;
+  }
   grow((g) => complete(g, state.fortune.dateKey, 'social', qBonus('social')), `📣 ${fr.name}에게 응원을 보냈어요!`);
   setTimeout(() => charge(state.saju.weakest, 3, `cheer-${fr.name}`, `💞 ${fr.name}의 ${ZODIAC[fs.pillars.year.branch].name}가 답례 응원`), 2300);
   renderCompat();
@@ -1724,6 +1908,7 @@ function showEvolution(info, from, to) {
 // ---------- 친구 궁합 ----------
 
 function friendSaju(fr) {
+  if (fr.card) { const c = cleanCard(fr.card); return c ? cardToSaju(c) : { error: '친구 카드 정보가 올바르지 않아요' }; }
   const solar = fr.calendar === 'lunar' ? lunarToSolar(fr.year, fr.month, fr.day, false) : { year: fr.year, month: fr.month, day: fr.day };
   if (solar.error) return { error: solar.error };
   return computeSaju({ ...solar, timeKnown: false });
@@ -1752,6 +1937,7 @@ function renderCompat() {
       ${friends.length ? `<div class="chips" style="margin-top:12px">${friends.map((fr, i) => `<button class="chip" type="button" data-friend="${i}" aria-pressed="${i === sel}">${esc(fr.name)}</button>`).join('')}</div>` : ''}
     </div>
     <div id="compat-result">${sel !== null && friends[sel] ? compatResultHTML(friends[sel], sel) : '<div class="card"><p class="muted" style="margin:0">친구를 추가하면 두 캐릭터가 함께 나오는 궁합 카드가 만들어집니다.</p></div>'}</div>
+    ${mailboxHTML()}
     ${teamCardHTML()}
     ${dexHTML()}`;
 
@@ -1789,6 +1975,14 @@ function renderCompat() {
   $('#btn-compat-png', panel)?.addEventListener('click', () => downloadSVGAsPNG(state.compat.svg, `compat-${state.compat.friendName}.png`, 3));
   $$('[data-cheer]', panel).forEach((b) => b.addEventListener('click', () => doCheer(Number(b.dataset.cheer))));
   $$('[data-gift]', panel).forEach((b) => b.addEventListener('click', () => doGift(Number(b.dataset.gift))));
+  $('#btn-code-copy', panel)?.addEventListener('click', () => copyText(`🐾 내 12지신 수호신 코드: ${myCode()} — 코드로 친구 추가하고 서로 응원 보내자! ✦ 12지신 강림 ${appUrl()}`, '수호신 코드를 복사했어요. 친구에게 보내 보세요!'));
+  $('#code-friend-form', panel)?.addEventListener('submit', (e) => { e.preventDefault(); addFriendByCode(e.target.code.value); });
+  $('#room-form', panel)?.addEventListener('submit', (e) => { e.preventDefault(); const c = normalizeCode(e.target.code.value); if (!c) { toast('방 코드는 6자리예요'); return; } enterRoom(c); });
+  $('#btn-room-new', panel)?.addEventListener('click', () => enterRoom(makeCode()));
+  $('#btn-room-leave', panel)?.addEventListener('click', leaveRoom);
+  $('#btn-room-invite', panel)?.addEventListener('click', () => copyText(`👥 12지신 강림 단톡 궁합방 열었어! 방 코드 ${state.rt.room.name} — 들어오면 우리 궁합 지도가 실시간으로 그려져 ✦ ${appUrl()}?room=${state.rt.room.name}`, '초대 문구를 복사했어요. 단톡방에 붙여 넣어 보세요!'));
+  $$('#cheer-msg', panel).forEach((sel) => sel.addEventListener('change', () => { state.cheerMsg = sel.value; }));
+  $$('[data-live-cheer]', panel).forEach((b) => b.addEventListener('click', () => liveCheer(Number(b.dataset.liveCheer))));
   $('#btn-team-png', panel)?.addEventListener('click', () => downloadSVGAsPNG(teamSVG(state.team), 'team-compat.png', 2));
   $('#btn-team-invite', panel)?.addEventListener('click', async () => { const msg = `👥 우리 단톡방 궁합 지도 나왔다! 오늘의 행운 멤버는 ${state.team.mem[state.team.lucky].name} 👑 너도 띠 넣고 들어와 ✦ 12지신 강림 ${location.href.split('?')[0].split('#')[0]}`; try { await navigator.clipboard.writeText(msg); toast('초대 문구를 복사했어요. 단톡방에 붙여 넣어 보세요!'); } catch { toast(msg); } });
   $('#btn-team-charm', panel)?.addEventListener('click', () => {
