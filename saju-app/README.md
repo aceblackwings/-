@@ -12,6 +12,7 @@
 | 오늘의 운세 | 오늘 일진 × 내 사주로 6개 분야 점수, 행운 키트(색·숫자·방향·음식·시간), 액땜 미션 |
 | 부적 공방 | 6종 부적 × 전통/네온 테마, 등급(확률 공개), 효과 수치 공식, 다시 뽑기, 도감, PNG 저장 |
 | 행운 이모티콘 | 일간별 수호령 10종, 오늘 점수에 따른 표정, 4종 세트 미리보기, PNG 저장 |
+| 스토리 공유 | 인스타 스토리 규격(1080×1920) 카드 3종(운세·부적·수호령), 휴대폰 공유 시트로 바로 공유, 이미지 저장, 링크 복사 |
 
 액땜 미션을 완료하면 액막이 부적이 "정화"되어 등급이 한 단계 오릅니다.
 
@@ -42,6 +43,7 @@ saju-app/
 │   ├── fortune.js   # 오늘의 운세 점수 공식, 문장, 행운 키트, 미션
 │   ├── talisman.js  # 부적 등급/효과 공식, SVG 렌더러(전통·네온), PNG 내보내기
 │   ├── emoticon.js  # 수호령 캐릭터 SVG
+│   ├── story.js     # 인스타 스토리 카드(캔버스) + Web Share API 공유
 │   └── app.js       # 화면과 상태 (localStorage 저장)
 └── tests/           # node 테스트
 ```
@@ -61,3 +63,12 @@ saju-app/
 | 음력 입력 | 사주 분석 | 오늘의 운세 | 네온 부적 | 전통 부적 | 행운 이모티콘 |
 |---|---|---|---|---|---|
 | ![음력 입력](screenshots/0-lunar-input.png) | ![사주 분석](screenshots/1-saju.png) | ![오늘의 운세](screenshots/2-today.png) | ![네온 부적](screenshots/3-charm.png) | ![전통 부적](screenshots/5-classic.png) | ![행운 이모티콘](screenshots/4-emoji.png) |
+
+### 인스타 스토리 카드
+
+| 오늘의 운세 | 오늘의 부적 | 수호령 이모티콘 |
+|---|---|---|
+| ![운세 카드](screenshots/6-story-fortune.png) | ![부적 카드](screenshots/7-story-charm.png) | ![이모티콘 카드](screenshots/8-story-emoji.png) |
+
+휴대폰 브라우저(iOS Safari, Android Chrome)에서는 "스토리에 공유하기"를 누르면 공유 목록이 열리고, Instagram → 스토리를 고르면 바로 올라갑니다.
+공유 기능은 보안 연결(https)에서만 동작하므로 GitHub Pages 주소로 열어야 합니다. PC에서는 이미지로 저장됩니다.

@@ -7,6 +7,7 @@ import {
   createTalisman, renderTalismanSVG, downloadSVGAsPNG, TALISMAN_TYPES, THEMES, RARITIES,
 } from './talisman.js';
 import { renderEmoticonSVG, GUARDIANS, SET_MOODS } from './emoticon.js';
+import { renderStoryCanvas, shareStory, STORY_TEMPLATES } from './story.js';
 import {
   lunarToSolar, solarToLunar, leapMonthOf, lunarMonthDays, formatLunar,
 } from './lunar.js';
@@ -26,6 +27,8 @@ const state = {
   fortune: null,
   charm: { type: 'protect', theme: 'neon', element: null, reroll: 0, current: null },
   emojiNeon: true,
+  storyTemplate: 'fortune',
+  storyCanvas: null,
 };
 
 function load(key, fallback) {
@@ -190,6 +193,7 @@ function initForm() {
 function selectTab(name) {
   $$('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
   $$('.panel').forEach((p) => p.classList.toggle('hidden', p.dataset.panel !== name));
+  if (name === 'story') renderStory();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -364,7 +368,8 @@ function renderToday() {
         <div style="flex:1"><b>${f.info.mission}</b><br><span class="muted">${done ? '정화 완료! 오늘의 액막이 부적이 한 단계 강해졌습니다.' : '완료하면 액막이 부적이 정화되어 효과가 강해집니다.'}</span></div>
         <button class="${done ? 'ghost' : 'primary'}" type="button" id="btn-mission">${done ? '완료됨 ✓' : '미션 완료'}</button>
       </div>
-    </div>`;
+    </div>
+    ${storyButton('fortune', '오늘의 운세를 스토리로 공유')}`;
 
   $('#btn-mission').addEventListener('click', () => {
     const m = load(MISSION_KEY, {});
@@ -429,6 +434,7 @@ function renderCharm(animate) {
             <button class="primary" type="button" id="btn-reroll">다시 뽑기 ✦</button>
             <button class="ghost" type="button" id="btn-save">도감에 저장</button>
             <button class="ghost" type="button" id="btn-png">PNG 저장</button>
+            <button class="ghost" type="button" data-story="charm">스토리 공유 ↗</button>
           </div>
           <p class="prob">획득 확률: ${RARITIES.map((r) => `<span style="color:${r.color}">${r.label} ${r.weight}%</span>`).join('')}</p>
           <p class="muted" style="font-size:0.78rem">오늘 첫 부적은 하루 동안 고정됩니다. 다시 뽑기 ${c.reroll}회 (실서비스에서는 광고 시청이나 재화 사용)</p>
@@ -490,6 +496,7 @@ function renderEmoji() {
           <div class="actions">
             <button class="chip" type="button" id="btn-emoji-style" aria-pressed="${neon}">${neon ? '네온 스타일' : '파스텔 스타일'}</button>
             <button class="primary" type="button" id="btn-emoji-png">PNG 저장</button>
+            <button class="ghost" type="button" data-story="emoji">스토리 공유 ↗</button>
           </div>
         </div>
       </div>
@@ -507,6 +514,95 @@ function renderEmoji() {
     downloadSVGAsPNG(svg, `emoji-${m.key}.png`, 3);
   }));
 }
+
+// ---------- 인스타 스토리 공유 ----------
+
+function storyButton(template, label) {
+  return `<button class="primary share-row" type="button" data-story="${template}" style="width:100%">📸 ${label}</button>`;
+}
+
+function shareUrl() {
+  const path = location.pathname.replace(/index\.html$/, '');
+  return `${location.host}${path}`.replace(/\/$/, '');
+}
+
+async function renderStory() {
+  const panel = $('[data-panel="story"]');
+  const tpl = state.storyTemplate;
+  panel.innerHTML = `
+    <div class="card">
+      <h3>인스타 스토리 공유 카드 <span class="tag">1080 × 1920</span></h3>
+      <div class="chips">${STORY_TEMPLATES.map((t) => `<button class="chip" type="button" data-tpl="${t.key}" aria-pressed="${t.key === tpl}">${t.label}</button>`).join('')}</div>
+    </div>
+    <div class="card">
+      <div class="story-wrap">
+        <div class="story-preview" id="story-preview"><span class="loading">카드 만드는 중…</span></div>
+        <div>
+          <div class="actions">
+            <button class="primary" type="button" id="btn-story-share">📸 스토리에 공유하기</button>
+            <button class="ghost" type="button" id="btn-story-save">이미지 저장</button>
+            <button class="ghost" type="button" id="btn-story-link">링크 복사</button>
+          </div>
+          <ol class="howto">
+            <li><b>휴대폰</b>: "스토리에 공유하기" → 공유 목록에서 <b>Instagram</b> → <b>스토리</b>를 고르면 바로 올라갑니다.</li>
+            <li>공유 목록에 Instagram이 없으면 "이미지 저장" 후, 인스타그램 앱 → 스토리 → 갤러리에서 방금 저장한 이미지를 고르세요.</li>
+            <li>"링크 복사"를 눌러 두고, 스토리 편집 화면의 <b>링크 스티커</b>에 붙여 넣으면 친구가 바로 들어올 수 있습니다.</li>
+            <li>카드의 위·아래 여백은 인스타 프로필·답장창에 가려지지 않도록 비워 두었습니다.</li>
+          </ol>
+          <p class="muted" style="font-size:0.8rem">부적 카드는 "부적 공방"에서 지금 고른 부적(종류·디자인·등급)이 그대로 들어갑니다.</p>
+        </div>
+      </div>
+    </div>`;
+
+  $$('[data-tpl]', panel).forEach((b) => b.addEventListener('click', () => { state.storyTemplate = b.dataset.tpl; renderStory(); }));
+  $('#btn-story-share').addEventListener('click', () => doShare(false));
+  $('#btn-story-save').addEventListener('click', () => doShare(true));
+  $('#btn-story-link').addEventListener('click', async () => {
+    const url = location.href.split('?')[0].split('#')[0];
+    try { await navigator.clipboard.writeText(url); toast('링크를 복사했습니다'); } catch { toast(url); }
+  });
+
+  const canvas = await renderStoryCanvas({
+    saju: state.saju,
+    fortune: state.fortune,
+    talisman: state.charm.current || currentCharm(),
+    profile: state.profile,
+    template: tpl,
+    url: shareUrl(),
+  });
+  if (state.storyTemplate !== tpl) return; // 그사이 다른 템플릿을 고른 경우
+  state.storyCanvas = canvas;
+  const img = new Image();
+  img.alt = '스토리 카드 미리보기';
+  img.src = canvas.toDataURL('image/png');
+  $('#story-preview').replaceChildren(img);
+}
+
+async function doShare(downloadOnly) {
+  const canvas = state.storyCanvas;
+  if (!canvas) { toast('카드를 만드는 중입니다. 잠시 후 다시 눌러 주세요'); return; }
+  const filename = `unmyeong-story-${state.storyTemplate}-${state.fortune.dateKey}.png`;
+  if (downloadOnly) {
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png'); a.download = filename; a.click();
+    toast('이미지를 저장했습니다. 인스타그램 스토리에서 불러오세요');
+    return;
+  }
+  const result = await shareStory(canvas, {
+    title: '운명공방 2099',
+    text: `오늘 내 운세는? ${state.fortune.info.title} ✦`,
+    filename,
+  });
+  if (result === 'downloaded') toast('이 기기는 바로 공유를 지원하지 않아 이미지로 저장했습니다');
+}
+
+// 다른 탭의 "스토리 공유" 버튼
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-story]');
+  if (!btn) return;
+  state.storyTemplate = btn.dataset.story;
+  selectTab('story');
+});
 
 // ---------- 시작 ----------
 
