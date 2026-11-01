@@ -28,7 +28,7 @@ export function renderEmoticonSVG(saju, fortune, opts = {}) {
   const caption = opts.caption || emote.caption;
   const tag = opts.tag ?? `${best.label}운 +${bonus}%`;
   const neon = (opts.style || 'neon') === 'neon';
-  const { defs, body } = characterMarkup(info, { mood, charms: opts.charms, aura: false });
+  const { defs, body } = characterMarkup(info, { mood, charms: opts.charms, aura: false, stage: opts.stage });
 
   const bg = neon ? `
     <rect width="240" height="240" rx="40" fill="#120c2a"/>

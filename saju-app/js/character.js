@@ -270,6 +270,64 @@ function emoteBubble(emote) {
   </g>`;
 }
 
+// ---------- 진화 단계 장식 ----------
+
+function eggShell() {
+  return `<path d="M98 384 l10 -18 l10 12 l12 -16 l10 14 l12 -14 l10 16 l12 -12 l10 14 l10 -16 l10 20 q-58 14 -116 0 z" fill="#fffaf0" stroke="#c9b48a" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M60 372 l8 -10 l8 8 l-4 8 z M252 368 l10 -8 l6 10 l-8 6 z" fill="#fffaf0" stroke="#c9b48a" stroke-width="2.5"/>`;
+}
+
+function bib(el) {
+  return `<path d="M136 272 q24 30 48 0 q4 26 -24 34 q-28 -8 -24 -34 z" fill="#fff" stroke="#d9d3ef" stroke-width="2.5"/><circle cx="160" cy="292" r="5" fill="${OUTFIT[el][2]}"/>`;
+}
+
+function cape(el, id) {
+  const [, bottom, trim] = OUTFIT[el];
+  return `<path d="M100 264 Q160 242 220 264 Q266 320 290 390 Q248 378 226 392 Q192 372 160 380 Q128 372 94 392 Q72 378 30 390 Q54 320 100 264 Z" fill="${bottom}" stroke="#1a1030" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M30 390 Q72 378 94 392 Q128 372 160 380 Q192 372 226 392 Q248 378 290 390" fill="none" stroke="${trim}" stroke-width="3" filter="url(#${id}-glow)"/>
+  <path d="M108 280 Q70 330 52 380 M212 280 Q250 330 268 380" fill="none" stroke="${trim}" stroke-width="1.5" opacity="0.5"/>`;
+}
+
+function orbs(stage, el, id) {
+  const neon = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
+  const hanja = ['木', '火', '土', '金', '水'];
+  const spots = stage >= 4
+    ? [[34, 250], [286, 250], [52, 160], [268, 160], [160, 30]]
+    : [[38, 252], [282, 252]];
+  const order = stage >= 4 ? [0, 1, 2, 3, 4] : [el, (el + 1) % 5];
+  return spots.map(([x, y], i) => {
+    const e = order[i];
+    return `<g transform="translate(${x} ${y})"><circle r="15" fill="#0d0a1f" stroke="${neon[e]}" stroke-width="2.5" filter="url(#${id}-glow)"/><text y="1" font-size="15" text-anchor="middle" dominant-baseline="central" fill="${neon[e]}" font-family="'Song Myung', serif" font-weight="800">${hanja[e]}</text>
+    <animateTransform attributeName="transform" type="translate" values="${x} ${y};${x} ${y - 6};${x} ${y}" dur="${2.4 + i * 0.3}s" repeatCount="indefinite"/></g>`;
+  }).join('');
+}
+
+function halo(id) {
+  return `<ellipse cx="160" cy="84" rx="64" ry="13" fill="none" stroke="#ffd166" stroke-width="6" filter="url(#${id}-glow)"/><ellipse cx="160" cy="84" rx="64" ry="13" fill="none" stroke="#fff6c8" stroke-width="2"/>`;
+}
+
+function cloud() {
+  const puffs = [[96, 382, 22], [124, 390, 26], [160, 392, 28], [196, 390, 26], [224, 382, 22], [70, 386, 14], [250, 386, 14]];
+  return `<g>${puffs.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#ffffff" stroke="#c9d6ff" stroke-width="3"/>`).join('')}${puffs.map(([x, y, r]) => `<circle cx="${x}" cy="${y + 2}" r="${r - 4}" fill="#ffffff"/>`).join('')}</g>`;
+}
+
+function wings(el, id) {
+  const trim = OUTFIT[el][2];
+  const feather = (side) => {
+    const sx = side === 'L' ? -1 : 1;
+    let f = '';
+    for (let i = 0; i < 4; i++) {
+      f += `<path transform="translate(160 270) scale(${sx} 1)" d="M30 ${-10 + i * 16} q${70 + i * 6} ${-60 + i * 22} ${118 - i * 14} ${-40 + i * 30} q${-40 + i * 6} ${30} ${-118 + i * 14} ${50 - i * 6} z" fill="url(#${id}-wing)" stroke="${trim}" stroke-width="2" opacity="${0.95 - i * 0.12}"/>`;
+    }
+    return f;
+  };
+  return `<g filter="url(#${id}-glow)">${feather('L')}${feather('R')}</g>`;
+}
+
+function crown() {
+  return `<g transform="translate(160 ${88})"><path d="M-26 10 l-4 -24 l14 12 l16 -22 l16 22 l14 -12 l-4 24 z" fill="#ffd166" stroke="#b8860b" stroke-width="3" stroke-linejoin="round"/><circle cy="-2" r="5" fill="#ff4d6d" stroke="#8d1b25" stroke-width="2"/><circle cx="-16" cy="4" r="3" fill="#4fc3ff"/><circle cx="16" cy="4" r="3" fill="#39ff88"/></g>`;
+}
+
 // ---------- 공개 API ----------
 
 /**
@@ -304,37 +362,48 @@ export function characterMarkup(info, opts = {}) {
   const charms = opts.charms || [];
   const trim = OUTFIT[el][2];
   const aura = opts.aura !== false;
+  const stage = opts.stage || 2;
 
   const defs = `
     <filter id="${id}-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <linearGradient id="${id}-wing" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="${trim}" stop-opacity="0.85"/></linearGradient>
+    <linearGradient id="${id}-rainbow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff4d6d"/><stop offset="0.25" stop-color="#ffc93c"/><stop offset="0.5" stop-color="#39ff88"/><stop offset="0.75" stop-color="#00e5ff"/><stop offset="1" stop-color="#c77dff"/></linearGradient>
     <radialGradient id="${id}-aura" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="${trim}" stop-opacity="0.35"/><stop offset="0.7" stop-color="${trim}" stop-opacity="0.08"/><stop offset="1" stop-color="${trim}" stop-opacity="0"/></radialGradient>`;
 
   const auraMarkup = aura ? `
     <circle cx="160" cy="220" r="150" fill="url(#${id}-aura)"/>
-    <circle cx="160" cy="220" r="128" fill="none" stroke="${trim}" stroke-width="1.5" stroke-dasharray="3 9" opacity="0.6"/>
-    <text x="160" y="58" font-size="20" text-anchor="middle" fill="${trim}" opacity="0.5" font-family="'Song Myung', serif">${z.hanja}</text>` : '';
+    <circle cx="160" cy="220" r="128" fill="none" stroke="${stage >= 5 ? `url(#${id}-rainbow)` : trim}" stroke-width="${stage >= 5 ? 4 : 1.5}" stroke-dasharray="${stage >= 5 ? '0' : '3 9'}" opacity="${stage >= 5 ? 0.9 : 0.6}"/>
+    ${stage >= 4 ? '' : `<text x="160" y="58" font-size="20" text-anchor="middle" fill="${trim}" opacity="0.5" font-family="'Song Myung', serif">${z.hanja}</text>`}` : '';
 
-  const body = `
-    ${auraMarkup}
+  const figure = `
+    ${stage >= 5 ? wings(el, id) : ''}
+    ${stage >= 3 ? cape(el, id) : ''}
     <ellipse cx="160" cy="384" rx="76" ry="10" fill="#000" opacity="0.28"/>
+    ${stage >= 4 ? cloud() : ''}
     ${tail(z, el, id)}
     ${feet(z)}
     ${outfit(el, female, id)}
+    ${stage === 1 ? bib(el) : ''}
     ${arms(z, el)}
     ${miniCharm(charms[0], 112, 352, -10)}
     ${prop(concern.key)}
+    ${stage >= 4 ? halo(id) : ''}
     ${earsBehind(z)}
     ${headShape(z)}
     ${faceMarks(z)}
     ${cheeks(z)}
     ${eyes(mood, female)}
     ${noseMouth(z, mood)}
-    ${headAccessory(concern.key, female, el, z)}
+    ${stage >= 5 ? '' : headAccessory(concern.key, female, el, z)}
+    ${stage >= 5 ? crown() : ''}
     ${miniCharm(charms[1], 48, 96, -14, 0.9)}
     ${emoteBubble(emote)}
     ${mood === 'sleepy' ? `<text x="236" y="120" font-size="26" font-weight="800" fill="${z.dark}" font-family="sans-serif">z</text><text x="252" y="96" font-size="20" font-weight="800" fill="${z.dark}" font-family="sans-serif">z</text>` : ''}
     ${mood === 'fighting' ? `<path d="M262 160 q8 -14 4 -24 q12 8 8 22 z" fill="#4fc3ff" opacity="0.9"/>` : ''}
-    ${mood === 'smile' || mood === 'excited' ? `<path d="M52 230 l4 8 l8 4 l-8 4 l-4 8 l-4 -8 l-8 -4 l8 -4 z M270 238 l3 6 l6 3 l-6 3 l-3 6 l-3 -6 l-6 -3 l6 -3 z" fill="#ffd166"/>` : ''}`;
+    ${mood === 'smile' || mood === 'excited' ? `<path d="M52 230 l4 8 l8 4 l-8 4 l-4 8 l-4 -8 l-8 -4 l8 -4 z M270 238 l3 6 l6 3 l-6 3 l-3 6 l-3 -6 l-6 -3 l6 -3 z" fill="#ffd166"/>` : ''}
+    ${stage === 1 ? eggShell() : ''}`;
+  const scaled = stage === 1 ? `<g transform="translate(160 384) scale(0.84) translate(-160 -384)">${figure}</g>` : figure;
+  const body = `${auraMarkup}${scaled}${stage >= 3 ? orbs(stage, el, id) : ''}`;
   return { id, defs, body };
 }
 

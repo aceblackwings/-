@@ -221,8 +221,8 @@ async function drawCharm(ctx, d) {
 
 async function drawHero(ctx, d) {
   const { fortune: f } = d;
-  const { info, charms, mood, emote } = d.hero;
-  const img = await svgToImage(renderCharacterSVG(info, { mood, charms, emote, width: 640 }));
+  const { info, charms, mood, emote, stage } = d.hero;
+  const img = await svgToImage(renderCharacterSVG(info, { mood, charms, emote, stage, width: 640 }));
   const w = 640; const h = 800;
   ctx.save();
   ctx.shadowColor = EL_COLORS[info.element]; ctx.shadowBlur = 50;

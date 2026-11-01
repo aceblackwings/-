@@ -12,6 +12,9 @@ import {
 } from './character.js';
 import { renderStoryCanvas, shareStory, STORY_TEMPLATES } from './story.js';
 import {
+  STAGES, STREAK_REWARDS, emptyGrowth, checkIn, complete, addExp, evolve, claimStreakReward, summary, stageName,
+} from './growth.js';
+import {
   lunarToSolar, solarToLunar, leapMonthOf, lunarMonthDays, formatLunar,
 } from './lunar.js';
 
@@ -19,6 +22,7 @@ const STORE_KEY = 'unmyeong2099.profile';
 const COLLECTION_KEY = 'unmyeong2099.collection';
 const MISSION_KEY = 'unmyeong2099.missions';
 const EQUIP_KEY = 'unmyeong2099.equip';
+const GROWTH_KEY = 'unmyeong2099.growth';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
 const EL_COLORS = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
 
@@ -95,6 +99,7 @@ function start(profile) {
   $('#btn-edit').classList.remove('hidden');
   renderAll();
   selectTab('saju');
+  grow((g) => checkIn(g, state.fortune.dateKey));
 }
 
 function initForm() {
@@ -208,6 +213,7 @@ function selectTab(name) {
   $$('.panel').forEach((p) => p.classList.toggle('hidden', p.dataset.panel !== name));
   if (name === 'story') renderStory();
   if (name === 'hero') renderHero(true);
+  if (name === 'today' && state.fortune) grow((g) => complete(g, state.fortune.dateKey, 'fortune'));
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -391,6 +397,7 @@ function renderToday() {
   $('#btn-mission').addEventListener('click', () => {
     const m = load(MISSION_KEY, {});
     m[f.dateKey] = !m[f.dateKey];
+    if (m[f.dateKey]) setTimeout(() => grow((g) => complete(g, f.dateKey, 'mission')), 400);
     save(MISSION_KEY, m);
     renderToday();
     renderCharm(false);
@@ -483,6 +490,7 @@ function renderCharm(animate) {
     save(COLLECTION_KEY, list.slice(0, 60));
     renderCharm(false);
     toast('도감에 저장했습니다');
+    grow((g) => complete(g, state.fortune.dateKey, 'charm'));
   });
   $('#btn-png').addEventListener('click', () => downloadSVGAsPNG(renderTalismanSVG(t), `talisman-${t.type.key}-${t.dateKey}.png`, 3));
   $$('.collection .mini', panel).forEach((m) => m.addEventListener('click', () => {
@@ -544,15 +552,16 @@ const sameRecord = (a, b) => a && b && a.type === b.type && a.theme === b.theme 
 function heroOptions() {
   const eq = loadEquip();
   const charms = eq.charms.map(charmFromRecord);
-  return { eq, charms, mood: eq.emote || todayEmote(state.fortune), emote: eq.emote };
+  return { eq, charms, mood: eq.emote || todayEmote(state.fortune), emote: eq.emote, stage: loadGrowth().evolved };
 }
 
 function renderHero(animate) {
   const s = state.saju; const f = state.fortune; const p = state.profile;
   const info = characterInfo(s, p);
-  const { eq, charms, mood, emote } = heroOptions();
+  const { eq, charms, mood, emote, stage } = heroOptions();
   const stats = characterStats(s, f, info, charms);
-  const svg = renderCharacterSVG(info, { mood, charms, emote, width: 300 });
+  const svg = renderCharacterSVG(info, { mood, charms, emote, stage, width: 300 });
+  const gs = summary(loadGrowth(), f.dateKey);
 
   // 장착 후보: 지금 공방의 부적 + 도감
   const today = state.charm.current ? recordOf(state.charm.current) : null;
@@ -566,18 +575,20 @@ function renderHero(animate) {
       ${t ? `${renderTalismanSVG(t)}<span>${t.rarity.label} ${t.type.label}부</span>` : `<span>부적 슬롯 ${i + 1}<br>비어 있음</span>`}</div>`;
   };
   const emoteSlot = emote
-    ? `<div class="slot emote filled" data-slot="emote">${renderEmoticonSVG(s, f, { profile: p, mood: emote, style: 'sticker', tag: '' })}<span>${EMOTES.find((e) => e.key === emote).label}</span></div>`
+    ? `<div class="slot emote filled" data-slot="emote">${renderEmoticonSVG(s, f, { stage: heroOptions().stage, profile: p, mood: emote, style: 'sticker', tag: '' })}<span>${EMOTES.find((e) => e.key === emote).label}</span></div>`
     : `<div class="slot emote" data-slot="emote"><span>이모티콘 슬롯<br>비어 있음</span></div>`;
 
   const bar = (label, v, max, color) => `<div class="bar"><span>${label}</span><div class="track"><div class="fill" style="width:${Math.min(100, (v / max) * 100)}%;background:${color};color:${color}"></div></div><span class="num">${v}</span></div>`;
 
   $('[data-panel="hero"]').innerHTML = `
+    ${growthCard(info, gs)}
     <div class="card">
       <div class="hero-wrap">
         <div class="hero-stage ${animate ? 'reveal' : ''}">${svg}</div>
         <div>
           <p class="muted" style="margin:0">${info.zodiac.name}띠(${info.zodiac.hanja}) · 일간 ${STEMS[s.dayMaster]}(${ELEMENT_KO[info.element]}) · ${info.female ? '여성' : '남성'} · 고민 ${info.concern.label}</p>
           <h3 class="hero-title">${info.title}</h3>
+          <p style="margin:0 0 6px"><span class="rarity-badge" style="color:var(--gold)">Lv.${gs.level} · ${stageName(gs.stage, info.female)}</span></p>
           <p class="muted" style="margin-top:0">띠는 동물, 타고난 기운은 한복 색, 성별은 한복 모양, 고민은 손에 든 소품으로 정해졌습니다. 부적과 이모티콘을 장착해 능력치를 올려 보세요.</p>
           <div class="slots">${slot(0)}${slot(1)}${emoteSlot}</div>
           <div class="stats" style="grid-template-columns:1fr 1fr">
@@ -604,11 +615,11 @@ function renderHero(animate) {
 
     <div class="card">
       <h3>이모티콘 장착 <span class="tag">표정 + 말풍선</span></h3>
-      <div class="emote-chips">${EMOTES.map((e) => `<button type="button" data-emote="${e.key}" aria-pressed="${emote === e.key}">${renderEmoticonSVG(s, f, { profile: p, mood: e.key, style: 'sticker', tag: '', caption: e.label })}</button>`).join('')}</div>
+      <div class="emote-chips">${EMOTES.map((e) => `<button type="button" data-emote="${e.key}" aria-pressed="${emote === e.key}">${renderEmoticonSVG(s, f, { stage: heroOptions().stage, profile: p, mood: e.key, style: 'sticker', tag: '', caption: e.label })}</button>`).join('')}</div>
     </div>`;
 
   const panel = $('[data-panel="hero"]');
-  const saveEquip = (next) => { save(EQUIP_KEY, next); renderHero(false); };
+  const saveEquip = (next) => { save(EQUIP_KEY, next); renderHero(false); grow((g) => complete(g, f.dateKey, 'equip')); };
   $$('[data-equip]', panel).forEach((b) => b.addEventListener('click', () => {
     const r = candidates[Number(b.dataset.equip)];
     const next = loadEquip();
@@ -631,6 +642,101 @@ function renderHero(animate) {
     saveEquip(next);
   }));
   $('#btn-hero-png').addEventListener('click', () => downloadSVGAsPNG(svg, `character-${info.zodiac.key}.png`, 3));
+  bindGrowth(panel, info);
+}
+
+// ---------- 성장·진화 ----------
+
+function loadGrowth() {
+  return { ...emptyGrowth(), ...(load(GROWTH_KEY, null) || {}) };
+}
+
+/** 성장 상태를 바꾸고, 생긴 일(레벨업·진화 가능·스트릭 등)을 알려 준다 */
+function grow(fn) {
+  const res = fn(loadGrowth());
+  save(GROWTH_KEY, res.growth);
+  const msgs = [];
+  for (const e of res.events || []) {
+    if (e.type === 'level-up') msgs.push(`레벨 업! Lv.${e.level} 🎉`);
+    if (e.type === 'can-evolve') msgs.push('진화할 수 있어요! 캐릭터 탭에서 진화하기 ✦');
+    if (e.type === 'streak-lost') msgs.push(`연속 출석 ${e.count}일이 끊겼어요. 오늘부터 다시 시작!`);
+    if (e.type === 'freeze-used') msgs.push('스트릭 보호 부적이 연속 출석을 지켜 줬어요 🛡️');
+    if (e.type === 'streak-reward') msgs.push(`연속 ${e.reward.days}일 보상 도착! 캐릭터 탭에서 받기`);
+  }
+  if (res.gained) msgs.unshift(`+${res.gained} EXP`);
+  if (msgs.length) toast(msgs.join(' · '));
+  if (state.saju && !$('[data-panel="hero"]').classList.contains('hidden')) renderHero(false);
+  return res;
+}
+
+function growthCard(info, gs) {
+  const pct = Math.round((gs.into / gs.need) * 100);
+  const thumbs = STAGES.map((st) => {
+    const locked = st.stage > gs.stage;
+    const svg = renderCharacterSVG(info, { stage: st.stage, width: 120, aura: false, mood: 'smile' });
+    return `<figure class="evo ${locked ? 'locked' : ''} ${st.stage === gs.stage ? 'now' : ''}">${svg}<figcaption>${locked ? `Lv.${st.level}` : stageName(st.stage, info.female)}</figcaption></figure>`;
+  }).join('<span class="evo-arrow">›</span>');
+  const quests = gs.quests.map((q) => `<li class="${q.done ? 'done' : ''}"><span>${q.icon} ${q.label}</span><b>${q.done ? '완료' : `+${q.exp}`}</b></li>`).join('');
+  const rewards = gs.pendingRewards.map((r) => `<button class="primary" type="button" data-claim="${r.days}">🎁 연속 ${r.days}일 보상 받기 · ${r.label}</button>`).join('');
+  return `<div class="card growth">
+    <div class="growth-head">
+      <div>
+        <div class="muted" style="font-size:0.8rem">${stageName(gs.stage, info.female)} · 진화 ${gs.stage}/5단계</div>
+        <div class="lv">Lv.${gs.level}</div>
+      </div>
+      <div class="streak" title="연속 출석">🔥 <b>${gs.streak.count}</b>일 연속${gs.freeze ? ` · 🛡️${gs.freeze}` : ''}</div>
+    </div>
+    <div class="exp"><div class="exp-fill" style="width:${pct}%"></div><span>${gs.into} / ${gs.need} EXP</span></div>
+    ${gs.canEvolve ? `<button class="primary evolve-btn" type="button" id="btn-evolve">✦ ${stageName(gs.reachedStage, info.female)}(으)로 진화하기 ✦</button>` : `<p class="muted" style="margin:8px 0 0;font-size:0.85rem">${gs.next ? `다음 진화 <b>${stageName(gs.next.stage, info.female)}</b>까지 ${gs.levelsToNext}레벨 — ${gs.next.desc}` : '최종 진화 완료! 전설의 신수가 되었습니다.'}</p>`}
+    ${rewards ? `<div class="actions" style="margin-top:10px">${rewards}</div>` : ''}
+    <div class="evo-road">${thumbs}</div>
+    <h4 style="margin:14px 0 6px">오늘의 퀘스트 <span class="muted" style="font-weight:400;font-size:0.8rem">(${gs.todayExp} / 80 EXP)</span></h4>
+    <ul class="quests">${quests}</ul>
+    <p class="muted" style="font-size:0.78rem;margin:8px 0 0">${gs.nextReward ? `🔥 ${gs.nextReward.days}일 연속 출석하면: ${gs.nextReward.label}` : '모든 연속 출석 보상을 받았습니다!'}</p>
+    <details class="advanced" style="margin-top:10px"><summary>프로토타입 체험 도구</summary>
+      <p class="muted" style="font-size:0.8rem;margin:0">실서비스에서는 매일 퀘스트로만 경험치를 얻습니다. 진화 단계를 빨리 보려면 눌러 보세요.</p>
+      <button class="ghost" type="button" id="btn-exp-test">경험치 +60 (체험용)</button>
+    </details>
+  </div>`;
+}
+
+function bindGrowth(panel, info) {
+  $('#btn-evolve', panel)?.addEventListener('click', () => {
+    const before = loadGrowth().evolved;
+    const res = evolve(loadGrowth());
+    save(GROWTH_KEY, res.growth);
+    showEvolution(info, before, res.to);
+  });
+  $$('[data-claim]', panel).forEach((b) => b.addEventListener('click', () => {
+    const res = claimStreakReward(loadGrowth(), Number(b.dataset.claim));
+    save(GROWTH_KEY, res.growth);
+    if (res.reward) {
+      const c = CONCERNS.find((x) => x.key === state.profile.concern) || CONCERNS[2];
+      const list = load(COLLECTION_KEY, []);
+      const t = createTalisman(state.saju, state.fortune, { type: c.talisman, theme: 'neon', element: state.saju.weakest, rarity: res.reward.rarity });
+      list.unshift(recordOf(t));
+      save(COLLECTION_KEY, list.slice(0, 60));
+      toast(`🎁 ${t.rarity.label} ${t.type.label}부를 도감에 넣었습니다${res.reward.freeze ? ' + 스트릭 보호 부적 1개' : ''}`);
+    }
+    renderHero(false);
+  }));
+  $('#btn-exp-test', panel)?.addEventListener('click', () => grow((g) => addExp(g, 60)));
+}
+
+function showEvolution(info, from, to) {
+  const { charms, emote } = heroOptions();
+  const before = renderCharacterSVG(info, { stage: from, width: 260, mood: 'wow' });
+  const after = renderCharacterSVG(info, { stage: to, width: 260, mood: 'excited', charms, emote });
+  const el = document.createElement('div');
+  el.className = 'evo-modal';
+  el.innerHTML = `<div class="evo-box">
+    <p class="muted" style="margin:0">EVOLUTION</p>
+    <div class="evo-stage"><div class="evo-before">${before}</div><div class="evo-after">${after}</div><div class="evo-flash"></div></div>
+    <h3>${info.zodiac.name}가 <span style="color:var(--gold)">${stageName(to, info.female)}</span>(으)로 진화했습니다!</h3>
+    <p class="muted">${STAGES[to - 1].desc}</p>
+    <button class="primary" type="button">확인</button></div>`;
+  document.body.appendChild(el);
+  el.querySelector('button').addEventListener('click', () => { el.remove(); renderHero(true); renderEmoji(); });
 }
 
 // ---------- 행운 이모티콘 ----------
@@ -639,8 +745,8 @@ function renderEmoji() {
   const s = state.saju; const f = state.fortune; const p = state.profile;
   const info = characterInfo(s, p);
   const style = state.emojiStyle;
-  const main = renderEmoticonSVG(s, f, { profile: p, style });
-  const set = EMOTES.map((m) => ({ m, svg: renderEmoticonSVG(s, f, { profile: p, mood: m.key, style, tag: '' }) }));
+  const main = renderEmoticonSVG(s, f, { stage: heroOptions().stage, profile: p, style });
+  const set = EMOTES.map((m) => ({ m, svg: renderEmoticonSVG(s, f, { stage: heroOptions().stage, profile: p, mood: m.key, style, tag: '' }) }));
 
   $('[data-panel="emoji"]').innerHTML = `
     <div class="card">
@@ -745,6 +851,7 @@ async function doShare(downloadOnly) {
     const a = document.createElement('a');
     a.href = canvas.toDataURL('image/png'); a.download = filename; a.click();
     toast('이미지를 저장했습니다. 인스타그램 스토리에서 불러오세요');
+    grow((g) => complete(g, state.fortune.dateKey, 'share'));
     return;
   }
   const result = await shareStory(canvas, {
@@ -753,6 +860,7 @@ async function doShare(downloadOnly) {
     filename,
   });
   if (result === 'downloaded') toast('이 기기는 바로 공유를 지원하지 않아 이미지로 저장했습니다');
+  if (result !== 'cancelled') grow((g) => complete(g, state.fortune.dateKey, 'share'));
 }
 
 // 다른 탭의 "스토리 공유" 버튼

@@ -271,3 +271,36 @@ select option { background: #1d1742; color: #ffffff; }
 .emote-chips svg { width: 100%; height: auto; display: block; }
 .concern-card { border: 1px solid var(--neon2); border-radius: 14px; padding: 14px; background: rgba(255, 46, 99, 0.06); }
 .concern-card .big { font-family: var(--mono); font-size: 2rem; font-weight: 700; }
+
+/* 성장·진화 */
+.growth-head { display: flex; justify-content: space-between; align-items: end; }
+.growth .lv { font-family: var(--mono); font-size: 2rem; font-weight: 700; color: var(--gold); text-shadow: 0 0 12px rgba(255, 201, 60, 0.5); line-height: 1.1; }
+.streak { font-size: 0.95rem; padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(255, 120, 60, 0.6); background: rgba(255, 120, 60, 0.1); }
+.streak b { color: #ff9a3c; font-family: var(--mono); font-size: 1.1rem; }
+.exp { position: relative; height: 22px; border-radius: 11px; background: rgba(255, 255, 255, 0.07); overflow: hidden; margin-top: 10px; }
+.exp-fill { height: 100%; background: linear-gradient(90deg, #ffc93c, #ff7a3c); box-shadow: 0 0 14px rgba(255, 201, 60, 0.6); border-radius: 11px; transition: width 0.6s; }
+.exp span { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--mono); font-size: 0.78rem; font-weight: 700; color: #fff; text-shadow: 0 1px 2px #000; }
+.evolve-btn { width: 100%; margin-top: 10px; animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { box-shadow: 0 0 12px rgba(255, 201, 60, 0.4); transform: scale(1); } 50% { box-shadow: 0 0 30px rgba(255, 201, 60, 0.9); transform: scale(1.02); } }
+.evo-road { display: flex; align-items: center; gap: 2px; margin-top: 12px; overflow-x: auto; padding-bottom: 4px; }
+.evo { margin: 0; flex: 1 0 58px; text-align: center; font-size: 0.66rem; color: var(--muted); }
+.evo svg { width: 100%; height: auto; display: block; }
+.evo.locked svg { filter: brightness(0) drop-shadow(0 0 4px rgba(160, 140, 255, 0.6)); opacity: 0.55; }
+.evo.now { color: var(--gold); }
+.evo.now svg { filter: drop-shadow(0 0 8px rgba(255, 201, 60, 0.7)); }
+.evo-arrow { color: var(--muted); font-size: 1rem; }
+.quests { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.quests li { display: flex; justify-content: space-between; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); font-size: 0.88rem; }
+.quests li b { font-family: var(--mono); color: var(--gold); }
+.quests li.done { opacity: 0.55; text-decoration: line-through; }
+.quests li.done b { color: var(--wood); text-decoration: none; }
+.evo-modal { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: rgba(5, 4, 12, 0.88); backdrop-filter: blur(6px); padding: 16px; }
+.evo-box { max-width: 360px; width: 100%; text-align: center; background: var(--card); border: 1px solid var(--gold); border-radius: 22px; padding: 20px; box-shadow: 0 0 40px rgba(255, 201, 60, 0.35); }
+.evo-stage { position: relative; width: 260px; height: 325px; margin: 8px auto; }
+.evo-stage > div { position: absolute; inset: 0; }
+.evo-before { animation: evoOut 2.2s forwards; }
+.evo-after { opacity: 0; animation: evoIn 2.2s forwards; }
+.evo-flash { background: radial-gradient(circle, #fff 0%, rgba(255, 255, 255, 0) 70%); opacity: 0; animation: flash 2.2s forwards; pointer-events: none; }
+@keyframes evoOut { 0% { filter: none; } 30% { filter: brightness(0) invert(1); } 45%, 100% { opacity: 0; filter: brightness(0) invert(1); transform: scale(1.1); } }
+@keyframes evoIn { 0%, 50% { opacity: 0; transform: scale(0.6); filter: brightness(0) invert(1); } 70% { opacity: 1; filter: brightness(0) invert(1); transform: scale(1.08); } 100% { opacity: 1; filter: none; transform: none; } }
+@keyframes flash { 0%, 35% { opacity: 0; } 50% { opacity: 1; } 75%, 100% { opacity: 0; } }
