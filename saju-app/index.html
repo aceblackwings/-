@@ -33,9 +33,20 @@
         <label>이름 (선택)
           <input name="name" type="text" maxlength="12" placeholder="예: 은하">
         </label>
-        <label>생년월일 (양력)
-          <input name="date" type="date" required min="1900-01-01" max="2100-12-31">
-        </label>
+        <fieldset class="cal">
+          <legend>생년월일</legend>
+          <div class="seg" role="radiogroup" aria-label="달력 종류">
+            <label><input type="radio" name="calendar" value="solar" checked><span>양력</span></label>
+            <label><input type="radio" name="calendar" value="lunar"><span>음력</span></label>
+          </div>
+          <div class="ymd">
+            <label>년<input name="year" type="number" inputmode="numeric" min="1900" max="2100" placeholder="1992" required></label>
+            <label>월<select name="month" required></select></label>
+            <label>일<select name="day" required></select></label>
+          </div>
+          <label class="check leap-row hidden"><input name="leap" type="checkbox"> <span id="leap-label">윤달</span></label>
+          <p class="conv muted" id="conv-preview" aria-live="polite"></p>
+        </fieldset>
         <div class="row">
           <label class="grow">태어난 시간
             <input name="time" type="time" value="12:00">
@@ -74,7 +85,7 @@
 
   <footer class="foot">
     <p>※ 운세와 부적의 효과 수치는 재미를 위한 게임 요소입니다.</p>
-    <p>프로토타입 v0.1 · 양력 입력만 지원 · 절기는 천문 계산(오차 약 ±15분)</p>
+    <p>프로토타입 v0.2 · 양력·음력(윤달) 지원 · 절기·합삭은 천문 계산</p>
   </footer>
 
   <script type="module" src="js/app.js"></script>

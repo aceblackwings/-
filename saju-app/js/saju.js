@@ -48,6 +48,17 @@ export function sunLongitude(jd) {
   return mod(lambda, 360);
 }
 
+/**
+ * 한국 표준시의 UTC 오프셋(시간). 역사적 변경 반영 (서머타임 제외)
+ *  ~1911: UTC+8:30 / 1912~1954.3.20: UTC+9 / 1954.3.21~1961.8.9: UTC+8:30 / 1961.8.10~: UTC+9
+ */
+export function koreaUtcOffset(jdUT) {
+  if (jdUT < 2419402.5) return 8.5; // 1912-01-01
+  if (jdUT < 2434822.5) return 9; // 1954-03-21
+  if (jdUT < 2437521.5) return 8.5; // 1961-08-10
+  return 9;
+}
+
 // ---------- 날짜 보조 ----------
 
 function addDays(y, m, d, n) {
@@ -85,7 +96,8 @@ export function computeSaju(input) {
 
   // 1) 절기 판정: 실제 시각(KST → UT)으로 태양 황경을 구한다
   const h = timeKnown ? hour + minute / 60 : 12;
-  const lambda = sunLongitude(julianDay(year, month, day, h - 9));
+  const utcOffset = koreaUtcOffset(julianDay(year, month, day, 0));
+  const lambda = sunLongitude(julianDay(year, month, day, h - utcOffset));
 
   // 2) 연주: 입춘(황경 315°) 전이면 전년도
   let sajuYear = year;
@@ -104,7 +116,8 @@ export function computeSaju(input) {
   let dayIdx;
 
   if (timeKnown) {
-    let mins = hour * 60 + minute - (longitudeCorrection ? 30 : 0);
+    // 한국 중앙(동경 127.5°)의 태양시 = UTC+8:30. 표준시가 UTC+9인 시기에는 30분을 뺀다
+    let mins = hour * 60 + minute - (longitudeCorrection ? Math.round((utcOffset - 8.5) * 60) : 0);
     if (mins < 0) { mins += 1440; [dy, dm, dd] = addDays(dy, dm, dd, -1); }
     const isLateZi = mins >= 23 * 60;
     if (isLateZi && zasiMode === 'early') [dy, dm, dd] = addDays(dy, dm, dd, 1);
@@ -134,6 +147,7 @@ export function computeSaju(input) {
 
   return {
     input: { year, month, day, hour, minute, timeKnown, longitudeCorrection, zasiMode },
+    utcOffset,
     sajuYear,
     solarLongitude: lambda,
     pillars,

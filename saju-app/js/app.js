@@ -7,6 +7,9 @@ import {
   createTalisman, renderTalismanSVG, downloadSVGAsPNG, TALISMAN_TYPES, THEMES, RARITIES,
 } from './talisman.js';
 import { renderEmoticonSVG, GUARDIANS, SET_MOODS } from './emoticon.js';
+import {
+  lunarToSolar, solarToLunar, leapMonthOf, lunarMonthDays, formatLunar,
+} from './lunar.js';
 
 const STORE_KEY = 'unmyeong2099.profile';
 const COLLECTION_KEY = 'unmyeong2099.collection';
@@ -42,16 +45,35 @@ function toast(msg) {
 
 // ---------- 입력 ----------
 
+/** 예전 형식({date: 'YYYY-MM-DD'})의 저장 정보를 새 형식으로 */
+function normalizeProfile(p) {
+  if (!p) return null;
+  if (p.date && !p.year) {
+    const [year, month, day] = p.date.split('-').map(Number);
+    return { ...p, calendar: 'solar', year, month, day, leap: false };
+  }
+  return p;
+}
+
+/** 프로필 → 양력 날짜. 음력이면 변환 (오류 시 {error}) */
+function solarDateOf(p) {
+  if (p.calendar === 'lunar') return lunarToSolar(p.year, p.month, p.day, !!p.leap);
+  return { year: p.year, month: p.month, day: p.day };
+}
+
 function profileToInput(p) {
-  const [year, month, day] = p.date.split('-').map(Number);
+  const solar = solarDateOf(p);
   const [hour, minute] = (p.time || '12:00').split(':').map(Number);
   return {
-    year, month, day, hour, minute,
+    year: solar.year, month: solar.month, day: solar.day, hour, minute,
     timeKnown: !p.timeUnknown,
     longitudeCorrection: p.lonCorr,
     zasiMode: p.zasi,
   };
 }
+
+const solarDaysInMonth = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+const validYear = (y) => Number.isInteger(y) && y >= 1900 && y <= 2100;
 
 function start(profile) {
   state.profile = profile;
@@ -68,29 +90,88 @@ function start(profile) {
 
 function initForm() {
   const form = $('#birth-form');
-  const saved = load(STORE_KEY, null);
+  const saved = normalizeProfile(load(STORE_KEY, null));
+  const preview = $('#conv-preview');
+  const leapRow = $('.leap-row');
+
+  for (let m = 1; m <= 12; m++) form.month.add(new Option(`${m}월`, m));
+
+  const readForm = () => ({
+    calendar: form.calendar.value,
+    year: Number(form.year.value),
+    month: Number(form.month.value),
+    day: Number(form.day.value),
+    leap: form.calendar.value === 'lunar' && form.leap.checked && !leapRow.classList.contains('hidden'),
+  });
+
+  // 달력 종류·연·월에 맞춰 윤달 선택과 일수를 갱신하고, 변환 결과를 미리 보여 준다
+  function refresh() {
+    const f = readForm();
+    const lunar = f.calendar === 'lunar';
+    const ok = validYear(f.year);
+
+    const hasLeap = lunar && ok && leapMonthOf(f.year) === f.month;
+    leapRow.classList.toggle('hidden', !hasLeap);
+    $('#leap-label').textContent = hasLeap ? `윤${f.month}월 (${f.year}년은 ${f.month}월 다음에 윤달이 있습니다)` : '윤달';
+    if (!hasLeap) form.leap.checked = false;
+
+    let maxDay = 31;
+    if (ok) maxDay = lunar ? (lunarMonthDays(f.year, f.month, hasLeap && form.leap.checked) || 30) : solarDaysInMonth(f.year, f.month);
+    const keep = Number(form.day.value) || 1;
+    form.day.length = 0;
+    for (let d = 1; d <= maxDay; d++) form.day.add(new Option(`${d}일`, d));
+    form.day.value = String(Math.min(keep, maxDay));
+
+    preview.classList.remove('err');
+    if (!ok) { preview.textContent = form.year.value ? '1900~2100년 사이로 입력해 주세요.' : ''; return; }
+    const now = readForm();
+    if (lunar) {
+      const s = lunarToSolar(now.year, now.month, now.day, now.leap);
+      if (s.error) { preview.textContent = s.error; preview.classList.add('err'); return; }
+      preview.textContent = `→ 양력 ${s.year}년 ${s.month}월 ${s.day}일`;
+    } else {
+      const l = solarToLunar(now.year, now.month, now.day);
+      preview.textContent = l ? `→ ${formatLunar(l)}` : '';
+    }
+  }
+
   if (saved) {
     form.name.value = saved.name || '';
-    form.date.value = saved.date;
+    form.calendar.value = saved.calendar || 'solar';
+    form.year.value = saved.year;
+    form.month.value = String(saved.month);
+    form.day.add(new Option(`${saved.day}일`, saved.day));
+    form.day.value = String(saved.day);
     form.time.value = saved.time || '12:00';
     form.timeUnknown.checked = !!saved.timeUnknown;
     form.lonCorr.checked = saved.lonCorr !== false;
     form.zasi.value = saved.zasi || 'early';
   }
+  refresh();
+  if (saved?.leap) { form.leap.checked = true; refresh(); }
+
+  ['calendar', 'month', 'day', 'leap'].forEach((n) => {
+    const els = form.elements[n] instanceof RadioNodeList ? [...form.elements[n]] : [form.elements[n]];
+    els.forEach((el) => el.addEventListener('change', refresh));
+  });
+  form.year.addEventListener('input', refresh);
   form.timeUnknown.addEventListener('change', () => { form.time.disabled = form.timeUnknown.checked; });
   form.time.disabled = form.timeUnknown.checked;
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    if (!form.date.value) return;
+    const f = readForm();
+    if (!validYear(f.year)) { toast('1900~2100년 사이로 입력해 주세요'); return; }
     const profile = {
       name: form.name.value.trim(),
-      date: form.date.value,
+      ...f,
       time: form.time.value || '12:00',
       timeUnknown: form.timeUnknown.checked,
       lonCorr: form.lonCorr.checked,
       zasi: form.zasi.value,
     };
+    const solar = solarDateOf(profile);
+    if (solar.error) { toast(solar.error); return; }
     save(STORE_KEY, profile);
     start(profile);
   });
@@ -101,7 +182,7 @@ function initForm() {
     $('#btn-edit').classList.add('hidden');
   });
 
-  if (saved && new URLSearchParams(location.search).get('auto') !== '0') start(saved);
+  if (saved && !solarDateOf(saved).error && new URLSearchParams(location.search).get('auto') !== '0') start(saved);
 }
 
 // ---------- 탭 ----------
@@ -180,6 +261,7 @@ function renderSaju() {
   $('[data-panel="saju"]').innerHTML = `
     <div class="card">
       <h3>${name} 사주 원국 <span class="tag">${i.year}.${i.month}.${i.day}${i.timeKnown ? ` ${String(i.hour).padStart(2, '0')}:${String(i.minute).padStart(2, '0')}` : ''}</span></h3>
+      <p class="muted" style="margin-top:-6px">${birthDatesText(state.profile, i)}</p>
       <div class="pillars">${pillarsHTML}</div>
       <p class="muted" style="margin-bottom:0">${s.animal}띠 · 일주 ${pillarLabel(s.pillars.day)}(${pillarLabelKo(s.pillars.day)}) · 사주 연도 ${s.sajuYear}년 기준</p>
     </div>
@@ -207,6 +289,15 @@ function renderSaju() {
       <button class="primary" type="button" data-go="charm" style="width:100%">부족한 ${ELEMENT_KO[s.weakest]} 기운 부적 만들러 가기 →</button>
     </div>`;
   $('[data-go="charm"]').addEventListener('click', () => selectTab('charm'));
+}
+
+function birthDatesText(p, i) {
+  const lunar = solarToLunar(i.year, i.month, i.day);
+  const solarText = `양력 ${i.year}년 ${i.month}월 ${i.day}일`;
+  const lunarText = lunar ? `${formatLunar(lunar)}` : '';
+  return p.calendar === 'lunar'
+    ? `입력: <b>${lunarText}</b> → ${solarText}`
+    : `입력: <b>${solarText}</b>${lunarText ? ` · ${lunarText}` : ''}`;
 }
 
 function strengthText(s) {
