@@ -44,6 +44,20 @@ const SPECIAL = {
   '3-11': ['돼지야 우리 삼합이래! 같이 놀자 깡총!', '토토랑 놀면 복이 굴러들어 와~ 꿀꿀~'],
 };
 
+// 속담 전설: 띠 동물이 나오는 속담을 캐릭터 말투로 비튼 대화 [작은 번호 띠, 큰 번호 띠]
+const PROVERBS = {
+  '6-10': { proverb: '개 발에 편자', meaning: '격에 맞지 않아 어울리지 않음', lines: ['개야, 내 편자 한번 신어 볼래? 히힝!', '개 발에 편자라더니… 미끄러워서 못 걷겠어 멍!'] },
+  '7-8': { proverb: '원숭이도 나무에서 떨어진다', meaning: '아무리 잘하는 사람도 실수할 때가 있다', lines: ['원숭이야 괜찮아~? 원숭이도 나무에서 떨어진대~ 메에~', '끼… 방금 그거 연습한 거야! 진짜야 끼끼!'] },
+  '0-8': { proverb: '쥐뿔도 모른다', meaning: '아무것도 모르면서 아는 체함', lines: ['원숭이! 쥐뿔도 모른다는 말은 나한테 하면 섭하다찍! 정보는 내가 1등!', '끼끼! 그럼 쥐뿔이 뭔지 먼저 알려 줘 봐!'] },
+  '1-3': { proverb: '소 귀에 경 읽기', meaning: '아무리 말해도 알아듣지 못함', lines: ['…토끼야, 조금만 천천히 말해라. 음머.', '소 귀에 경 읽기야ㅠ 벌써 세 번째 설명했는데 깡총!'] },
+  '4-11': { proverb: '돼지 목에 진주 목걸이', meaning: '값어치를 모르는 이에게 귀한 것은 소용없음', lines: ['여의주를 맡기라고? 돼지 목에 진주 목걸이 아니냐. 크르릉.', '꿀꿀~ 진주보다 만두가 좋아~ 안 맡아도 돼~'] },
+  '1-2': { proverb: '호랑이에게 물려 가도 정신만 차리면 산다', meaning: '위급해도 침착하면 살길이 있음', lines: ['호랑이에게 물려 가도 정신만 차리면 산다더라. 그러니 너무 겁주지 마라. 음머.', '이 몸은 안 문다! …정신은 번쩍 차리게 해 주지, 어흥!'] },
+  '3-10': { proverb: '토끼 둘을 잡으려다 하나도 못 잡는다', meaning: '욕심내어 여러 가지를 하다 모두 놓침', lines: ['개야, 나랑 내 쌍둥이 둘 다 쫓지 마~ 깡총!', '토끼 둘 잡으려다 하나도 못 잡는다더니… 헥헥, 둘 다 놓쳤어 멍!'] },
+  '9-11': { proverb: '꿩 대신 닭', meaning: '원하는 것 대신 비슷한 것으로 채움', lines: ['꿩 대신 닭이라뇨! 저도 충분히 훌륭합니다, 꼬끼오!', '꿀꿀~ 나는 꿩보다 닭이 더 좋아~ 같이 놀자~'] },
+  '2-7': { proverb: '양의 탈을 쓴 늑대', meaning: '겉으론 순해 보이지만 속은 다름', lines: ['양털 좀 빌렸다! 양의 탈을 쓴… 호랑이다, 어흥!', '털 돌려줘~ 그래도 은근 잘 어울려~ 메에~'] },
+  '6-9': { proverb: '말 한마디로 천 냥 빚을 갚는다', meaning: '말을 잘하면 어려운 일도 풀림', lines: ['말 한마디로 천 냥 빚 갚는다며? 내가 바로 그 말인데! 히힝!', '말님, 그건 말(言)입니다! 그래도 오늘의 칭찬 한마디는 접수합니다, 꼬끼오!'] },
+};
+
 const hasBatchim = (word) => {
   const ch = word.charCodeAt(word.length - 1);
   if (ch < 0xac00 || ch > 0xd7a3) return false;
@@ -73,13 +87,19 @@ export function pairLine(speaker, listener, opts = {}) {
   const key = speaker < listener ? `${speaker}-${listener}` : `${listener}-${speaker}`;
   let text;
   let special = false;
+  let kind = 'relation';
+  let proverb = null;
   if (speaker !== listener && SPECIAL[key]) {
     text = SPECIAL[key][speaker < listener ? 0 : 1];
-    special = true;
+    special = true; kind = 'legend';
+  } else if (speaker !== listener && PROVERBS[key]) {
+    text = PROVERBS[key].lines[speaker < listener ? 0 : 1];
+    special = true; kind = 'proverb';
+    proverb = { text: PROVERBS[key].proverb, meaning: PROVERBS[key].meaning };
   } else {
     text = fillOther(REL_LINES[speaker][rel.type], opts.otherName || ANIMALS[listener]);
   }
-  return { text: stageVoice(text, opts.stage || 2), relation: rel, special };
+  return { text: stageVoice(text, opts.stage || 2), relation: rel, special, kind, proverb };
 }
 
 /**
@@ -89,12 +109,14 @@ export function pairLine(speaker, listener, opts = {}) {
 export function pairDialogue(a, b, opts = {}) {
   const first = pairLine(a, b, { stage: opts.stageA, otherName: opts.nameB });
   const second = pairLine(b, a, { stage: opts.stageB, otherName: opts.nameA });
-  return { lines: [{ speaker: a, text: first.text }, { speaker: b, text: second.text }], relation: first.relation, special: first.special };
+  return { lines: [{ speaker: a, text: first.text }, { speaker: b, text: second.text }], relation: first.relation, special: first.special, kind: first.kind, proverb: first.proverb };
 }
 
-export const SPECIAL_COUNT = Object.keys(SPECIAL).length;
+export const SPECIAL_COUNT = Object.keys(SPECIAL).length + Object.keys(PROVERBS).length;
+export const PROVERB_COUNT = Object.keys(PROVERBS).length;
+export const LEGEND_STORY_COUNT = Object.keys(SPECIAL).length;
 
 /** 내 띠와 전설의 조합을 이루는 띠 목록 */
 export function legendPartners(z) {
-  return Object.keys(SPECIAL).map((k) => k.split('-').map(Number)).filter(([a, b]) => a === z || b === z).map(([a, b]) => (a === z ? b : a));
+  return [...Object.keys(SPECIAL), ...Object.keys(PROVERBS)].map((k) => k.split('-').map(Number)).filter(([a, b]) => a === z || b === z).map(([a, b]) => (a === z ? b : a));
 }

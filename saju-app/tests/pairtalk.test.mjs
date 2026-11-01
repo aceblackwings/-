@@ -27,4 +27,14 @@ t('관계별 대사: 쥐와 말은 충 전용 대사, 쥐와 원숭이는 삼합
   assert.ok(pairLine(0, 8).text.includes('원숭이'));
   assert.ok(pairLine(3, 3, { stage: 1 }).text.startsWith('뀨'));
 });
+t('속담 전설 10쌍', () => {
+  const pairs = [[6, 10], [7, 8], [0, 8], [1, 3], [4, 11], [1, 2], [3, 10], [9, 11], [2, 7], [6, 9]];
+  for (const [a, b] of pairs) {
+    const d = pairDialogue(a, b);
+    assert.equal(d.kind, 'proverb', `${a}-${b}`);
+    assert.ok(d.proverb.text && d.proverb.meaning);
+    assert.equal(pairDialogue(b, a).kind, 'proverb');
+  }
+  assert.ok(pairLine(6, 10).text.includes('편자'));
+});
 console.log(`\n${pass} passed`);

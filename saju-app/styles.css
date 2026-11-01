@@ -384,3 +384,6 @@ select option { background: #1d1742; color: #ffffff; }
 .legend-hint { font-size: 0.68rem; color: rgba(255, 201, 60, 0.6); }
 .legend-hint.on { color: var(--gold); font-weight: 700; }
 .dex-find { font-size: 0.72rem; padding: 4px 8px; margin-top: 2px; }
+
+.proverb { color: var(--gold) !important; font-weight: 700; }
+.dlg-title small { display: block; font-size: 0.72rem; margin-top: 2px; }

@@ -929,7 +929,7 @@ function faceSVG(info, stage, mood = 'smile', size = 64) {
 function dialogueHTML(aInfo, bInfo, dlg, aStage) {
   const [a, b] = dlg.lines;
   return `<div class="dialogue">
-    <div class="dlg-title">${dlg.special ? '⭐ 전설의 조합 전용 대화' : `${dlg.relation.label} 관계의 대화`}</div>
+    <div class="dlg-title">${dlg.kind === 'proverb' ? `📜 속담 전설 「${dlg.proverb.text}」 <small class="muted">${dlg.proverb.meaning}</small>` : dlg.special ? '⭐ 전설의 조합 전용 대화' : `${dlg.relation.label} 관계의 대화`}</div>
     <div class="dlg-row"><div class="dlg-face">${faceSVG(aInfo, aStage, 'smile')}<span>${aInfo.zodiac.name}</span></div>${speechBubble([a.text], 'left')}</div>
     <div class="dlg-row right">${speechBubble([b.text], 'right')}<div class="dlg-face">${faceSVG(bInfo, 2, 'smile')}<span>${bInfo.zodiac.name}</span></div></div>
   </div>`;
@@ -972,16 +972,16 @@ function dexHTML() {
       return `<div class="dex-card locked">
         <div class="dex-face">${face}</div>
         <b>${z.name}띠</b>${badge}
-        ${e.legend ? '<span class="legend-hint">⭐ 전설의 조합</span>' : ''}
+        ${e.legend ? `<span class="legend-hint">${pairLine(me, e.branch).kind === 'proverb' ? '📜 속담 전설' : '⭐ 전설의 조합'}</span>` : ''}
         <button class="ghost dex-find" type="button" data-find="${e.branch}">🔍 ${z.name}띠 친구 찾기</button>
       </div>`;
     }
     const line = e.isMe ? null : pairLine(me, e.branch, { stage });
     const back = e.isMe ? null : pairLine(e.branch, me, {});
     return `<details class="dex-card ${e.legendFound ? 'legend' : ''} ${e.isMe ? 'mine' : ''}">
-      <summary><div class="dex-face">${face}</div><b>${z.name}띠</b>${badge}${e.legendFound ? '<span class="legend-hint on">⭐ 전설</span>' : ''}
+      <summary><div class="dex-face">${face}</div><b>${z.name}띠</b>${badge}${e.legendFound ? `<span class="legend-hint on">${pairLine(me, e.branch).kind === 'proverb' ? '📜 속담' : '⭐ 전설'}</span>` : ''}
         <small>${e.isMe ? '내 수호 캐릭터' : e.friends.slice(0, 2).join(', ') + (e.friends.length > 2 ? ` 외 ${e.friends.length - 2}명` : '')}</small></summary>
-      ${e.isMe ? `<p>${esc(personalityOf(me).intro)}</p>` : `<p><b>${myInfo.zodiac.name}:</b> ${esc(line.text)}</p><p><b>${z.name}:</b> ${esc(back.text)}</p>`}
+      ${e.isMe ? `<p>${esc(personalityOf(me).intro)}</p>` : `${line.kind === 'proverb' ? `<p class="proverb">📜 「${line.proverb.text}」 — ${line.proverb.meaning}</p>` : ''}<p><b>${myInfo.zodiac.name}:</b> ${esc(line.text)}</p><p><b>${z.name}:</b> ${esc(back.text)}</p>`}
     </details>`;
   }).join('');
   const milestones = r.milestones.map((m) => `<div class="ms ${m.claimed ? 'done' : m.reached ? 'ready' : ''}">
