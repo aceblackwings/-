@@ -23,6 +23,8 @@ import { RATES, PITY, PRICES, EXTRA_PER_DAY, drawPack, emptyGacha, todayGacha, i
 import { ASCENSION, abilitiesAt, nextAscension, ascensionOf, trialProgress, growthBoost, TRIALS } from './ascension.js';
 import { journeyStep, emptyJourney, completeStep, JOURNEY_DAYS, JOURNEYS } from './journey.js';
 import { isCrisis, crisisReply, buildInstructions, buildMessages, offlineReply, QUICK_ASKS, FREE_CHATS } from './chat.js';
+import { seasonStatus, SEASON_PACKS, SEASON_MISSIONS, FREE_TIERS, PACK_PRICE, emptySeason, recordSeason, missionProgress, tiersDone, buyPack, ownedItems, seasonLook, activeTitle, seasonsAround, itemName, titleName, withEul } from './season.js';
+import { dateToJdn } from './lunar.js';
 import { emptyMemory, extractMemories, mergeMemory, memoryLines, followUp, markAsked, recallFor, describe as describeMemory, forget, forgetAll, needsSummary, applySummary, summaryMessages, offlineSummary, SUMMARY_EVERY, MEMORY_LIMIT } from './memory.js';
 import { festivalStatus } from './festivals.js';
 import { makeCode, normalizeCode, publicCard, cardToSaju, cleanCard, pendingCheers, joinTeamRoom, openMailbox, CHEER_MESSAGES, CHEER_DAILY_LIMIT, CHEER_CHARGE, cheerText, cheerId } from './realtime.js';
@@ -52,6 +54,7 @@ const FENG_KEY = 'unmyeong2099.feng';
 const SOC_KEY = 'unmyeong2099.social';
 const CHAT_KEY = 'unmyeong2099.chat';
 const MEM_KEY = 'unmyeong2099.memory';
+const SEASON_KEY = 'unmyeong2099.season';
 const RT_KEY = 'unmyeong2099.realtime';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
 const EL_COLORS = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
@@ -437,6 +440,7 @@ function renderToday() {
       <p class="muted">${f.summary}${rel ? ` 오늘은 내 사주의 ${rel} 관계가 생깁니다.` : ''}</p>
     </div>
 
+    ${seasonCardHTML()}
     ${festivalCardHTML()}
 
     ${todaySayCard()}
@@ -666,17 +670,17 @@ function heroOptions() {
   const unlock = STAGE_UNLOCKS[stage - 1];
   const charms = eq.charms.map((r, i) => (i < unlock.charmSlots ? charmFromRecord(r) : null));
   const emote = unlock.emote ? eq.emote : null;
-  return { eq, charms, mood: emote || todayEmote(state.fortune), emote, stage, unlock };
+  return { eq, charms, mood: emote || todayEmote(state.fortune), emote, stage, unlock, season: seasonLook(loadSeason()) };
 }
 
 function renderHero(animate) {
   const s = state.saju; const f = state.fortune; const p = state.profile;
   const info = characterInfo(s, p);
-  const { eq, charms, mood, emote, stage, unlock } = heroOptions();
+  const { eq, charms, mood, emote, stage, unlock, season } = heroOptions();
   info.stage = stage;
   const stats = characterStats(s, f, info, charms);
-  const svg = renderCharacterSVG(info, { mood, charms, emote, stage, width: 300, backdrop: true, animate: true });
-  const svgStatic = renderCharacterSVG(info, { mood, charms, emote, stage, width: 300, backdrop: true });
+  const svg = renderCharacterSVG(info, { mood, charms, emote, stage, season, width: 300, backdrop: true, animate: true });
+  const svgStatic = renderCharacterSVG(info, { mood, charms, emote, stage, season, width: 300, backdrop: true });
   const gs = summary(loadGrowth(), f.dateKey);
 
   // 장착 후보: 지금 공방의 부적 + 도감
@@ -711,7 +715,7 @@ function renderHero(animate) {
         <div>
           <p class="muted" style="margin:0">${info.zodiac.name}띠(${info.zodiac.hanja}) · 일간 ${STEMS[s.dayMaster]}(${ELEMENT_KO[info.element]}) · ${info.female ? '여성' : '남성'} · 고민 ${info.concern.label}</p>
           <h3 class="hero-title">${info.title}</h3>
-          <p style="margin:0 0 6px"><span class="rarity-badge" style="color:var(--gold)">Lv.${gs.level} · ${stageName(gs.stage, info.female)}</span>${currentDex().title ? ` <span class="rarity-badge" style="color:#ff8fb3">📖 ${currentDex().title}</span>` : ''}</p>
+          <p style="margin:0 0 6px"><span class="rarity-badge" style="color:var(--gold)">Lv.${gs.level} · ${stageName(gs.stage, info.female)}</span>${currentDex().title ? ` <span class="rarity-badge" style="color:#ff8fb3">📖 ${currentDex().title}</span>` : ''}${seasonTitle() ? ` <span class="rarity-badge season-title">🏮 ${esc(seasonTitle())}</span>` : ''}</p>
           ${personalityCard()}
           <p class="muted" style="margin-top:8px;font-size:0.82rem">띠는 동물과 성격, 타고난 기운은 한복 색, 성별은 한복 모양, 고민은 손에 든 소품으로 정해졌습니다.</p>
           <div class="slots">${slot(0)}${slot(1)}${emoteSlot}</div>
@@ -737,6 +741,8 @@ function renderHero(animate) {
       : '<p class="muted" style="margin:0">부적 공방에서 부적을 만들고 도감에 저장하면 여기서 장착할 수 있습니다.</p>'}
     </div>
 
+    ${seasonWardrobeHTML()}
+
     <div class="card">
       <h3>이모티콘 장착 <span class="tag">표정 + 말풍선</span></h3>
       <div class="emote-chips">${EMOTES.map((e) => { const own = ownedEmotes().has(e.key); return `<button type="button" data-emote="${e.key}" aria-pressed="${emote === e.key}" class="${own ? '' : 'locked'}">${own ? renderEmoticonSVG(s, f, { stage: heroOptions().stage, profile: p, mood: e.key, style: 'sticker', tag: '', caption: e.label, rarity: emoteRarity(e.key) }) : `<div class="emo-lock">🔒<br>${e.label}</div>`}</button>`; }).join('')}</div>
@@ -744,6 +750,7 @@ function renderHero(animate) {
     </div>`;
 
   const panel = $('[data-panel="hero"]');
+  bindSeasonWardrobe(panel);
   const saveEquip = (next, lead = '') => { save(EQUIP_KEY, next); renderHero(false); grow((g) => complete(g, f.dateKey, 'equip', qBonus('equip')), lead); };
   $$('[data-equip]', panel).forEach((b) => b.addEventListener('click', () => {
     const r = candidates[Number(b.dataset.equip)];
@@ -925,9 +932,166 @@ function festivalCardHTML() {
     const f = fs.active;
     return `<div class="card fest on"><div class="fest-ic">${f.icon}</div><div><b>🏮 ${f.name} 축제 진행 중!</b><p>${f.desc}</p><small>축제 기간 무료 뽑기 +1 · ${ELEMENT_HANJA[f.element]} 기운 충전 보너스</small></div></div>`;
   }
-  if (!fs.next) return '';
+  if (!fs.next || seasonNow().active || seasonNow().next?.key === fs.next.key) return '';
   return `<div class="card fest"><div class="fest-ic">${fs.next.icon}</div><div><b>다음 축제: ${fs.next.name} · D-${fs.daysToNext}</b><p>${fs.next.desc}</p><small>${fs.next.date.month}월 ${fs.next.date.day}일 전후 무료 뽑기 +1</small></div></div>`;
 }
+
+// ---------- 계절 한정 패키지 ----------
+
+const EFFECT_LABEL = { snow: '눈 내림', petal: '꽃잎 흩날림', leaf: '낙엽 흩날림', star: '은하수 별빛', firefly: '반딧불', moon: '보름달빛', lantern: '청사초롱' };
+const md = (d) => `${d.month}/${d.day}`;
+
+function loadSeason() {
+  return { ...emptySeason(), ...load(SEASON_KEY, {}) };
+}
+
+function seasonNow() {
+  return seasonStatus(state.fortune.date);
+}
+
+function seasonTitle() {
+  return activeTitle(loadSeason(), seasonsAround(state.fortune.date.year));
+}
+
+/** 퀘스트 완료 → 진행 중 시즌 무료 트랙 기록. 토스트 메시지 목록 반환 */
+function seasonTick(questKeys) {
+  const ss = seasonNow().active;
+  if (!ss || !questKeys.length) return [];
+  let st = loadSeason();
+  const got = [];
+  for (const k of questKeys) {
+    const r = recordSeason(st, ss.id, k, state.fortune.dateKey);
+    st = r.state; got.push(...r.unlocked);
+  }
+  save(SEASON_KEY, st);
+  if (questKeys.some((k) => SEASON_MISSIONS.some((m) => m.key === k))) setTimeout(refreshSeasonCard, 0);
+  return got.map((t) => t.reward === 'item' ? `🏮 ${itemName(ss)} 무료 획득! 캐릭터 탭에서 장착해 보세요` : t.reward === 'title' ? `🏮 한정 칭호 「${titleName(ss)}」 획득!` : `🏮 한정 스티커 「${ss.sticker}」 획득!`);
+}
+
+function refreshSeasonCard() {
+  const old = $('[data-panel="today"] .card.season');
+  if (!old) return;
+  const tmp = document.createElement('div'); tmp.innerHTML = seasonCardHTML();
+  if (tmp.firstElementChild) old.replaceWith(tmp.firstElementChild);
+}
+
+/** mode: 'set'(소품+효과) · 'item'(소품만) · 'none' */
+function seasonPreviewSVG(key, width, mode) {
+  const info = characterInfo(state.saju, state.profile);
+  const { charms, emote, stage } = heroOptions();
+  const season = mode === 'none' ? null : { key, effect: mode === 'set' };
+  return renderCharacterSVG(info, { stage, charms, emote, mood: 'excited', width, backdrop: true, animate: true, season });
+}
+
+function seasonCardHTML() {
+  if (!state.saju) return '';
+  const { active: ss, next } = seasonNow();
+  if (!ss) {
+    if (!next) return '';
+    return `<div class="card season soon" style="--sc:${next.color}"><div class="season-head"><span class="season-ic">${next.icon}</span><div><b>다음 한정 패키지: ${next.year} ${next.name} · ${next.theme}</b><small>${md(next.start)}~${md(next.end)} · D-${next.daysToStart}</small></div></div><p class="muted" style="margin:6px 0 0;font-size:0.84rem">시즌이 열리면 미션만 해도 「${next.item}」${withEul(next.item).slice(-1)} 무료로 받을 수 있어요.</p></div>`;
+  }
+  const st = loadSeason();
+  const owned = st.owned[ss.id] || {};
+  const prog = missionProgress(st.progress[ss.id]);
+  const doneN = prog.filter((m) => m.done).length;
+  const tiers = FREE_TIERS.map((t) => {
+    const got = !!owned[t.reward];
+    const what = t.reward === 'sticker' ? ss.sticker : t.reward === 'title' ? ss.title : ss.item;
+    return `<li class="${got ? 'got' : ''}"><i>${got ? '✓' : `${t.need}`}</i><span><b>${t.label}</b><small>${esc(what)}</small></span></li>`;
+  }).join('');
+  const missions = prog.map((m) => `<li class="${m.done ? 'done' : ''}"><span>${m.icon} ${m.label}</span><div class="track"><div class="fill" style="width:${(m.n / m.goal) * 100}%"></div></div><b>${m.n}/${m.goal}일</b></li>`).join('');
+  const trying = state.seasonTry;
+  const mode = trying || owned.set ? 'set' : owned.item ? 'item' : 'none';
+  return `<div class="card season" style="--sc:${ss.color}">
+    <div class="season-head"><span class="season-ic">${ss.icon}</span><div><b>${ss.year} ${ss.name} 한정 · ${ss.theme} 패키지</b><small>${md(ss.start)}~${md(ss.end)} · ${ss.toFest > 0 ? `축제까지 D-${ss.toFest}` : ss.toFest === 0 ? '오늘이 축제!' : '축제 여운 기간'} · 판매 종료까지 ${ss.daysLeft}일</small></div></div>
+    <div class="season-body">
+      <div class="season-preview">${seasonPreviewSVG(ss.key, 150, mode)}
+        <button class="ghost" type="button" data-season="try">${trying ? '원래대로' : '👘 입어 보기'}</button></div>
+      <div class="season-free">
+        <h4>🎁 무료 트랙 <small>미션 ${doneN}/4</small></h4>
+        <ul class="season-missions">${missions}</ul>
+        <ul class="season-tiers">${tiers}</ul>
+      </div>
+    </div>
+    <div class="shop-item season-set"><div><b>👘 ${ss.theme} 꾸미기 세트</b><small>${ss.item} 바로 받기 · 계절 배경 효과(${EFFECT_LABEL[ss.effect]}) · 금빛 칭호 · 한정 스티커</small></div>
+      <button class="primary" type="button" data-season="buy" ${owned.set ? 'disabled' : ''}>${owned.set ? '보유 중' : `${PACK_PRICE.toLocaleString()}원`}</button></div>
+    <p class="muted" style="font-size:0.74rem;margin:6px 0 0">꾸미기 전용이라 운세·오행 수치는 변하지 않아요. 무료 트랙 미션 4개를 모두 하면 ${withEul(ss.item)} 무료로 받아요. 모든 아이템에 「${ss.year} ${ss.name}」이 새겨지고, 시즌이 끝나면 같은 디자인은 다시 판매하지 않아요.</p>
+  </div>`;
+}
+
+function openSeasonShop() {
+  const ss = seasonNow().active; if (!ss) return;
+  const el = document.createElement('div');
+  el.className = 'evo-modal';
+  el.innerHTML = `<div class="evo-box shop season-modal" style="--sc:${ss.color}">
+    <h3 style="margin-top:0">${ss.icon} ${ss.year} ${ss.name} · ${ss.theme} 꾸미기 세트</h3>
+    <div class="season-modal-art">${seasonPreviewSVG(ss.key, 220, 'set')}</div>
+    <ul class="season-contents">
+      <li>👘 <b>${esc(itemName(ss))}</b> — 바로 장착</li>
+      <li>✨ 계절 배경 효과 — ${EFFECT_LABEL[ss.effect]} (켜고 끌 수 있어요)</li>
+      <li>🏅 금빛 칭호 — ${esc(titleName(ss, true))}</li>
+      <li>🏷️ 한정 스티커 — ${esc(ss.sticker)}</li>
+    </ul>
+    <p class="muted" style="font-size:0.76rem">운세·오행 충전·뽑기 확률에는 영향이 없는 꾸미기 전용 상품입니다. 판매 기간 ${md(ss.start)}~${md(ss.end)} (남은 ${ss.daysLeft}일). ※ 프로토타입이라 실제 결제는 일어나지 않습니다.</p>
+    <button class="primary" type="button" data-sbuy="ok" style="width:100%">${PACK_PRICE.toLocaleString()}원 구매하기</button>
+    <button class="ghost" type="button" data-sbuy="close" style="width:100%;margin-top:6px">닫기</button></div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-sbuy]');
+    if (!b && e.target !== el) return;
+    if (b?.dataset.sbuy === 'ok') {
+      const today = dateToJdn(state.fortune.date.year, state.fortune.date.month, state.fortune.date.day);
+      const r = buyPack(loadSeason(), ss, today);
+      if (r.ok) { save(SEASON_KEY, r.state); state.seasonTry = false; toast(`${ss.icon} ${ss.theme} 꾸미기 세트를 받았어요! 캐릭터가 ${withEul(ss.item)} 장착했어요 (프로토타입: 결제 없음)`); }
+      else toast(r.reason);
+    }
+    el.remove();
+    refreshSeasonCard();
+    if (!$('[data-panel="hero"]').classList.contains('hidden')) renderHero(false);
+  });
+}
+
+function seasonWardrobeHTML() {
+  const st = loadSeason();
+  const items = ownedItems(st);
+  const ss = seasonNow().active;
+  const titles = Object.entries(st.owned).filter(([, o]) => o.title).map(([id, o]) => ({ id, gold: !!o.set, label: `${id.split('-')[1]} ${SEASON_PACKS[id.split('-')[0]].title}` }));
+  if (!items.length && !titles.length) {
+    return ss ? `<div class="card"><h3>🏮 한정 꾸미기 <span class="tag">${ss.year} ${ss.name}</span></h3><p class="muted" style="margin:0">홈의 ${ss.name} 패키지 무료 미션을 해내면 「${ss.item}」${withEul(ss.item).slice(-1)} 받아 여기서 장착할 수 있어요.</p></div>` : '';
+  }
+  const curSet = st.equipped && st.owned[st.equipped]?.set;
+  return `<div class="card wardrobe">
+    <h3>🏮 한정 꾸미기 <span class="tag">${items.length}개 보유</span></h3>
+    ${items.length ? `<div class="chips">${items.map((it) => `<button type="button" class="chip ${st.equipped === it.id ? 'on' : ''}" data-wear="${it.id}" aria-pressed="${st.equipped === it.id}">${it.year} ${esc(it.item)}${it.set ? ' ✨' : ''}</button>`).join('')}</div>` : ''}
+    ${curSet ? `<label class="row" style="gap:6px;margin-top:8px;font-size:0.86rem"><input type="checkbox" id="season-fx" ${st.effect !== false ? 'checked' : ''}> 계절 배경 효과 보기</label>` : ''}
+    ${titles.length ? `<p class="muted" style="margin:10px 0 4px;font-size:0.8rem">칭호</p><div class="chips">${titles.map((t) => `<button type="button" class="chip ${st.title === t.id ? 'on' : ''}" data-stitle="${t.id}">${t.gold ? '✨ ' : ''}${esc(t.label)}</button>`).join('')}</div>` : ''}
+    <p class="muted" style="font-size:0.74rem;margin:8px 0 0">한정 꾸미기는 능력치에 영향이 없어요. 장착한 소품은 스토리 카드에도 함께 나와요.</p>
+  </div>`;
+}
+
+function bindSeasonWardrobe(panel) {
+  $$('[data-wear]', panel).forEach((b) => b.addEventListener('click', () => {
+    const st = loadSeason();
+    const on = st.equipped === b.dataset.wear;
+    save(SEASON_KEY, { ...st, equipped: on ? null : b.dataset.wear });
+    toast(on ? '한정 소품을 벗었어요' : '한정 소품을 장착했어요!');
+    renderHero(false);
+  }));
+  $$('[data-stitle]', panel).forEach((b) => b.addEventListener('click', () => {
+    const st = loadSeason();
+    save(SEASON_KEY, { ...st, title: st.title === b.dataset.stitle ? null : b.dataset.stitle });
+    renderHero(false);
+  }));
+  const fx = $('#season-fx', panel);
+  if (fx) fx.addEventListener('change', () => { save(SEASON_KEY, { ...loadSeason(), effect: fx.checked }); renderHero(false); });
+}
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-season]');
+  if (!b) return;
+  if (b.dataset.season === 'try') { state.seasonTry = !state.seasonTry; refreshSeasonCard(); }
+  if (b.dataset.season === 'buy') openSeasonShop();
+});
 
 // ---------- AI 수호신 대화 ----------
 
@@ -1857,9 +2021,15 @@ function loadGrowth() {
 
 /** 성장 상태를 바꾸고, 생긴 일(레벨업·진화 가능·스트릭 등)을 알려 준다 */
 function grow(fn, lead = '') {
-  const res = fn(loadGrowth());
+  const prev = loadGrowth();
+  const res = fn(prev);
   save(GROWTH_KEY, res.growth);
   const msgs = [];
+  if (state.fortune) {
+    const dk = state.fortune.dateKey;
+    const fresh = Object.keys(res.growth.quests?.[dk] || {}).filter((k) => !prev.quests?.[dk]?.[k]);
+    msgs.push(...seasonTick(fresh));
+  }
   for (const e of res.events || []) {
     if (e.type === 'level-up') msgs.push(`레벨 업! Lv.${e.level} 🎉`);
     if (e.type === 'can-evolve') msgs.push('진화할 수 있어요! 캐릭터 탭에서 진화하기 ✦');
@@ -1948,9 +2118,9 @@ function bindGrowth(panel, info) {
 }
 
 function showEvolution(info, from, to) {
-  const { charms, emote } = heroOptions();
+  const { charms, emote, season } = heroOptions();
   const before = renderCharacterSVG(info, { stage: from, width: 260, mood: 'wow', backdrop: true });
-  const after = renderCharacterSVG(info, { stage: to, width: 260, mood: 'excited', charms, emote, backdrop: true, animate: true });
+  const after = renderCharacterSVG(info, { stage: to, width: 260, mood: 'excited', charms, emote, season, backdrop: true, animate: true });
   const el = document.createElement('div');
   el.className = 'evo-modal';
   el.innerHTML = `<div class="evo-box">

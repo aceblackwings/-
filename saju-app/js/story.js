@@ -224,8 +224,8 @@ async function drawCharm(ctx, d) {
 
 async function drawHero(ctx, d) {
   const { fortune: f } = d;
-  const { info, charms, mood, emote, stage } = d.hero;
-  const img = await svgToImage(renderCharacterSVG(info, { mood, charms, emote, stage, width: 640 }));
+  const { info, charms, mood, emote, stage, season } = d.hero;
+  const img = await svgToImage(renderCharacterSVG(info, { mood, charms, emote, stage, season, width: 640 }));
   const w = 640; const h = 800;
   ctx.save();
   ctx.shadowColor = EL_COLORS[info.element]; ctx.shadowBlur = 50;
@@ -248,8 +248,8 @@ async function drawHero(ctx, d) {
 }
 
 async function drawEvolve(ctx, d) {
-  const { info, charms, emote, stage } = d.hero;
-  const img = await svgToImage(renderCharacterSVG(info, { mood: 'excited', charms, emote, stage, width: 720, backdrop: true }));
+  const { info, charms, emote, stage, season } = d.hero;
+  const img = await svgToImage(renderCharacterSVG(info, { mood: 'excited', charms, emote, stage, season, width: 720, backdrop: true }));
   ctx.save();
   rr(ctx, 120, 320, 840, 1050, 48); ctx.clip();
   ctx.drawImage(img, 120, 320, 840, 1050);

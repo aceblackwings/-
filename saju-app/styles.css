@@ -558,3 +558,35 @@ select option { background: #1d1742; color: #ffffff; }
 .mem-list small { color: #b9b0ff; }
 .mem-x { background: none; border: 0; color: #a99fd6; font-size: 0.9rem; cursor: pointer; padding: 2px 6px; }
 .mem-x:hover { color: #ff6b8b; }
+
+/* 계절 한정 패키지 */
+.card.season { border-color: var(--sc); box-shadow: 0 0 0 1px color-mix(in srgb, var(--sc) 40%, transparent), 0 8px 30px color-mix(in srgb, var(--sc) 18%, transparent); background: linear-gradient(160deg, color-mix(in srgb, var(--sc) 14%, transparent), transparent 60%), var(--card, rgba(20,16,44,0.9)); }
+.season-head { display: flex; gap: 10px; align-items: center; }
+.season-head b { display: block; font-size: 1rem; }
+.season-head small { color: var(--muted); font-size: 0.78rem; }
+.season-ic { font-size: 2rem; filter: drop-shadow(0 0 8px var(--sc)); }
+.season-body { display: grid; grid-template-columns: 150px 1fr; gap: 12px; margin-top: 10px; align-items: start; }
+.season-preview { display: grid; gap: 6px; justify-items: center; }
+.season-preview svg { border-radius: 16px; border: 1px solid color-mix(in srgb, var(--sc) 50%, transparent); }
+.season-preview .ghost { padding: 6px 10px; font-size: 0.8rem; }
+.season-free h4 { margin: 0 0 6px; } .season-free h4 small { color: var(--muted); font-weight: 400; }
+.season-missions, .season-tiers, .season-contents { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.season-missions li { display: grid; grid-template-columns: minmax(0,1fr) 46px 34px; white-space: nowrap; gap: 6px; align-items: center; font-size: 0.8rem; }
+.season-missions .track { height: 6px; border-radius: 4px; background: rgba(255,255,255,0.1); overflow: hidden; }
+.season-missions .fill { height: 100%; background: var(--sc); }
+.season-missions b { text-align: right; font-size: 0.76rem; }
+.season-missions li.done span { color: var(--sc); }
+.season-tiers { margin-top: 8px; }
+.season-tiers li { display: flex; gap: 8px; align-items: center; font-size: 0.78rem; opacity: 0.75; }
+.season-tiers li i { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-style: normal; border: 1.5px solid var(--sc); font-size: 0.72rem; flex: none; }
+.season-tiers li b { display: block; font-size: 0.8rem; } .season-tiers li small { color: var(--muted); }
+.season-tiers li.got { opacity: 1; } .season-tiers li.got i { background: var(--sc); color: #0d0a1f; font-weight: 800; }
+.season-set { border-color: var(--sc); }
+.card.season.soon { box-shadow: none; }
+.season-modal { border-color: var(--sc); }
+.season-modal-art { display: grid; place-items: center; margin: 6px 0 10px; }
+.season-modal-art svg { border-radius: 18px; }
+.season-contents li { font-size: 0.88rem; text-align: left; }
+.season-title { color: #ffd166; }
+.wardrobe .chip.on { border-color: var(--gold); background: rgba(255,201,60,0.15); }
+@media (max-width: 380px) { .season-body { grid-template-columns: 1fr; } }
