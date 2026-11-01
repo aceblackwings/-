@@ -352,3 +352,35 @@ select option { background: #1d1742; color: #ffffff; }
 .zmap summary em { margin-left: auto; font-style: normal; font-size: 0.75rem; border: 1px solid; border-radius: 999px; padding: 1px 8px; }
 .zmap p { margin: 4px 0 8px; font-size: 0.86rem; color: #cfcaf2; }
 .zmap p b { color: #fff; }
+
+/* 12띠 수집 도감 */
+.rel-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.rel-badges span { font-size: 0.75rem; padding: 2px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.15); color: var(--muted); }
+.rel-badges span.on { color: var(--c); border-color: var(--c); box-shadow: 0 0 8px color-mix(in srgb, var(--c) 40%, transparent); }
+.ms-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 12px; }
+.ms { border: 1px solid var(--line); border-radius: 12px; padding: 8px 4px; text-align: center; display: grid; gap: 2px; font-size: 0.72rem; color: var(--muted); }
+.ms b { color: #fff; font-size: 0.9rem; }
+.ms span { color: #cfcaf2; font-weight: 600; }
+.ms i { font-style: normal; }
+.ms.ready { border-color: var(--gold); box-shadow: 0 0 12px rgba(255, 201, 60, 0.4); }
+.ms.done { border-color: var(--wood); }
+.ms button { padding: 4px; font-size: 0.75rem; }
+.dex-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+@media (min-width: 600px) { .dex-grid { grid-template-columns: repeat(3, 1fr); } }
+.dex-card { border: 1px solid var(--line); border-radius: 14px; padding: 8px; background: rgba(255,255,255,0.03); text-align: center; display: grid; justify-items: center; gap: 3px; font-size: 0.85rem; }
+.dex-card summary { list-style: none; cursor: pointer; display: grid; justify-items: center; gap: 3px; }
+.dex-card summary::-webkit-details-marker { display: none; }
+.dex-card[open] { grid-column: 1 / -1; }
+.dex-card em { font-style: normal; font-size: 0.7rem; border: 1px solid; border-radius: 999px; padding: 0 8px; }
+.dex-card em.me { color: var(--gold); border-color: var(--gold); }
+.dex-card small { color: var(--muted); font-size: 0.7rem; }
+.dex-card p { margin: 6px 0 0; font-size: 0.85rem; color: #cfcaf2; text-align: left; }
+.dex-card p b { color: #fff; }
+.dex-face svg { border-radius: 50%; background: radial-gradient(circle, rgba(123,92,255,0.35), rgba(13,10,31,0.9)); border: 2px solid var(--line); display: block; }
+.dex-card.locked .dex-face svg { filter: brightness(0) drop-shadow(0 0 3px rgba(160,140,255,0.7)); opacity: 0.6; }
+.dex-card.locked b { color: var(--muted); }
+.dex-card.legend { border-color: var(--gold); box-shadow: 0 0 12px rgba(255, 201, 60, 0.3); }
+.dex-card.mine { border-color: rgba(255, 201, 60, 0.6); }
+.legend-hint { font-size: 0.68rem; color: rgba(255, 201, 60, 0.6); }
+.legend-hint.on { color: var(--gold); font-weight: 700; }
+.dex-find { font-size: 0.72rem; padding: 4px 8px; margin-top: 2px; }

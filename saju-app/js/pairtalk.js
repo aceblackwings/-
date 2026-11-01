@@ -93,3 +93,8 @@ export function pairDialogue(a, b, opts = {}) {
 }
 
 export const SPECIAL_COUNT = Object.keys(SPECIAL).length;
+
+/** 내 띠와 전설의 조합을 이루는 띠 목록 */
+export function legendPartners(z) {
+  return Object.keys(SPECIAL).map((k) => k.split('-').map(Number)).filter(([a, b]) => a === z || b === z).map(([a, b]) => (a === z ? b : a));
+}

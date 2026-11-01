@@ -13,6 +13,7 @@ import {
 import { computeCompat, renderCompatSVG } from './compat.js';
 import { personalityOf, speak } from './personality.js';
 import { pairDialogue, pairLine } from './pairtalk.js';
+import { computeDex, emptyDex, recordDiscoveries, claimMilestone } from './dex.js';
 import { renderStoryCanvas, shareStory, STORY_TEMPLATES } from './story.js';
 import {
   STAGES, STREAK_REWARDS, emptyGrowth, checkIn, complete, addExp, evolve, claimStreakReward, summary, stageName,
@@ -27,6 +28,7 @@ const MISSION_KEY = 'unmyeong2099.missions';
 const EQUIP_KEY = 'unmyeong2099.equip';
 const GROWTH_KEY = 'unmyeong2099.growth';
 const FRIENDS_KEY = 'unmyeong2099.friends';
+const DEX_KEY = 'unmyeong2099.dex';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
 const EL_COLORS = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
 
@@ -111,6 +113,7 @@ function start(profile) {
     if (dn(state.fortune.dateKey) - dn(lastSeen) >= 2) state.backLine = say('back');
   }
   grow((g) => checkIn(g, state.fortune.dateKey));
+  setTimeout(() => { processDexRewards(); renderCompat(); }, 2600);
 }
 
 function initForm() {
@@ -628,7 +631,7 @@ function renderHero(animate) {
         <div>
           <p class="muted" style="margin:0">${info.zodiac.name}띠(${info.zodiac.hanja}) · 일간 ${STEMS[s.dayMaster]}(${ELEMENT_KO[info.element]}) · ${info.female ? '여성' : '남성'} · 고민 ${info.concern.label}</p>
           <h3 class="hero-title">${info.title}</h3>
-          <p style="margin:0 0 6px"><span class="rarity-badge" style="color:var(--gold)">Lv.${gs.level} · ${stageName(gs.stage, info.female)}</span></p>
+          <p style="margin:0 0 6px"><span class="rarity-badge" style="color:var(--gold)">Lv.${gs.level} · ${stageName(gs.stage, info.female)}</span>${currentDex().title ? ` <span class="rarity-badge" style="color:#ff8fb3">📖 ${currentDex().title}</span>` : ''}</p>
           ${personalityCard()}
           <p class="muted" style="margin-top:8px;font-size:0.82rem">띠는 동물과 성격, 타고난 기운은 한복 색, 성별은 한복 모양, 고민은 손에 든 소품으로 정해졌습니다.</p>
           <div class="slots">${slot(0)}${slot(1)}${emoteSlot}</div>
@@ -864,7 +867,7 @@ function renderCompat() {
       ${friends.length ? `<div class="chips" style="margin-top:12px">${friends.map((fr, i) => `<button class="chip" type="button" data-friend="${i}" aria-pressed="${i === sel}">${esc(fr.name)}</button>`).join('')}</div>` : ''}
     </div>
     <div id="compat-result">${sel !== null && friends[sel] ? compatResultHTML(friends[sel], sel) : '<div class="card"><p class="muted" style="margin:0">친구를 추가하면 두 캐릭터가 함께 나오는 궁합 카드가 만들어집니다.</p></div>'}</div>
-    ${zodiacMapHTML()}`;
+    ${dexHTML()}`;
 
   const form = $('#friend-form', panel);
   form.addEventListener('submit', (e) => {
@@ -879,6 +882,7 @@ function renderCompat() {
     state.compatIdx = 0;
     renderCompat();
     grow((g) => complete(g, state.fortune.dateKey, 'compat'));
+    setTimeout(() => { processDexRewards(); renderCompat(); }, 50);
   });
   $$('[data-friend]', panel).forEach((b) => b.addEventListener('click', () => { state.compatIdx = Number(b.dataset.friend); renderCompat(); }));
   $('#btn-friend-del', panel)?.addEventListener('click', () => {
@@ -896,6 +900,23 @@ function renderCompat() {
     renderCharm(false);
   });
   $('#btn-compat-png', panel)?.addEventListener('click', () => downloadSVGAsPNG(state.compat.svg, `compat-${state.compat.friendName}.png`, 3));
+  $$('[data-find]', panel).forEach((b) => b.addEventListener('click', async () => {
+    const z = ZODIAC[Number(b.dataset.find)];
+    const msg = `🐾 ${z.name}띠 친구 구해요! 운명공방 2099에서 우리 띠 궁합 보자 ✦ ${location.href.split('?')[0].split('#')[0]}`;
+    try { await navigator.clipboard.writeText(msg); toast(`${z.name}띠 친구 찾는 메시지를 복사했어요. 단톡방에 붙여 넣어 보세요!`); } catch { toast(msg); }
+  }));
+  $$('[data-ms]', panel).forEach((b) => b.addEventListener('click', () => {
+    const res = claimMilestone(loadDex(), currentDex(), Number(b.dataset.ms));
+    if (!res.reward) return;
+    save(DEX_KEY, res.dex);
+    const c = CONCERNS.find((x) => x.key === state.profile.concern) || CONCERNS[2];
+    const t = createTalisman(state.saju, state.fortune, { type: 'love', theme: res.reward.rarity === 'myth' ? 'neon' : 'classic', element: state.saju.weakest, rarity: res.reward.rarity });
+    const list = load(COLLECTION_KEY, []);
+    list.unshift({ ...recordOf(t), label: `도감 보상 ${t.rarity.label} 인연부` });
+    save(COLLECTION_KEY, list.slice(0, 60));
+    toast(`📖 칭호 "${res.reward.title}" 획득! ${t.rarity.label} 인연부를 도감에 넣었어요`);
+    renderCompat(); renderCharm(false);
+  }));
 }
 
 /** 캐릭터 얼굴만 잘라 낸 작은 SVG */
@@ -914,22 +935,66 @@ function dialogueHTML(aInfo, bInfo, dlg, aStage) {
   </div>`;
 }
 
-function zodiacMapHTML() {
+function loadDex() { return { ...emptyDex(), ...(load(DEX_KEY, null) || {}) }; }
+
+function currentDex() {
+  const friends = load(FRIENDS_KEY, []).map((fr) => {
+    const fs = friendSaju(fr);
+    return fs.error ? null : { name: fr.name, branch: fs.pillars.year.branch };
+  }).filter(Boolean);
+  return computeDex(state.saju.pillars.year.branch, friends, loadDex());
+}
+
+/** 새로 발견한 띠·전설의 조합 보상 처리 (각 1회) */
+function processDexRewards() {
+  const r = currentDex();
+  if (!r.expGain) return;
+  save(DEX_KEY, recordDiscoveries(loadDex(), r));
+  const names = r.newSeen.map((b) => ZODIAC[b].name).join('·');
+  const lead = [names ? `🐾 새 띠 발견: ${names}띠!` : '', r.newLegends.length ? `⭐ 전설의 조합 ${r.newLegends.length}개 발견!` : ''].filter(Boolean).join(' ');
+  grow((g) => addExp(g, r.expGain), lead);
+}
+
+function dexHTML() {
+  const r = currentDex();
   const me = state.saju.pillars.year.branch;
   const stage = heroOptions().stage;
   const myInfo = characterInfo(state.saju, state.profile);
-  const cards = ZODIAC.map((z, b) => {
-    const fake = { pillars: { year: { branch: b } }, dayMaster: (b * 3) % 10 };
-    const info = characterInfo(fake, { gender: b % 2 ? 'female' : 'male', concern: 'people' });
-    const line = pairLine(me, b, { stage });
-    const back = pairLine(b, me, {});
-    const tone = { samhap: '#ff4d8d', yukhap: '#ffc93c', same: '#39ff88', normal: '#9a94c4', wonjin: '#c77dff', chung: '#00e5ff' }[line.relation.type];
-    return `<details class="zmap"><summary>${faceSVG(info, 2, 'smile', 52)}<b>${z.name}띠</b><em style="color:${tone};border-color:${tone}">${line.special ? '⭐ ' : ''}${line.relation.label}</em></summary>
-      <p><b>${myInfo.zodiac.name}:</b> ${esc(line.text)}</p><p><b>${z.name}:</b> ${esc(back.text)}</p></details>`;
+  const pct = Math.round((r.count / r.total) * 100);
+  const cards = r.entries.map((e) => {
+    const z = ZODIAC[e.branch];
+    const fake = { pillars: { year: { branch: e.branch } }, dayMaster: (e.branch * 3) % 10 };
+    const info = e.isMe ? myInfo : characterInfo(fake, { gender: e.branch % 2 ? 'female' : 'male', concern: 'people' });
+    const face = faceSVG(info, e.isMe ? stage : 2, 'smile', 56);
+    const tone = { samhap: '#ff4d8d', yukhap: '#ffc93c', same: '#39ff88', normal: '#9a94c4', wonjin: '#c77dff', chung: '#00e5ff' }[e.relation.type];
+    const badge = e.isMe ? '<em class="me">나</em>' : `<em style="color:${tone};border-color:${tone}">${e.relation.label}</em>`;
+    if (!e.unlocked) {
+      return `<div class="dex-card locked">
+        <div class="dex-face">${face}</div>
+        <b>${z.name}띠</b>${badge}
+        ${e.legend ? '<span class="legend-hint">⭐ 전설의 조합</span>' : ''}
+        <button class="ghost dex-find" type="button" data-find="${e.branch}">🔍 ${z.name}띠 친구 찾기</button>
+      </div>`;
+    }
+    const line = e.isMe ? null : pairLine(me, e.branch, { stage });
+    const back = e.isMe ? null : pairLine(e.branch, me, {});
+    return `<details class="dex-card ${e.legendFound ? 'legend' : ''} ${e.isMe ? 'mine' : ''}">
+      <summary><div class="dex-face">${face}</div><b>${z.name}띠</b>${badge}${e.legendFound ? '<span class="legend-hint on">⭐ 전설</span>' : ''}
+        <small>${e.isMe ? '내 수호 캐릭터' : e.friends.slice(0, 2).join(', ') + (e.friends.length > 2 ? ` 외 ${e.friends.length - 2}명` : '')}</small></summary>
+      ${e.isMe ? `<p>${esc(personalityOf(me).intro)}</p>` : `<p><b>${myInfo.zodiac.name}:</b> ${esc(line.text)}</p><p><b>${z.name}:</b> ${esc(back.text)}</p>`}
+    </details>`;
   }).join('');
-  return `<div class="card"><h3>🐾 12띠 관계도 <span class="tag">${myInfo.zodiac.name}띠 기준</span></h3>
-    <p class="muted" style="margin-top:0;font-size:0.85rem">띠를 누르면 내 캐릭터와 그 띠가 나누는 대화가 나와요. ⭐는 옛이야기가 담긴 전설의 조합!</p>
-    <div class="zmap-grid">${cards}</div></div>`;
+  const milestones = r.milestones.map((m) => `<div class="ms ${m.claimed ? 'done' : m.reached ? 'ready' : ''}">
+      <b>${m.count}띠</b><span>${m.title}</span><small>${m.reward}</small>
+      ${m.reached && !m.claimed ? `<button class="primary" type="button" data-ms="${m.count}">받기</button>` : m.claimed ? '<i>✓</i>' : '<i>🔒</i>'}</div>`).join('');
+  return `<div class="card dex">
+    <h3>📖 12띠 수집 도감 <span class="tag">${r.count} / 12</span></h3>
+    <div class="exp"><div class="exp-fill" style="width:${pct}%;background:linear-gradient(90deg,#ff4d8d,#c77dff,#00e5ff)"></div><span>${r.count} / 12 띠 · 전설의 조합 ${r.legendsFound} / ${r.legendsTotal}</span></div>
+    <div class="rel-badges">${r.relations.map((x) => `<span class="${x.found ? 'on' : ''}" style="--c:${x.color}">${x.found ? '●' : '○'} ${x.label}</span>`).join('')}</div>
+    <p class="muted" style="font-size:0.82rem;margin:8px 0">친구를 추가하면 그 친구의 띠 칸이 열립니다. 새 띠 +20 EXP, 전설의 조합 +30 EXP!${r.nextMilestone ? ` 다음 보상까지 <b>${r.nextMilestone.count - r.count}띠</b> 남았어요.` : ' 12띠를 모두 모았습니다!'}</p>
+    <div class="ms-row">${milestones}</div>
+    <div class="dex-grid">${cards}</div>
+  </div>`;
 }
 
 function compatResultHTML(fr, idx) {
