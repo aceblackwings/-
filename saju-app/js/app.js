@@ -14,6 +14,11 @@ import { computeCompat, renderCompatSVG } from './compat.js';
 import { personalityOf, speak } from './personality.js';
 import { pairDialogue, pairLine } from './pairtalk.js';
 import { computeDex, emptyDex, recordDiscoveries, claimMilestone } from './dex.js';
+import {
+  computeDaewoon, daewoonAt, fiveYearForecast, emptyLuck, addCharge, rollYear, luckIndex, luckTierText,
+  daewoonComment, pillarTheme, pillarLabelFull, CHARGE_BY_RARITY, STAGE_LUCK_GATE, chargeTargets,
+} from './luck.js';
+import { STICKERS, dailySticker, renderStickerSVG } from './stickers.js';
 import { renderStoryCanvas, shareStory, STORY_TEMPLATES } from './story.js';
 import {
   STAGES, STREAK_REWARDS, emptyGrowth, checkIn, complete, addExp, evolve, claimStreakReward, summary, stageName,
@@ -29,6 +34,10 @@ const EQUIP_KEY = 'unmyeong2099.equip';
 const GROWTH_KEY = 'unmyeong2099.growth';
 const FRIENDS_KEY = 'unmyeong2099.friends';
 const DEX_KEY = 'unmyeong2099.dex';
+const LUCK_KEY = 'unmyeong2099.luck';
+const STICKER_KEY = 'unmyeong2099.stickers';
+const EMO_OWN_KEY = 'unmyeong2099.emotes';
+const DAILY_KEY = 'unmyeong2099.daily';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
 const EL_COLORS = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
 
@@ -327,7 +336,8 @@ function renderSaju() {
       </div>
       <p class="muted">${strengthText(s)}</p>
       <button class="primary" type="button" data-go="charm" style="width:100%">부족한 ${ELEMENT_KO[s.weakest]} 기운 부적 만들러 가기 →</button>
-    </div>`;
+    </div>
+    ${daewoonCardHTML()}`;
   $$('[data-go]', $('[data-panel="saju"]')).forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); selectTab(b.dataset.go); }));
 }
 
@@ -382,6 +392,8 @@ function renderToday() {
 
     ${todaySayCard()}
 
+    ${dailyCardHTML()}
+
     ${concernCard()}
 
     <div class="card">
@@ -418,8 +430,12 @@ function renderToday() {
     save(MISSION_KEY, m);
     renderToday();
     renderCharm(false);
-    if (m[f.dateKey]) grow((g) => complete(g, f.dateKey, 'mission'), missionLead);
+    if (m[f.dateKey]) {
+      grow((g) => complete(g, f.dateKey, 'mission'), missionLead);
+      setTimeout(() => charge(state.saju.yongsin, 4, 'mission', '🧧 액땜 완료'), 2400);
+    }
   });
+  $('#btn-daily')?.addEventListener('click', claimDaily);
 }
 
 function scoreColor(v) {
@@ -620,6 +636,7 @@ function renderHero(animate) {
   const bar = (label, v, max, color) => `<div class="bar"><span>${label}</span><div class="track"><div class="fill" style="width:${Math.min(100, (v / max) * 100)}%;background:${color};color:${color}"></div></div><span class="num">${v}</span></div>`;
 
   $('[data-panel="hero"]').innerHTML = `
+    ${luckCardHTML()}
     ${growthCard(info, gs)}
     <div class="card">
       <div class="hero-wrap">
@@ -659,7 +676,8 @@ function renderHero(animate) {
 
     <div class="card">
       <h3>이모티콘 장착 <span class="tag">표정 + 말풍선</span></h3>
-      <div class="emote-chips">${EMOTES.map((e) => `<button type="button" data-emote="${e.key}" aria-pressed="${emote === e.key}">${renderEmoticonSVG(s, f, { stage: heroOptions().stage, profile: p, mood: e.key, style: 'sticker', tag: '', caption: e.label })}</button>`).join('')}</div>
+      <div class="emote-chips">${EMOTES.map((e) => { const own = ownedEmotes().has(e.key); return `<button type="button" data-emote="${e.key}" aria-pressed="${emote === e.key}" class="${own ? '' : 'locked'}">${own ? renderEmoticonSVG(s, f, { stage: heroOptions().stage, profile: p, mood: e.key, style: 'sticker', tag: '', caption: e.label }) : `<div class="emo-lock">🔒<br>${e.label}</div>`}</button>`; }).join('')}</div>
+      <p class="muted" style="font-size:0.78rem;margin:6px 0 0">이모티콘은 매일 "오늘의 수집"에서 하나씩 모을 수 있어요. (${EMOTES.filter((e) => ownedEmotes().has(e.key)).length}/8)</p>
     </div>`;
 
   const panel = $('[data-panel="hero"]');
@@ -684,6 +702,7 @@ function renderHero(animate) {
   }));
   $$('[data-emote]', panel).forEach((b) => b.addEventListener('click', () => {
     if (!unlock.emote) { toast('🔒 Lv.5 견습 수호령으로 진화하면 이모티콘을 장착할 수 있어요'); return; }
+    if (!ownedEmotes().has(b.dataset.emote)) { toast('🔒 아직 모으지 않은 이모티콘이에요. 오늘의 수집에서 모아 보세요!'); return; }
     const next = loadEquip();
     next.emote = next.emote === b.dataset.emote ? null : b.dataset.emote;
     saveEquip(next);
@@ -726,6 +745,165 @@ function todayLines() {
 
 function speechBubble(lines, cls = '') {
   return `<div class="speech ${cls}">${lines.map((l) => `<p>${esc(l)}</p>`).join('')}</div>`;
+}
+
+// ---------- 개운: 오행 충전 · 대운 · 5년 흐름 ----------
+
+function loadLuck() {
+  const l = load(LUCK_KEY, null) || emptyLuck(state.fortune.date.year);
+  return rollYear(l, state.fortune.date.year);
+}
+
+function luckNow() {
+  const l = loadLuck();
+  return { luck: l, ...luckIndex(l, state.saju) };
+}
+
+/** 오행 충전 + 결과 알림 */
+function charge(element, amount, source, lead = '') {
+  const before = luckNow().index;
+  const res = addCharge(loadLuck(), state.saju, { element, amount, source, dateKey: state.fortune.dateKey });
+  if (!res.added) return 0;
+  save(LUCK_KEY, res.luck);
+  const after = luckIndex(res.luck, state.saju).index;
+  toast(`${lead ? `${lead} · ` : ''}${ELEMENT_HANJA[element]} ${ELEMENT_KO[element]} 기운 +${res.added} 충전! 개운 지수 ${before} → ${after}`);
+  return res.added;
+}
+
+function forecastNow() {
+  const { index } = luckNow();
+  return fiveYearForecast(state.saju, state.profile.gender, state.fortune.date, index, heroOptions().stage);
+}
+
+function luckCardHTML() {
+  const s = state.saju;
+  const { index, fills, targets, luck } = luckNow();
+  const tier = luckTierText(index);
+  const fc = forecastNow();
+  const stage = heroOptions().stage;
+  const bars = [0, 1, 2, 3, 4].map((e) => {
+    const tag = e === s.yongsin ? '<em>용신</em>' : e === s.weakest ? '<em>부족</em>' : '';
+    return `<div class="gauge"><span class="el-${e}">${ELEMENT_HANJA[e]} ${ELEMENT_KO[e]}${tag}</span>
+      <div class="g-track"><div class="g-fill" style="width:${Math.round(fills[e] * 100)}%;background:${EL_COLORS[e]};color:${EL_COLORS[e]}"></div></div>
+      <span class="num">${Math.min(luck.charge[e], targets[e])}/${targets[e]}</span></div>`;
+  }).join('');
+  const y = fc[0];
+  return `<div class="card luck-card">
+    <h3>☯ 오행 충전 · 개운 <span class="tag">${state.fortune.date.year}년</span></h3>
+    <div class="luck-head">
+      <div class="luck-ring" style="--p:${index}"><b>${index}</b><span>개운 지수</span></div>
+      <div>
+        <div class="luck-tier">${tier.tier}</div>
+        <p style="margin:2px 0 0;font-size:0.88rem">${tier.text}</p>
+        <p class="muted" style="margin:6px 0 0;font-size:0.82rem">올해 운세: 기본 <b>${y.base}</b> → 개운 반영 <b style="color:var(--gold)">${y.improved}</b>${stage < 5 ? ` · 신수 진화 시 최대 <b style="color:#ff8fb3">${y.target}</b>` : ' · 🐉 신수의 가호 적용 중'}</p>
+      </div>
+    </div>
+    <div class="gauges">${bars}</div>
+    <p class="muted" style="font-size:0.78rem;margin:8px 0 0">매일 받는 오늘의 부적, 액땜 미션, 보상 부적이 오행 게이지를 채웁니다. 용신은 1.5배, 가장 부족한 기운은 1.3배로 차올라요. 진화 조건: 수호 무사·선녀 ${STAGE_LUCK_GATE[3]} · 수호신 ${STAGE_LUCK_GATE[4]} · 신수 ${STAGE_LUCK_GATE[5]}</p>
+  </div>`;
+}
+
+function forecastChartSVG(fc) {
+  const W = 340; const H = 170; const L = 30; const R = 12; const T = 16; const B = 30;
+  const x = (i) => L + (i * (W - L - R)) / 4;
+  const yv = (v) => T + ((100 - v) / 70) * (H - T - B) - ((30) / 70) * (H - T - B) * 0;
+  const ys = (v) => T + ((95 - Math.max(25, v)) / 70) * (H - T - B);
+  const path = (k) => fc.map((d, i) => `${i ? 'L' : 'M'}${x(i)} ${ys(d[k])}`).join(' ');
+  const grid = [30, 50, 70, 90].map((v) => `<line x1="${L}" x2="${W - R}" y1="${ys(v)}" y2="${ys(v)}" stroke="rgba(255,255,255,0.08)"/><text x="${L - 6}" y="${ys(v) + 4}" font-size="9" fill="#9a94c4" text-anchor="end">${v}</text>`).join('');
+  const area = `${path('improved')} L${x(4)} ${ys(fc[4].base)} ${fc.slice().reverse().map((d, i) => `L${x(4 - i)} ${ys(d.base)}`).join(' ')} Z`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="fc-chart" role="img" aria-label="앞으로 5년 운의 흐름">
+    ${grid}
+    <path d="${area}" fill="rgba(255,201,60,0.12)"/>
+    <path d="${path('target')}" fill="none" stroke="#ff8fb3" stroke-width="1.5" stroke-dasharray="2 4"/>
+    <path d="${path('base')}" fill="none" stroke="#9a94c4" stroke-width="2" stroke-dasharray="5 5"/>
+    <path d="${path('improved')}" fill="none" stroke="#ffc93c" stroke-width="3" style="filter:drop-shadow(0 0 4px #ffc93c)"/>
+    ${fc.map((d, i) => `<circle cx="${x(i)}" cy="${ys(d.improved)}" r="4" fill="#ffc93c"/><text x="${x(i)}" y="${ys(d.improved) - 8}" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">${d.improved}</text><text x="${x(i)}" y="${H - 14}" font-size="10" fill="#cfcaf2" text-anchor="middle">${d.year}</text><text x="${x(i)}" y="${H - 3}" font-size="8.5" fill="#9a94c4" text-anchor="middle">${d.age}세</text>`).join('')}
+  </svg>`;
+}
+
+function daewoonCardHTML() {
+  const s = state.saju; const p = state.profile;
+  if (!p.gender) return '';
+  const dw = computeDaewoon(s, p.gender);
+  const age = state.fortune.date.year - s.input.year;
+  const cur = daewoonAt(dw, age);
+  const { index } = luckNow();
+  const fc = forecastNow();
+  const cells = dw.pillars.map((d) => {
+    const now = cur && d.startAge === cur.startAge;
+    return `<div class="dw ${now ? 'now' : ''}"><small>${d.startAge}세~</small><div class="char el-${STEM_ELEMENT[d.stem]}" style="font-size:1.25rem">${STEMS[d.stem]}</div><div class="char el-${BRANCH_ELEMENT[d.branch]}" style="font-size:1.25rem">${BRANCHES[d.branch]}</div><small>${d.score}</small></div>`;
+  }).join('');
+  const rows = fc.map((d, i) => {
+    const th = pillarTheme(s, d.pillar);
+    return `<tr><td>${d.year}<br><small>${d.age}세</small></td><td>${pillarLabelFull(d.pillar)}<br><small>${th.god} · ${th.theme}</small></td><td>${d.base}</td><td style="color:var(--gold);font-weight:800">${d.improved}${d.improved > d.base ? ` <small style="color:var(--wood)">▲${d.improved - d.base}</small>` : ''}</td></tr>`;
+  }).join('');
+  return `<div class="card">
+    <h3>📜 대운 · 앞으로 5년 <span class="tag">정통 사주 + 개운</span></h3>
+    <p class="muted" style="margin-top:0;font-size:0.84rem">${dw.forward ? '순행' : '역행'} 대운 · ${dw.startAge}세 시작 (태어난 날부터 절기까지 ${dw.days}일 ÷ 3) · 지금 ${age}세${cur ? `, ${cur.startAge}~${cur.endAge}세 대운 진행 중` : ''}</p>
+    <div class="dw-row">${cells}</div>
+    ${cur ? `<p class="concern-card" style="margin:10px 0 0">🧭 <b>지금의 대운 ${pillarLabelFull(cur)}</b> — ${daewoonComment(s, cur, index)}</p>` : ''}
+    <h4 style="margin:14px 0 4px">앞으로 5년의 흐름</h4>
+    ${(() => { const gains = fc.map((d) => d.improved - d.base); const avg = Math.round(gains.reduce((a, b) => a + b, 0) / 5); return index > 0 ? `<p class="five-sum">📈 지금처럼 꾸준히 개운하면 5년 동안 평균 <b>▲${avg}</b>, ${fc[4].year}년에는 <b>▲${gains[4]}</b>까지 개선 폭이 커집니다.</p>` : '<p class="five-sum">오늘의 부적을 받아 오행을 채우면, 아래 금색 개운 곡선이 기본 흐름 위로 올라가기 시작합니다.</p>'; })()}
+    ${forecastChartSVG(fc)}
+    <div class="fc-legend"><span><i style="background:#9a94c4"></i>정통 기본 흐름</span><span><i style="background:#ffc93c"></i>개운 반영</span><span><i style="background:#ff8fb3"></i>신수 진화·개운 100 목표선</span></div>
+    <table class="fc-table"><thead><tr><th>해</th><th>세운</th><th>기본</th><th>개운 반영</th></tr></thead><tbody>${rows}</tbody></table>
+    <p class="muted" style="font-size:0.76rem;margin-bottom:0">기본 흐름은 대운·세운을 명리학 규칙(용신·기신·일지와의 합충)으로 계산한 값입니다. 개운 반영 값은 매일의 꾸준한 실천을 응원하기 위한 게임 요소로, 오행 충전이 쌓일수록 해마다 조금씩 더 올라가도록 설계했습니다.</p>
+  </div>`;
+}
+
+// ---------- 매일 수집 ----------
+
+function dailyKeyOf() { return `${state.fortune.dateKey}`; }
+
+function dailyDrops() {
+  const f = state.fortune; const s = state.saju;
+  const c = CONCERNS.find((x) => x.key === state.profile.concern) || CONCERNS[2];
+  const element = (Number(f.dateKey.replace(/-/g, '')) % 2 === 0) ? s.yongsin : s.weakest;
+  const charm = createTalisman(s, f, { type: c.talisman, theme: Number(f.dateKey.slice(-1)) % 2 ? 'neon' : 'classic', element, reroll: 'daily' });
+  const sticker = dailySticker(`${birthKeyOf()}|${f.dateKey}`);
+  const emoteKeys = EMOTES.map((e) => e.key);
+  const emote = emoteKeys[(Number(f.dateKey.replace(/-/g, '')) * 7 + s.dayMaster) % emoteKeys.length];
+  return { charm, sticker, emote };
+}
+
+function birthKeyOf() { const i = state.saju.input; return `${i.year}-${i.month}-${i.day}`; }
+
+function ownedEmotes() {
+  const own = new Set(load(EMO_OWN_KEY, []));
+  own.add(todayEmote(state.fortune));
+  return own;
+}
+
+function dailyCardHTML() {
+  const claimed = load(DAILY_KEY, {})[dailyKeyOf()];
+  const { charm, sticker, emote } = dailyDrops();
+  const amt = CHARGE_BY_RARITY[charm.rarity.key];
+  const emoSvg = renderEmoticonSVG(state.saju, state.fortune, { stage: heroOptions().stage, profile: state.profile, mood: emote, style: 'sticker', tag: '', caption: EMOTES.find((e) => e.key === emote).label });
+  return `<div class="card daily">
+    <h3>🎁 오늘의 수집 <span class="tag">${state.fortune.dateKey}</span></h3>
+    <div class="drops ${claimed ? 'claimed' : ''}">
+      <div class="drop"><div class="drop-img">${renderTalismanSVG(charm)}</div><b>${charm.rarity.label} ${charm.type.label}부</b><small>${ELEMENT_HANJA[charm.element]} 기운 +${amt}${charm.element === state.saju.yongsin ? '×1.5' : charm.element === state.saju.weakest ? '×1.3' : ''} 충전</small></div>
+      <div class="drop"><div class="drop-img">${renderStickerSVG(sticker, 88)}</div><b>스티커 「${sticker.text}」</b><small>친구에게 보낼 수 있어요</small></div>
+      <div class="drop"><div class="drop-img">${emoSvg}</div><b>이모티콘 「${EMOTES.find((e) => e.key === emote).label}」</b><small>캐릭터 장착·대화용</small></div>
+    </div>
+    ${claimed ? '<p class="muted" style="margin:10px 0 0;text-align:center">✅ 오늘의 수집 완료! 내일 또 새로운 부적이 기다려요.</p>' : '<button class="primary" type="button" id="btn-daily" style="width:100%;margin-top:10px">✦ 오늘의 수집 모두 받기 ✦</button>'}
+  </div>`;
+}
+
+function claimDaily() {
+  const d = load(DAILY_KEY, {});
+  if (d[dailyKeyOf()]) return;
+  const { charm, sticker, emote } = dailyDrops();
+  d[dailyKeyOf()] = true;
+  const keys = Object.keys(d); if (keys.length > 60) delete d[keys[0]];
+  save(DAILY_KEY, d);
+  const list = load(COLLECTION_KEY, []);
+  list.unshift({ ...recordOf(charm), label: `오늘의 ${charm.rarity.label} ${charm.type.label}부` });
+  save(COLLECTION_KEY, list.slice(0, 60));
+  const st = load(STICKER_KEY, {}); st[sticker.key] = (st[sticker.key] || 0) + 1; save(STICKER_KEY, st);
+  const em = new Set(load(EMO_OWN_KEY, [])); em.add(emote); save(EMO_OWN_KEY, [...em]);
+  charge(charm.element, CHARGE_BY_RARITY[charm.rarity.key], 'daily', '🎁 오늘의 수집 완료');
+  renderToday(); renderCharm(false); renderEmoji(); renderSaju();
 }
 
 // ---------- 성장·진화 ----------
@@ -781,7 +959,8 @@ function growthCard(info, gs) {
       <div class="streak" title="연속 출석">🔥 <b>${gs.streak.count}</b>일 연속${gs.freeze ? ` · 🛡️${gs.freeze}` : ''}</div>
     </div>
     <div class="exp"><div class="exp-fill" style="width:${pct}%"></div><span>${gs.into} / ${gs.need} EXP</span></div>
-    ${gs.canEvolve ? `<button class="primary evolve-btn" type="button" id="btn-evolve">✦ ${stageName(gs.reachedStage, info.female)}(으)로 진화하기 ✦</button>` : `<p class="muted" style="margin:8px 0 0;font-size:0.85rem">${gs.next ? `다음 진화 <b>${stageName(gs.next.stage, info.female)}</b>까지 ${gs.levelsToNext}레벨 — ${gs.next.desc}` : '최종 진화 완료! 전설의 신수가 되었습니다.'}</p>`}
+    ${gs.canEvolve && luckNow().index < STAGE_LUCK_GATE[gs.reachedStage] ? `<p class="concern-card" style="margin:8px 0 0">🔒 레벨은 충분해요! <b>${stageName(gs.reachedStage, info.female)}</b>(으)로 진화하려면 개운 지수 <b>${STAGE_LUCK_GATE[gs.reachedStage]}</b>이 필요합니다 (지금 ${luckNow().index}). 오늘의 부적으로 오행을 채워 주세요.</p>` : ''}
+    ${gs.canEvolve && luckNow().index >= STAGE_LUCK_GATE[gs.reachedStage] ? `<button class="primary evolve-btn" type="button" id="btn-evolve">✦ ${stageName(gs.reachedStage, info.female)}(으)로 진화하기 ✦</button>` : gs.canEvolve ? '' : `<p class="muted" style="margin:8px 0 0;font-size:0.85rem">${gs.next ? `다음 진화 <b>${stageName(gs.next.stage, info.female)}</b>까지 ${gs.levelsToNext}레벨 — ${gs.next.desc}` : '최종 진화 완료! 전설의 신수가 되었습니다.'}</p>`}
     ${gs.next ? `<div class="perks"><span class="muted">다음 진화 보상</span>${STAGE_UNLOCKS[gs.next.stage - 1].perks.map((x) => `<em>🎁 ${x}</em>`).join('')}</div>` : ''}
     ${rewards ? `<div class="actions" style="margin-top:10px">${rewards}</div>` : ''}
     <div class="evo-road">${thumbs}</div>
@@ -791,6 +970,7 @@ function growthCard(info, gs) {
     <details class="advanced" style="margin-top:10px"><summary>프로토타입 체험 도구</summary>
       <p class="muted" style="font-size:0.8rem;margin:0">실서비스에서는 매일 퀘스트로만 경험치를 얻습니다. 진화 단계를 빨리 보려면 눌러 보세요.</p>
       <button class="ghost" type="button" id="btn-exp-test">경험치 +60 (체험용)</button>
+      <button class="ghost" type="button" id="btn-charge-test">오행 충전 +15 (체험용)</button>
     </details>
   </div>`;
 }
@@ -812,10 +992,12 @@ function bindGrowth(panel, info) {
       list.unshift(recordOf(t));
       save(COLLECTION_KEY, list.slice(0, 60));
       toast(`🎁 ${t.rarity.label} ${t.type.label}부를 도감에 넣었습니다${res.reward.freeze ? ' + 스트릭 보호 부적 1개' : ''}`);
+      setTimeout(() => charge(t.element, CHARGE_BY_RARITY[t.rarity.key], 'reward', '🎁 연속 출석 보상'), 2200);
     }
     renderHero(false);
   }));
   $('#btn-exp-test', panel)?.addEventListener('click', () => grow((g) => addExp(g, 60)));
+  $('#btn-charge-test', panel)?.addEventListener('click', () => { [0, 1, 2, 3, 4].forEach((e) => { const r = addCharge(loadLuck(), state.saju, { element: e, amount: 15, source: 'test', dateKey: state.fortune.dateKey }); save(LUCK_KEY, r.luck); }); toast(`오행 충전 +15 (체험용) · 개운 지수 ${luckNow().index}`); renderHero(false); renderSaju(); });
 }
 
 function showEvolution(info, from, to) {
@@ -897,9 +1079,19 @@ function renderCompat() {
     list.unshift({ ...recordOf(t), label: `${c.friendName}와의 ${t.rarity.label} 인연부` });
     save(COLLECTION_KEY, list.slice(0, 60));
     toast(`💞 ${c.friendName}와의 ${t.rarity.label} 인연부를 도감에 넣었어요. 캐릭터 탭에서 장착하세요!`);
+    setTimeout(() => charge(t.element, CHARGE_BY_RARITY[t.rarity.key], `bond-${c.friendName}`, '💞 인연부'), 2200);
     renderCharm(false);
   });
   $('#btn-compat-png', panel)?.addEventListener('click', () => downloadSVGAsPNG(state.compat.svg, `compat-${state.compat.friendName}.png`, 3));
+  $$('[data-react]', panel).forEach((b) => b.addEventListener('click', () => {
+    const list = load(FRIENDS_KEY, []);
+    const fr = list[Number(b.dataset.fidx)];
+    if (!fr) return;
+    fr.reactions = [...(fr.reactions || []), { key: b.dataset.react, date: state.fortune.dateKey, n: (fr.reactions || []).length + 1 }].slice(-6);
+    save(FRIENDS_KEY, list);
+    renderCompat();
+    toast(`${STICKERS.find((x) => x.key === b.dataset.react).text} 스티커를 보냈어요!`);
+  }));
   $$('[data-find]', panel).forEach((b) => b.addEventListener('click', async () => {
     const z = ZODIAC[Number(b.dataset.find)];
     const msg = `🐾 ${z.name}띠 친구 구해요! 운명공방 2099에서 우리 띠 궁합 보자 ✦ ${location.href.split('?')[0].split('#')[0]}`;
@@ -913,6 +1105,7 @@ function renderCompat() {
     const t = createTalisman(state.saju, state.fortune, { type: 'love', theme: res.reward.rarity === 'myth' ? 'neon' : 'classic', element: state.saju.weakest, rarity: res.reward.rarity });
     const list = load(COLLECTION_KEY, []);
     list.unshift({ ...recordOf(t), label: `도감 보상 ${t.rarity.label} 인연부` });
+    setTimeout(() => charge(t.element, CHARGE_BY_RARITY[t.rarity.key], 'reward', '📖 도감 보상'), 2200);
     save(COLLECTION_KEY, list.slice(0, 60));
     toast(`📖 칭호 "${res.reward.title}" 획득! ${t.rarity.label} 인연부를 도감에 넣었어요`);
     renderCompat(); renderCharm(false);
@@ -997,6 +1190,18 @@ function dexHTML() {
   </div>`;
 }
 
+function stickerReactHTML(fr, idx) {
+  const own = load(STICKER_KEY, {});
+  const mine = STICKERS.filter((x) => own[x.key]);
+  const last = (fr.reactions || []).slice(-1)[0];
+  const lastSt = last && STICKERS.find((x) => x.key === last.key);
+  return `<div class="react">
+    <div class="dlg-title">🏷️ 스티커로 말 걸기</div>
+    ${lastSt ? `<div class="dlg-row right"><div class="sent">${renderStickerSVG(lastSt, 72)}</div></div><div class="dlg-row">${speechBubble([`${esc(fr.name)}의 ${ZODIAC[friendSaju(fr).pillars.year.branch].name}: ${speak(friendSaju(fr).pillars.year.branch, 'tap', { seed: (last.n || 0) / 7 % 1 })}`], 'left')}</div>` : ''}
+    ${mine.length ? `<div class="react-row">${mine.map((st) => `<button type="button" data-react="${st.key}" data-fidx="${idx}">${renderStickerSVG(st, 54)}</button>`).join('')}</div>` : '<p class="muted" style="margin:4px 0 0;font-size:0.82rem">오늘의 수집에서 스티커를 모으면 친구에게 보낼 수 있어요.</p>'}
+  </div>`;
+}
+
 function compatResultHTML(fr, idx) {
   const fs = friendSaju(fr);
   if (fs.error) return `<div class="card"><p class="muted">${fs.error}</p></div>`;
@@ -1028,6 +1233,9 @@ function compatResultHTML(fr, idx) {
       <button class="ghost" type="button" id="btn-compat-png">PNG 저장</button>
       <button class="ghost" type="button" id="btn-friend-del">친구 삭제</button>
     </div>
+    ${stickerReactHTML(fr, idx)}
+    <div style="display:none">
+    </div>
     <p class="muted" style="font-size:0.78rem;margin-bottom:0">친구 캐릭터는 생일만으로 만든 임시 캐릭터입니다. 친구가 직접 가입하면 성별·고민·진화가 반영된 진짜 캐릭터로 바뀌어요.</p>
   </div>`;
 }
@@ -1058,10 +1266,11 @@ function renderEmoji() {
       </div>
     </div>
     <div class="card">
-      <h3>이모티콘 세트 8종 <span class="tag">PREMIUM</span></h3>
-      <div class="emoji-set">${set.map(({ m, svg }, i) => `<figure data-set="${i}">${svg}<figcaption>${m.label}</figcaption></figure>`).join('')}</div>
-      <p class="muted" style="margin-bottom:0">누르면 저장됩니다. 캐릭터 탭에서 이모티콘을 장착하면 캐릭터의 표정과 말풍선이 바뀝니다.</p>
-    </div>`;
+      <h3>이모티콘 도감 <span class="tag">${EMOTES.filter((e) => ownedEmotes().has(e.key)).length} / 8</span></h3>
+      <div class="emoji-set">${set.map(({ m, svg }, i) => ownedEmotes().has(m.key) ? `<figure data-set="${i}">${svg}<figcaption>${m.label}</figcaption></figure>` : `<figure class="locked"><div class="emo-lock big">🔒</div><figcaption>${m.label}</figcaption></figure>`).join('')}</div>
+      <p class="muted" style="margin-bottom:0">매일 "오늘의 수집"에서 하나씩 모입니다. 모은 이모티콘은 누르면 저장되고, 캐릭터에 장착할 수 있어요.</p>
+    </div>
+    ${stickerBookHTML()}`;
 
   $('#btn-emoji-style').addEventListener('click', () => { state.emojiStyle = style === 'neon' ? 'sticker' : 'neon'; renderEmoji(); });
   $('#btn-emoji-png').addEventListener('click', () => downloadSVGAsPNG(main, `lucky-emoji-${f.dateKey}.png`, 3));
@@ -1069,6 +1278,16 @@ function renderEmoji() {
     const { m, svg } = set[Number(fig.dataset.set)];
     downloadSVGAsPNG(svg, `emoji-${m.key}.png`, 3);
   }));
+}
+
+function stickerBookHTML() {
+  const own = load(STICKER_KEY, {});
+  const count = STICKERS.filter((x) => own[x.key]).length;
+  return `<div class="card">
+    <h3>🏷️ 스티커북 <span class="tag">${count} / ${STICKERS.length}</span></h3>
+    <div class="sticker-grid">${STICKERS.map((st) => `<figure class="${own[st.key] ? '' : 'locked'}">${renderStickerSVG(st, 76, !own[st.key])}${own[st.key] > 1 ? `<span class="cnt">×${own[st.key]}</span>` : ''}</figure>`).join('')}</div>
+    <p class="muted" style="margin-bottom:0;font-size:0.82rem">스티커는 궁합 탭에서 친구 캐릭터에게 보낼 수 있어요. 테두리 색: 희귀 파랑 · 영웅 보라 · 전설 금색 · 신화 빨강</p>
+  </div>`;
 }
 
 // ---------- 인스타 스토리 공유 ----------

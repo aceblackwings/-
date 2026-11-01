@@ -387,3 +387,49 @@ select option { background: #1d1742; color: #ffffff; }
 
 .proverb { color: var(--gold) !important; font-weight: 700; }
 .dlg-title small { display: block; font-size: 0.72rem; margin-top: 2px; }
+
+/* 개운 · 매일 수집 */
+.luck-head { display: flex; gap: 14px; align-items: center; }
+.luck-ring { width: 96px; height: 96px; flex: none; border-radius: 50%; display: grid; place-items: center; text-align: center; background: conic-gradient(#ffc93c calc(var(--p) * 1%), rgba(255,255,255,0.08) 0); position: relative; box-shadow: 0 0 18px rgba(255,201,60,0.35); }
+.luck-ring::before { content: ''; position: absolute; inset: 8px; border-radius: 50%; background: #120c2a; }
+.luck-ring b, .luck-ring span { position: relative; }
+.luck-ring b { font-family: var(--mono); font-size: 1.7rem; color: var(--gold); line-height: 1; display: block; }
+.luck-ring span { font-size: 0.68rem; color: var(--muted); display: block; margin-top: -18px; }
+.luck-tier { font-family: var(--serif); font-size: 1.3rem; color: var(--gold); text-shadow: 0 0 10px rgba(255,201,60,0.5); }
+.gauges { display: grid; gap: 7px; margin-top: 12px; }
+.gauge { display: grid; grid-template-columns: 78px 1fr 52px; gap: 8px; align-items: center; font-size: 0.82rem; }
+.gauge em { font-style: normal; font-size: 0.62rem; margin-left: 4px; padding: 0 5px; border-radius: 6px; border: 1px solid currentColor; }
+.g-track { height: 14px; border-radius: 7px; background: rgba(255,255,255,0.07); overflow: hidden; }
+.g-fill { height: 100%; border-radius: 7px; box-shadow: 0 0 10px currentColor; transition: width 0.8s; }
+.gauge .num { font-family: var(--mono); font-size: 0.75rem; text-align: right; color: var(--muted); }
+.dw-row { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+.dw { border: 1px solid var(--line); border-radius: 10px; padding: 4px 2px; text-align: center; font-size: 0.66rem; color: var(--muted); }
+.dw .char { margin: 0; line-height: 1.2; }
+.dw.now { border-color: var(--gold); box-shadow: 0 0 10px rgba(255,201,60,0.4); color: var(--gold); }
+.fc-chart { width: 100%; height: auto; display: block; }
+.fc-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.72rem; color: var(--muted); margin: 2px 0 8px; }
+.fc-legend i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 4px; }
+.fc-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.fc-table th, .fc-table td { padding: 6px 4px; border-bottom: 1px solid var(--line); text-align: center; }
+.fc-table th { color: var(--muted); font-weight: 600; font-size: 0.75rem; }
+.fc-table small { color: var(--muted); }
+.drops { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.drop { border: 1px solid var(--line); border-radius: 14px; padding: 8px 6px; text-align: center; display: grid; gap: 3px; font-size: 0.78rem; background: rgba(255,255,255,0.03); }
+.drop small { color: var(--muted); font-size: 0.68rem; }
+.drop-img { height: 104px; display: grid; place-items: center; }
+.drop-img svg { max-height: 104px; width: auto; }
+.drops:not(.claimed) .drop { animation: glowPulse 2s ease-in-out infinite; }
+@keyframes glowPulse { 0%,100% { box-shadow: 0 0 0 rgba(255,201,60,0); } 50% { box-shadow: 0 0 14px rgba(255,201,60,0.35); } }
+.drops.claimed .drop { opacity: 0.75; }
+.emote-chips button.locked, .emoji-set figure.locked { opacity: 0.55; }
+.emo-lock { display: grid; place-items: center; aspect-ratio: 1; font-size: 0.72rem; color: var(--muted); }
+.emo-lock.big { font-size: 1.6rem; border: 1px dashed var(--line); border-radius: 14px; }
+.sticker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; }
+.sticker-grid figure { margin: 0; position: relative; display: grid; place-items: center; }
+.sticker-grid .cnt { position: absolute; top: 2px; right: 6px; font-size: 0.7rem; font-family: var(--mono); background: var(--gold); color: #241b2f; border-radius: 999px; padding: 0 5px; }
+.react { margin-top: 12px; border: 1px solid var(--line); border-radius: 16px; padding: 10px 12px; }
+.react-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.react-row button { background: none; border: none; padding: 0; cursor: pointer; }
+.react .sent svg { display: block; }
+.five-sum { margin: 0 0 6px; font-size: 0.86rem; color: #ffe39a; }
+.five-sum b { color: var(--gold); }
