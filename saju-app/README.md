@@ -50,3 +50,9 @@ saju-app/
 - 절기 시각 오차 약 ±15분, 과거 서머타임(1948~1960, 1987~1988) 미반영
 - 신강/신약과 용신은 점수제 간이 판정
 - 개인 정보는 브라우저(localStorage)에만 저장되고 서버로 보내지 않음
+
+## 화면 미리보기
+
+| 사주 분석 | 오늘의 운세 | 네온 부적 | 전통 부적 | 행운 이모티콘 |
+|---|---|---|---|---|
+| ![사주 분석](screenshots/1-saju.png) | ![오늘의 운세](screenshots/2-today.png) | ![네온 부적](screenshots/3-charm.png) | ![전통 부적](screenshots/5-classic.png) | ![행운 이모티콘](screenshots/4-emoji.png) |
