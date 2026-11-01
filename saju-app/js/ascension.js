@@ -60,3 +60,31 @@ export function abilitiesAt(stage) {
 export function nextAscension(stage) {
   return ASCENSION.find((a) => a.stage === stage + 1) || null;
 }
+
+// ---------- 승천 시련: 성장 단계(레벨)와 달리, 오방 신수·상위 신은 "행동"으로 증명해야 한다 ----------
+// 꾸준함(연속 출석) · 인연(친구·스티커) · 발걸음(풍수 스팟) · 도감이 승천의 열쇠
+export const TRIALS = {
+  6: { title: '청룡의 시련 · 새싹의 약속', items: [['streakBest', 7, '7일 연속 출석'], ['friends', 1, '친구 1명과 궁합'], ['spots', 1, '풍수 스팟 1곳 방문']] },
+  7: { title: '주작의 시련 · 불꽃의 인연', items: [['streakBest', 14, '14일 연속 출석'], ['friends', 2, '친구 2명'], ['stickers', 5, '스티커 5번 보내기']] },
+  8: { title: '황룡의 시련 · 대지의 발걸음', items: [['spots', 3, '풍수 스팟 3곳'], ['friends', 3, '친구 3명'], ['journey', 10, '고민 해결 여정 1장 완주']] },
+  9: { title: '백호의 시련 · 수호의 맹세', items: [['streakBest', 30, '30일 연속 출석'], ['spots', 5, '풍수 스팟 5곳'], ['stickers', 12, '스티커 12번']] },
+  10: { title: '현무의 시련 · 장수의 지혜', items: [['friends', 5, '친구 5명'], ['stickers', 20, '스티커 20번'], ['journey', 30, '고민 해결 여정 완주']] },
+  11: { title: '천광의 시련', items: [['dex', 6, '12띠 도감 6칸'], ['spots', 8, '풍수 스팟 8곳']] },
+  12: { title: '지맥의 시련', items: [['dex', 9, '12띠 도감 9칸'], ['spots', 12, '풍수 스팟 12곳']] },
+  13: { title: '명운의 시련', items: [['dex', 12, '12띠 도감 완성'], ['stickers', 50, '스티커 50번']] },
+  14: { title: '태극의 시련', items: [['streakBest', 100, '100일 연속 출석'], ['friends', 10, '친구 10명']] },
+};
+
+export function trialProgress(stage, stats) {
+  const t = TRIALS[stage];
+  if (!t) return { ok: true, items: [], title: '' };
+  const items = t.items.map(([k, need, label]) => ({ key: k, need, label, have: stats[k] || 0, ok: (stats[k] || 0) >= need }));
+  return { ok: items.every((x) => x.ok), items, title: t.title };
+}
+
+/** 성장 가속: 연속 출석 +2%/일(최대 30%) · 친구 +5%/명(최대 30%) */
+export function growthBoost(streak, friends) {
+  const s = Math.min(0.3, Math.max(0, streak - 1) * 0.02);
+  const f = Math.min(0.3, friends * 0.05);
+  return { streak: s, friends: f, total: 1 + s + f };
+}

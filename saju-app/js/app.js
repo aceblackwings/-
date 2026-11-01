@@ -20,10 +20,12 @@ import {
 } from './luck.js';
 import { STICKERS, renderStickerSVG } from './stickers.js';
 import { RATES, PITY, PRICES, EXTRA_PER_DAY, drawPack, emptyGacha, todayGacha, isSubscribed, drawsLeft, rarityRank } from './gacha.js';
-import { ASCENSION, abilitiesAt, nextAscension, ascensionOf } from './ascension.js';
+import { ASCENSION, abilitiesAt, nextAscension, ascensionOf, trialProgress, growthBoost, TRIALS } from './ascension.js';
+import { journeyStep, emptyJourney, completeStep, JOURNEY_DAYS, JOURNEYS } from './journey.js';
+import { dailySpots, distanceM, treasureRarity, bearingName, ARRIVE_RADIUS, DEMO_CENTER, PARTNER_SAMPLES } from './fengshui.js';
 import { renderStoryCanvas, shareStory, STORY_TEMPLATES } from './story.js';
 import {
-  STAGES, STREAK_REWARDS, emptyGrowth, checkIn, complete, addExp, evolve, claimStreakReward, summary, stageName,
+  QUESTS, STAGES, STREAK_REWARDS, emptyGrowth, checkIn, complete, addExp, evolve, claimStreakReward, summary, stageName,
 } from './growth.js';
 import {
   lunarToSolar, solarToLunar, leapMonthOf, lunarMonthDays, formatLunar,
@@ -41,6 +43,9 @@ const STICKER_KEY = 'unmyeong2099.stickers';
 const EMO_OWN_KEY = 'unmyeong2099.emotes';
 const DAILY_KEY = 'unmyeong2099.daily';
 const GACHA_KEY = 'unmyeong2099.gacha';
+const JOURNEY_KEY = 'unmyeong2099.journey';
+const FENG_KEY = 'unmyeong2099.feng';
+const SOC_KEY = 'unmyeong2099.social';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
 const EL_COLORS = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
 
@@ -105,7 +110,7 @@ function profileToInput(p) {
 const solarDaysInMonth = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
 const validYear = (y) => Number.isInteger(y) && y >= 1900 && y <= 2100;
 
-function start(profile) {
+function start(profile, mode = 'today') {
   state.profile = profile;
   state.saju = computeSaju(profileToInput(profile));
   state.fortune = computeFortune(state.saju);
@@ -117,7 +122,8 @@ function start(profile) {
   $('#view-result').classList.remove('hidden');
   $('#btn-edit').classList.remove('hidden');
   renderAll();
-  selectTab('saju');
+  selectTab(mode === 'summon' ? 'today' : (state.lastTab || 'today'));
+  if (mode === 'summon') setTimeout(showSummon, 200);
   const lastSeen = loadGrowth().streak.last;
   state.backLine = null;
   state.heroLine = null;
@@ -139,6 +145,24 @@ function initForm() {
 
   for (let m = 1; m <= 12; m++) form.month.add(new Option(`${m}월`, m));
   $('#concern-grid').innerHTML = CONCERNS.map((c) => `<label><input type="radio" name="concern" value="${c.key}"><span><i>${CONCERN_ICONS[c.key]}</i>${c.label}</span></label>`).join('');
+  const goStep = (n) => {
+    $$('.step', form).forEach((st) => st.classList.toggle('hidden', st.dataset.step !== String(n)));
+    $$('.steps-dots i').forEach((d, i) => d.classList.toggle('on', i < n));
+  };
+  $$('[data-next]', form).forEach((b) => b.addEventListener('click', () => {
+    const n = Number(b.dataset.next);
+    if (n === 2) {
+      if (!validYear(Number(form.year.value))) { toast('태어난 해를 1900~2100 사이로 입력해 주세요'); return; }
+      const sd = solarDateOf(readForm()); if (sd.error) { toast(sd.error); return; }
+    }
+    if (n === 3) {
+      if (!form.concern.value) { toast('지금 가장 큰 고민을 하나 골라 주세요'); return; }
+      if (!form.gender.value) { toast('성별을 선택해 주세요'); return; }
+    }
+    goStep(n);
+  }));
+  $$('[data-prev]', form).forEach((b) => b.addEventListener('click', () => goStep(Number(b.dataset.prev))));
+  $('#btn-skip-time').addEventListener('click', () => { form.timeUnknown.checked = true; form.requestSubmit(); });
 
   const readForm = () => ({
     calendar: form.calendar.value,
@@ -222,8 +246,11 @@ function initForm() {
     };
     const solar = solarDateOf(profile);
     if (solar.error) { toast(solar.error); return; }
+    const firstTime = !load(GROWTH_KEY, null);
+    const prev = load(STORE_KEY, null);
+    if (!prev || prev.concern !== profile.concern) save(JOURNEY_KEY, emptyJourney(profile.concern));
     save(STORE_KEY, profile);
-    start(profile);
+    start(profile, firstTime ? 'summon' : 'today');
   });
 
   $('#btn-edit').addEventListener('click', () => {
@@ -238,11 +265,13 @@ function initForm() {
 // ---------- 탭 ----------
 
 function selectTab(name) {
+  state.lastTab = name;
   $$('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
   $$('.panel').forEach((p) => p.classList.toggle('hidden', p.dataset.panel !== name));
   if (name === 'story') renderStory();
   if (name === 'hero') renderHero(true);
-  if (name === 'today' && state.fortune) grow((g) => complete(g, state.fortune.dateKey, 'fortune'));
+  if (name === 'feng') renderFeng();
+  if (name === 'today' && state.fortune) grow((g) => complete(g, state.fortune.dateKey, 'fortune', qBonus('fortune')));
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -254,6 +283,7 @@ function renderAll() {
   renderEmoji();
   renderCompat();
   renderReport();
+  renderFeng();
 }
 
 // ---------- 사주 분석 ----------
@@ -399,6 +429,10 @@ function renderToday() {
 
     ${todaySayCard()}
 
+    ${todoCardHTML()}
+
+    ${journeyCardHTML()}
+
     ${dailyCardHTML()}
 
     ${concernCard()}
@@ -438,11 +472,19 @@ function renderToday() {
     renderToday();
     renderCharm(false);
     if (m[f.dateKey]) {
-      grow((g) => complete(g, f.dateKey, 'mission'), missionLead);
+      grow((g) => complete(g, f.dateKey, 'mission', qBonus('mission')), missionLead);
       setTimeout(() => charge(state.saju.yongsin, 4, 'mission', '🧧 액땜 완료'), 2400);
     }
   });
   $('#btn-daily')?.addEventListener('click', claimDaily);
+  $('#btn-journey')?.addEventListener('click', doJourneyStep);
+  $$('[data-todo]').forEach((b) => b.addEventListener('click', () => {
+    const k = b.dataset.todo;
+    if (k === 'draw') { const el = $('#btn-daily'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    if (k === 'journey') { const el = $('#btn-journey') || $('.journey'); el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    if (k === 'friend') selectTab('compat');
+    if (k === 'feng') selectTab('feng');
+  }));
   $('#btn-buy')?.addEventListener('click', openShop);
 }
 
@@ -531,7 +573,7 @@ function renderCharm(animate) {
     save(COLLECTION_KEY, list.slice(0, 60));
     renderCharm(false);
     toast('도감에 저장했습니다');
-    grow((g) => complete(g, state.fortune.dateKey, 'charm'));
+    grow((g) => complete(g, state.fortune.dateKey, 'charm', qBonus('charm')));
   });
   $('#btn-png').addEventListener('click', () => downloadSVGAsPNG(renderTalismanSVG(t), `talisman-${t.type.key}-${t.dateKey}.png`, 3));
   $$('.collection .mini', panel).forEach((m) => m.addEventListener('click', () => {
@@ -690,7 +732,7 @@ function renderHero(animate) {
     </div>`;
 
   const panel = $('[data-panel="hero"]');
-  const saveEquip = (next, lead = '') => { save(EQUIP_KEY, next); renderHero(false); grow((g) => complete(g, f.dateKey, 'equip'), lead); };
+  const saveEquip = (next, lead = '') => { save(EQUIP_KEY, next); renderHero(false); grow((g) => complete(g, f.dateKey, 'equip', qBonus('equip')), lead); };
   $$('[data-equip]', panel).forEach((b) => b.addEventListener('click', () => {
     const r = candidates[Number(b.dataset.equip)];
     const next = loadEquip();
@@ -861,6 +903,193 @@ function daewoonCardHTML() {
     <table class="fc-table"><thead><tr><th>해</th><th>세운</th><th>기본</th><th>개운 반영</th></tr></thead><tbody>${rows}</tbody></table>
     <p class="muted" style="font-size:0.76rem;margin-bottom:0">기본 흐름은 대운·세운을 명리학 규칙(용신·기신·일지와의 합충)으로 계산한 값입니다. 개운 반영 값은 매일의 꾸준한 실천을 응원하기 위한 게임 요소로, 오행 충전이 쌓일수록 해마다 조금씩 더 올라가도록 설계했습니다.</p>
   </div>`;
+}
+
+// ---------- 성장 가속 · 시련 통계 ----------
+
+function boostNow() {
+  const g = load(GROWTH_KEY, null);
+  return growthBoost(g?.streak?.count || 0, load(FRIENDS_KEY, []).length);
+}
+
+function qBonus(key) {
+  const q = QUESTS.find((x) => x.key === key);
+  return q ? Math.round(q.exp * (boostNow().total - 1)) : 0;
+}
+
+function trialStats() {
+  const g = load(GROWTH_KEY, null) || {};
+  return {
+    streakBest: g.streak?.best || 0,
+    friends: load(FRIENDS_KEY, []).length,
+    spots: load(FENG_KEY, { visits: 0 }).visits || 0,
+    stickers: load(SOC_KEY, { stickers: 0 }).stickers || 0,
+    journey: load(JOURNEY_KEY, { done: 0 }).done || 0,
+    dex: state.saju ? currentDex().count : 1,
+  };
+}
+
+// ---------- 고민 해결 여정 ----------
+
+function loadJourney() {
+  const j = load(JOURNEY_KEY, null);
+  if (!j || j.concern !== state.profile.concern) return emptyJourney(state.profile.concern);
+  return j;
+}
+
+function journeyCardHTML() {
+  const j = loadJourney();
+  const info = characterInfo(state.saju, state.profile);
+  const c = info.concern;
+  const doneToday = j.lastDate === state.fortune.dateKey;
+  const n = Math.min(j.done - (doneToday ? 1 : 0), JOURNEY_DAYS - 1);
+  const step = journeyStep(c.key, Math.max(0, doneToday ? j.done - 1 : j.done), state.saju.yongsin);
+  const pct = Math.round((j.done / JOURNEY_DAYS) * 100);
+  const chapters = JOURNEYS[c.key].chapters;
+  if (j.done >= JOURNEY_DAYS) return `<div class="card journey"><h3>🏆 ${c.label} 고민 해결 여정 완주!</h3><p>30일 동안 함께 걸었어요. 수호신이 당신의 ${c.label}을(를) 끝까지 응원합니다. '정보 수정'에서 새 고민을 고르면 새 여정이 시작돼요.</p></div>`;
+  return `<div class="card journey">
+    <h3>🧭 ${c.label} 고민 해결 여정 <span class="tag">${j.done} / ${JOURNEY_DAYS}일</span></h3>
+    <div class="exp"><div class="exp-fill" style="width:${pct}%;background:linear-gradient(90deg,#39ff88,#00e5ff)"></div><span>${chapters.map((ch, i) => (i === step.chapterIndex ? `▶ ${ch}` : ch)).join(' · ')}</span></div>
+    <div class="j-step ${doneToday ? 'done' : ''}">
+      <small class="muted">${step.chapter} · ${step.stepNo}걸음</small>
+      <b>${step.title}</b>
+      <p class="muted" style="margin:4px 0 0;font-size:0.84rem">💡 ${step.why}</p>
+    </div>
+    ${doneToday ? `<p class="muted" style="margin:8px 0 0;text-align:center">✅ 오늘 한 걸음 완료! ${info.zodiac.name}가 내일 다음 걸음을 준비해 둘게요.</p>` : '<button class="primary" type="button" id="btn-journey" style="width:100%;margin-top:10px">했어요! 한 걸음 완료 ✓</button>'}
+  </div>`;
+}
+
+function doJourneyStep() {
+  const res = completeStep(loadJourney(), state.fortune.dateKey);
+  if (!res.advanced) return;
+  save(JOURNEY_KEY, res.journey);
+  const c = characterInfo(state.saju, state.profile).concern;
+  const lead = res.finished ? `🏆 ${c.label} 여정 완주!` : res.chapterDone ? `📖 여정 ${res.journey.done / 10}장 완주!` : `🧭 ${c.label} 해결에 한 걸음 더`;
+  grow((g) => complete(g, state.fortune.dateKey, 'journey', qBonus('journey')), lead);
+  setTimeout(() => charge(state.saju.yongsin, 3, 'journey', '🧭 여정'), 2300);
+  if (res.chapterDone) {
+    const rarity = res.finished ? 'legend' : res.journey.done >= 20 ? 'epic' : 'rare';
+    const t = createTalisman(state.saju, state.fortune, { type: c.talisman, theme: 'classic', element: state.saju.yongsin, rarity });
+    const list = load(COLLECTION_KEY, []); list.unshift({ ...recordOf(t), label: `여정 보상 ${t.rarity.label} ${t.type.label}부` }); save(COLLECTION_KEY, list.slice(0, 80));
+  }
+  renderToday();
+}
+
+function todoCardHTML() {
+  const g = loadGacha();
+  const j = loadJourney();
+  const q = (load(GROWTH_KEY, null)?.quests || {})[state.fortune.dateKey] || {};
+  const items = [
+    { k: 'draw', icon: '🔮', label: '운명 뽑기로 부적 받기', done: g.freeUsed > 0 },
+    { k: 'journey', icon: '🧭', label: '고민 해결 한 걸음', done: j.lastDate === state.fortune.dateKey },
+    { k: 'friend', icon: '💞', label: '친구에게 스티커·궁합', done: !!(q.social || q.compat) },
+    { k: 'feng', icon: '🗺️', label: '오늘의 기운 스팟 (선택)', done: !!q.spot },
+  ];
+  const doneN = items.slice(0, 3).filter((x) => x.done).length;
+  return `<div class="card todo">
+    <h3>✅ 오늘 할 일 <span class="tag">${doneN} / 3</span></h3>
+    ${items.map((x) => `<button type="button" class="todo-item ${x.done ? 'done' : ''}" data-todo="${x.k}"><span>${x.done ? '✅' : x.icon} ${x.label}</span><b>${x.done ? '완료' : '하러 가기 →'}</b></button>`).join('')}
+    ${doneN === 3 ? '<p class="muted" style="margin:8px 0 0;text-align:center">🎉 오늘의 할 일 끝! 수호신이 아주 기뻐해요.</p>' : ''}
+  </div>`;
+}
+
+function showSummon() {
+  const info = characterInfo(state.saju, state.profile);
+  const c = info.concern;
+  const svg = renderCharacterSVG(info, { stage: 1, width: 240, backdrop: true, animate: true, mood: 'excited' });
+  const pers = personalityOf(zIdx());
+  const el = document.createElement('div');
+  el.className = 'evo-modal';
+  el.innerHTML = `<div class="evo-box summon">
+    <p class="muted" style="margin:0">12지신 강림</p>
+    <div class="summon-stage">${svg}</div>
+    <h3 style="margin:6px 0">${info.zodiac.name}띠 수호신 <span style="color:var(--gold)">${info.name}</span> 강림!</h3>
+    ${speechBubble([speak(zIdx(), 'greet', { index: 0, stage: 1 }), `${state.profile.name || '주인'}의 ${c.label} 고민, 오늘부터 30일 동안 매일 한 걸음씩 같이 풀어 가자!`])}
+    <div class="summon-plan">${JOURNEYS[c.key].chapters.map((ch, i) => `<div><b>${i + 1}장</b><span>${ch}</span><small>${i * 10 + 1}~${i * 10 + 10}일</small></div>`).join('')}</div>
+    <p class="muted" style="font-size:0.82rem">매일 할 일은 딱 3가지: <b>뽑기</b> · <b>여정 한 걸음</b> · <b>친구에게 스티커</b></p>
+    <button class="primary" type="button" style="width:100%">시작하기 ✦</button></div>`;
+  document.body.appendChild(el);
+  el.querySelector('button').addEventListener('click', () => { el.remove(); selectTab('today'); });
+}
+
+// ---------- 풍수 기운 스팟 ----------
+
+function fengState() { return { visited: {}, visits: 0, ...(load(FENG_KEY, null) || {}) }; }
+
+function renderFeng() {
+  const panel = $('[data-panel="feng"]');
+  if (!panel || !state.saju) return;
+  const center = state.geo?.center || DEMO_CENTER;
+  const real = !!state.geo?.real;
+  const f = state.fortune; const s = state.saju;
+  const spots = dailySpots(center, { direction: f.luck.direction, yongsin: s.yongsin, weakest: s.weakest, seedKey: `${birthKeyOf()}|${f.dateKey}` });
+  state.spots = spots;
+  const fs = fengState();
+  const maxD = 2600;
+  const pt = (sp) => { const r = Math.min(1, sp.distance / maxD) * 120; const a = (sp.bearing - 90) * Math.PI / 180; return [150 + Math.cos(a) * r, 150 + Math.sin(a) * r]; };
+  const radar = `<svg viewBox="0 0 300 300" class="radar-map">
+    <circle cx="150" cy="150" r="140" fill="#0d0a1f" stroke="rgba(0,229,255,0.3)"/>
+    ${[40, 80, 120].map((r) => `<circle cx="150" cy="150" r="${r}" fill="none" stroke="rgba(0,229,255,0.15)" stroke-dasharray="3 5"/>`).join('')}
+    <line x1="150" y1="10" x2="150" y2="290" stroke="rgba(255,255,255,0.08)"/><line x1="10" y1="150" x2="290" y2="150" stroke="rgba(255,255,255,0.08)"/>
+    ${['북', '동', '남', '서'].map((d, i) => { const a = (i * 90 - 90) * Math.PI / 180; return `<text x="${150 + Math.cos(a) * 128}" y="${154 + Math.sin(a) * 128}" font-size="12" fill="${f.luck.direction.startsWith(d) ? '#ffc93c' : '#9a94c4'}" text-anchor="middle" font-weight="800">${d}</text>`; }).join('')}
+    <circle cx="150" cy="150" r="7" fill="#00e5ff"><animate attributeName="r" values="6;10;6" dur="1.6s" repeatCount="indefinite"/></circle>
+    ${spots.map((sp) => { const [x, y] = pt(sp); return `<g><circle cx="${x}" cy="${y}" r="16" fill="${EL_COLORS[sp.element]}" opacity="${fs.visited[sp.id] ? 0.25 : 0.85}"/><text x="${x}" y="${y + 6}" font-size="16" text-anchor="middle">${fs.visited[sp.id] ? '✅' : sp.icon}</text></g>`; }).join('')}
+  </svg>`;
+  panel.innerHTML = `
+    <div class="card">
+      <h3>🗺️ 오늘의 풍수 기운 스팟 <span class="tag">행운 방향 ${f.luck.direction}</span></h3>
+      <p class="muted" style="margin-top:0;font-size:0.85rem">오늘은 <b style="color:var(--gold)">${f.luck.direction}</b>이 길하고, 나에게 필요한 기운은 <b class="el-${s.yongsin}">${ELEMENT_HANJA[s.yongsin]} ${ELEMENT_KO[s.yongsin]}</b>이에요. 그 방향의 ${ELEMENT_KO[s.yongsin]} 기운 장소로 가면 <b>보물 상자</b>가 기다려요. 멀수록 좋은 보물!</p>
+      <div class="feng-wrap">${radar}
+        <div class="feng-loc"><small class="muted">${real ? '📍 내 위치 기준' : `📍 ${DEMO_CENTER.label}`}</small>
+          <button class="ghost" type="button" id="btn-geo">${real ? '위치 새로고침' : '내 위치로 찾기'}</button>
+          <small class="muted" style="font-size:0.72rem">위치는 이 기기에서만 계산하고 저장·전송하지 않아요.</small></div>
+      </div>
+    </div>
+    <div class="card">
+      ${spots.map((sp, i) => `<div class="spot ${fs.visited[sp.id] ? 'done' : ''}">
+        <div class="spot-ic" style="background:${EL_COLORS[sp.element]}22;border-color:${EL_COLORS[sp.element]}">${sp.icon}</div>
+        <div style="flex:1"><b>${sp.label}</b> <small class="el-${sp.element}">${ELEMENT_HANJA[sp.element]} 기운</small><br><small class="muted">${bearingName(sp.bearing)}쪽 약 ${sp.distance >= 1000 ? `${(sp.distance / 1000).toFixed(1)}km` : `${sp.distance}m`} · 보물 ${['★', '★★', '★★★'][sp.tier]}</small></div>
+        ${fs.visited[sp.id] ? '<b class="muted">획득</b>' : `<div class="spot-btns"><a class="ghost" href="https://map.kakao.com/link/to/${encodeURIComponent(sp.label)},${sp.lat.toFixed(6)},${sp.lng.toFixed(6)}" target="_blank" rel="noopener">길찾기</a><button class="primary" type="button" data-arrive="${i}">도착 확인</button></div>`}
+      </div>`).join('')}
+      ${real ? '' : '<p class="muted" style="font-size:0.75rem;margin:8px 0 0">지금은 체험용 기준 위치예요. "도착 확인"을 누르면 체험용으로 도착 처리됩니다. 실제 앱에서는 150m 안에 들어가야 열려요.</p>'}
+    </div>
+    <div class="card">
+      <h3>🤝 제휴 기운 스팟 <span class="tag">예시</span></h3>
+      <p class="muted" style="margin-top:0;font-size:0.82rem">정식 서비스에서는 기운에 맞는 실제 카페·식당·전망대·찻집과 제휴해, 방문 인증 시 한정 부적과 할인 쿠폰을 드려요.</p>
+      ${PARTNER_SAMPLES.map((p) => `<div class="spot partner"><div class="spot-ic" style="background:${EL_COLORS[p.element]}22;border-color:${EL_COLORS[p.element]}">${p.icon}</div><div style="flex:1"><b>${p.name}</b><br><small class="muted">${p.perk}</small></div>${p.element === s.yongsin ? '<em class="you">내 용신</em>' : ''}</div>`).join('')}
+    </div>`;
+  $('#btn-geo', panel).addEventListener('click', () => {
+    if (!navigator.geolocation) { toast('이 환경에서는 위치를 쓸 수 없어 체험용 위치로 보여 드려요'); return; }
+    navigator.geolocation.getCurrentPosition((pos) => { state.geo = { center: { lat: pos.coords.latitude, lng: pos.coords.longitude }, real: true }; renderFeng(); toast('내 위치 기준으로 기운 스팟을 찾았어요'); },
+      () => toast('위치 권한을 받지 못해 체험용 위치로 보여 드려요'), { enableHighAccuracy: true, timeout: 8000 });
+  });
+  $$('[data-arrive]', panel).forEach((b) => b.addEventListener('click', () => {
+    const sp = state.spots[Number(b.dataset.arrive)];
+    if (!state.geo?.real) { openTreasure(sp); return; }
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const d = distanceM({ lat: pos.coords.latitude, lng: pos.coords.longitude }, sp);
+      if (d <= ARRIVE_RADIUS) openTreasure(sp); else toast(`아직 ${Math.round(d)}m 남았어요. ${bearingName(sp.bearing)}쪽으로 조금만 더!`);
+    }, () => toast('위치를 확인하지 못했어요'), { enableHighAccuracy: true, timeout: 8000 });
+  }));
+}
+
+function openTreasure(sp) {
+  const fs = fengState();
+  if (fs.visited[sp.id]) return;
+  fs.visited[sp.id] = true; fs.visits = (fs.visits || 0) + 1;
+  const keys = Object.keys(fs.visited); if (keys.length > 60) delete fs.visited[keys[0]];
+  save(FENG_KEY, fs);
+  const rarity = treasureRarity(Math.random(), sp.tier);
+  const types = ['luck', 'wealth', 'protect', 'love', 'exam', 'health'];
+  const t = createTalisman(state.saju, state.fortune, { type: types[sp.element % types.length], theme: 'classic', element: sp.element, rarity, reroll: Math.random() });
+  const list = load(COLLECTION_KEY, []); list.unshift({ ...recordOf(t), label: `풍수 보물 ${t.rarity.label} ${t.type.label}부` }); save(COLLECTION_KEY, list.slice(0, 80));
+  const st = STICKERS[Math.floor(Math.random() * STICKERS.length)];
+  const own = load(STICKER_KEY, {}); own[st.key] = (own[st.key] || 0) + 1; save(STICKER_KEY, own);
+  showReveal(t, { sticker: st, emote: { key: todayEmote(state.fortune), rarity: 'rare' }, best: rarityRank(rarity) > rarityRank(st.rarity) ? rarity : st.rarity, pityHit: false }, () => {
+    grow((g) => complete(g, state.fortune.dateKey, 'spot', qBonus('spot')), `🗺️ ${sp.label}의 보물 획득!`);
+    setTimeout(() => charge(sp.element, CHARGE_BY_RARITY[rarity] * 1.5, `spot-${sp.id}`, '🗺️ 풍수 기운'), 2300);
+    renderFeng(); renderToday(); renderCharm(false);
+  });
 }
 
 // ---------- 운명 뽑기 (가챠) ----------
@@ -1101,7 +1330,7 @@ function evolvableStage(gs) {
   const { index, luck } = luckNow();
   let best = gs.stage;
   for (let st = gs.stage + 1; st <= gs.reachedStage; st++) {
-    if (index >= (STAGE_LUCK_GATE[st] || 0) && (luck.lifetime || 0) >= (STAGE_LIFETIME_GATE[st] || 0)) best = st; else break;
+    if (index >= (STAGE_LUCK_GATE[st] || 0) && (luck.lifetime || 0) >= (STAGE_LIFETIME_GATE[st] || 0) && trialProgress(st, trialStats()).ok) best = st; else break;
   }
   return best;
 }
@@ -1117,7 +1346,8 @@ function abilityCardHTML(info) {
     <div class="asc-row">${ladder}</div>
     ${ab.list.length ? `<ul class="abilities">${ab.list.map((a) => `<li style="--c:${a.color}"><b>${a.name} · ${a.ability}</b><span>${a.desc}</span></li>`).join('')}</ul>`
       : '<p class="muted" style="margin:8px 0 0;font-size:0.85rem">지신의 신수(5단계)가 된 뒤, 오방 신수 → 상위 신 → 궁극신으로 승천하며 특별 능력이 쌓입니다.</p>'}
-    ${nx ? `<p class="concern-card" style="margin:10px 0 0">다음 승천 <b style="color:${nx.color}">${nx.name}</b> · ${nx.ability}<br><small class="muted">조건: Lv.${nx.level} · 개운 지수 ${STAGE_LUCK_GATE[nx.stage]} (지금 ${index}) · 누적 기운 ${STAGE_LIFETIME_GATE[nx.stage]} (지금 ${luck.lifetime || 0})</small></p>` : '<p class="concern-card" style="margin:10px 0 0">🌌 궁극신에 도달했습니다. 모든 능력이 깨어났어요.</p>'}
+    ${nx ? `<p class="concern-card" style="margin:10px 0 0">다음 승천 <b style="color:${nx.color}">${nx.name}</b> · ${nx.ability}<br><small class="muted">조건: Lv.${nx.level} · 개운 지수 ${STAGE_LUCK_GATE[nx.stage]} (지금 ${index}) · 누적 기운 ${STAGE_LIFETIME_GATE[nx.stage]} (지금 ${luck.lifetime || 0})</small></p>
+      ${(() => { const tp = trialProgress(nx.stage, trialStats()); return `<div class="trial"><b>⚔️ ${tp.title}</b>${tp.items.map((x) => `<div class="${x.ok ? 'ok' : ''}">${x.ok ? '✅' : '⬜'} ${x.label} <small>(${Math.min(x.have, x.need)}/${x.need})</small></div>`).join('')}<small class="muted">성장 단계는 레벨로 오르지만, 오방 신수와 상위 신은 꾸준함·인연·발걸음으로 시련을 넘어야 승천합니다.</small></div>`; })()}` : '<p class="concern-card" style="margin:10px 0 0">🌌 궁극신에 도달했습니다. 모든 능력이 깨어났어요.</p>'}
   </div>`;
 }
 
@@ -1179,7 +1409,8 @@ function growthCard(info, gs) {
     ${gs.next ? `<div class="perks"><span class="muted">다음 진화 보상</span>${STAGE_UNLOCKS[gs.next.stage - 1].perks.map((x) => `<em>🎁 ${x}</em>`).join('')}</div>` : ''}
     ${rewards ? `<div class="actions" style="margin-top:10px">${rewards}</div>` : ''}
     <div class="evo-road">${thumbs}</div>
-    <h4 style="margin:14px 0 6px">오늘의 퀘스트 <span class="muted" style="font-weight:400;font-size:0.8rem">(${gs.todayExp} / 90 EXP)</span></h4>
+    ${(() => { const b = boostNow(); return `<div class="boost">⚡ 성장 가속 <b>+${Math.round((b.total - 1) * 100)}%</b> <small>🔥 연속 출석 +${Math.round(b.streak * 100)}% · 💞 친구 ${load(FRIENDS_KEY, []).length}명 +${Math.round(b.friends * 100)}%</small><small class="muted">매일 접속과 친구가 성장의 지름길! (각각 최대 +30%)</small></div>`; })()}
+    <h4 style="margin:14px 0 6px">오늘의 퀘스트 <span class="muted" style="font-weight:400;font-size:0.8rem">(${gs.todayExp} / ${QUESTS.reduce((a, q) => a + q.exp, 0)} EXP)</span></h4>
     <ul class="quests">${quests}</ul>
     <p class="muted" style="font-size:0.78rem;margin:8px 0 0">${gs.nextReward ? `🔥 ${gs.nextReward.days}일 연속 출석하면: ${gs.nextReward.label}` : '모든 연속 출석 보상을 받았습니다!'}</p>
     <details class="advanced" style="margin-top:10px"><summary>프로토타입 체험 도구</summary>
@@ -1281,7 +1512,7 @@ function renderCompat() {
     save(FRIENDS_KEY, list.slice(0, 12));
     state.compatIdx = 0;
     renderCompat();
-    grow((g) => complete(g, state.fortune.dateKey, 'compat'));
+    grow((g) => complete(g, state.fortune.dateKey, 'compat', qBonus('compat')));
     setTimeout(() => { processDexRewards(); renderCompat(); }, 50);
   });
   $$('[data-friend]', panel).forEach((b) => b.addEventListener('click', () => { state.compatIdx = Number(b.dataset.friend); renderCompat(); }));
@@ -1308,7 +1539,9 @@ function renderCompat() {
     fr.reactions = [...(fr.reactions || []), { key: b.dataset.react, date: state.fortune.dateKey, n: (fr.reactions || []).length + 1 }].slice(-6);
     save(FRIENDS_KEY, list);
     renderCompat();
-    toast(`${STICKERS.find((x) => x.key === b.dataset.react).text} 스티커를 보냈어요!`);
+    const soc = load(SOC_KEY, { stickers: 0 }); soc.stickers += 1; save(SOC_KEY, soc);
+    grow((g) => complete(g, state.fortune.dateKey, 'social', qBonus('social')), `${STICKERS.find((x) => x.key === b.dataset.react).text} 스티커를 보냈어요! 💞 인연의 기운 +`);
+    setTimeout(() => charge(state.saju.yongsin, 2, 'social', '💞 인연의 기운'), 2300);
   }));
   $$('[data-find]', panel).forEach((b) => b.addEventListener('click', async () => {
     const z = ZODIAC[Number(b.dataset.find)];
@@ -1588,7 +1821,7 @@ async function doShare(downloadOnly) {
     const a = document.createElement('a');
     a.href = canvas.toDataURL('image/png'); a.download = filename; a.click();
     toast('이미지를 저장했습니다. 인스타그램 스토리에서 불러오세요');
-    grow((g) => complete(g, state.fortune.dateKey, 'share'));
+    grow((g) => complete(g, state.fortune.dateKey, 'share', qBonus('share')));
     return;
   }
   const result = await shareStory(canvas, {
@@ -1597,7 +1830,7 @@ async function doShare(downloadOnly) {
     filename,
   });
   if (result === 'downloaded') toast('이 기기는 바로 공유를 지원하지 않아 이미지로 저장했습니다');
-  if (result !== 'cancelled') grow((g) => complete(g, state.fortune.dateKey, 'share'));
+  if (result !== 'cancelled') grow((g) => complete(g, state.fortune.dateKey, 'share', qBonus('share')));
 }
 
 // 다른 탭의 "스토리 공유" 버튼

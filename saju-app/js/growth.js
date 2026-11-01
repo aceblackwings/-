@@ -31,6 +31,9 @@ export const QUESTS = [
   { key: 'equip', label: '부적·이모티콘 장착', exp: 5, icon: '🎒' },
   { key: 'share', label: '스토리 카드 공유·저장', exp: 20, icon: '📸' },
   { key: 'compat', label: '친구와 궁합 보기', exp: 10, icon: '💞' },
+  { key: 'journey', label: '고민 해결 여정 한 걸음', exp: 15, icon: '🧭' },
+  { key: 'social', label: '친구에게 스티커 보내기', exp: 10, icon: '🏷️' },
+  { key: 'spot', label: '풍수 기운 스팟 방문', exp: 20, icon: '🗺️' },
 ];
 
 export const STREAK_REWARDS = [
