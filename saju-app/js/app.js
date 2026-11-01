@@ -11,6 +11,7 @@ import {
   CONCERNS, characterInfo, renderCharacterSVG, characterStats, STAGE_UNLOCKS,
 } from './character.js';
 import { computeCompat, renderCompatSVG } from './compat.js';
+import { personalityOf, speak } from './personality.js';
 import { renderStoryCanvas, shareStory, STORY_TEMPLATES } from './story.js';
 import {
   STAGES, STREAK_REWARDS, emptyGrowth, checkIn, complete, addExp, evolve, claimStreakReward, summary, stageName,
@@ -54,7 +55,7 @@ function toast(msg) {
   const el = document.createElement('div');
   el.className = 'toast'; el.textContent = msg;
   document.body.appendChild(el);
-  setTimeout(() => el.remove(), 2200);
+  setTimeout(() => el.remove(), Math.min(5200, 2000 + msg.length * 35));
 }
 
 // ---------- 입력 ----------
@@ -101,6 +102,13 @@ function start(profile) {
   $('#btn-edit').classList.remove('hidden');
   renderAll();
   selectTab('saju');
+  const lastSeen = loadGrowth().streak.last;
+  state.backLine = null;
+  state.heroLine = null;
+  if (lastSeen && lastSeen !== state.fortune.dateKey) {
+    const dn = (k) => { const [y, m, d] = k.split('-').map(Number); return Date.UTC(y, m - 1, d) / 86400000; };
+    if (dn(state.fortune.dateKey) - dn(lastSeen) >= 2) state.backLine = say('back');
+  }
   grow((g) => checkIn(g, state.fortune.dateKey));
 }
 
@@ -368,6 +376,8 @@ function renderToday() {
       <p class="muted">${f.summary}${rel ? ` 오늘은 내 사주의 ${rel} 관계가 생깁니다.` : ''}</p>
     </div>
 
+    ${todaySayCard()}
+
     ${concernCard()}
 
     <div class="card">
@@ -400,11 +410,11 @@ function renderToday() {
   $('#btn-mission').addEventListener('click', () => {
     const m = load(MISSION_KEY, {});
     m[f.dateKey] = !m[f.dateKey];
-    if (m[f.dateKey]) setTimeout(() => grow((g) => complete(g, f.dateKey, 'mission')), 400);
+    const missionLead = m[f.dateKey] ? `${say('missionDone')} (액막이 부적 등급 +1)` : '';
     save(MISSION_KEY, m);
     renderToday();
     renderCharm(false);
-    if (m[f.dateKey]) toast('액땜 완료! 액막이 부적 등급이 한 단계 올랐습니다 ✦');
+    if (m[f.dateKey]) grow((g) => complete(g, f.dateKey, 'mission'), missionLead);
   });
 }
 
@@ -518,6 +528,22 @@ const CONCERN_ADVICE = {
   change: ['큰 결정은 미루세요. 정보를 더 모으는 날입니다.', '준비 단계에 집중하세요. 체크리스트를 만들어 두세요.', '새 길이 보입니다. 이직·이사 정보를 알아보기 좋습니다.', '변화의 기운이 강합니다. 결단을 내려도 좋은 날입니다.'],
 };
 
+function todaySayCard() {
+  const s = state.saju; const f = state.fortune; const p = state.profile;
+  const info = characterInfo(s, p);
+  const pers = personalityOf(zIdx());
+  const sticker = renderEmoticonSVG(s, f, { stage: heroOptions().stage, profile: p, style: 'sticker', tag: '', caption: info.zodiac.name });
+  return `<div class="card say-card">
+      <div class="say-row">
+        <div class="say-face" data-go-tab="hero" title="캐릭터 보러 가기">${sticker}</div>
+        <div style="flex:1">
+          <div class="muted" style="font-size:0.78rem">${info.name} · ${pers.type}</div>
+          ${speechBubble(todayLines(), 'left')}
+        </div>
+      </div>
+    </div>`;
+}
+
 function concernCard() {
   const s = state.saju; const f = state.fortune;
   const info = characterInfo(s, state.profile);
@@ -593,12 +619,17 @@ function renderHero(animate) {
     ${growthCard(info, gs)}
     <div class="card">
       <div class="hero-wrap">
-        <div class="hero-stage ${animate ? 'reveal' : ''}">${svg}</div>
+        <div style="width:300px;max-width:100%">
+          ${speechBubble(state.heroLine ? [state.heroLine] : todayLines().slice(0, 2), 'hero-say')}
+          <div class="hero-stage ${animate ? 'reveal' : ''}" id="hero-stage" title="눌러 보세요">${svg}</div>
+          <p class="muted" style="font-size:0.75rem;text-align:center;margin:6px 0 0">👆 캐릭터를 눌러 보세요</p>
+        </div>
         <div>
           <p class="muted" style="margin:0">${info.zodiac.name}띠(${info.zodiac.hanja}) · 일간 ${STEMS[s.dayMaster]}(${ELEMENT_KO[info.element]}) · ${info.female ? '여성' : '남성'} · 고민 ${info.concern.label}</p>
           <h3 class="hero-title">${info.title}</h3>
           <p style="margin:0 0 6px"><span class="rarity-badge" style="color:var(--gold)">Lv.${gs.level} · ${stageName(gs.stage, info.female)}</span></p>
-          <p class="muted" style="margin-top:0">띠는 동물, 타고난 기운은 한복 색, 성별은 한복 모양, 고민은 손에 든 소품으로 정해졌습니다. 부적과 이모티콘을 장착해 능력치를 올려 보세요.</p>
+          ${personalityCard()}
+          <p class="muted" style="margin-top:8px;font-size:0.82rem">띠는 동물과 성격, 타고난 기운은 한복 색, 성별은 한복 모양, 고민은 손에 든 소품으로 정해졌습니다.</p>
           <div class="slots">${slot(0)}${slot(1)}${emoteSlot}</div>
           <div class="stats" style="grid-template-columns:1fr 1fr">
             <div class="stat"><div class="k">행운력</div><div class="v" style="color:var(--gold)">${stats.luckPower}</div></div>
@@ -628,7 +659,7 @@ function renderHero(animate) {
     </div>`;
 
   const panel = $('[data-panel="hero"]');
-  const saveEquip = (next) => { save(EQUIP_KEY, next); renderHero(false); grow((g) => complete(g, f.dateKey, 'equip')); };
+  const saveEquip = (next, lead = '') => { save(EQUIP_KEY, next); renderHero(false); grow((g) => complete(g, f.dateKey, 'equip'), lead); };
   $$('[data-equip]', panel).forEach((b) => b.addEventListener('click', () => {
     const r = candidates[Number(b.dataset.equip)];
     const next = loadEquip();
@@ -637,7 +668,8 @@ function renderHero(animate) {
       const allowed = unlock.charmSlots;
       const empty = next.charms.slice(0, allowed).findIndex((c) => !c);
       next.charms[empty >= 0 ? empty : allowed - 1] = r;
-      toast(`${r.label} 장착! 행운력이 올랐습니다 ✦`);
+      saveEquip(next, `${r.label} 장착! ${say('equip')}`);
+      return;
     }
     saveEquip(next);
   }));
@@ -654,6 +686,42 @@ function renderHero(animate) {
   }));
   $('#btn-hero-png').addEventListener('click', () => downloadSVGAsPNG(svgStatic, `character-${info.zodiac.key}.png`, 3));
   bindGrowth(panel, info);
+  $('#hero-stage', panel).addEventListener('click', () => {
+    state.heroLine = say('tap');
+    const bubble = $('.hero-say', panel);
+    bubble.innerHTML = `<p>${esc(state.heroLine)}</p>`;
+    bubble.classList.remove('pop'); void bubble.offsetWidth; bubble.classList.add('pop');
+    const st = $('#hero-stage', panel);
+    st.classList.remove('jump'); void st.offsetWidth; st.classList.add('jump');
+  });
+}
+
+// ---------- 캐릭터 말투 ----------
+
+const zIdx = () => state.saju.pillars.year.branch;
+
+function say(situation, opts = {}) {
+  return speak(zIdx(), situation, { stage: heroOptions().stage, ...opts, vars: { name: state.profile.name || '주인', ...(opts.vars || {}) } });
+}
+
+function catLabel(key) {
+  return (CATEGORIES.find((c) => c.key === key) || CATEGORIES[0]).label;
+}
+
+/** 오늘의 대사 묶음: (오랜만이면 반가움) + 인사 + 점수 반응 + 최고 운 */
+function todayLines() {
+  const f = state.fortune;
+  const seed = (n) => (Number(f.dateKey.replace(/-/g, '')) * 7 + n) % 97 / 97;
+  const lines = [];
+  if (state.backLine) lines.push(state.backLine);
+  else lines.push(say('greet', { seed: seed(1) }));
+  lines.push(say('tier', { tier: f.tier, vars: { score: f.scores.total } }));
+  lines.push(say('best', { vars: { cat: catLabel(f.best) } }));
+  return lines;
+}
+
+function speechBubble(lines, cls = '') {
+  return `<div class="speech ${cls}">${lines.map((l) => `<p>${esc(l)}</p>`).join('')}</div>`;
 }
 
 // ---------- 성장·진화 ----------
@@ -663,7 +731,7 @@ function loadGrowth() {
 }
 
 /** 성장 상태를 바꾸고, 생긴 일(레벨업·진화 가능·스트릭 등)을 알려 준다 */
-function grow(fn) {
+function grow(fn, lead = '') {
   const res = fn(loadGrowth());
   save(GROWTH_KEY, res.growth);
   const msgs = [];
@@ -675,9 +743,20 @@ function grow(fn) {
     if (e.type === 'streak-reward') msgs.push(`연속 ${e.reward.days}일 보상 도착! 캐릭터 탭에서 받기`);
   }
   if (res.gained) msgs.unshift(`+${res.gained} EXP`);
+  if (lead) msgs.unshift(lead);
   if (msgs.length) toast(msgs.join(' · '));
   if (state.saju && !$('[data-panel="hero"]').classList.contains('hidden')) renderHero(false);
   return res;
+}
+
+function personalityCard() {
+  const pers = personalityOf(zIdx());
+  return `<div class="pers">
+    <div><b>${pers.type}</b></div>
+    <div class="perks" style="margin-top:4px">${pers.traits.map((t) => `<em>#${t}</em>`).join('')}</div>
+    <p style="margin:6px 0 0;font-size:0.88rem">${pers.intro}</p>
+    <p class="muted" style="margin:4px 0 0;font-size:0.8rem">말투: ${pers.voice} · 자기 호칭: "${pers.me}"${heroOptions().stage === 1 ? ' · 아기 단계라 아직 "뀨!"가 먼저 나와요' : heroOptions().stage >= 5 ? ' · 신수가 되어 말에 위엄(✦)이 생겼어요' : ''}</p>
+  </div>`;
 }
 
 function growthCard(info, gs) {
@@ -746,6 +825,7 @@ function showEvolution(info, from, to) {
     <div class="evo-stage"><div class="evo-before">${before}</div><div class="evo-after">${after}</div><div class="evo-flash"></div></div>
     <h3>${info.zodiac.name}가 <span style="color:var(--gold)">${stageName(to, info.female)}</span>(으)로 진화했습니다!</h3>
     <p class="muted">${STAGES[to - 1].desc}</p>
+    ${speechBubble([speak(zIdx(), 'evolve', { stage: to })])}
     <div class="perks" style="justify-content:center">${STAGE_UNLOCKS[to - 1].perks.map((x) => `<em>✨ ${x}</em>`).join('')}</div>
     <button class="primary" type="button">확인</button></div>`;
   document.body.appendChild(el);
@@ -838,6 +918,7 @@ function compatResultHTML(fr, idx) {
       <li><b>오행 보완</b> 서로 부족한 기운을 채워 주는 정도 <em>+${c.complement}</em></li>
       <li><b>오늘의 기운</b> 오늘 날짜에 따라 달라지는 보너스 <em>${c.todayBonus >= 0 ? '+' : ''}${c.todayBonus}</em></li>
     </ul>
+    ${speechBubble([`${myInfo.zodiac.name}: ${speak(state.saju.pillars.year.branch, 'compat', { stage, index: c.score >= 75 ? 0 : c.score >= 48 ? 1 : 2, vars: { friend: fr.name } })}`])}
     <p class="concern-card" style="margin:10px 0 0">💡 오늘의 팁: ${c.tip}</p>
     <div class="actions" style="margin-top:12px">
       <button class="primary" type="button" data-story="compat">📸 궁합 카드 스토리 공유</button>
@@ -947,7 +1028,7 @@ async function renderStory() {
     profile: state.profile,
     template: tpl,
     url: shareUrl(),
-    hero: { info: characterInfo(state.saju, state.profile), ...heroOptions() },
+    hero: { info: characterInfo(state.saju, state.profile), ...heroOptions(), quote: say('tier', { tier: state.fortune.tier, vars: { score: state.fortune.scores.total } }) },
     compat: state.compat,
   });
   if (state.storyTemplate !== tpl) return; // 그사이 다른 템플릿을 고른 경우

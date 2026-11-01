@@ -231,13 +231,19 @@ async function drawHero(ctx, d) {
   ctx.drawImage(img, (STORY_W - w) / 2, 310, w, h);
   ctx.restore();
   glowText(ctx, info.title, 540, 1172, { font: `800 54px ${SANS}`, align: 'center', glow: EL_COLORS[info.element], blur: 18 });
-  glowText(ctx, `${info.zodiac.name}띠 · ${f.info.title} · 총운 ${f.scores.total}점`, 540, 1236, { font: `400 34px ${SANS}`, color: '#cfcaf2', align: 'center' });
+  if (d.hero.quote) {
+    ctx.font = `600 32px ${SANS}`;
+    const lines = wrap(ctx, `“${d.hero.quote}”`, 840).slice(0, 2);
+    lines.forEach((line, i) => glowText(ctx, line, 540, 1232 + i * 44, { font: `600 32px ${SANS}`, color: '#ffe39a', align: 'center' }));
+  } else {
+    glowText(ctx, `${info.zodiac.name}띠 · ${f.info.title} · 총운 ${f.scores.total}점`, 540, 1236, { font: `400 34px ${SANS}`, color: '#cfcaf2', align: 'center' });
+  }
   const equipped = charms.filter(Boolean);
   const stats = characterStats(d.saju, f, info, charms);
   chips(ctx, [
     { text: `${stats.concern.label} ${stats.concern.value}`, dot: EL_COLORS[info.element] },
     equipped.length ? { text: `부적 ${equipped.length}개 장착`, dot: equipped[0].rarity.color } : { text: `행운색 ${f.luck.color}`, dot: f.luck.hex },
-  ], 1300);
+  ], 1330);
 }
 
 async function drawCompat(ctx, d) {
