@@ -304,3 +304,17 @@ select option { background: #1d1742; color: #ffffff; }
 @keyframes evoOut { 0% { filter: none; } 30% { filter: brightness(0) invert(1); } 45%, 100% { opacity: 0; filter: brightness(0) invert(1); transform: scale(1.1); } }
 @keyframes evoIn { 0%, 50% { opacity: 0; transform: scale(0.6); filter: brightness(0) invert(1); } 70% { opacity: 1; filter: brightness(0) invert(1); transform: scale(1.08); } 100% { opacity: 1; filter: none; transform: none; } }
 @keyframes flash { 0%, 35% { opacity: 0; } 50% { opacity: 1; } 75%, 100% { opacity: 0; } }
+
+/* 단계 해금·궁합 */
+.slot.locked { border-style: dashed; opacity: 0.6; cursor: not-allowed; background: repeating-linear-gradient(45deg, rgba(255,255,255,0.02), rgba(255,255,255,0.02) 6px, rgba(255,255,255,0.05) 6px, rgba(255,255,255,0.05) 12px); }
+.perks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; font-size: 0.8rem; }
+.perks em { font-style: normal; padding: 3px 10px; border-radius: 999px; border: 1px solid rgba(255, 201, 60, 0.5); color: #ffe39a; background: rgba(255, 201, 60, 0.08); }
+.hero-stage { overflow: hidden; }
+.friend-form { display: grid; gap: 10px; }
+.friend-form input[type="text"] { font: inherit; color: #fff; background: #1d1742; border: 1px solid rgba(160, 140, 255, 0.35); border-radius: 12px; padding: 12px 14px; }
+.compat-stage { border-radius: 20px; overflow: hidden; }
+.compat-stage svg { width: 100%; height: auto; display: block; }
+.reasons { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 6px; font-size: 0.86rem; color: #cfcaf2; }
+.reasons li { padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); }
+.reasons b { color: #fff; margin-right: 6px; }
+.reasons em { font-style: normal; float: right; font-family: var(--mono); color: var(--gold); }

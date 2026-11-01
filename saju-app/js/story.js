@@ -5,6 +5,7 @@ import { CATEGORIES } from './fortune.js';
 import { ELEMENT_KO, ELEMENT_HANJA, STEM_ELEMENT, STEMS } from './saju.js';
 import { renderTalismanSVG } from './talisman.js';
 import { renderCharacterSVG, characterStats } from './character.js';
+import { renderCompatSVG } from './compat.js';
 
 export const STORY_W = 1080;
 export const STORY_H = 1920;
@@ -13,6 +14,7 @@ export const STORY_TEMPLATES = [
   { key: 'fortune', label: '오늘의 운세' },
   { key: 'charm', label: '오늘의 부적' },
   { key: 'hero', label: '수호 캐릭터' },
+  { key: 'compat', label: '친구 궁합' },
 ];
 
 const EL_COLORS = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
@@ -238,7 +240,27 @@ async function drawHero(ctx, d) {
   ], 1300);
 }
 
-const DRAWERS = { fortune: drawFortune, charm: drawCharm, hero: drawHero, emoji: drawHero };
+async function drawCompat(ctx, d) {
+  const c = d.compat;
+  const svg = renderCompatSVG(c.myInfo, c.friendInfo, c.compat, { myName: c.myName, friendName: c.friendName, myStage: c.myStage, myCharms: c.myCharms });
+  const img = await svgToImage(svg);
+  const w = 960; const h = 720;
+  ctx.save();
+  ctx.shadowColor = c.compat.grade.color; ctx.shadowBlur = 50;
+  rr(ctx, 60, 330, w, h, 40); ctx.clip();
+  ctx.drawImage(img, 60, 330, w, h);
+  ctx.restore();
+  glowText(ctx, `${c.myName} × ${c.friendName}`, 540, 1130, { font: `800 56px ${SANS}`, align: 'center', glow: c.compat.grade.color, blur: 18 });
+  ctx.font = `400 34px ${SANS}`;
+  wrap(ctx, c.compat.grade.desc, 860).slice(0, 2).forEach((line, i) => glowText(ctx, line, 540, 1196 + i * 48, { font: `400 34px ${SANS}`, color: '#cfcaf2', align: 'center' }));
+  chips(ctx, [
+    { text: `연애 ${c.compat.sub.love}`, dot: '#ff4d8d' },
+    { text: `우정 ${c.compat.sub.friend}`, dot: '#39ff88' },
+    { text: `일 ${c.compat.sub.work}`, dot: '#00e5ff' },
+  ], 1310);
+}
+
+const DRAWERS = { fortune: drawFortune, charm: drawCharm, hero: drawHero, emoji: drawHero, compat: drawCompat };
 
 /**
  * @param d {saju, fortune, talisman, profile, template, url}
@@ -248,9 +270,9 @@ export async function renderStoryCanvas(d) {
   const canvas = document.createElement('canvas');
   canvas.width = STORY_W; canvas.height = STORY_H;
   const ctx = canvas.getContext('2d');
-  const accent = d.template === 'charm' ? d.talisman.rarity.color : d.template === 'hero' ? EL_COLORS[d.hero.info.element] : '#00E5FF';
+  const accent = d.template === 'charm' ? d.talisman.rarity.color : d.template === 'hero' ? EL_COLORS[d.hero.info.element] : d.template === 'compat' ? d.compat.grade?.color || d.compat.compat.grade.color : '#00E5FF';
 
-  await ensureFonts(`운명공방2099나도오늘의부적받기✦※효과수치는재미를위한게임요소입니다${d.profile.name || ''}님의${d.fortune.info.title}${d.fortune.info.desc}${CATEGORIES.map((c) => c.label).join('')}총운행운색숫자${d.fortune.luck.color}${d.fortune.luck.direction}${d.talisman.type.label}${d.talisman.type.hanja}${d.talisman.effects.map((e) => e.stat).join('')}기운보충수호캐릭터${d.hero.info.title}${d.hero.info.concern.stat}띠개장착부적일간${STEMS.join('')}일반희귀영웅전설신화목화토금수木火土金水符0123456789.:/[]+-%()`);
+  await ensureFonts(`운명공방2099나도오늘의부적받기✦※효과수치는재미를위한게임요소입니다${d.profile.name || ''}님의${d.fortune.info.title}${d.fortune.info.desc}${CATEGORIES.map((c) => c.label).join('')}총운행운색숫자${d.fortune.luck.color}${d.fortune.luck.direction}${d.talisman.type.label}${d.talisman.type.hanja}${d.talisman.effects.map((e) => e.stat).join('')}기운보충수호캐릭터${d.hero.info.title}${d.hero.info.concern.stat}띠개장착부적일간연애우정일친구궁합×천생연분찰떡궁합든든한짝꿍티격태격케미밀당중인사이${d.compat ? d.compat.myName + d.compat.friendName + d.compat.compat.grade.desc : ''}${STEMS.join('')}일반희귀영웅전설신화목화토금수木火土金水符0123456789.:/[]+-%()`);
 
   background(ctx, accent);
   header(ctx, d);

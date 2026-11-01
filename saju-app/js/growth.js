@@ -21,6 +21,7 @@ export const QUESTS = [
   { key: 'charm', label: '부적 만들어 도감에 저장', exp: 10, icon: '📜' },
   { key: 'equip', label: '부적·이모티콘 장착', exp: 5, icon: '🎒' },
   { key: 'share', label: '스토리 카드 공유·저장', exp: 20, icon: '📸' },
+  { key: 'compat', label: '친구와 궁합 보기', exp: 10, icon: '💞' },
 ];
 
 export const STREAK_REWARDS = [

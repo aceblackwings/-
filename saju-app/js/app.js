@@ -8,8 +8,9 @@ import {
 } from './talisman.js';
 import { renderEmoticonSVG, EMOTES, todayEmote } from './emoticon.js';
 import {
-  CONCERNS, characterInfo, renderCharacterSVG, characterStats,
+  CONCERNS, characterInfo, renderCharacterSVG, characterStats, STAGE_UNLOCKS,
 } from './character.js';
+import { computeCompat, renderCompatSVG } from './compat.js';
 import { renderStoryCanvas, shareStory, STORY_TEMPLATES } from './story.js';
 import {
   STAGES, STREAK_REWARDS, emptyGrowth, checkIn, complete, addExp, evolve, claimStreakReward, summary, stageName,
@@ -23,6 +24,7 @@ const COLLECTION_KEY = 'unmyeong2099.collection';
 const MISSION_KEY = 'unmyeong2099.missions';
 const EQUIP_KEY = 'unmyeong2099.equip';
 const GROWTH_KEY = 'unmyeong2099.growth';
+const FRIENDS_KEY = 'unmyeong2099.friends';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
 const EL_COLORS = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
 
@@ -223,6 +225,7 @@ function renderAll() {
   renderCharm(false);
   renderHero(false);
   renderEmoji();
+  renderCompat();
 }
 
 // ---------- 사주 분석 ----------
@@ -551,16 +554,21 @@ const sameRecord = (a, b) => a && b && a.type === b.type && a.theme === b.theme 
 
 function heroOptions() {
   const eq = loadEquip();
-  const charms = eq.charms.map(charmFromRecord);
-  return { eq, charms, mood: eq.emote || todayEmote(state.fortune), emote: eq.emote, stage: loadGrowth().evolved };
+  const stage = loadGrowth().evolved;
+  const unlock = STAGE_UNLOCKS[stage - 1];
+  const charms = eq.charms.map((r, i) => (i < unlock.charmSlots ? charmFromRecord(r) : null));
+  const emote = unlock.emote ? eq.emote : null;
+  return { eq, charms, mood: emote || todayEmote(state.fortune), emote, stage, unlock };
 }
 
 function renderHero(animate) {
   const s = state.saju; const f = state.fortune; const p = state.profile;
   const info = characterInfo(s, p);
-  const { eq, charms, mood, emote, stage } = heroOptions();
+  const { eq, charms, mood, emote, stage, unlock } = heroOptions();
+  info.stage = stage;
   const stats = characterStats(s, f, info, charms);
-  const svg = renderCharacterSVG(info, { mood, charms, emote, stage, width: 300 });
+  const svg = renderCharacterSVG(info, { mood, charms, emote, stage, width: 300, backdrop: true, animate: true });
+  const svgStatic = renderCharacterSVG(info, { mood, charms, emote, stage, width: 300, backdrop: true });
   const gs = summary(loadGrowth(), f.dateKey);
 
   // 장착 후보: 지금 공방의 부적 + 도감
@@ -570,11 +578,12 @@ function renderHero(animate) {
     .filter((r, i, arr) => arr.findIndex((x) => sameRecord(x, r)) === i);
 
   const slot = (i) => {
+    if (i >= unlock.charmSlots) return `<div class="slot locked"><span>🔒 부적 슬롯 ${i + 1}<br>Lv.10 진화 시 해금</span></div>`;
     const t = charms[i];
     return `<div class="slot ${t ? 'filled' : ''}" data-slot="${i}" title="${t ? '눌러서 해제' : ''}">
       ${t ? `${renderTalismanSVG(t)}<span>${t.rarity.label} ${t.type.label}부</span>` : `<span>부적 슬롯 ${i + 1}<br>비어 있음</span>`}</div>`;
   };
-  const emoteSlot = emote
+  const emoteSlot = !unlock.emote ? '<div class="slot locked"><span>🔒 이모티콘 슬롯<br>Lv.5 진화 시 해금</span></div>' : emote
     ? `<div class="slot emote filled" data-slot="emote">${renderEmoticonSVG(s, f, { stage: heroOptions().stage, profile: p, mood: emote, style: 'sticker', tag: '' })}<span>${EMOTES.find((e) => e.key === emote).label}</span></div>`
     : `<div class="slot emote" data-slot="emote"><span>이모티콘 슬롯<br>비어 있음</span></div>`;
 
@@ -625,8 +634,9 @@ function renderHero(animate) {
     const next = loadEquip();
     const idx = next.charms.findIndex((c) => sameRecord(c, r));
     if (idx >= 0) { next.charms[idx] = null; toast('부적을 해제했습니다'); } else {
-      const empty = next.charms.findIndex((c) => !c);
-      next.charms[empty >= 0 ? empty : 1] = r;
+      const allowed = unlock.charmSlots;
+      const empty = next.charms.slice(0, allowed).findIndex((c) => !c);
+      next.charms[empty >= 0 ? empty : allowed - 1] = r;
       toast(`${r.label} 장착! 행운력이 올랐습니다 ✦`);
     }
     saveEquip(next);
@@ -637,11 +647,12 @@ function renderHero(animate) {
     saveEquip(next);
   }));
   $$('[data-emote]', panel).forEach((b) => b.addEventListener('click', () => {
+    if (!unlock.emote) { toast('🔒 Lv.5 견습 수호령으로 진화하면 이모티콘을 장착할 수 있어요'); return; }
     const next = loadEquip();
     next.emote = next.emote === b.dataset.emote ? null : b.dataset.emote;
     saveEquip(next);
   }));
-  $('#btn-hero-png').addEventListener('click', () => downloadSVGAsPNG(svg, `character-${info.zodiac.key}.png`, 3));
+  $('#btn-hero-png').addEventListener('click', () => downloadSVGAsPNG(svgStatic, `character-${info.zodiac.key}.png`, 3));
   bindGrowth(panel, info);
 }
 
@@ -688,9 +699,10 @@ function growthCard(info, gs) {
     </div>
     <div class="exp"><div class="exp-fill" style="width:${pct}%"></div><span>${gs.into} / ${gs.need} EXP</span></div>
     ${gs.canEvolve ? `<button class="primary evolve-btn" type="button" id="btn-evolve">✦ ${stageName(gs.reachedStage, info.female)}(으)로 진화하기 ✦</button>` : `<p class="muted" style="margin:8px 0 0;font-size:0.85rem">${gs.next ? `다음 진화 <b>${stageName(gs.next.stage, info.female)}</b>까지 ${gs.levelsToNext}레벨 — ${gs.next.desc}` : '최종 진화 완료! 전설의 신수가 되었습니다.'}</p>`}
+    ${gs.next ? `<div class="perks"><span class="muted">다음 진화 보상</span>${STAGE_UNLOCKS[gs.next.stage - 1].perks.map((x) => `<em>🎁 ${x}</em>`).join('')}</div>` : ''}
     ${rewards ? `<div class="actions" style="margin-top:10px">${rewards}</div>` : ''}
     <div class="evo-road">${thumbs}</div>
-    <h4 style="margin:14px 0 6px">오늘의 퀘스트 <span class="muted" style="font-weight:400;font-size:0.8rem">(${gs.todayExp} / 80 EXP)</span></h4>
+    <h4 style="margin:14px 0 6px">오늘의 퀘스트 <span class="muted" style="font-weight:400;font-size:0.8rem">(${gs.todayExp} / 90 EXP)</span></h4>
     <ul class="quests">${quests}</ul>
     <p class="muted" style="font-size:0.78rem;margin:8px 0 0">${gs.nextReward ? `🔥 ${gs.nextReward.days}일 연속 출석하면: ${gs.nextReward.label}` : '모든 연속 출석 보상을 받았습니다!'}</p>
     <details class="advanced" style="margin-top:10px"><summary>프로토타입 체험 도구</summary>
@@ -725,8 +737,8 @@ function bindGrowth(panel, info) {
 
 function showEvolution(info, from, to) {
   const { charms, emote } = heroOptions();
-  const before = renderCharacterSVG(info, { stage: from, width: 260, mood: 'wow' });
-  const after = renderCharacterSVG(info, { stage: to, width: 260, mood: 'excited', charms, emote });
+  const before = renderCharacterSVG(info, { stage: from, width: 260, mood: 'wow', backdrop: true });
+  const after = renderCharacterSVG(info, { stage: to, width: 260, mood: 'excited', charms, emote, backdrop: true, animate: true });
   const el = document.createElement('div');
   el.className = 'evo-modal';
   el.innerHTML = `<div class="evo-box">
@@ -734,9 +746,107 @@ function showEvolution(info, from, to) {
     <div class="evo-stage"><div class="evo-before">${before}</div><div class="evo-after">${after}</div><div class="evo-flash"></div></div>
     <h3>${info.zodiac.name}가 <span style="color:var(--gold)">${stageName(to, info.female)}</span>(으)로 진화했습니다!</h3>
     <p class="muted">${STAGES[to - 1].desc}</p>
+    <div class="perks" style="justify-content:center">${STAGE_UNLOCKS[to - 1].perks.map((x) => `<em>✨ ${x}</em>`).join('')}</div>
     <button class="primary" type="button">확인</button></div>`;
   document.body.appendChild(el);
   el.querySelector('button').addEventListener('click', () => { el.remove(); renderHero(true); renderEmoji(); });
+}
+
+// ---------- 친구 궁합 ----------
+
+function friendSaju(fr) {
+  const solar = fr.calendar === 'lunar' ? lunarToSolar(fr.year, fr.month, fr.day, false) : { year: fr.year, month: fr.month, day: fr.day };
+  if (solar.error) return { error: solar.error };
+  return computeSaju({ ...solar, timeKnown: false });
+}
+
+function renderCompat() {
+  const panel = $('[data-panel="compat"]');
+  const friends = load(FRIENDS_KEY, []);
+  const sel = state.compatIdx ?? (friends.length ? 0 : null);
+  const opt = (n, a, b) => Array.from({ length: b - a + 1 }, (_, i) => `<option value="${a + i}">${a + i}${n}</option>`).join('');
+  panel.innerHTML = `
+    <div class="card">
+      <h3>💞 친구 궁합 <span class="tag">COMPATIBILITY</span></h3>
+      <p class="muted" style="margin-top:0">친구의 생일만 넣으면 친구의 12지신 캐릭터가 만들어지고, 띠·타고난 기운·오행 보완으로 궁합을 봐 드려요. 친구 정보는 이 기기에만 저장됩니다.</p>
+      <form id="friend-form" class="friend-form" autocomplete="off">
+        <input name="fname" type="text" maxlength="10" placeholder="친구 이름" required>
+        <div class="seg"><label><input type="radio" name="fgender" value="female" checked><span>여성</span></label><label><input type="radio" name="fgender" value="male"><span>남성</span></label></div>
+        <div class="seg"><label><input type="radio" name="fcal" value="solar" checked><span>양력</span></label><label><input type="radio" name="fcal" value="lunar"><span>음력</span></label></div>
+        <div class="ymd">
+          <input name="fyear" type="number" min="1900" max="2100" placeholder="년도" required>
+          <select name="fmonth">${opt('월', 1, 12)}</select>
+          <select name="fday">${opt('일', 1, 31)}</select>
+        </div>
+        <button class="primary" type="submit">궁합 보기 ✦</button>
+      </form>
+      ${friends.length ? `<div class="chips" style="margin-top:12px">${friends.map((fr, i) => `<button class="chip" type="button" data-friend="${i}" aria-pressed="${i === sel}">${esc(fr.name)}</button>`).join('')}</div>` : ''}
+    </div>
+    <div id="compat-result">${sel !== null && friends[sel] ? compatResultHTML(friends[sel], sel) : '<div class="card"><p class="muted" style="margin:0">친구를 추가하면 두 캐릭터가 함께 나오는 궁합 카드가 만들어집니다.</p></div>'}</div>`;
+
+  const form = $('#friend-form', panel);
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const fr = { name: form.fname.value.trim() || '친구', gender: form.fgender.value, calendar: form.fcal.value, year: Number(form.fyear.value), month: Number(form.fmonth.value), day: Number(form.fday.value) };
+    if (!validYear(fr.year)) { toast('1900~2100년 사이로 입력해 주세요'); return; }
+    const fs = friendSaju(fr);
+    if (fs.error) { toast(fs.error); return; }
+    const list = load(FRIENDS_KEY, []);
+    list.unshift(fr);
+    save(FRIENDS_KEY, list.slice(0, 12));
+    state.compatIdx = 0;
+    renderCompat();
+    grow((g) => complete(g, state.fortune.dateKey, 'compat'));
+  });
+  $$('[data-friend]', panel).forEach((b) => b.addEventListener('click', () => { state.compatIdx = Number(b.dataset.friend); renderCompat(); }));
+  $('#btn-friend-del', panel)?.addEventListener('click', () => {
+    const list = load(FRIENDS_KEY, []);
+    list.splice(sel, 1); save(FRIENDS_KEY, list); state.compatIdx = list.length ? 0 : null; renderCompat();
+  });
+  $('#btn-compat-charm', panel)?.addEventListener('click', () => {
+    const c = state.compat;
+    const rarity = c.compat.score >= 88 ? 'legend' : c.compat.score >= 75 ? 'epic' : c.compat.score >= 62 ? 'rare' : 'common';
+    const t = createTalisman(state.saju, state.fortune, { type: c.friendInfo.female !== state.profile.gender ? 'love' : 'luck', theme: 'neon', element: c.friendSaju.weakest, rarity });
+    const list = load(COLLECTION_KEY, []);
+    list.unshift({ ...recordOf(t), label: `${c.friendName}와의 ${t.rarity.label} 인연부` });
+    save(COLLECTION_KEY, list.slice(0, 60));
+    toast(`💞 ${c.friendName}와의 ${t.rarity.label} 인연부를 도감에 넣었어요. 캐릭터 탭에서 장착하세요!`);
+    renderCharm(false);
+  });
+  $('#btn-compat-png', panel)?.addEventListener('click', () => downloadSVGAsPNG(state.compat.svg, `compat-${state.compat.friendName}.png`, 3));
+}
+
+function compatResultHTML(fr, idx) {
+  const fs = friendSaju(fr);
+  if (fs.error) return `<div class="card"><p class="muted">${fs.error}</p></div>`;
+  const myInfo = characterInfo(state.saju, state.profile);
+  const friendInfo = characterInfo(fs, { gender: fr.gender, concern: 'people' });
+  const c = computeCompat(state.saju, fs, state.fortune.date);
+  const { charms, stage } = heroOptions();
+  const myName = state.profile.name || '나';
+  const svg = renderCompatSVG(myInfo, friendInfo, c, { myName, friendName: fr.name, myStage: stage, myCharms: charms });
+  state.compat = { myInfo, friendInfo, compat: c, svg, myName, friendName: fr.name, friendSaju: fs, myStage: stage, myCharms: charms };
+  const bar = (label, v) => `<div class="bar"><span>${label}</span><div class="track"><div class="fill" style="width:${v}%;background:${scoreColor(v)};color:${scoreColor(v)}"></div></div><span class="num">${v}</span></div>`;
+  return `<div class="card">
+    <div class="compat-stage">${svg}</div>
+    <h3 style="margin:12px 0 4px;color:${c.grade.color}">${c.grade.label} · ${c.score}점</h3>
+    <p style="margin-top:0">${c.grade.desc}</p>
+    <div class="bars">${bar('💕 연애', c.sub.love)}${bar('🤝 우정', c.sub.friend)}${bar('💼 일', c.sub.work)}</div>
+    <ul class="reasons">
+      <li><b>띠</b> ${myInfo.zodiac.name}띠 × ${friendInfo.zodiac.name}띠 — ${c.branch.label}: ${c.branch.text} <em>${c.branch.score >= 0 ? '+' : ''}${c.branch.score}</em></li>
+      <li><b>타고난 기운</b> ${STEMS[state.saju.dayMaster]} × ${STEMS[fs.dayMaster]} — ${c.stem.label}: ${c.stem.text} <em>${c.stem.score >= 0 ? '+' : ''}${c.stem.score}</em></li>
+      <li><b>오행 보완</b> 서로 부족한 기운을 채워 주는 정도 <em>+${c.complement}</em></li>
+      <li><b>오늘의 기운</b> 오늘 날짜에 따라 달라지는 보너스 <em>${c.todayBonus >= 0 ? '+' : ''}${c.todayBonus}</em></li>
+    </ul>
+    <p class="concern-card" style="margin:10px 0 0">💡 오늘의 팁: ${c.tip}</p>
+    <div class="actions" style="margin-top:12px">
+      <button class="primary" type="button" data-story="compat">📸 궁합 카드 스토리 공유</button>
+      <button class="ghost" type="button" id="btn-compat-charm">💞 인연 부적 받기</button>
+      <button class="ghost" type="button" id="btn-compat-png">PNG 저장</button>
+      <button class="ghost" type="button" id="btn-friend-del">친구 삭제</button>
+    </div>
+    <p class="muted" style="font-size:0.78rem;margin-bottom:0">친구 캐릭터는 생일만으로 만든 임시 캐릭터입니다. 친구가 직접 가입하면 성별·고민·진화가 반영된 진짜 캐릭터로 바뀌어요.</p>
+  </div>`;
 }
 
 // ---------- 행운 이모티콘 ----------
@@ -826,6 +936,10 @@ async function renderStory() {
     try { await navigator.clipboard.writeText(url); toast('링크를 복사했습니다'); } catch { toast(url); }
   });
 
+  if (tpl === 'compat' && !state.compat) {
+    $('#story-preview').innerHTML = '<span class="loading">궁합 탭에서 친구를 먼저 추가해 주세요</span>';
+    return;
+  }
   const canvas = await renderStoryCanvas({
     saju: state.saju,
     fortune: state.fortune,
@@ -834,6 +948,7 @@ async function renderStory() {
     template: tpl,
     url: shareUrl(),
     hero: { info: characterInfo(state.saju, state.profile), ...heroOptions() },
+    compat: state.compat,
   });
   if (state.storyTemplate !== tpl) return; // 그사이 다른 템플릿을 고른 경우
   state.storyCanvas = canvas;

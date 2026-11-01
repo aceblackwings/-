@@ -328,6 +328,84 @@ function crown() {
   return `<g transform="translate(160 ${88})"><path d="M-26 10 l-4 -24 l14 12 l16 -22 l16 22 l14 -12 l-4 24 z" fill="#ffd166" stroke="#b8860b" stroke-width="3" stroke-linejoin="round"/><circle cy="-2" r="5" fill="#ff4d6d" stroke="#8d1b25" stroke-width="2"/><circle cx="-16" cy="4" r="3" fill="#4fc3ff"/><circle cx="16" cy="4" r="3" fill="#39ff88"/></g>`;
 }
 
+// ---------- 진화 강화 장식 ----------
+
+const STAGE_SCALE = { 1: 0.7, 2: 0.86, 3: 0.94, 4: 1, 5: 1 };
+
+/** 단계별 배경 무대 */
+export function stageBackdrop(stage, el, id) {
+  const trim = OUTFIT[el][2];
+  const stars = (n, seed, color, maxY = 400) => Array.from({ length: n }, (_, i) => {
+    const x = (i * 97 + seed * 31) % 320; const y = (i * 53 + seed * 17) % maxY; const r = (i % 3) * 0.6 + 0.8;
+    return `<circle cx="${x}" cy="${y}" r="${r}" fill="${color}" opacity="${0.4 + (i % 4) * 0.15}"/>`;
+  }).join('');
+  switch (stage) {
+    case 1: return `<rect width="320" height="400" fill="url(#${id}-bg1)"/>${[[50, 70], [270, 90], [70, 300], [260, 320]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="20" fill="#fff" opacity="0.25"/>`).join('')}<text x="40" y="120" font-size="18" opacity="0.5">⭐</text><text x="250" y="200" font-size="16" opacity="0.5">🌙</text>`;
+    case 2: return `<rect width="320" height="400" fill="url(#${id}-bg2)"/>${stars(18, 2, '#ffffff', 300)}`;
+    case 3: return `<rect width="320" height="400" fill="url(#${id}-bg3)"/>${stars(24, 3, trim, 300)}
+      <path d="M40 330 L40 250 L70 230 L100 250 L100 330 M220 330 L220 250 L250 230 L280 250 L280 330" fill="#1a0f2e" stroke="${trim}" stroke-width="1.5" opacity="0.7"/>
+      <path d="M30 252 L70 222 L110 252 M210 252 L250 222 L290 252" fill="none" stroke="${trim}" stroke-width="2" opacity="0.8"/>`;
+    case 4: return `<rect width="320" height="400" fill="url(#${id}-bg4)"/>
+      ${[[40, 330, 40], [110, 350, 50], [210, 345, 55], [290, 330, 40], [60, 120, 26], [270, 150, 30]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" opacity="0.35"/>`).join('')}
+      <g transform="translate(160 170)" opacity="0.35"><polygon points="${Array.from({ length: 8 }, (_, i) => { const a = (i * 45 + 22.5) * Math.PI / 180; return `${Math.cos(a) * 140},${Math.sin(a) * 140}`; }).join(' ')}" fill="none" stroke="#ffd166" stroke-width="2"/><animateTransform attributeName="transform" type="rotate" from="0 160 170" to="360 160 170" dur="40s" repeatCount="indefinite" additive="sum"/></g>`;
+    default: return `<rect width="320" height="400" fill="url(#${id}-bg5)"/>${stars(46, 5, '#ffffff')}
+      <ellipse cx="160" cy="200" rx="170" ry="60" fill="none" stroke="url(#${id}-rainbow)" stroke-width="2" opacity="0.5" transform="rotate(-18 160 200)"/>
+      <circle cx="270" cy="70" r="26" fill="#fff6c8" opacity="0.8"/><circle cx="280" cy="64" r="22" fill="url(#${id}-bg5)"/>`;
+  }
+}
+
+function backdropDefs(id) {
+  return `<linearGradient id="${id}-bg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe3ef"/><stop offset="1" stop-color="#d9e8ff"/></linearGradient>
+  <linearGradient id="${id}-bg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a1240"/><stop offset="1" stop-color="#0b0820"/></linearGradient>
+  <linearGradient id="${id}-bg3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a0f3f"/><stop offset="0.7" stop-color="#140826"/><stop offset="1" stop-color="#0a0514"/></linearGradient>
+  <linearGradient id="${id}-bg4" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffcf7a"/><stop offset="0.55" stop-color="#ff9fb0"/><stop offset="1" stop-color="#9b8cff"/></linearGradient>
+  <radialGradient id="${id}-bg5" cx="50%" cy="45%" r="75%"><stop offset="0" stop-color="#3b1a78"/><stop offset="0.6" stop-color="#140a33"/><stop offset="1" stop-color="#05030f"/></radialGradient>`;
+}
+
+function eggCap() {
+  return `<path d="M96 120 q64 -84 128 0 l-12 -10 l-12 12 l-14 -14 l-12 14 l-14 -14 l-12 14 l-14 -14 l-12 12 l-12 -10 z" fill="#fffaf0" stroke="#c9b48a" stroke-width="3.5" stroke-linejoin="round"/><circle cx="140" cy="80" r="5" fill="#ffd1dc"/><circle cx="182" cy="88" r="4" fill="#cde7ff"/>`;
+}
+
+function magicCircle(el, id) {
+  const trim = OUTFIT[el][2];
+  return `<g transform="translate(160 384)" opacity="0.9"><ellipse rx="112" ry="20" fill="none" stroke="${trim}" stroke-width="2.5" filter="url(#${id}-glow)"/><ellipse rx="88" ry="15" fill="none" stroke="${trim}" stroke-width="1.2" stroke-dasharray="6 6"/>
+  ${['木', '火', '土', '金', '水'].map((h, i) => { const a = (i * 72 - 90) * Math.PI / 180; return `<text x="${Math.cos(a) * 100}" y="${Math.sin(a) * 17 + 4}" font-size="11" text-anchor="middle" fill="${trim}" font-family="'Song Myung', serif">${h}</text>`; }).join('')}</g>`;
+}
+
+function pauldrons() {
+  return `<path d="M84 276 q24 -22 48 -4 q-6 16 -26 20 q-16 0 -22 -16 z M236 276 q-24 -22 -48 -4 q6 16 26 20 q16 0 22 -16 z" fill="#ffd166" stroke="#b8860b" stroke-width="3" stroke-linejoin="round"/><path d="M92 278 q14 -8 30 -2 M228 278 q-14 -8 -30 -2" stroke="#fff6c8" stroke-width="2" fill="none"/>`;
+}
+
+function emblem(el) {
+  return `<g transform="translate(160 326)"><circle r="11" fill="#ffd166" stroke="#b8860b" stroke-width="2.5"/><text y="1" font-size="12" text-anchor="middle" dominant-baseline="central" fill="#8d1b25" font-weight="800" font-family="'Song Myung', serif">${['木', '火', '土', '金', '水'][el]}</text></g>`;
+}
+
+function goldTrim(female) {
+  return female
+    ? `<path d="M116 270 Q160 252 204 270 M88 366 Q160 386 232 366" fill="none" stroke="#ffd166" stroke-width="3"/>`
+    : `<path d="M104 272 Q160 252 216 272 M94 354 Q160 374 226 354" fill="none" stroke="#ffd166" stroke-width="3"/>`;
+}
+
+function spiritTails(el, id) {
+  const trim = OUTFIT[el][2];
+  return `<g filter="url(#${id}-glow)" opacity="0.85">${[-30, 0, 30].map((r) => `<path transform="rotate(${r} 200 330)" d="M200 330 q60 -10 78 -60 q8 -26 -10 -40 q18 30 -6 56 q-20 22 -62 44 z" fill="${trim}" fill-opacity="0.35" stroke="${trim}" stroke-width="2"/>`).join('')}</g>`;
+}
+
+function foreheadGem() {
+  return `<g transform="translate(160 128)"><path d="M0 -10 l8 10 l-8 10 l-8 -10 z" fill="#ff4d6d" stroke="#ffd166" stroke-width="2.5"/><circle cx="-2" cy="-3" r="2" fill="#fff"/></g>`;
+}
+
+function particles(id) {
+  return Array.from({ length: 10 }, (_, i) => {
+    const x = 30 + ((i * 67) % 260); const y = 60 + ((i * 41) % 260);
+    return `<path d="M${x} ${y - 6} l2 4 l4 2 l-4 2 l-2 4 l-2 -4 l-4 -2 l4 -2 z" fill="${i % 2 ? '#ffd166' : '#fff'}"><animate attributeName="opacity" values="0.2;1;0.2" dur="${1.6 + (i % 4) * 0.4}s" repeatCount="indefinite"/></path>`;
+  }).join('');
+}
+
+function headShine() {
+  return `<ellipse cx="124" cy="128" rx="30" ry="16" fill="#ffffff" opacity="0.28" transform="rotate(-20 124 128)"/><ellipse cx="160" cy="250" rx="70" ry="10" fill="#000" opacity="0.06"/>`;
+}
+
 // ---------- 공개 API ----------
 
 /**
@@ -368,6 +446,7 @@ export function characterMarkup(info, opts = {}) {
     <filter id="${id}-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     <linearGradient id="${id}-wing" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="${trim}" stop-opacity="0.85"/></linearGradient>
     <linearGradient id="${id}-rainbow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff4d6d"/><stop offset="0.25" stop-color="#ffc93c"/><stop offset="0.5" stop-color="#39ff88"/><stop offset="0.75" stop-color="#00e5ff"/><stop offset="1" stop-color="#c77dff"/></linearGradient>
+    ${opts.backdrop ? backdropDefs(id) : ''}
     <radialGradient id="${id}-aura" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="${trim}" stop-opacity="0.35"/><stop offset="0.7" stop-color="${trim}" stop-opacity="0.08"/><stop offset="1" stop-color="${trim}" stop-opacity="0"/></radialGradient>`;
 
   const auraMarkup = aura ? `
@@ -375,37 +454,59 @@ export function characterMarkup(info, opts = {}) {
     <circle cx="160" cy="220" r="128" fill="none" stroke="${stage >= 5 ? `url(#${id}-rainbow)` : trim}" stroke-width="${stage >= 5 ? 4 : 1.5}" stroke-dasharray="${stage >= 5 ? '0' : '3 9'}" opacity="${stage >= 5 ? 0.9 : 0.6}"/>
     ${stage >= 4 ? '' : `<text x="160" y="58" font-size="20" text-anchor="middle" fill="${trim}" opacity="0.5" font-family="'Song Myung', serif">${z.hanja}</text>`}` : '';
 
+  const blinkEyes = opts.animate
+    ? `<g transform="translate(0 180)"><g><animateTransform attributeName="transform" type="scale" values="1 1;1 1;1 0.1;1 1" keyTimes="0;0.9;0.95;1" dur="4.2s" repeatCount="indefinite"/><g transform="translate(0 -180)">${eyes(mood, female)}</g></g></g>`
+    : eyes(mood, female);
+
   const figure = `
     ${stage >= 5 ? wings(el, id) : ''}
+    ${stage >= 5 ? spiritTails(el, id) : ''}
     ${stage >= 3 ? cape(el, id) : ''}
+    ${stage === 3 ? magicCircle(el, id) : ''}
     <ellipse cx="160" cy="384" rx="76" ry="10" fill="#000" opacity="0.28"/>
     ${stage >= 4 ? cloud() : ''}
     ${tail(z, el, id)}
     ${feet(z)}
     ${outfit(el, female, id)}
+    ${stage >= 4 ? goldTrim(female) : ''}
+    ${stage >= 3 ? emblem(el) : ''}
     ${stage === 1 ? bib(el) : ''}
     ${arms(z, el)}
+    ${stage >= 3 ? pauldrons() : ''}
     ${miniCharm(charms[0], 112, 352, -10)}
-    ${prop(concern.key)}
+    ${stage >= 2 ? prop(concern.key) : ''}
     ${stage >= 4 ? halo(id) : ''}
     ${earsBehind(z)}
     ${headShape(z)}
     ${faceMarks(z)}
+    ${headShine()}
     ${cheeks(z)}
-    ${eyes(mood, female)}
+    ${blinkEyes}
     ${noseMouth(z, mood)}
-    ${stage >= 5 ? '' : headAccessory(concern.key, female, el, z)}
-    ${stage >= 5 ? crown() : ''}
+    ${stage >= 5 ? foreheadGem() : ''}
+    ${stage === 1 ? eggCap() : stage >= 5 ? crown() : headAccessory(concern.key, female, el, z)}
     ${miniCharm(charms[1], 48, 96, -14, 0.9)}
     ${emoteBubble(emote)}
     ${mood === 'sleepy' ? `<text x="236" y="120" font-size="26" font-weight="800" fill="${z.dark}" font-family="sans-serif">z</text><text x="252" y="96" font-size="20" font-weight="800" fill="${z.dark}" font-family="sans-serif">z</text>` : ''}
     ${mood === 'fighting' ? `<path d="M262 160 q8 -14 4 -24 q12 8 8 22 z" fill="#4fc3ff" opacity="0.9"/>` : ''}
     ${mood === 'smile' || mood === 'excited' ? `<path d="M52 230 l4 8 l8 4 l-8 4 l-4 8 l-4 -8 l-8 -4 l8 -4 z M270 238 l3 6 l6 3 l-6 3 l-3 6 l-3 -6 l-6 -3 l6 -3 z" fill="#ffd166"/>` : ''}
     ${stage === 1 ? eggShell() : ''}`;
-  const scaled = stage === 1 ? `<g transform="translate(160 384) scale(0.84) translate(-160 -384)">${figure}</g>` : figure;
-  const body = `${auraMarkup}${scaled}${stage >= 3 ? orbs(stage, el, id) : ''}`;
+  const sc = STAGE_SCALE[stage] || 1;
+  const bounce = opts.animate ? `<animateTransform attributeName="transform" type="translate" values="0 0;0 -5;0 0" dur="${stage === 1 ? 1.4 : 2.4}s" repeatCount="indefinite" additive="sum"/>` : '';
+  const scaled = `<g transform="translate(160 384) scale(${sc}) translate(-160 -384)"><g>${bounce}${figure}</g></g>`;
+  const backdrop = opts.backdrop ? stageBackdrop(stage, el, id) : '';
+  const body = `${backdrop}${auraMarkup}${scaled}${stage >= 3 ? orbs(stage, el, id) : ''}${stage >= 5 ? particles(id) : ''}`;
   return { id, defs, body };
 }
+
+/** 진화 단계별 해금: 부적 슬롯 수, 이모티콘 슬롯 */
+export const STAGE_UNLOCKS = [
+  { stage: 1, charmSlots: 1, emote: false, perks: ['부적 슬롯 1칸'] },
+  { stage: 2, charmSlots: 1, emote: true, perks: ['이모티콘 슬롯 해금', '고민 소품 장착'] },
+  { stage: 3, charmSlots: 2, emote: true, perks: ['부적 슬롯 2칸', '망토·어깨갑옷', '오행 구슬 2개', '능력치 +12'] },
+  { stage: 4, charmSlots: 2, emote: true, perks: ['광륜·구름', '오행 구슬 5개', '금빛 한복 테두리', '능력치 +18'] },
+  { stage: 5, charmSlots: 2, emote: true, perks: ['날개·금관·영험한 꼬리', '무지개 오라', '우주 배경', '능력치 +24'] },
+];
 
 export function renderCharacterSVG(info, opts = {}) {
   const { defs, body } = characterMarkup(info, opts);
@@ -424,6 +525,8 @@ export function characterStats(saju, fortune, info, charms = []) {
     { key: 'wisdom', label: '지혜(水)', value: 40 + e[4] },
   ];
   let bonus = 0;
+  const stage = info.stage || 2;
+  base.forEach((b) => { b.value += (stage - 1) * 6; });
   charms.filter(Boolean).forEach((t) => {
     const main = t.effects[0];
     bonus += Math.abs(main.value);
@@ -434,7 +537,8 @@ export function characterStats(saju, fortune, info, charms = []) {
   return {
     base: base.map((b) => ({ ...b, value: Math.min(120, b.value) })),
     concern: { label: info.concern.stat, value: Math.min(99, concernScore + Math.round(bonus / 2)), baseValue: concernScore },
-    luckPower: Math.round(base.reduce((s, b) => s + b.value, 0) / 5 + bonus),
+    luckPower: Math.round(base.reduce((s, b) => s + b.value, 0) / 5 + bonus + (stage - 1) * 10),
+    stageBonus: (stage - 1) * 6,
     bonus,
   };
 }
