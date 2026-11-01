@@ -96,7 +96,7 @@ export function pillarLabelFull(p) {
 export const CHARGE_BY_RARITY = { common: 3, rare: 5, epic: 8, legend: 12, myth: 20 };
 
 export function emptyLuck(year) {
-  return { year, charge: [0, 0, 0, 0, 0], log: {}, total: 0 };
+  return { year, charge: [0, 0, 0, 0, 0], log: {}, total: 0, lifetime: 0 };
 }
 
 /** 오행별 목표치: 부족한 기운일수록 더 많이 모아야 하고, 채우면 효과도 크다 */
@@ -108,7 +108,7 @@ export function chargeTargets(saju) {
  * 충전 (같은 출처는 하루 1번)
  * @param source 'daily' | 'mission' | 'reward' | 'gift' | 'test' 등
  */
-export function addCharge(luck, saju, { element, amount, source, dateKey }) {
+export function addCharge(luck, saju, { element, amount, source, dateKey, extraMult }) {
   const l = structuredClone(luck);
   l.log[dateKey] = l.log[dateKey] || {};
   if (source !== 'reward' && source !== 'test' && l.log[dateKey][source]) return { luck: l, added: 0 };
@@ -116,16 +116,17 @@ export function addCharge(luck, saju, { element, amount, source, dateKey }) {
   const keys = Object.keys(l.log);
   if (keys.length > 40) keys.slice(0, keys.length - 40).forEach((k) => delete l.log[k]);
   const mult = element === saju.yongsin ? 1.5 : element === saju.weakest ? 1.3 : 1;
-  const added = Math.round(amount * mult);
+  const added = Math.round(amount * mult * (extraMult || 1));
   l.charge[element] += added;
   l.total += added;
+  l.lifetime = (l.lifetime || 0) + added;
   return { luck: l, added };
 }
 
 /** 해가 바뀌면 작년 기운의 30%를 이월 */
 export function rollYear(luck, year) {
   if (luck.year === year) return luck;
-  return { year, charge: luck.charge.map((c) => Math.round(c * 0.3)), log: {}, total: 0 };
+  return { year, charge: luck.charge.map((c) => Math.round(c * 0.3)), log: {}, total: 0, lifetime: luck.lifetime || 0 };
 }
 
 /** 개운 지수 0~100: 용신 2배, 가장 부족한 기운 1.5배 가중 */
@@ -138,7 +139,9 @@ export function luckIndex(luck, saju) {
 }
 
 // 진화 단계에 필요한 개운 지수
-export const STAGE_LUCK_GATE = { 1: 0, 2: 0, 3: 20, 4: 45, 5: 75 };
+export const STAGE_LUCK_GATE = { 1: 0, 2: 0, 3: 20, 4: 45, 5: 75, 6: 80, 7: 82, 8: 84, 9: 86, 10: 88, 11: 90, 12: 92, 13: 94, 14: 96 };
+// 승천 단계(6~14)는 누적 기운도 필요
+export const STAGE_LIFETIME_GATE = { 6: 300, 7: 450, 8: 600, 9: 800, 10: 1000, 11: 1300, 12: 1600, 13: 2000, 14: 2500 };
 
 // ---------- 앞으로 5년 ----------
 
@@ -146,7 +149,7 @@ export const STAGE_LUCK_GATE = { 1: 0, 2: 0, 3: 20, 4: 45, 5: 75 };
  * @param saju, gender, now {year}, idx 개운 지수, stage 진화 단계
  * @returns [{year, age, pillar, base, improved, target, daewoon}]
  */
-export function fiveYearForecast(saju, gender, now, idx, stage) {
+export function fiveYearForecast(saju, gender, now, idx, stage, extra = 0, yearBonus = 0) {
   const dw = computeDaewoon(saju, gender);
   const birthYear = saju.input.year;
   const stageBonus = stage >= 5 ? 8 : stage >= 4 ? 4 : stage >= 3 ? 2 : 0;
@@ -158,7 +161,7 @@ export function fiveYearForecast(saju, gender, now, idx, stage) {
     const base = Math.round(pillarScore(saju, yp) * 0.6 + (d ? d.score : 52) * 0.4);
     // 개운 누적 효과: 꾸준히 채운 기운이 해마다 조금씩 더 쌓이는 곡선
     const habit = (idx / 100) * 14 * (1 + n * 0.22);
-    const improved = Math.round(clamp(base + habit + stageBonus * (n === 0 ? 1 : 0.6), 0, 99));
+    const improved = Math.round(clamp(base + habit + stageBonus * (n === 0 ? 1 : 0.6) + extra + (n === 0 ? yearBonus : 0), 0, 99));
     const target = Math.round(clamp(base + 14 * (1 + n * 0.22) + 8 * (n === 0 ? 1 : 0.6), 0, 99));
     return { year, age, pillar: yp, base, improved, target, daewoon: d };
   });

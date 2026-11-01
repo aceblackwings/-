@@ -36,7 +36,17 @@ const OUTFIT = [
   ['#f4b740', '#9a6510', '#FFC93C', '#ff5a7a'],
   ['#d6d8ec', '#6e7192', '#E0E0FF', '#4fc3ff'],
   ['#3a7bea', '#1b3c80', '#00E5FF', '#ff5a7a'],
+  ['#fffaf0', '#d4a64a', '#fff6c8', '#ff4d6d'], // 5 천광신: 백금 천의
+  ['#9be36b', '#2f6b1f', '#d6f7b8', '#ffd166'], // 6 지맥신: 비취
+  ['#c77dff', '#4a1580', '#e0aaff', '#ff4d6d'], // 7 명운신: 보라 비단
+  ['#ffffff', '#241b2f', '#ff4d8d', '#4fc3ff'], // 8 태극신: 흑백 태극
 ];
+/** 진화 단계에 따른 옷 색: 오방 신수는 그 신수의 오행, 상위 신은 전용 천의 */
+function outfitIndex(stage, el) {
+  if (stage >= 6 && stage <= 10) return stage - 6;
+  if (stage >= 11) return stage - 6;
+  return el;
+}
 export const ELEMENT_COLOR_NAME = ['푸른', '붉은', '황금', '하얀', '검은'];
 
 export const EMOTES = [
@@ -330,7 +340,7 @@ function crown() {
 
 // ---------- 진화 강화 장식 ----------
 
-const STAGE_SCALE = { 1: 0.7, 2: 0.86, 3: 0.94, 4: 1, 5: 1 };
+const STAGE_SCALE = { 1: 0.7, 2: 0.86, 3: 0.94, 4: 1, 5: 1, 6: 0.84, 7: 0.84, 8: 0.84, 9: 0.84, 10: 0.84, 11: 0.8, 12: 0.8, 13: 0.8, 14: 0.78 };
 
 /** 단계별 배경 무대 */
 export function stageBackdrop(stage, el, id) {
@@ -348,14 +358,20 @@ export function stageBackdrop(stage, el, id) {
     case 4: return `<rect width="320" height="400" fill="url(#${id}-bg4)"/>
       ${[[40, 330, 40], [110, 350, 50], [210, 345, 55], [290, 330, 40], [60, 120, 26], [270, 150, 30]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" opacity="0.35"/>`).join('')}
       <g transform="translate(160 170)" opacity="0.35"><polygon points="${Array.from({ length: 8 }, (_, i) => { const a = (i * 45 + 22.5) * Math.PI / 180; return `${Math.cos(a) * 140},${Math.sin(a) * 140}`; }).join(' ')}" fill="none" stroke="#ffd166" stroke-width="2"/><animateTransform attributeName="transform" type="rotate" from="0 160 170" to="360 160 170" dur="40s" repeatCount="indefinite" additive="sum"/></g>`;
+    case 6: case 7: case 8: case 9: case 10: case 11: case 12: case 13: case 14: {
+      const c = ASC_COLOR[stage];
+      return `<rect width="320" height="400" fill="#07050f"/><circle cx="160" cy="190" r="230" fill="url(#${id}-ascbg)"/>${stars(30, stage, c)}${stage === 14 ? `<rect width="320" height="400" fill="url(#${id}-rainbow)" opacity="0.15"/>` : ''}`;
+    }
     default: return `<rect width="320" height="400" fill="url(#${id}-bg5)"/>${stars(46, 5, '#ffffff')}
       <ellipse cx="160" cy="200" rx="170" ry="60" fill="none" stroke="url(#${id}-rainbow)" stroke-width="2" opacity="0.5" transform="rotate(-18 160 200)"/>
       <circle cx="270" cy="70" r="26" fill="#fff6c8" opacity="0.8"/><circle cx="280" cy="64" r="22" fill="url(#${id}-bg5)"/>`;
   }
 }
 
-function backdropDefs(id) {
-  return `<linearGradient id="${id}-bg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe3ef"/><stop offset="1" stop-color="#d9e8ff"/></linearGradient>
+function backdropDefs(id, stage = 2) {
+  const ac = ASC_COLOR[stage] || '#7b5cff';
+  return `<radialGradient id="${id}-ascbg" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="${ac}" stop-opacity="0.55"/><stop offset="0.55" stop-color="${ac}" stop-opacity="0.15"/><stop offset="1" stop-color="#07050f" stop-opacity="0"/></radialGradient>
+  <linearGradient id="${id}-bg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe3ef"/><stop offset="1" stop-color="#d9e8ff"/></linearGradient>
   <linearGradient id="${id}-bg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a1240"/><stop offset="1" stop-color="#0b0820"/></linearGradient>
   <linearGradient id="${id}-bg3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a0f3f"/><stop offset="0.7" stop-color="#140826"/><stop offset="1" stop-color="#0a0514"/></linearGradient>
   <linearGradient id="${id}-bg4" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffcf7a"/><stop offset="0.55" stop-color="#ff9fb0"/><stop offset="1" stop-color="#9b8cff"/></linearGradient>
@@ -406,6 +422,60 @@ function headShine() {
   return `<ellipse cx="124" cy="128" rx="30" ry="16" fill="#ffffff" opacity="0.28" transform="rotate(-20 124 128)"/><ellipse cx="160" cy="250" rx="70" ry="10" fill="#000" opacity="0.06"/>`;
 }
 
+// ---------- 승천 단계 (6~14) 장식 ----------
+
+const ASC_COLOR = { 6: '#39FF88', 7: '#FF2E63', 8: '#FFC93C', 9: '#E0E0FF', 10: '#00E5FF', 11: '#fff6c8', 12: '#9be36b', 13: '#c77dff', 14: '#ff4d8d' };
+
+function spiritBeast(stage, id) {
+  const c = ASC_COLOR[stage];
+  const g = `filter="url(#${id}-glow)" opacity="1"`;
+  switch (stage) {
+    case 6: // 청룡: S자로 휘감는 용
+      return `<g ${g}><path d="M30 330 C 0 250, 90 230, 70 160 S 150 40, 230 70 S 320 170, 270 210" fill="none" stroke="${c}" stroke-width="16" stroke-linecap="round" opacity="0.55"/>
+        <path d="M30 330 C 0 250, 90 230, 70 160 S 150 40, 230 70 S 320 170, 270 210" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="2 14" stroke-linecap="round"/>
+        <g transform="translate(268 206)"><circle r="16" fill="${c}"/><path d="M-6 -14 l-8 -18 M6 -14 l8 -18" stroke="${c}" stroke-width="5" stroke-linecap="round"/><circle cx="-5" cy="-3" r="3" fill="#0d0a1f"/><circle cx="6" cy="-3" r="3" fill="#0d0a1f"/></g></g>`;
+    case 7: // 주작: 펼친 불꽃 날개와 꼬리깃
+      return `<g ${g}>${[-1, 1].map((d) => `<path transform="translate(160 200) scale(${d} 1)" d="M20 0 C 80 -90, 150 -60, 158 -10 C 120 -30, 100 -10, 120 20 C 80 0, 60 20, 70 50 C 40 30, 30 30, 20 0 z" fill="${c}" fill-opacity="0.45" stroke="${c}" stroke-width="3"/>`).join('')}
+        ${[-30, 0, 30].map((r) => `<path transform="rotate(${r} 160 330)" d="M160 330 q-10 50 0 70 q10 -20 0 -70" fill="#ffb627" opacity="0.7"/>`).join('')}</g>`;
+    case 8: // 황룡: 둥글게 감긴 황금 용 고리
+      return `<g ${g}><circle cx="160" cy="210" r="140" fill="none" stroke="${c}" stroke-width="14" opacity="0.5" stroke-dasharray="40 10"/><circle cx="160" cy="210" r="140" fill="none" stroke="#fff6c8" stroke-width="2"/>
+        <g transform="translate(160 70)"><circle r="18" fill="${c}"/><path d="M-8 -16 l-10 -16 M8 -16 l10 -16" stroke="${c}" stroke-width="5" stroke-linecap="round"/><circle cx="-6" cy="-2" r="3" fill="#0d0a1f"/><circle cx="6" cy="-2" r="3" fill="#0d0a1f"/></g></g>`;
+    case 9: // 백호: 뒤에 떠오르는 큰 흰 범의 얼굴
+      return `<g ${g}><path d="M60 120 l20 -60 l40 40 q40 -16 80 0 l40 -40 l20 60 q30 70 -20 130 q-80 50 -160 0 q-50 -60 -20 -130 z" fill="${c}" fill-opacity="0.35" stroke="${c}" stroke-width="3"/>
+        <path d="M120 120 l20 20 M200 120 l-20 20 M90 170 l30 0 M230 170 l-30 0 M90 190 l28 6 M230 190 l-28 6 M145 90 h30 M140 100 h40" stroke="#241b2f" stroke-width="6" stroke-linecap="round" opacity="0.6"/></g>`;
+    case 10: // 현무: 거북 등껍질과 감싸는 뱀
+      return `<g ${g}><ellipse cx="160" cy="250" rx="150" ry="110" fill="${c}" fill-opacity="0.18" stroke="${c}" stroke-width="3"/>
+        ${[[160, 200], [110, 230], [210, 230], [130, 290], [190, 290]].map(([x, y]) => `<polygon points="${[0, 1, 2, 3, 4, 5].map((k) => `${x + 26 * Math.cos((k * 60) * Math.PI / 180)},${y + 26 * Math.sin((k * 60) * Math.PI / 180)}`).join(' ')}" fill="none" stroke="${c}" stroke-width="2.5"/>`).join('')}
+        <path d="M20 300 q40 -150 140 -160 q110 -10 140 140" fill="none" stroke="#5be0a0" stroke-width="8" stroke-linecap="round" opacity="0.6"/></g>`;
+    default: return '';
+  }
+}
+
+function godAura(stage, id) {
+  const c = ASC_COLOR[stage];
+  const rings = (n, r0, step, extra = '') => Array.from({ length: n }, (_, i) => `<circle cx="160" cy="190" r="${r0 + i * step}" fill="none" stroke="${c}" stroke-width="${2 - i * 0.3}" stroke-dasharray="${4 + i * 3} ${6 + i * 2}" opacity="${0.8 - i * 0.15}" ${extra}/>`).join('');
+  const rays = Array.from({ length: 16 }, (_, i) => { const a = (i * 22.5) * Math.PI / 180; return `<line x1="${160 + Math.cos(a) * 60}" y1="${190 + Math.sin(a) * 60}" x2="${160 + Math.cos(a) * 170}" y2="${190 + Math.sin(a) * 170}" stroke="${c}" stroke-width="${i % 2 ? 1 : 3}" opacity="0.35"/>`; }).join('');
+  if (stage === 11) return `<g filter="url(#${id}-glow)">${rays}${rings(3, 110, 18)}<g><animateTransform attributeName="transform" type="rotate" from="0 160 190" to="360 160 190" dur="30s" repeatCount="indefinite"/>${Array.from({ length: 8 }, (_, i) => { const a = i * 45 * Math.PI / 180; return `<text x="${160 + Math.cos(a) * 150}" y="${194 + Math.sin(a) * 150}" font-size="14" text-anchor="middle" fill="${c}" font-family="'Song Myung', serif">☰</text>`; }).join('')}</g></g>`;
+  if (stage === 12) return `<g filter="url(#${id}-glow)">${rings(3, 100, 22)}<path d="M20 360 q70 -40 140 0 t140 0 M40 330 q60 -30 120 0 t120 0" fill="none" stroke="${c}" stroke-width="3" opacity="0.6"/>${Array.from({ length: 10 }, (_, i) => `<path d="M${30 + i * 28} 380 l6 -16 l6 16 z" fill="${c}" opacity="0.5"/>`).join('')}</g>`;
+  if (stage === 13) return `<g filter="url(#${id}-glow)">${rings(2, 120, 24)}<path d="M10 120 C 90 60, 120 300, 160 200 S 260 60, 310 130" fill="none" stroke="#ff4d6d" stroke-width="3"/><path d="M10 260 C 80 320, 140 120, 200 240 S 280 320, 310 250" fill="none" stroke="#ff4d6d" stroke-width="2" opacity="0.7"/></g>`;
+  if (stage === 14) {
+    const zod = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+    return `<g filter="url(#${id}-glow)"><g opacity="0.55"><animateTransform attributeName="transform" type="rotate" from="0 160 190" to="360 160 190" dur="24s" repeatCount="indefinite"/>
+      <circle cx="160" cy="190" r="120" fill="#ffffff"/><path d="M160 70 a120 120 0 0 1 0 240 a60 60 0 0 1 0 -120 a60 60 0 0 0 0 -120 z" fill="#241b2f"/>
+      <circle cx="160" cy="130" r="18" fill="#241b2f"/><circle cx="160" cy="250" r="18" fill="#ffffff"/></g>
+      <circle cx="160" cy="190" r="150" fill="none" stroke="url(#${id}-rainbow)" stroke-width="5"/>
+      <g><animateTransform attributeName="transform" type="rotate" from="360 160 190" to="0 160 190" dur="40s" repeatCount="indefinite"/>${zod.map((h, i) => { const a = (i * 30 - 90) * Math.PI / 180; return `<text x="${160 + Math.cos(a) * 150}" y="${196 + Math.sin(a) * 150}" font-size="15" text-anchor="middle" fill="#fff" font-family="'Song Myung', serif" font-weight="800">${h}</text>`; }).join('')}</g></g>`;
+  }
+  return '';
+}
+
+function ascensionFront(stage) {
+  if (stage < 6) return '';
+  const c = ASC_COLOR[stage];
+  const glyph = { 6: '龍', 7: '雀', 8: '黃', 9: '虎', 10: '武', 11: '天', 12: '地', 13: '命', 14: '極' }[stage];
+  return `<g transform="translate(160 300)"><circle r="15" fill="#0d0a1f" stroke="${c}" stroke-width="3"/><text y="1" font-size="16" text-anchor="middle" dominant-baseline="central" fill="${c}" font-weight="800" font-family="'Song Myung', serif">${glyph}</text></g>`;
+}
+
 // ---------- 공개 API ----------
 
 /**
@@ -446,7 +516,7 @@ export function characterMarkup(info, opts = {}) {
     <filter id="${id}-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     <linearGradient id="${id}-wing" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="${trim}" stop-opacity="0.85"/></linearGradient>
     <linearGradient id="${id}-rainbow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff4d6d"/><stop offset="0.25" stop-color="#ffc93c"/><stop offset="0.5" stop-color="#39ff88"/><stop offset="0.75" stop-color="#00e5ff"/><stop offset="1" stop-color="#c77dff"/></linearGradient>
-    ${opts.backdrop ? backdropDefs(id) : ''}
+    ${opts.backdrop ? backdropDefs(id, stage) : ''}
     <radialGradient id="${id}-aura" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="${trim}" stop-opacity="0.35"/><stop offset="0.7" stop-color="${trim}" stop-opacity="0.08"/><stop offset="1" stop-color="${trim}" stop-opacity="0"/></radialGradient>`;
 
   const auraMarkup = aura ? `
@@ -454,24 +524,25 @@ export function characterMarkup(info, opts = {}) {
     <circle cx="160" cy="220" r="128" fill="none" stroke="${stage >= 5 ? `url(#${id}-rainbow)` : trim}" stroke-width="${stage >= 5 ? 4 : 1.5}" stroke-dasharray="${stage >= 5 ? '0' : '3 9'}" opacity="${stage >= 5 ? 0.9 : 0.6}"/>
     ${stage >= 4 ? '' : `<text x="160" y="58" font-size="20" text-anchor="middle" fill="${trim}" opacity="0.5" font-family="'Song Myung', serif">${z.hanja}</text>`}` : '';
 
+  const oc = outfitIndex(stage, el);
   const blinkEyes = opts.animate
     ? `<g transform="translate(0 180)"><g><animateTransform attributeName="transform" type="scale" values="1 1;1 1;1 0.1;1 1" keyTimes="0;0.9;0.95;1" dur="4.2s" repeatCount="indefinite"/><g transform="translate(0 -180)">${eyes(mood, female)}</g></g></g>`
     : eyes(mood, female);
 
   const figure = `
-    ${stage >= 5 ? wings(el, id) : ''}
-    ${stage >= 5 ? spiritTails(el, id) : ''}
-    ${stage >= 3 ? cape(el, id) : ''}
+    ${stage >= 5 ? wings(oc, id) : ''}
+    ${stage >= 5 ? spiritTails(oc, id) : ''}
+    ${stage >= 3 ? cape(oc, id) : ''}
     ${stage === 3 ? magicCircle(el, id) : ''}
     <ellipse cx="160" cy="384" rx="76" ry="10" fill="#000" opacity="0.28"/>
     ${stage >= 4 ? cloud() : ''}
     ${tail(z, el, id)}
     ${feet(z)}
-    ${outfit(el, female, id)}
+    ${outfit(oc, female, id)}
     ${stage >= 4 ? goldTrim(female) : ''}
     ${stage >= 3 ? emblem(el) : ''}
     ${stage === 1 ? bib(el) : ''}
-    ${arms(z, el)}
+    ${arms(z, oc)}
     ${stage >= 3 ? pauldrons() : ''}
     ${miniCharm(charms[0], 112, 352, -10)}
     ${stage >= 2 ? prop(concern.key) : ''}
@@ -495,7 +566,9 @@ export function characterMarkup(info, opts = {}) {
   const bounce = opts.animate ? `<animateTransform attributeName="transform" type="translate" values="0 0;0 -5;0 0" dur="${stage === 1 ? 1.4 : 2.4}s" repeatCount="indefinite" additive="sum"/>` : '';
   const scaled = `<g transform="translate(160 384) scale(${sc}) translate(-160 -384)"><g>${bounce}${figure}</g></g>`;
   const backdrop = opts.backdrop ? stageBackdrop(stage, el, id) : '';
-  const body = `${backdrop}${auraMarkup}${scaled}${stage >= 3 ? orbs(stage, el, id) : ''}${stage >= 5 ? particles(id) : ''}`;
+  const asc = stage >= 11 ? godAura(stage, id) : stage >= 6 ? spiritBeast(stage, id) : '';
+  const tint = opts.backdrop && stage >= 6 ? `<rect width="320" height="400" fill="${ASC_COLOR[stage]}" opacity="0.12"/>` : '';
+  const body = `${backdrop}${tint}${asc}${auraMarkup}${scaled}${ascensionFront(stage)}${stage >= 3 ? orbs(stage, el, id) : ''}${stage >= 5 ? particles(id) : ''}${miniCharm(charms[2], 276, 300, 12, 0.9)}`;
   return { id, defs, body };
 }
 
@@ -506,6 +579,15 @@ export const STAGE_UNLOCKS = [
   { stage: 3, charmSlots: 2, emote: true, perks: ['부적 슬롯 2칸', '망토·어깨갑옷', '오행 구슬 2개', '능력치 +12'] },
   { stage: 4, charmSlots: 2, emote: true, perks: ['광륜·구름', '오행 구슬 5개', '금빛 한복 테두리', '능력치 +18'] },
   { stage: 5, charmSlots: 2, emote: true, perks: ['날개·금관·영험한 꼬리', '무지개 오라', '우주 배경', '능력치 +24'] },
+  { stage: 6, charmSlots: 3, emote: true, perks: ['부적 슬롯 3칸', '청룡의 영혼', '특별 능력: 푸른 비늘의 성장'] },
+  { stage: 7, charmSlots: 3, emote: true, perks: ['주작의 영혼', '특별 능력: 불꽃 깃의 인연'] },
+  { stage: 8, charmSlots: 3, emote: true, perks: ['황룡의 영혼', '특별 능력: 황금 비늘의 풍요'] },
+  { stage: 9, charmSlots: 3, emote: true, perks: ['백호의 영혼', '특별 능력: 백금 발톱의 수호'] },
+  { stage: 10, charmSlots: 3, emote: true, perks: ['현무의 영혼', '특별 능력: 북해 등껍질의 장수'] },
+  { stage: 11, charmSlots: 3, emote: true, perks: ['천광 만다라', '특별 능력: 하늘빛 축복'] },
+  { stage: 12, charmSlots: 3, emote: true, perks: ['지맥 문양', '특별 능력: 땅의 맥'] },
+  { stage: 13, charmSlots: 3, emote: true, perks: ['운명의 붉은 실', '특별 능력: 운명의 실'] },
+  { stage: 14, charmSlots: 3, emote: true, perks: ['태극 오라와 12지신 고리', '특별 능력: 태극 순환'] },
 ];
 
 export function renderCharacterSVG(info, opts = {}) {

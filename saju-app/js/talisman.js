@@ -152,6 +152,37 @@ function talismanFoot(cx, y, color, w = 3) {
   <path d="M${cx - 30} ${y + 40} q30 -8 60 0 M${cx - 24} ${y + 62} q24 -6 48 0" fill="none" stroke="${color}" stroke-width="${w * 0.7}" stroke-linecap="round"/>`;
 }
 
+/** 등급별 배경 효과 (그림 뒤) */
+function rarityBack(t, id, W, H) {
+  const k = t.rarity.key;
+  const cx = W / 2; const cy = H * 0.42;
+  const rays = (n, color, op) => Array.from({ length: n }, (_, i) => {
+    const a = (i * 360 / n) * Math.PI / 180; const b = ((i + 0.5) * 360 / n) * Math.PI / 180;
+    return `<path d="M${cx} ${cy} L${cx + Math.cos(a) * 520} ${cy + Math.sin(a) * 520} L${cx + Math.cos(b) * 520} ${cy + Math.sin(b) * 520} Z" fill="${color}" opacity="${op}"/>`;
+  }).join('');
+  if (k === 'legend') return `<g>${rays(18, '#ffd166', 0.22)}<animateTransform attributeName="transform" type="rotate" from="0 ${cx} ${cy}" to="360 ${cx} ${cy}" dur="40s" repeatCount="indefinite"/></g>`;
+  if (k === 'myth') return `<rect width="${W}" height="${H}" fill="url(#${id}-holo)" opacity="0.28"/><g>${rays(24, '#ffffff', 0.12)}<animateTransform attributeName="transform" type="rotate" from="0 ${cx} ${cy}" to="-360 ${cx} ${cy}" dur="30s" repeatCount="indefinite"/></g>`;
+  if (k === 'epic') return `<circle cx="${cx}" cy="${cy}" r="${W * 0.6}" fill="#c77dff" opacity="0.14"/>`;
+  return '';
+}
+
+/** 등급별 앞 효과 (그림 위) */
+function rarityFront(t, id, W, H) {
+  const k = t.rarity.key;
+  const sparkle = (x, y, r, c, d) => `<path d="M${x} ${y - r} l${r * 0.3} ${r * 0.7} l${r * 0.7} ${r * 0.3} l${-r * 0.7} ${r * 0.3} l${-r * 0.3} ${r * 0.7} l${-r * 0.3} ${-r * 0.7} l${-r * 0.7} ${-r * 0.3} l${r * 0.7} ${-r * 0.3} z" fill="${c}"><animate attributeName="opacity" values="0.2;1;0.2" dur="${d}s" repeatCount="indefinite"/></path>`;
+  const sweep = (op) => `<rect x="-${W}" y="0" width="${W * 0.5}" height="${H}" fill="url(#${id}-sheen)" opacity="${op}" transform="skewX(-20)"><animate attributeName="x" values="-${W};${W * 1.6}" dur="3.2s" repeatCount="indefinite"/></rect>`;
+  const badge = (txt, c1, c2) => `<g transform="translate(${W - 46} 46)"><circle r="24" fill="${c1}" stroke="${c2}" stroke-width="3"/><text y="1" font-size="15" text-anchor="middle" dominant-baseline="central" fill="${c2}" font-weight="900" font-family="'Song Myung', serif">${txt}</text></g>`;
+  if (k === 'rare') return `<rect x="3" y="3" width="${W - 6}" height="${H - 6}" rx="8" fill="none" stroke="#4fc3ff" stroke-width="3" opacity="0.8" style="filter:drop-shadow(0 0 6px #4fc3ff)"/>${sparkle(W - 30, 70, 8, '#bfe9ff', 2.2)}`;
+  if (k === 'epic') return `<rect x="3" y="3" width="${W - 6}" height="${H - 6}" rx="8" fill="none" stroke="#c77dff" stroke-width="4" style="filter:drop-shadow(0 0 8px #c77dff)"/>
+    ${[[12, 12], [W - 12, 12], [12, H - 12], [W - 12, H - 12]].map(([x, y]) => `<path d="M${x} ${y - 8} l6 8 l-6 8 l-6 -8 z" fill="#e0aaff" stroke="#7b2cbf" stroke-width="1.5"/>`).join('')}
+    ${sparkle(40, 120, 7, '#e0aaff', 1.8)}${sparkle(W - 40, 200, 9, '#ffffff', 2.4)}${sparkle(50, 380, 6, '#e0aaff', 2.0)}`;
+  if (k === 'legend') return `${sweep(0.55)}${badge('傳', '#3a2a05', '#ffd166')}
+    ${sparkle(36, 110, 9, '#fff6c8', 1.6)}${sparkle(W - 36, 240, 11, '#ffd166', 2.1)}${sparkle(44, 330, 7, '#fff6c8', 1.9)}${sparkle(W - 50, 420, 8, '#ffd166', 2.4)}`;
+  if (k === 'myth') return `${sweep(0.75)}${badge('神', '#2a0820', '#ff8fb3')}
+    ${Array.from({ length: 10 }, (_, i) => sparkle(24 + ((i * 53) % (W - 48)), 60 + ((i * 97) % (H - 120)), 5 + (i % 3) * 3, ['#ff4d6d', '#ffc93c', '#39ff88', '#00e5ff', '#c77dff'][i % 5], 1.4 + (i % 4) * 0.3)).join('')}`;
+  return '';
+}
+
 function rarityFrame(t, id, W, H, inset, rx) {
   const k = t.rarity.key;
   if (k === 'legend') {
@@ -200,6 +231,7 @@ function renderClassic(t) {
   <rect width="${W}" height="${H}" rx="4" fill="url(#${id}-paper)"/>
   <rect width="${W}" height="${H}" rx="4" filter="url(#${id}-fiber)"/>
   <rect width="${W}" height="${H}" rx="4" fill="url(#${id}-burn)"/>
+  ${rarityBack(t, id, W, H)}
   <g filter="url(#${id}-brush)">
     <rect x="14" y="14" width="${W - 28}" height="${H - 28}" fill="none" stroke="${ink}" stroke-width="3.2"/>
     <rect x="22" y="22" width="${W - 44}" height="${H - 44}" fill="none" stroke="${ink}" stroke-width="1.2"/>
@@ -222,6 +254,7 @@ function renderClassic(t) {
   <line x1="60" y1="420" x2="240" y2="420" stroke="${ink}" stroke-width="1" stroke-dasharray="2 4"/>
   ${effects}
   ${rarityFrame(t, id, W, H, 6, 4)}
+  ${rarityFront(t, id, W, H)}
   <!-- 낙관 -->
   <g filter="url(#${id}-stamp)" transform="translate(-10 -8) rotate(-4 246 498)">
     <rect x="222" y="474" width="48" height="48" rx="4" fill="${ink}"/>
@@ -271,6 +304,7 @@ function renderNeon(t) {
   </defs>
   <rect width="${W}" height="${H}" rx="16" fill="url(#${id}-bg)"/>
   <rect width="${W}" height="${H}" rx="16" fill="url(#${id}-core)"/>
+  ${rarityBack(t, id, W, H)}
   <g stroke="${c}" stroke-opacity="0.16" stroke-width="1">${floor}</g>
   <g fill="#fff" opacity="0.025">${scan}</g>
   <rect x="9" y="9" width="${W - 18}" height="${H - 18}" rx="12" fill="none" stroke="url(#${id}-edge)" stroke-width="2.5" filter="url(#${id}-glow)"/>
@@ -298,6 +332,7 @@ function renderNeon(t) {
   ${verticalText(`${ELEMENT_HANJA[t.element]}德護身`, 260, 186, 12, `fill="${c}" opacity="0.45" ${serif}`)}
   ${effects}
   ${t.rarity.key === 'legend' || t.rarity.key === 'myth' ? rarityFrame(t, id, W, H, 4, 15) : ''}
+  ${rarityFront(t, id, W, H)}
   <text x="30" y="${H - 26}" font-size="9.5" fill="${c}" opacity="0.7" ${mono}>${esc(t.type.label.toUpperCase())}_CHARM // ${esc(t.dateKey)}</text>
   <g transform="translate(${W - 58} ${H - 44})" fill="${c}" opacity="0.6">${Array.from({ length: 16 }, (_, i) => ((parseInt(t.id, 36) >> i) & 1 ? `<rect x="${(i % 4) * 7}" y="${Math.floor(i / 4) * 7}" width="6" height="6"/>` : '')).join('')}</g>
 </svg>`;

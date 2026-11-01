@@ -46,7 +46,8 @@ export function renderStickerSVG(st, size = 96, locked = false) {
   const fs = st.text.length > 4 ? 15 : 19;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="${size}" height="${size}">
     <g ${locked ? 'opacity="0.35" filter="grayscale(1)"' : ''}>
-      <circle cx="60" cy="58" r="52" fill="#ffffff"/>
+      ${!locked && (st.rarity === 'legend' || st.rarity === 'myth') ? `<g>${Array.from({ length: 12 }, (_, i) => { const a = (i * 30) * Math.PI / 180; const b = ((i + 0.5) * 30) * Math.PI / 180; return `<path d="M60 58 L${60 + Math.cos(a) * 70} ${58 + Math.sin(a) * 70} L${60 + Math.cos(b) * 70} ${58 + Math.sin(b) * 70} Z" fill="${ring}" opacity="0.45"/>`; }).join('')}<animateTransform attributeName="transform" type="rotate" from="0 60 58" to="360 60 58" dur="16s" repeatCount="indefinite"/></g>` : ''}
+      <circle cx="60" cy="58" r="52" fill="#ffffff" ${!locked && st.rarity !== 'common' ? `style="filter:drop-shadow(0 0 6px ${ring})"` : ''}/>
       <circle cx="60" cy="58" r="46" fill="${c}" opacity="0.22"/>
       <circle cx="60" cy="58" r="46" fill="none" stroke="${ring}" stroke-width="${st.rarity === 'common' ? 0 : 4}"/>
       <text x="60" y="58" font-size="40" text-anchor="middle" dominant-baseline="central">${locked ? '❔' : st.icon}</text>

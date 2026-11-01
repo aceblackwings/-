@@ -113,10 +113,10 @@ function header(ctx, { fortune, profile }) {
   rr(ctx, 90, 190, 96, 96, 24); ctx.stroke();
   ctx.restore();
   glowText(ctx, '符', 138, 262, { font: `64px ${SERIF}`, align: 'center', glow: '#FF2E63' });
-  glowText(ctx, '운명공방', 214, 248, { font: `800 52px ${SANS}` });
+  glowText(ctx, '12지신', 214, 248, { font: `800 52px ${SANS}` });
   ctx.font = `800 52px ${SANS}`;
-  const brandW = ctx.measureText('운명공방').width;
-  glowText(ctx, '2099', 214 + brandW + 18, 248, { font: `700 52px ${MONO}`, color: '#00E5FF', glow: '#00E5FF' });
+  const brandW = ctx.measureText('12지신').width;
+  glowText(ctx, '강림', 214 + brandW + 18, 248, { font: `800 52px ${SANS}`, color: '#00E5FF', glow: '#00E5FF' });
   const d = fortune.date;
   glowText(ctx, `${d.year}.${String(d.month).padStart(2, '0')}.${String(d.day).padStart(2, '0')}`, 990, 236, { font: `700 34px ${MONO}`, color: '#9a94c4', align: 'right' });
   const who = profile.name ? `${profile.name}님의 오늘` : '나의 오늘';
@@ -287,7 +287,7 @@ export async function renderStoryCanvas(d) {
   const ctx = canvas.getContext('2d');
   const accent = d.template === 'charm' ? d.talisman.rarity.color : d.template === 'hero' ? EL_COLORS[d.hero.info.element] : d.template === 'compat' ? d.compat.grade?.color || d.compat.compat.grade.color : '#00E5FF';
 
-  await ensureFonts(`운명공방2099나도오늘의부적받기✦※효과수치는재미를위한게임요소입니다${d.profile.name || ''}님의${d.fortune.info.title}${d.fortune.info.desc}${CATEGORIES.map((c) => c.label).join('')}총운행운색숫자${d.fortune.luck.color}${d.fortune.luck.direction}${d.talisman.type.label}${d.talisman.type.hanja}${d.talisman.effects.map((e) => e.stat).join('')}기운보충수호캐릭터${d.hero.info.title}${d.hero.info.concern.stat}띠개장착부적일간연애우정일친구궁합×천생연분찰떡궁합든든한짝꿍티격태격케미밀당중인사이${d.compat ? d.compat.myName + d.compat.friendName + d.compat.compat.grade.desc + (d.compat.dialogue ? d.compat.dialogue.lines.map((l) => l.text).join('') + d.compat.myInfo.zodiac.name + d.compat.friendInfo.zodiac.name : '') : ''}${STEMS.join('')}일반희귀영웅전설신화목화토금수木火土金水符0123456789.:/[]+-%()`);
+  await ensureFonts(`12지신강림나도오늘의부적받기✦※효과수치는재미를위한게임요소입니다${d.profile.name || ''}님의${d.fortune.info.title}${d.fortune.info.desc}${CATEGORIES.map((c) => c.label).join('')}총운행운색숫자${d.fortune.luck.color}${d.fortune.luck.direction}${d.talisman.type.label}${d.talisman.type.hanja}${d.talisman.effects.map((e) => e.stat).join('')}기운보충수호캐릭터${d.hero.info.title}${d.hero.info.concern.stat}띠개장착부적일간연애우정일친구궁합×천생연분찰떡궁합든든한짝꿍티격태격케미밀당중인사이${d.compat ? d.compat.myName + d.compat.friendName + d.compat.compat.grade.desc + (d.compat.dialogue ? d.compat.dialogue.lines.map((l) => l.text).join('') + d.compat.myInfo.zodiac.name + d.compat.friendInfo.zodiac.name : '') : ''}${STEMS.join('')}일반희귀영웅전설신화목화토금수木火土金水符0123456789.:/[]+-%()`);
 
   background(ctx, accent);
   header(ctx, d);
