@@ -512,3 +512,24 @@ select option { background: #1d1742; color: #ffffff; }
 .spot-btns a, .spot-btns button { font-size: 0.78rem; padding: 6px 10px; text-align: center; text-decoration: none; border-radius: 10px; }
 .spot-btns a.ghost { color: var(--text); border: 1px solid var(--line); }
 .spot em.you { font-style: normal; font-size: 0.7rem; color: var(--gold); border: 1px solid var(--gold); border-radius: 999px; padding: 1px 8px; }
+
+/* 수호신 대화 · 축제 · 궁합방 · 선물 */
+.chat-log { max-height: 52vh; overflow-y: auto; display: grid; gap: 8px; padding: 4px 2px 8px; }
+.msg { display: flex; gap: 8px; align-items: flex-end; }
+.msg p { margin: 0; padding: 10px 12px; border-radius: 16px; font-size: 0.92rem; line-height: 1.5; max-width: 80%; white-space: pre-wrap; }
+.msg.bot p { background: #fff; color: #241b2f; border-bottom-left-radius: 4px; }
+.msg.me { justify-content: flex-end; }
+.msg.me p { background: linear-gradient(90deg, #00e5ff, #8a7dff); color: #07060f; border-bottom-right-radius: 4px; font-weight: 600; }
+.msg .av svg { border-radius: 50%; background: radial-gradient(circle, rgba(123,92,255,0.4), #0d0a1f); display: block; }
+.typing { opacity: 0.7; font-style: italic; }
+.chips.quick { margin: 6px 0; flex-wrap: nowrap; overflow-x: auto; }
+.chips.quick .chip { white-space: nowrap; }
+.chat-form { display: flex; gap: 6px; }
+.chat-form input { flex: 1; font: inherit; color: #fff; background: #1d1742; border: 1px solid rgba(160,140,255,0.35); border-radius: 12px; padding: 12px; }
+.fest { display: flex; gap: 12px; align-items: center; border-color: rgba(255,201,60,0.3); }
+.fest.on { border-color: var(--gold); box-shadow: 0 0 18px rgba(255,201,60,0.3); background: linear-gradient(90deg, rgba(255,77,109,0.12), rgba(255,201,60,0.08)); }
+.fest-ic { font-size: 2.2rem; }
+.fest p { margin: 2px 0; font-size: 0.86rem; }
+.fest small { color: var(--muted); font-size: 0.75rem; }
+.team-map svg { width: 100%; height: auto; display: block; border-radius: 18px; }
+.gift-card svg { width: 100%; max-width: 300px; height: auto; display: block; margin: 0 auto 10px; }

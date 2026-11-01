@@ -1,5 +1,5 @@
 import {
-  computeSaju, tenGod, STEMS, STEMS_KO, BRANCHES, BRANCHES_KO, STEM_ELEMENT, BRANCH_ELEMENT,
+  computeSaju, tenGod, seededRandom, STEMS, STEMS_KO, BRANCHES, BRANCHES_KO, STEM_ELEMENT, BRANCH_ELEMENT,
   BRANCH_MAIN_STEM, ELEMENT_KO, ELEMENT_HANJA, pillarLabel, pillarLabelKo,
 } from './saju.js';
 import { computeFortune, CATEGORIES, DAY_MASTER_PROFILE } from './fortune.js';
@@ -22,6 +22,8 @@ import { STICKERS, renderStickerSVG } from './stickers.js';
 import { RATES, PITY, PRICES, EXTRA_PER_DAY, drawPack, emptyGacha, todayGacha, isSubscribed, drawsLeft, rarityRank } from './gacha.js';
 import { ASCENSION, abilitiesAt, nextAscension, ascensionOf, trialProgress, growthBoost, TRIALS } from './ascension.js';
 import { journeyStep, emptyJourney, completeStep, JOURNEY_DAYS, JOURNEYS } from './journey.js';
+import { isCrisis, crisisReply, buildInstructions, buildMessages, offlineReply, QUICK_ASKS, FREE_CHATS } from './chat.js';
+import { festivalStatus } from './festivals.js';
 import { dailySpots, distanceM, treasureRarity, bearingName, ARRIVE_RADIUS, DEMO_CENTER, PARTNER_SAMPLES } from './fengshui.js';
 import { renderStoryCanvas, shareStory, STORY_TEMPLATES } from './story.js';
 import {
@@ -46,6 +48,7 @@ const GACHA_KEY = 'unmyeong2099.gacha';
 const JOURNEY_KEY = 'unmyeong2099.journey';
 const FENG_KEY = 'unmyeong2099.feng';
 const SOC_KEY = 'unmyeong2099.social';
+const CHAT_KEY = 'unmyeong2099.chat';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
 const EL_COLORS = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
 
@@ -132,6 +135,7 @@ function start(profile, mode = 'today') {
     if (dn(state.fortune.dateKey) - dn(lastSeen) >= 2) state.backLine = say('back');
   }
   grow((g) => checkIn(g, state.fortune.dateKey));
+  renderToday();
   setTimeout(() => { processDexRewards(); renderCompat(); }, 2600);
   const abS = abilitiesAt(loadGrowth().evolved);
   if (abS.autoCharge) setTimeout(() => { const { fills } = luckNow(); const low = fills.indexOf(Math.min(...fills)); charge(low, abS.autoCharge, 'taeguk', '☯ 태극 순환'); }, 5200);
@@ -271,6 +275,7 @@ function selectTab(name) {
   if (name === 'story') renderStory();
   if (name === 'hero') renderHero(true);
   if (name === 'feng') renderFeng();
+  if (name === 'chat') { renderChat(); getSample().then(() => renderChat()); }
   if (name === 'today' && state.fortune) grow((g) => complete(g, state.fortune.dateKey, 'fortune', qBonus('fortune')));
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -426,6 +431,8 @@ function renderToday() {
       </div>
       <p class="muted">${f.summary}${rel ? ` 오늘은 내 사주의 ${rel} 관계가 생깁니다.` : ''}</p>
     </div>
+
+    ${festivalCardHTML()}
 
     ${todaySayCard()}
 
@@ -905,6 +912,244 @@ function daewoonCardHTML() {
   </div>`;
 }
 
+// ---------- 계절 축제 ----------
+
+function festivalCardHTML() {
+  const fs = festivalStatus(state.fortune.date);
+  if (fs.active) {
+    const f = fs.active;
+    return `<div class="card fest on"><div class="fest-ic">${f.icon}</div><div><b>🏮 ${f.name} 축제 진행 중!</b><p>${f.desc}</p><small>축제 기간 무료 뽑기 +1 · ${ELEMENT_HANJA[f.element]} 기운 충전 보너스</small></div></div>`;
+  }
+  if (!fs.next) return '';
+  return `<div class="card fest"><div class="fest-ic">${fs.next.icon}</div><div><b>다음 축제: ${fs.next.name} · D-${fs.daysToNext}</b><p>${fs.next.desc}</p><small>${fs.next.date.month}월 ${fs.next.date.day}일 전후 무료 뽑기 +1</small></div></div>`;
+}
+
+// ---------- AI 수호신 대화 ----------
+
+function chatContext() {
+  const s = state.saju; const info = characterInfo(s, state.profile);
+  const stage = heroOptions().stage;
+  const dw = state.profile.gender ? computeDaewoon(s, state.profile.gender) : null;
+  const d = dw ? daewoonAt(dw, state.fortune.date.year - s.input.year) : null;
+  const j = loadJourney();
+  return {
+    pers: personalityOf(zIdx()), zodiacName: info.zodiac.name, stage, stageName: stageName(stage, info.female),
+    userName: state.profile.name || '주인', dayMaster: `${STEMS[s.dayMaster]}(${ELEMENT_KO[STEM_ELEMENT[s.dayMaster]]})`,
+    yongsin: s.yongsin, weakest: s.weakest, strength: s.strength, fortune: state.fortune,
+    concern: info.concern.label, journeyStep: journeyStep(info.concern.key, Math.min(j.done, JOURNEY_DAYS - 1), s.yongsin).title,
+    daewoon: d ? `${pillarLabelFull(d)} (${d.startAge}~${d.endAge}세)` : null, luckIndex: luckNow().index,
+  };
+}
+
+function loadChat() {
+  const c = load(CHAT_KEY, null) || { date: null, used: 0, history: [] };
+  if (c.date !== state.fortune.dateKey) return { ...c, date: state.fortune.dateKey, used: 0 };
+  return c;
+}
+
+async function getSample() {
+  if (state.sample !== undefined) return state.sample;
+  try { state.sample = window.claude?.use ? await window.claude.use('sample') : null; } catch { state.sample = null; }
+  return state.sample;
+}
+
+function renderChat() {
+  const panel = $('[data-panel="chat"]');
+  if (!panel || !state.saju) return;
+  const info = characterInfo(state.saju, state.profile);
+  const stage = heroOptions().stage;
+  const c = loadChat();
+  const sub = isSubscribed(loadGacha(), state.fortune.dateKey);
+  const left = sub ? '무제한' : `${Math.max(0, FREE_CHATS - c.used)}/${FREE_CHATS}`;
+  const face = faceSVG(info, stage, 'smile', 40);
+  const hist = c.history.length ? c.history : [{ role: 'guardian', text: `${speak(zIdx(), 'greet', { index: 1, stage })} 무엇이든 물어봐. ${info.concern.label} 고민도 좋고, 오늘 운세도 좋아!` }];
+  panel.innerHTML = `
+    <div class="card chat">
+      <h3>💬 수호신과 대화 <span class="tag">${state.sample ? 'AI 수호신' : '수호신'} · 오늘 ${left}</span></h3>
+      <div class="chat-log" id="chat-log">${hist.map((m) => m.role === 'user' ? `<div class="msg me"><p>${esc(m.text)}</p></div>` : `<div class="msg bot"><div class="av">${face}</div><p>${esc(m.text)}</p></div>`).join('')}</div>
+      <div class="chips quick">${QUICK_ASKS.map((q) => `<button class="chip" type="button" data-ask="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+      <form id="chat-form" class="chat-form"><input name="q" type="text" maxlength="200" placeholder="${info.zodiac.name} 수호신에게 물어보기…" autocomplete="off"><button class="primary" type="submit">보내기</button></form>
+      <p class="muted" style="font-size:0.74rem;margin:8px 0 0">무료 하루 ${FREE_CHATS}회 · 👑 수호 구독 무제한. 수호신의 답은 재미와 마음가짐을 위한 것이며, 의료·법률·투자 결정은 전문가와 상의하세요. 힘든 마음이 들면 ☎ 109 (24시간)</p>
+      <button class="ghost" type="button" id="btn-chat-clear" style="margin-top:6px">대화 지우기</button>
+    </div>`;
+  const log = $('#chat-log', panel); log.scrollTop = log.scrollHeight;
+  $('#chat-form', panel).addEventListener('submit', (e) => { e.preventDefault(); const q = e.target.q.value.trim(); if (q) sendChat(q); });
+  $$('[data-ask]', panel).forEach((b) => b.addEventListener('click', () => sendChat(b.dataset.ask)));
+  $('#btn-chat-clear', panel).addEventListener('click', () => { save(CHAT_KEY, { ...loadChat(), history: [] }); renderChat(); });
+}
+
+async function sendChat(text) {
+  if (state.chatBusy) return;
+  const c = loadChat();
+  const sub = isSubscribed(loadGacha(), state.fortune.dateKey);
+  if (!sub && c.used >= FREE_CHATS && !isCrisis(text)) { toast('오늘 무료 대화를 모두 썼어요. 내일 또 만나거나 수호 구독으로 무제한 대화할 수 있어요'); openShop(); return; }
+  const ctx = chatContext();
+  const history = [...c.history, { role: 'user', text }];
+  save(CHAT_KEY, { ...c, history });
+  renderChat();
+  const log = $('#chat-log');
+  const face = faceSVG(characterInfo(state.saju, state.profile), ctx.stage, 'smile', 40);
+  const bubble = document.createElement('div');
+  bubble.className = 'msg bot'; bubble.innerHTML = `<div class="av">${face}</div><p class="typing">${ctx.pers.me}가 생각하는 중…</p>`;
+  log.appendChild(bubble); log.scrollTop = log.scrollHeight;
+  const p = bubble.querySelector('p');
+  let answer;
+  state.chatBusy = true;
+  try {
+    if (isCrisis(text)) answer = crisisReply(ctx.userName);
+    else {
+      const sample = await getSample();
+      if (sample) {
+        const msgs = buildMessages(buildInstructions(ctx), c.history, text);
+        const res = await sample(msgs, { modelTier: 'quick', cache: false, onText: ({ text: t }) => { p.classList.remove('typing'); p.textContent = t; log.scrollTop = log.scrollHeight; } });
+        answer = res.text;
+      } else {
+        await new Promise((r) => setTimeout(r, 600));
+        answer = offlineReply(ctx, text);
+      }
+    }
+  } catch (err) {
+    answer = err?.code === 'rate_limited' ? '잠깐 숨 좀 고를게! 조금 뒤에 다시 물어봐 줘.' : offlineReply(ctx, text);
+  }
+  state.chatBusy = false;
+  const c2 = loadChat();
+  save(CHAT_KEY, { ...c2, used: c2.used + (isCrisis(text) ? 0 : 1), history: [...history, { role: 'guardian', text: answer }].slice(-30) });
+  renderChat();
+  grow((g) => complete(g, state.fortune.dateKey, 'chat', qBonus('chat')));
+}
+
+// ---------- 단톡 궁합방 · 응원 · 부적 선물 ----------
+
+function teamMembers() {
+  const me = { name: state.profile.name || '나', saju: state.saju, info: characterInfo(state.saju, state.profile), me: true, stage: heroOptions().stage };
+  const fr = load(FRIENDS_KEY, []).slice(0, 7).map((x) => { const fs = friendSaju(x); return fs.error ? null : { name: x.name, saju: fs, info: characterInfo(fs, { gender: x.gender, concern: 'people' }), stage: 2 }; }).filter(Boolean);
+  return [me, ...fr];
+}
+
+function teamRoom() {
+  const mem = teamMembers();
+  if (mem.length < 3) return null;
+  const pairs = [];
+  for (let i = 0; i < mem.length; i++) for (let j = i + 1; j < mem.length; j++) pairs.push({ i, j, score: computeCompat(mem[i].saju, mem[j].saju, state.fortune.date).score });
+  pairs.sort((a, b) => b.score - a.score);
+  const todayEl = state.fortune.todayElement;
+  const lucky = mem.map((m, i) => ({ i, v: (m.saju.yongsin === todayEl ? 30 : 0) + (m.saju.weakest === todayEl ? 15 : 0) + Math.round(seededRandom(`${m.name}|${state.fortune.dateKey}`) * 20) })).sort((a, b) => b.v - a.v)[0];
+  const sum = [0, 0, 0, 0, 0]; mem.forEach((m) => m.saju.elements.forEach((v, e) => { sum[e] += v; }));
+  const teamWeak = sum.indexOf(Math.min(...sum));
+  return { mem, pairs, best: pairs[0], worst: pairs[pairs.length - 1], lucky: lucky.i, teamWeak, sum };
+}
+
+function teamSVG(t) {
+  const n = t.mem.length; const cx = 200; const cy = 190; const R = 130;
+  const pos = t.mem.map((_, i) => { const a = (i / n) * Math.PI * 2 - Math.PI / 2; return [cx + Math.cos(a) * R, cy + Math.sin(a) * R]; });
+  const lines = t.pairs.map((p) => {
+    const [x1, y1] = pos[p.i]; const [x2, y2] = pos[p.j];
+    if (p.score >= 75) return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#ff4d8d" stroke-width="3" opacity="0.85"/>`;
+    if (p.score < 48) return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#00e5ff" stroke-width="2" stroke-dasharray="6 6" opacity="0.8"/>`;
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(255,255,255,0.15)" stroke-width="1.5"/>`;
+  }).join('');
+  const nodes = t.mem.map((m, i) => {
+    const [x, y] = pos[i];
+    const { defs, body } = characterMarkup(m.info, { stage: m.stage, mood: i === t.lucky ? 'excited' : 'smile', aura: false });
+    return `<g transform="translate(${x - 36} ${y - 40})"><svg viewBox="40 56 240 240" width="72" height="72"><defs>${defs}</defs>${body}</svg></g>
+      ${i === t.lucky ? `<text x="${x}" y="${y - 44}" font-size="18" text-anchor="middle">👑</text>` : ''}
+      <text x="${x}" y="${y + 46}" font-size="12" font-weight="800" fill="#fff" text-anchor="middle" font-family="'Noto Sans KR', sans-serif">${esc(m.name)}</text>`;
+  }).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400"><rect width="400" height="400" rx="24" fill="#120c2a"/>
+    <text x="200" y="28" font-size="15" font-weight="900" fill="#ffc93c" text-anchor="middle" font-family="'Noto Sans KR', sans-serif">12지신 강림 · 단톡 궁합방</text>
+    ${lines}${nodes}
+    <text x="200" y="388" font-size="10" fill="#9a94c4" text-anchor="middle" font-family="'Noto Sans KR', sans-serif">분홍 실선: 찰떡 · 파란 점선: 티격태격 · 👑 오늘의 행운 멤버</text></svg>`;
+}
+
+function teamCardHTML() {
+  const t = teamRoom();
+  if (!t) return `<div class="card"><h3>👥 단톡 궁합방</h3><p class="muted" style="margin:0">친구를 2명 이상 추가하면 나까지 3명 이상의 단톡 궁합 지도가 만들어져요. 오늘의 행운 멤버, 찰떡 듀오, 팀 부적까지!</p></div>`;
+  state.team = t;
+  const nm = (k) => t.mem[k].name;
+  return `<div class="card team">
+    <h3>👥 단톡 궁합방 <span class="tag">${t.mem.length}명</span></h3>
+    <div class="team-map">${teamSVG(t)}</div>
+    <ul class="reasons">
+      <li><b>👑 오늘의 행운 멤버</b> ${esc(nm(t.lucky))} — 오늘 점심 메뉴는 ${esc(nm(t.lucky))}가 정해!</li>
+      <li><b>💗 찰떡 듀오</b> ${esc(nm(t.best.i))} × ${esc(nm(t.best.j))} <em>${t.best.score}점</em></li>
+      <li><b>⚡ 티격태격 듀오</b> ${esc(nm(t.worst.i))} × ${esc(nm(t.worst.j))} <em>${t.worst.score}점</em></li>
+      <li><b>☯ 팀에 부족한 기운</b> ${ELEMENT_HANJA[t.teamWeak]} ${ELEMENT_KO[t.teamWeak]} → 팀 부적으로 채워요</li>
+    </ul>
+    <div class="actions" style="margin-top:10px">
+      <button class="primary" type="button" id="btn-team-png">궁합 지도 이미지 저장</button>
+      <button class="ghost" type="button" id="btn-team-invite">단톡방 초대 문구 복사</button>
+      <button class="ghost" type="button" id="btn-team-charm">팀 부적 받기</button>
+    </div>
+    <p class="muted" style="font-size:0.74rem;margin:6px 0 0">정식 버전에서는 링크 하나로 단톡방 친구들이 가입 없이 함께 들어와 실시간 궁합 지도가 완성됩니다.</p>
+  </div>`;
+}
+
+function friendSocialHTML(fr, idx) {
+  const soc = load(SOC_KEY, { stickers: 0, cheers: {}, gifts: {} });
+  const k = `${state.fortune.dateKey}|${fr.name}`;
+  const cheered = soc.cheers?.[k]; const gifted = soc.gifts?.[k];
+  return `<div class="react">
+    <div class="dlg-title">📣 응원 · 🎁 선물</div>
+    <div class="actions">
+      <button class="${cheered ? 'ghost' : 'primary'}" type="button" data-cheer="${idx}" ${cheered ? 'disabled' : ''}>${cheered ? '오늘 응원 완료' : `📣 ${esc(fr.name)} 응원하기`}</button>
+      <button class="ghost" type="button" data-gift="${idx}" ${gifted ? 'disabled' : ''}>${gifted ? '오늘 선물 완료' : '🎁 부적 선물하기'}</button>
+    </div>
+    <p class="muted" style="font-size:0.74rem;margin:6px 0 0">응원을 보내면 친구의 답례 응원이 돌아와 <b>내 부족한 기운이 충전</b>돼요. (프로토타입은 답례를 바로 체험, 정식 버전은 친구가 실제로 보낸 응원이 도착)</p>
+  </div>`;
+}
+
+function doCheer(idx) {
+  const fr = load(FRIENDS_KEY, [])[idx]; if (!fr) return;
+  const soc = load(SOC_KEY, { stickers: 0, cheers: {}, gifts: {} }); soc.cheers = soc.cheers || {};
+  const k = `${state.fortune.dateKey}|${fr.name}`; if (soc.cheers[k]) return;
+  soc.cheers[k] = true; soc.cheerCount = (soc.cheerCount || 0) + 1; save(SOC_KEY, soc);
+  const fs = friendSaju(fr);
+  grow((g) => complete(g, state.fortune.dateKey, 'social', qBonus('social')), `📣 ${fr.name}에게 응원을 보냈어요!`);
+  setTimeout(() => charge(state.saju.weakest, 3, `cheer-${fr.name}`, `💞 ${fr.name}의 ${ZODIAC[fs.pillars.year.branch].name}가 답례 응원`), 2300);
+  renderCompat();
+}
+
+function giftCardSVG(t, fr) {
+  const c = characterInfo(state.saju, state.profile).concern;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 520" width="360" height="520"><rect width="360" height="520" rx="26" fill="#120c2a"/>
+    <rect x="10" y="10" width="340" height="500" rx="20" fill="none" stroke="${RARITY_COLOR[t.rarity.key]}" stroke-width="3"/>
+    <text x="180" y="46" font-size="16" font-weight="900" fill="#ffc93c" text-anchor="middle" font-family="'Noto Sans KR', sans-serif">🎁 12지신 강림 · 부적 선물</text>
+    <g transform="translate(105 64) scale(0.5)">${renderTalismanSVG(t).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')}</g>
+    <text x="180" y="360" font-size="18" font-weight="900" fill="#fff" text-anchor="middle" font-family="'Noto Sans KR', sans-serif">To. ${esc(fr.name)}</text>
+    <text x="180" y="392" font-size="14" fill="#cfcaf2" text-anchor="middle" font-family="'Noto Sans KR', sans-serif">${esc(t.rarity.label)} ${esc(t.type.label)}부 · ${esc(t.type.meaning)}</text>
+    <text x="180" y="430" font-size="15" fill="#ffe39a" text-anchor="middle" font-family="'Noto Sans KR', sans-serif">"네 앞길에 좋은 기운만 가득하길!"</text>
+    <text x="180" y="470" font-size="13" fill="#9a94c4" text-anchor="middle" font-family="'Noto Sans KR', sans-serif">From. ${esc(state.profile.name || '친구')}</text></svg>`;
+}
+
+function doGift(idx) {
+  const fr = load(FRIENDS_KEY, [])[idx]; if (!fr) return;
+  const list = load(COLLECTION_KEY, []).slice(0, 6);
+  if (!list.length) { toast('선물할 부적이 없어요. 운명 뽑기로 먼저 부적을 모아 보세요!'); return; }
+  const el = document.createElement('div');
+  el.className = 'evo-modal';
+  el.innerHTML = `<div class="evo-box"><h3 style="margin-top:0">🎁 ${esc(fr.name)}에게 줄 부적 고르기</h3>
+    <div class="equip-list">${list.map((r, i) => `<button type="button" data-pick="${i}">${renderTalismanSVG(charmFromRecord(r))}</button>`).join('')}</div>
+    <p class="muted" style="font-size:0.75rem">하루 1번 무료 선물 · 친구 고민에 맞춘 맞춤 부적 선물(990원)은 정식 버전에서 제공</p>
+    <button class="ghost" type="button" data-pick="x" style="width:100%">닫기</button></div>`;
+  document.body.appendChild(el);
+  el.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => {
+    if (b.dataset.pick === 'x') { el.remove(); return; }
+    const t = charmFromRecord(list[Number(b.dataset.pick)]);
+    const soc = load(SOC_KEY, { stickers: 0, cheers: {}, gifts: {} }); soc.gifts = soc.gifts || {};
+    soc.gifts[`${state.fortune.dateKey}|${fr.name}`] = true; soc.giftCount = (soc.giftCount || 0) + 1; save(SOC_KEY, soc);
+    el.remove();
+    const card = giftCardSVG(t, fr);
+    const m = document.createElement('div'); m.className = 'evo-modal';
+    m.innerHTML = `<div class="evo-box"><div class="gift-card">${card}</div><div class="actions" style="justify-content:center"><button class="primary" type="button" data-g="png">선물 카드 저장</button><button class="ghost" type="button" data-g="copy">선물 문구 복사</button><button class="ghost" type="button" data-g="close">닫기</button></div></div>`;
+    document.body.appendChild(m);
+    m.querySelector('[data-g=png]').addEventListener('click', () => downloadSVGAsPNG(card, `gift-${fr.name}.png`, 2));
+    m.querySelector('[data-g=copy]').addEventListener('click', async () => { const msg = `🎁 ${fr.name}에게 ${t.rarity.label} ${t.type.label}부(${t.type.hanja})를 선물했어! "${t.type.meaning}" ✦ 12지신 강림 ${location.href.split('?')[0].split('#')[0]}`; try { await navigator.clipboard.writeText(msg); toast('선물 문구를 복사했어요'); } catch { toast(msg); } });
+    m.querySelector('[data-g=close]').addEventListener('click', () => { m.remove(); renderCompat(); });
+    grow((g) => complete(g, state.fortune.dateKey, 'social', qBonus('social')), `🎁 ${fr.name}에게 부적을 선물했어요!`);
+    setTimeout(() => charge(state.saju.yongsin, 2, 'gift', '🎁 베푼 기운'), 2300);
+  }));
+}
+
 // ---------- 성장 가속 · 시련 통계 ----------
 
 function boostNow() {
@@ -1112,9 +1357,17 @@ function emoteRarity(key) { return emoteOwnMap()[key] || 'common'; }
 const RARITY_LABEL = { common: '일반', rare: '희귀', epic: '영웅', legend: '전설', myth: '신화' };
 const RARITY_COLOR = { common: '#9aa3b2', rare: '#4fc3ff', epic: '#c77dff', legend: '#ffc93c', myth: '#ff4d8d' };
 
+function freeBonus() {
+  const streak = load(GROWTH_KEY, null)?.streak?.count || 0;
+  const streakBonus = streak > 0 && streak % 7 === 0 ? 1 : 0;
+  const fest = festivalStatus(state.fortune.date).active ? 1 : 0;
+  return { total: streakBonus + fest, streakBonus, fest, streak };
+}
+
 function dailyCardHTML() {
   const g = loadGacha();
-  const left = drawsLeft(g, state.fortune.dateKey);
+  const fb = freeBonus();
+  const left = drawsLeft(g, state.fortune.dateKey, fb.total);
   const sub = isSubscribed(g, state.fortune.dateKey);
   const ab = abilitiesAt(heroOptions().stage);
   const toPity = PITY - (g.pity || 0);
@@ -1125,7 +1378,7 @@ function dailyCardHTML() {
       <div class="capsule ${left.free + left.extra ? 'ready' : ''}"><span>✦</span></div>
       <div>
         <p style="margin:0;font-weight:800">한 번 뽑으면 <b style="color:var(--gold)">부적 + 스티커 + 이모티콘</b> 3종!</p>
-        <p class="muted" style="margin:4px 0 0;font-size:0.82rem">무료 <b>${left.free}</b>/1 · 추가 <b>${left.extra}</b>/${left.extraAllowed || EXTRA_PER_DAY}${sub ? ' · 👑 수호 구독 중' : g.extraBought ? ' · 오늘 추가권 사용 중' : ''}</p>
+        <p class="muted" style="margin:4px 0 0;font-size:0.82rem">무료 <b>${left.free}</b>/${left.freeAllowed}${fb.streakBonus ? ' (🔥 7일 연속 보너스 +1)' : ''}${fb.fest ? ' (🏮 축제 보너스 +1)' : ''} · 추가 <b>${left.extra}</b>/${left.extraAllowed || EXTRA_PER_DAY}${sub ? ' · 👑 수호 구독 중' : g.extraBought ? ' · 오늘 추가권 사용 중' : ''}</p>
         <p class="muted" style="margin:2px 0 0;font-size:0.78rem">⭐ 전설 확정까지 <b>${toPity}</b>회 (천장 ${PITY}회)${ab.rareFree ? ' · ☀️ 천광신의 축복: 무료 뽑기 희귀 이상 확정' : ''}</p>
       </div>
     </div>
@@ -1144,7 +1397,7 @@ function dailyCardHTML() {
 
 function doDraw() {
   let g = loadGacha();
-  const left = drawsLeft(g, state.fortune.dateKey);
+  const left = drawsLeft(g, state.fortune.dateKey, freeBonus().total);
   if (!left.free && !left.extra) { openShop(); return; }
   const isFree = left.free > 0;
   const s = state.saju;
@@ -1412,7 +1665,7 @@ function growthCard(info, gs) {
     ${(() => { const b = boostNow(); return `<div class="boost">⚡ 성장 가속 <b>+${Math.round((b.total - 1) * 100)}%</b> <small>🔥 연속 출석 +${Math.round(b.streak * 100)}% · 💞 친구 ${load(FRIENDS_KEY, []).length}명 +${Math.round(b.friends * 100)}%</small><small class="muted">매일 접속과 친구가 성장의 지름길! (각각 최대 +30%)</small></div>`; })()}
     <h4 style="margin:14px 0 6px">오늘의 퀘스트 <span class="muted" style="font-weight:400;font-size:0.8rem">(${gs.todayExp} / ${QUESTS.reduce((a, q) => a + q.exp, 0)} EXP)</span></h4>
     <ul class="quests">${quests}</ul>
-    <p class="muted" style="font-size:0.78rem;margin:8px 0 0">${gs.nextReward ? `🔥 ${gs.nextReward.days}일 연속 출석하면: ${gs.nextReward.label}` : '모든 연속 출석 보상을 받았습니다!'}</p>
+    <p class="muted" style="font-size:0.78rem;margin:8px 0 0">${gs.nextReward ? `🔥 ${gs.nextReward.days}일 연속 출석하면: ${gs.nextReward.label}` : '모든 연속 출석 보상을 받았습니다!'} · 🎁 7일마다(7·14·21일…) 무료 뽑기 +1</p>
     <details class="advanced" style="margin-top:10px"><summary>프로토타입 체험 도구</summary>
       <p class="muted" style="font-size:0.8rem;margin:0">실서비스에서는 매일 퀘스트로만 경험치를 얻습니다. 진화 단계를 빨리 보려면 눌러 보세요.</p>
       <button class="ghost" type="button" id="btn-exp-test">경험치 +60 (체험용)</button>
@@ -1462,9 +1715,10 @@ function showEvolution(info, from, to) {
     <p class="muted">${STAGES[to - 1].desc}</p>
     ${speechBubble([speak(zIdx(), 'evolve', { stage: to })])}
     <div class="perks" style="justify-content:center">${STAGE_UNLOCKS[to - 1].perks.map((x) => `<em>✨ ${x}</em>`).join('')}</div>
-    <button class="primary" type="button">확인</button></div>`;
+    <div class="actions" style="justify-content:center"><button class="primary" type="button" data-evo="ok">확인</button><button class="ghost" type="button" data-evo="share">📸 진화 공유 카드</button></div></div>`;
   document.body.appendChild(el);
-  el.querySelector('button').addEventListener('click', () => { el.remove(); renderHero(true); renderEmoji(); });
+  el.querySelector('[data-evo=ok]').addEventListener('click', () => { el.remove(); renderHero(true); renderEmoji(); });
+  el.querySelector('[data-evo=share]').addEventListener('click', () => { el.remove(); renderHero(false); state.storyTemplate = 'evolve'; selectTab('story'); });
 }
 
 // ---------- 친구 궁합 ----------
@@ -1498,6 +1752,7 @@ function renderCompat() {
       ${friends.length ? `<div class="chips" style="margin-top:12px">${friends.map((fr, i) => `<button class="chip" type="button" data-friend="${i}" aria-pressed="${i === sel}">${esc(fr.name)}</button>`).join('')}</div>` : ''}
     </div>
     <div id="compat-result">${sel !== null && friends[sel] ? compatResultHTML(friends[sel], sel) : '<div class="card"><p class="muted" style="margin:0">친구를 추가하면 두 캐릭터가 함께 나오는 궁합 카드가 만들어집니다.</p></div>'}</div>
+    ${teamCardHTML()}
     ${dexHTML()}`;
 
   const form = $('#friend-form', panel);
@@ -1532,6 +1787,16 @@ function renderCompat() {
     renderCharm(false);
   });
   $('#btn-compat-png', panel)?.addEventListener('click', () => downloadSVGAsPNG(state.compat.svg, `compat-${state.compat.friendName}.png`, 3));
+  $$('[data-cheer]', panel).forEach((b) => b.addEventListener('click', () => doCheer(Number(b.dataset.cheer))));
+  $$('[data-gift]', panel).forEach((b) => b.addEventListener('click', () => doGift(Number(b.dataset.gift))));
+  $('#btn-team-png', panel)?.addEventListener('click', () => downloadSVGAsPNG(teamSVG(state.team), 'team-compat.png', 2));
+  $('#btn-team-invite', panel)?.addEventListener('click', async () => { const msg = `👥 우리 단톡방 궁합 지도 나왔다! 오늘의 행운 멤버는 ${state.team.mem[state.team.lucky].name} 👑 너도 띠 넣고 들어와 ✦ 12지신 강림 ${location.href.split('?')[0].split('#')[0]}`; try { await navigator.clipboard.writeText(msg); toast('초대 문구를 복사했어요. 단톡방에 붙여 넣어 보세요!'); } catch { toast(msg); } });
+  $('#btn-team-charm', panel)?.addEventListener('click', () => {
+    const t = createTalisman(state.saju, state.fortune, { type: 'luck', theme: 'neon', element: state.team.teamWeak, rarity: 'rare', reroll: 'team' });
+    const added = charge(state.team.teamWeak, 4, 'team', '👥 팀 부적');
+    if (!added) { toast('팀 부적은 하루에 한 번 받을 수 있어요'); return; }
+    const list = load(COLLECTION_KEY, []); list.unshift({ ...recordOf(t), label: `팀 ${t.rarity.label} 행운부` }); save(COLLECTION_KEY, list.slice(0, 80));
+  });
   $$('[data-react]', panel).forEach((b) => b.addEventListener('click', () => {
     const list = load(FRIENDS_KEY, []);
     const fr = list[Number(b.dataset.fidx)];
@@ -1686,6 +1951,7 @@ function compatResultHTML(fr, idx) {
       <button class="ghost" type="button" id="btn-compat-png">PNG 저장</button>
       <button class="ghost" type="button" id="btn-friend-del">친구 삭제</button>
     </div>
+    ${friendSocialHTML(fr, idx)}
     ${stickerReactHTML(fr, idx)}
     <div style="display:none">
     </div>
@@ -1802,7 +2068,7 @@ async function renderStory() {
     profile: state.profile,
     template: tpl,
     url: shareUrl(),
-    hero: { info: characterInfo(state.saju, state.profile), ...heroOptions(), quote: say('tier', { tier: state.fortune.tier, vars: { score: state.fortune.scores.total } }) },
+    hero: { info: characterInfo(state.saju, state.profile), ...heroOptions(), stageName: stageName(heroOptions().stage, characterInfo(state.saju, state.profile).female), year: state.fortune.date.year, quote: say('tier', { tier: state.fortune.tier, vars: { score: state.fortune.scores.total } }) },
     compat: state.compat,
   });
   if (state.storyTemplate !== tpl) return; // 그사이 다른 템플릿을 고른 경우

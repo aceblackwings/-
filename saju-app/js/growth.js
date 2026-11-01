@@ -34,6 +34,7 @@ export const QUESTS = [
   { key: 'journey', label: '고민 해결 여정 한 걸음', exp: 15, icon: '🧭' },
   { key: 'social', label: '친구에게 스티커 보내기', exp: 10, icon: '🏷️' },
   { key: 'spot', label: '풍수 기운 스팟 방문', exp: 20, icon: '🗺️' },
+  { key: 'chat', label: '수호신과 대화하기', exp: 5, icon: '💬' },
 ];
 
 export const STREAK_REWARDS = [

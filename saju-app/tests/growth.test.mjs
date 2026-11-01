@@ -31,11 +31,11 @@ t('스트릭 보호 부적은 하루 빠진 날을 지켜 줌', () => {
   assert.equal(r.growth.streak.count, 8); assert.equal(r.growth.freeze, 0);
   assert.ok(r.events.some((e) => e.type === 'freeze-used'));
 });
-t('퀘스트 중복 방지, 하루 최대 135 EXP', () => {
+t('퀘스트 중복 방지, 하루 최대 140 EXP', () => {
   let g = emptyGrowth();
-  for (const q of ['checkin', 'fortune', 'mission', 'charm', 'equip', 'share', 'compat', 'journey', 'social', 'spot', 'mission']) g = complete(g, '2026-11-1', q).growth;
-  assert.equal(g.exp, 135);
-  assert.equal(summary(g, '2026-11-1').todayExp, 135);
+  for (const q of ['checkin', 'fortune', 'mission', 'charm', 'equip', 'share', 'compat', 'journey', 'social', 'spot', 'chat', 'mission']) g = complete(g, '2026-11-1', q).growth;
+  assert.equal(g.exp, 140);
+  assert.equal(summary(g, '2026-11-1').todayExp, 140);
 });
 t('진화는 버튼으로, 도달한 단계까지', () => {
   let g = emptyGrowth();

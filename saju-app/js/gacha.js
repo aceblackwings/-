@@ -69,8 +69,10 @@ export function isSubscribed(g, dateKey) {
   return n(dateKey) <= n(g.subUntil);
 }
 
-export function drawsLeft(g, dateKey) {
+/** @param bonusFree 7일 연속 출석·축제 등으로 늘어난 무료 횟수 */
+export function drawsLeft(g, dateKey, bonusFree = 0) {
   const t = todayGacha(g, dateKey);
   const extraAllowed = (isSubscribed(t, dateKey) || t.extraBought) ? EXTRA_PER_DAY : 0;
-  return { free: Math.max(0, FREE_PER_DAY - t.freeUsed), extra: Math.max(0, extraAllowed - t.extraUsed), extraAllowed };
+  const freeAllowed = FREE_PER_DAY + bonusFree;
+  return { free: Math.max(0, freeAllowed - t.freeUsed), freeAllowed, extra: Math.max(0, extraAllowed - t.extraUsed), extraAllowed };
 }
