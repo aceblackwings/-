@@ -32,7 +32,6 @@
     "claude-mem@thedotmack": true,
     "impeccable@impeccable": true,
     "hyperframes@hyperframes": true,
-    "taste-skill@taste-skill": true,
     "watch@claude-video": true,
     "ponytail@ponytail": true
   },
@@ -65,12 +64,6 @@
       "source": {
         "source": "github",
         "repo": "heygen-com/hyperframes"
-      }
-    },
-    "taste-skill": {
-      "source": {
-        "source": "github",
-        "repo": "Leonxlnx/taste-skill"
       }
     },
     "claude-video": {
