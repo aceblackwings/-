@@ -25,6 +25,7 @@ import { journeyStep, emptyJourney, completeStep, JOURNEY_DAYS, JOURNEYS } from 
 import { isCrisis, crisisReply, buildInstructions, buildMessages, offlineReply, QUICK_ASKS, FREE_CHATS } from './chat.js';
 import { seasonStatus, SEASON_PACKS, SEASON_MISSIONS, FREE_TIERS, PACK_PRICE, emptySeason, recordSeason, missionProgress, tiersDone, buyPack, ownedItems, seasonLook, activeTitle, seasonsAround, itemName, titleName, withEul } from './season.js';
 import { dateToJdn } from './lunar.js';
+import { orderedMenu, buildAnswer, concernAsk, ASK_MENU } from './ask.js';
 import { emptyMemory, extractMemories, mergeMemory, memoryLines, followUp, markAsked, recallFor, describe as describeMemory, forget, forgetAll, needsSummary, applySummary, summaryMessages, offlineSummary, SUMMARY_EVERY, MEMORY_LIMIT } from './memory.js';
 import { festivalStatus } from './festivals.js';
 import { makeCode, normalizeCode, publicCard, cardToSaju, cleanCard, pendingCheers, joinTeamRoom, openMailbox, CHEER_MESSAGES, CHEER_DAILY_LIMIT, CHEER_CHARGE, cheerText, cheerId } from './realtime.js';
@@ -276,10 +277,26 @@ function initForm() {
 
 // ---------- 탭 ----------
 
+// 주 탭 5개 + 하위 화면 묶음
+const TAB_PARENT = { saju: 'ask', report: 'ask', feng: 'ask', charm: 'hero', emoji: 'hero', story: 'hero' };
+const SUBNAV = {
+  ask: [['ask', '🔮 질문 메뉴'], ['saju', '📜 내 사주'], ['report', '📅 올해·5년'], ['feng', '🧭 풍수 지도']],
+  hero: [['hero', '🐉 캐릭터'], ['charm', '📜 부적 만들기'], ['emoji', '😊 이모티콘'], ['story', '📸 스토리 카드']],
+};
+
 function selectTab(name) {
   state.lastTab = name;
-  $$('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+  const parent = TAB_PARENT[name] || name;
+  $$('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === parent)));
   $$('.panel').forEach((p) => p.classList.toggle('hidden', p.dataset.panel !== name));
+  const sub = $('#subnav');
+  const items = SUBNAV[parent];
+  const showSub = items && (parent === 'hero' || name !== 'ask' || state.askOpen);
+  sub.classList.toggle('hidden', !showSub);
+  if (showSub) {
+    sub.innerHTML = items.map(([k, label]) => `<button type="button" data-sub="${k}" aria-current="${k === name && !(k === 'ask' && state.askOpen) ? 'page' : 'false'}">${label}</button>`).join('');
+  }
+  if (name === 'ask') renderAsk();
   if (name === 'story') renderStory();
   if (name === 'hero') renderHero(true);
   if (name === 'feng') renderFeng();
@@ -287,6 +304,111 @@ function selectTab(name) {
   if (name === 'today' && state.fortune) grow((g) => complete(g, state.fortune.dateKey, 'fortune', qBonus('fortune')));
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+$('#subnav').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-sub]'); if (!b) return;
+  if (b.dataset.sub === 'ask') state.askOpen = null;
+  selectTab(b.dataset.sub);
+});
+
+// ---------- 운세 보기 (질문형 메뉴판) ----------
+
+function weekFortunes() {
+  const key = `${state.fortune.dateKey}|${JSON.stringify(state.saju.input)}`;
+  if (state.week?.key === key) return state.week.list;
+  const d0 = state.fortune.date;
+  const list = Array.from({ length: 7 }, (_, i) => {
+    if (i === 0) return state.fortune;
+    const dt = new Date(Date.UTC(d0.year, d0.month - 1, d0.day + i));
+    return applyAbilities(computeFortune(state.saju, { year: dt.getUTCFullYear(), month: dt.getUTCMonth() + 1, day: dt.getUTCDate() }));
+  });
+  state.week = { key, list };
+  return list;
+}
+
+function openAsk(key) {
+  const item = ASK_MENU.find((x) => x.key === key);
+  if (!item) return;
+  if (item.go) { state.askOpen = null; selectTab(item.go); return; }
+  state.askOpen = key;
+  selectTab('ask');
+}
+
+function renderAsk() {
+  const panel = $('[data-panel="ask"]');
+  if (!panel || !state.saju) return;
+  if (state.askOpen) { panel.innerHTML = askAnswerHTML(state.askOpen); return; }
+  const menu = orderedMenu(state.profile.concern);
+  panel.innerHTML = `
+    <div class="card ask-menu">
+      <h3>🔮 무엇이 궁금하세요?</h3>
+      <p class="muted" style="margin:-4px 0 12px;font-size:0.84rem">궁금한 것을 누르면 ${characterInfo(state.saju, state.profile).zodiac.name} 수호신이 내 사주로 바로 풀어 드려요.</p>
+      <div class="ask-grid">${menu.map((m) => `<button type="button" class="ask-item ${m.mine ? 'mine' : ''}" data-ask-open="${m.key}">
+        <span class="ask-ic">${m.icon}</span><b>${m.q}</b><small>${m.sub}</small>${m.mine ? '<em>내 고민</em>' : ''}</button>`).join('')}</div>
+    </div>`;
+}
+
+function trendSVG(trend, color) {
+  const w = 300; const h = 70; const step = w / (trend.length - 1);
+  const pts = trend.map((t, i) => [i * step, h - 8 - ((t.score - 20) / 80) * (h - 20)]);
+  const line = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ');
+  return `<svg viewBox="-12 -6 ${w + 24} ${h + 30}" class="ask-trend" role="img" aria-label="7일 흐름">
+    <path d="${line}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/>
+    ${pts.map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="${i === 0 ? 5 : 3.5}" fill="${color}"/><text x="${x}" y="${y - 9}" font-size="10" text-anchor="middle" fill="#fff">${trend[i].score}</text><text x="${x}" y="${h + 18}" font-size="10" text-anchor="middle" fill="#a9a3d6">${trend[i].short}</text>`).join('')}
+  </svg>`;
+}
+
+function askAnswerHTML(key) {
+  const a = buildAnswer(key, state.saju, weekFortunes());
+  const color = scoreColor(a.score);
+  const tier = a.score >= 80 ? 3 : a.score >= 60 ? 2 : a.score >= 40 ? 1 : 0;
+  const line = speak(zIdx(), 'tier', { tier, stage: heroOptions().stage, vars: { score: a.score } });
+  const face = faceSVG(characterInfo(state.saju, state.profile), heroOptions().stage, a.score >= 60 ? 'smile' : 'fighting', 44);
+  return `
+    <div class="card ask-answer">
+      <button class="ghost ask-back" type="button" data-ask-back>← 다른 운세 보기</button>
+      <h3 style="margin:10px 0 4px">${a.icon} ${a.q}</h3>
+      <div class="ask-score">
+        <div class="num" style="color:${color};text-shadow:0 0 12px ${color}">${a.score}<small>점</small></div>
+        <div><b>${a.when} ${a.catLabel}, ${a.tone}</b><p>${a.text}</p></div>
+      </div>
+      <div class="ask-block"><h4>📜 사주로 보면</h4><p>${a.basis}</p></div>
+      <div class="ask-block"><h4>✨ 이렇게 해 보세요</h4><p>${a.tip}</p>${a.weak ? `<p class="muted" style="margin:6px 0 0;font-size:0.84rem">오늘 가장 약한 건 <b>${a.weak.label}(${a.weak.score}점)</b>이에요.</p>` : ''}</div>
+      <div class="ask-block"><h4>📈 앞으로 7일 ${a.catLabel}</h4>${trendSVG(a.trend, color)}
+        <p class="muted" style="margin:0;font-size:0.84rem">가장 좋은 날은 <b style="color:var(--wood)">${a.best.full} ${a.best.score}점</b>${a.low ? `, 조심할 날은 <b style="color:var(--fire)">${a.low.full}</b>` : ''}이에요.</p></div>
+      <div class="ask-guardian"><div class="av">${face}</div><p>${esc(line)}</p></div>
+      <button class="primary ask-cta" type="button" data-ask-cta="${key}">${a.cta.label} →</button>
+      <p class="muted" style="font-size:0.72rem;margin:8px 0 0;text-align:center">운세는 재미와 마음가짐을 위한 참고예요. 의료·법률·투자 결정은 전문가와 상의하세요.</p>
+    </div>`;
+}
+
+function runAskCta(key) {
+  const a = buildAnswer(key, state.saju, weekFortunes());
+  const c = a.cta;
+  state.askOpen = null;
+  if (c.action === 'charm') { state.charm.type = c.talisman; state.charm.element = state.saju.yongsin; selectTab('charm'); renderCharm(true); return; }
+  if (c.action === 'chat') { selectTab('chat'); setTimeout(() => { const i = $('#chat-form input'); if (i) { i.value = c.ask; i.focus(); } }, 50); return; }
+  if (c.action === 'journey') { selectTab('today'); setTimeout(() => ($('#btn-journey') || $('.journey'))?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300); return; }
+  selectTab(c.action);
+}
+
+document.addEventListener('click', (e) => {
+  const open = e.target.closest('[data-ask-open]');
+  if (open) { openAsk(open.dataset.askOpen); return; }
+  if (e.target.closest('[data-ask-back]')) { state.askOpen = null; selectTab('ask'); return; }
+  const cta = e.target.closest('[data-ask-cta]');
+  if (cta) runAskCta(cta.dataset.askCta);
+});
+
+/** 홈: 무엇이 궁금하세요? (질문 칩 4개) */
+function askChipsHTML() {
+  const top = concernAsk(state.profile.concern);
+  const keys = [...new Set([top, 'tomorrow', 'love', 'saju'])].slice(0, 4);
+  return `<div class="card ask-home"><h3>🔮 무엇이 궁금하세요?</h3>
+    <div class="ask-chips">${keys.map((k) => { const m = ASK_MENU.find((x) => x.key === k); return `<button type="button" class="chip" data-ask-open="${k}">${m.icon} ${m.q}</button>`; }).join('')}
+    <button type="button" class="chip more" data-tab-go="ask">전체 메뉴 →</button></div></div>`;
+}
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-tab-go]'); if (b) { state.askOpen = null; selectTab(b.dataset.tabGo); } });
 
 function renderAll() {
   renderSaju();
@@ -297,6 +419,7 @@ function renderAll() {
   renderCompat();
   renderReport();
   renderFeng();
+  renderAsk();
 }
 
 // ---------- 사주 분석 ----------
@@ -439,6 +562,8 @@ function renderToday() {
       </div>
       <p class="muted">${f.summary}${rel ? ` 오늘은 내 사주의 ${rel} 관계가 생깁니다.` : ''}</p>
     </div>
+
+    ${askChipsHTML()}
 
     ${seasonCardHTML()}
     ${festivalCardHTML()}
