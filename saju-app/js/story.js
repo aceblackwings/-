@@ -4,7 +4,7 @@
 import { CATEGORIES } from './fortune.js';
 import { ELEMENT_KO, ELEMENT_HANJA, STEM_ELEMENT, STEMS } from './saju.js';
 import { renderTalismanSVG } from './talisman.js';
-import { renderEmoticonSVG, GUARDIANS } from './emoticon.js';
+import { renderCharacterSVG, characterStats } from './character.js';
 
 export const STORY_W = 1080;
 export const STORY_H = 1920;
@@ -12,7 +12,7 @@ export const STORY_H = 1920;
 export const STORY_TEMPLATES = [
   { key: 'fortune', label: '오늘의 운세' },
   { key: 'charm', label: '오늘의 부적' },
-  { key: 'emoji', label: '수호령 이모티콘' },
+  { key: 'hero', label: '수호 캐릭터' },
 ];
 
 const EL_COLORS = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
@@ -219,25 +219,26 @@ async function drawCharm(ctx, d) {
   ], 1378);
 }
 
-async function drawEmoji(ctx, d) {
-  const { saju, fortune: f } = d;
-  const img = await svgToImage(renderEmoticonSVG(saju, f, { neon: true }));
-  const s = 720;
+async function drawHero(ctx, d) {
+  const { fortune: f } = d;
+  const { info, charms, mood, emote } = d.hero;
+  const img = await svgToImage(renderCharacterSVG(info, { mood, charms, emote, width: 640 }));
+  const w = 640; const h = 800;
   ctx.save();
-  ctx.shadowColor = EL_COLORS[STEM_ELEMENT[saju.dayMaster]]; ctx.shadowBlur = 60;
-  ctx.drawImage(img, (STORY_W - s) / 2, 340, s, s);
+  ctx.shadowColor = EL_COLORS[info.element]; ctx.shadowBlur = 50;
+  ctx.drawImage(img, (STORY_W - w) / 2, 310, w, h);
   ctx.restore();
-  const g = GUARDIANS[saju.dayMaster];
-  glowText(ctx, `오늘의 수호령: ${g.name}`, 540, 1160, { font: `800 56px ${SANS}`, align: 'center', glow: EL_COLORS[STEM_ELEMENT[saju.dayMaster]], blur: 18 });
-  glowText(ctx, `${f.info.title} · 총운 ${f.scores.total}점`, 540, 1230, { font: `400 36px ${SANS}`, color: '#cfcaf2', align: 'center' });
+  glowText(ctx, info.title, 540, 1172, { font: `800 54px ${SANS}`, align: 'center', glow: EL_COLORS[info.element], blur: 18 });
+  glowText(ctx, `${info.zodiac.name}띠 · ${f.info.title} · 총운 ${f.scores.total}점`, 540, 1236, { font: `400 34px ${SANS}`, color: '#cfcaf2', align: 'center' });
+  const equipped = charms.filter(Boolean);
+  const stats = characterStats(d.saju, f, info, charms);
   chips(ctx, [
-    { text: `일간 ${STEMS[saju.dayMaster]}`, dot: EL_COLORS[STEM_ELEMENT[saju.dayMaster]] },
-    { text: `행운색 ${f.luck.color}`, dot: f.luck.hex },
-    { text: `숫자 ${f.luck.number}` },
-  ], 1320);
+    { text: `${stats.concern.label} ${stats.concern.value}`, dot: EL_COLORS[info.element] },
+    equipped.length ? { text: `부적 ${equipped.length}개 장착`, dot: equipped[0].rarity.color } : { text: `행운색 ${f.luck.color}`, dot: f.luck.hex },
+  ], 1300);
 }
 
-const DRAWERS = { fortune: drawFortune, charm: drawCharm, emoji: drawEmoji };
+const DRAWERS = { fortune: drawFortune, charm: drawCharm, hero: drawHero, emoji: drawHero };
 
 /**
  * @param d {saju, fortune, talisman, profile, template, url}
@@ -247,9 +248,9 @@ export async function renderStoryCanvas(d) {
   const canvas = document.createElement('canvas');
   canvas.width = STORY_W; canvas.height = STORY_H;
   const ctx = canvas.getContext('2d');
-  const accent = d.template === 'charm' ? d.talisman.rarity.color : d.template === 'emoji' ? EL_COLORS[STEM_ELEMENT[d.saju.dayMaster]] : '#00E5FF';
+  const accent = d.template === 'charm' ? d.talisman.rarity.color : d.template === 'hero' ? EL_COLORS[d.hero.info.element] : '#00E5FF';
 
-  await ensureFonts(`운명공방2099나도오늘의부적받기✦※효과수치는재미를위한게임요소입니다${d.profile.name || ''}님의${d.fortune.info.title}${d.fortune.info.desc}${CATEGORIES.map((c) => c.label).join('')}총운행운색숫자${d.fortune.luck.color}${d.fortune.luck.direction}${d.talisman.type.label}${d.talisman.type.hanja}${d.talisman.effects.map((e) => e.stat).join('')}기운보충수호령${GUARDIANS[d.saju.dayMaster].name}일간${STEMS.join('')}일반희귀영웅전설신화목화토금수木火土金水符0123456789.:/[]+-%()`);
+  await ensureFonts(`운명공방2099나도오늘의부적받기✦※효과수치는재미를위한게임요소입니다${d.profile.name || ''}님의${d.fortune.info.title}${d.fortune.info.desc}${CATEGORIES.map((c) => c.label).join('')}총운행운색숫자${d.fortune.luck.color}${d.fortune.luck.direction}${d.talisman.type.label}${d.talisman.type.hanja}${d.talisman.effects.map((e) => e.stat).join('')}기운보충수호캐릭터${d.hero.info.title}${d.hero.info.concern.stat}띠개장착부적일간${STEMS.join('')}일반희귀영웅전설신화목화토금수木火土金水符0123456789.:/[]+-%()`);
 
   background(ctx, accent);
   header(ctx, d);

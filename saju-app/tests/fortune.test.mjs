@@ -47,3 +47,22 @@ t('등급 분포가 확률표와 비슷함', () => {
   assert.ok(Math.abs(counts.rare / 20000 - 0.28) < 0.03, JSON.stringify(counts));
 });
 console.log(`\n${pass} passed`);
+
+import { characterInfo, renderCharacterSVG, characterStats, CONCERNS, EMOTES } from '../js/character.js';
+{
+  const s0 = computeSaju(births[2]); const f0 = computeFortune(s0, date);
+  let n = 0;
+  for (let b = 0; b < 12; b++) for (const gender of ['male', 'female']) for (const c of CONCERNS) {
+    const saju = { ...s0, pillars: { ...s0.pillars, year: { stem: 0, branch: b } } };
+    const info = characterInfo(saju, { gender, concern: c.key });
+    const svg = renderCharacterSVG(info, { mood: EMOTES[b % 8].key });
+    if (!svg.startsWith('<svg') || svg.includes('undefined') || svg.includes('NaN')) throw new Error(`character ${b} ${gender} ${c.key}`);
+    n++;
+  }
+  const info = characterInfo(s0, { gender: 'female', concern: 'exam' });
+  const t1 = createTalisman(s0, f0, { type: 'exam', rarity: 'legend' });
+  const st0 = characterStats(s0, f0, info, []); const st1 = characterStats(s0, f0, info, [t1]);
+  if (!(st1.luckPower > st0.luckPower && st1.concern.value >= st0.concern.value)) throw new Error('equip bonus');
+  for (const e of EMOTES) { const svg = renderEmoticonSVG(s0, f0, { profile: { gender: 'male', concern: 'love' }, mood: e.key }); if (svg.includes('undefined')) throw new Error(e.key); }
+  console.log(`ok - 캐릭터 ${n}종 조합(12띠×성별×고민 9) 렌더링, 장착 보너스, 이모티콘 8종`);
+}

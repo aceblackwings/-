@@ -47,6 +47,17 @@
           <label class="check leap-row hidden"><input name="leap" type="checkbox"> <span id="leap-label">윤달</span></label>
           <p class="conv muted" id="conv-preview" aria-live="polite"></p>
         </fieldset>
+        <fieldset class="cal">
+          <legend>성별</legend>
+          <div class="seg" role="radiogroup" aria-label="성별">
+            <label><input type="radio" name="gender" value="female"><span>여성</span></label>
+            <label><input type="radio" name="gender" value="male"><span>남성</span></label>
+          </div>
+        </fieldset>
+        <fieldset class="cal">
+          <legend>지금 가장 큰 고민</legend>
+          <div class="concern-grid" id="concern-grid" role="radiogroup" aria-label="고민"></div>
+        </fieldset>
         <div class="row">
           <label class="grow">태어난 시간
             <input name="time" type="time" value="12:00">
@@ -72,6 +83,7 @@
       <nav class="tabs" role="tablist">
         <button role="tab" data-tab="saju" aria-selected="true">사주</button>
         <button role="tab" data-tab="today">오늘 운세</button>
+        <button role="tab" data-tab="hero">캐릭터</button>
         <button role="tab" data-tab="charm">부적 공방</button>
         <button role="tab" data-tab="emoji">이모티콘</button>
         <button role="tab" data-tab="story">스토리 공유</button>
@@ -79,6 +91,7 @@
 
       <div class="panel" data-panel="saju"></div>
       <div class="panel hidden" data-panel="today"></div>
+      <div class="panel hidden" data-panel="hero"></div>
       <div class="panel hidden" data-panel="charm"></div>
       <div class="panel hidden" data-panel="emoji"></div>
       <div class="panel hidden" data-panel="story"></div>
@@ -87,7 +100,7 @@
 
   <footer class="foot">
     <p>※ 운세와 부적의 효과 수치는 재미를 위한 게임 요소입니다.</p>
-    <p>프로토타입 v0.3 · 양력·음력(윤달) · 인스타 스토리 공유 · 절기·합삭은 천문 계산</p>
+    <p>프로토타입 v0.4 · 12지신 캐릭터 · 양력·음력(윤달) · 인스타 스토리 공유 · 절기·합삭은 천문 계산</p>
   </footer>
 
   <script type="module" src="js/app.js"></script>

@@ -6,7 +6,10 @@ import { computeFortune, CATEGORIES, DAY_MASTER_PROFILE } from './fortune.js';
 import {
   createTalisman, renderTalismanSVG, downloadSVGAsPNG, TALISMAN_TYPES, THEMES, RARITIES,
 } from './talisman.js';
-import { renderEmoticonSVG, GUARDIANS, SET_MOODS } from './emoticon.js';
+import { renderEmoticonSVG, EMOTES, todayEmote } from './emoticon.js';
+import {
+  CONCERNS, characterInfo, renderCharacterSVG, characterStats,
+} from './character.js';
 import { renderStoryCanvas, shareStory, STORY_TEMPLATES } from './story.js';
 import {
   lunarToSolar, solarToLunar, leapMonthOf, lunarMonthDays, formatLunar,
@@ -15,6 +18,8 @@ import {
 const STORE_KEY = 'unmyeong2099.profile';
 const COLLECTION_KEY = 'unmyeong2099.collection';
 const MISSION_KEY = 'unmyeong2099.missions';
+const EQUIP_KEY = 'unmyeong2099.equip';
+const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
 const EL_COLORS = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -26,7 +31,7 @@ const state = {
   saju: null,
   fortune: null,
   charm: { type: 'protect', theme: 'neon', element: null, reroll: 0, current: null },
-  emojiNeon: true,
+  emojiStyle: 'neon',
   storyTemplate: 'fortune',
   storyCanvas: null,
 };
@@ -84,6 +89,7 @@ function start(profile) {
   state.fortune = computeFortune(state.saju);
   state.charm.element = state.saju.weakest;
   state.charm.reroll = 0;
+  state.charm.type = (CONCERNS.find((c) => c.key === profile.concern) || CONCERNS[2]).talisman;
   $('#view-input').classList.add('hidden');
   $('#view-result').classList.remove('hidden');
   $('#btn-edit').classList.remove('hidden');
@@ -98,6 +104,7 @@ function initForm() {
   const leapRow = $('.leap-row');
 
   for (let m = 1; m <= 12; m++) form.month.add(new Option(`${m}월`, m));
+  $('#concern-grid').innerHTML = CONCERNS.map((c) => `<label><input type="radio" name="concern" value="${c.key}"><span><i>${CONCERN_ICONS[c.key]}</i>${c.label}</span></label>`).join('');
 
   const readForm = () => ({
     calendar: form.calendar.value,
@@ -149,6 +156,8 @@ function initForm() {
     form.timeUnknown.checked = !!saved.timeUnknown;
     form.lonCorr.checked = saved.lonCorr !== false;
     form.zasi.value = saved.zasi || 'early';
+    if (saved.gender) form.gender.value = saved.gender;
+    if (saved.concern) form.concern.value = saved.concern;
   }
   refresh();
   if (saved?.leap) { form.leap.checked = true; refresh(); }
@@ -165,6 +174,8 @@ function initForm() {
     e.preventDefault();
     const f = readForm();
     if (!validYear(f.year)) { toast('1900~2100년 사이로 입력해 주세요'); return; }
+    if (!form.gender.value) { toast('성별을 선택해 주세요'); return; }
+    if (!form.concern.value) { toast('지금 가장 큰 고민을 하나 골라 주세요'); return; }
     const profile = {
       name: form.name.value.trim(),
       ...f,
@@ -172,6 +183,8 @@ function initForm() {
       timeUnknown: form.timeUnknown.checked,
       lonCorr: form.lonCorr.checked,
       zasi: form.zasi.value,
+      gender: form.gender.value,
+      concern: form.concern.value,
     };
     const solar = solarDateOf(profile);
     if (solar.error) { toast(solar.error); return; }
@@ -185,7 +198,7 @@ function initForm() {
     $('#btn-edit').classList.add('hidden');
   });
 
-  if (saved && !solarDateOf(saved).error && new URLSearchParams(location.search).get('auto') !== '0') start(saved);
+  if (saved && saved.gender && saved.concern && !solarDateOf(saved).error && new URLSearchParams(location.search).get('auto') !== '0') start(saved);
 }
 
 // ---------- 탭 ----------
@@ -194,6 +207,7 @@ function selectTab(name) {
   $$('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
   $$('.panel').forEach((p) => p.classList.toggle('hidden', p.dataset.panel !== name));
   if (name === 'story') renderStory();
+  if (name === 'hero') renderHero(true);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -201,6 +215,7 @@ function renderAll() {
   renderSaju();
   renderToday();
   renderCharm(false);
+  renderHero(false);
   renderEmoji();
 }
 
@@ -259,7 +274,7 @@ function renderSaju() {
   const prof = DAY_MASTER_PROFILE[s.dayMaster];
   const me = STEM_ELEMENT[s.dayMaster];
   const bars = s.elements.map((v, i) => `<div class="bar"><span class="el-${i}">${ELEMENT_KO[i]}(${ELEMENT_HANJA[i]})</span><div class="track"><div class="fill" style="width:${v}%;background:${EL_COLORS[i]};color:${EL_COLORS[i]}"></div></div><span class="num">${v}</span></div>`).join('');
-  const g = GUARDIANS[s.dayMaster];
+  const hero = characterInfo(s, state.profile);
   const i = s.input;
 
   $('[data-panel="saju"]').innerHTML = `
@@ -273,7 +288,7 @@ function renderSaju() {
     <div class="card">
       <h3>타고난 기질 <span class="tag">일간 ${STEMS[s.dayMaster]}</span></h3>
       <p><b class="el-${me}">${prof.name} · ${prof.image}</b><br>${prof.text}</p>
-      <p class="muted" style="margin-bottom:0">나의 수호령: <b>${g.name}</b> (행운 이모티콘 탭에서 만나 보세요)</p>
+      <p class="muted" style="margin-bottom:0">나의 수호 캐릭터: <b>${hero.title}</b> — <a href="#" data-go="hero" style="color:var(--neon)">캐릭터 탭에서 만나 보세요 →</a></p>
     </div>
 
     <div class="card">
@@ -292,7 +307,7 @@ function renderSaju() {
       <p class="muted">${strengthText(s)}</p>
       <button class="primary" type="button" data-go="charm" style="width:100%">부족한 ${ELEMENT_KO[s.weakest]} 기운 부적 만들러 가기 →</button>
     </div>`;
-  $('[data-go="charm"]').addEventListener('click', () => selectTab('charm'));
+  $$('[data-go]', $('[data-panel="saju"]')).forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); selectTab(b.dataset.go); }));
 }
 
 function birthDatesText(p, i) {
@@ -343,6 +358,8 @@ function renderToday() {
       </div>
       <p class="muted">${f.summary}${rel ? ` 오늘은 내 사주의 ${rel} 관계가 생깁니다.` : ''}</p>
     </div>
+
+    ${concernCard()}
 
     <div class="card">
       <h3>분야별 운세</h3>
@@ -476,14 +493,154 @@ function renderCharm(animate) {
   }));
 }
 
+// ---------- 고민 맞춤 운세 ----------
+
+const CONCERN_ADVICE = {
+  exam: ['집중이 흐트러지기 쉬운 날입니다. 새 범위보다 복습에 집중하세요.', '평소 페이스를 지키면 충분합니다. 오답 노트를 정리하세요.', '머리가 맑은 날입니다. 어려운 단원에 도전해 보세요.', '합격 기운이 강합니다. 모의고사나 실전 연습에 최고의 날입니다.'],
+  job: ['서류 실수에 주의하세요. 제출 전 한 번 더 확인하세요.', '꾸준히 지원하는 것이 답입니다. 이력서를 다듬어 두세요.', '좋은 소식이 들어올 수 있습니다. 연락에 바로 응답하세요.', '면접운이 강합니다. 자신감 있게 자신을 보여 주세요.'],
+  wealth: ['지출이 새는 날입니다. 오늘은 지갑을 닫아 두세요.', '들어오고 나가는 돈이 비슷합니다. 가계부를 점검하세요.', '작은 이익이 생깁니다. 잊고 있던 돈을 챙겨 보세요.', '재물이 들어오는 흐름입니다. 기회를 놓치지 마세요.'],
+  business: ['무리한 확장은 피하세요. 지금은 내실을 다질 때입니다.', '현상 유지가 최선입니다. 고객 관리에 신경 쓰세요.', '새 거래처와 인연이 생길 수 있습니다. 미팅을 잡아 보세요.', '사업운이 크게 열립니다. 계약과 협상에 좋은 날입니다.'],
+  love: ['감정이 엇갈리기 쉽습니다. 서운한 말은 내일로 미루세요.', '잔잔한 하루입니다. 가벼운 안부가 관계를 데워 줍니다.', '호감을 얻기 쉬운 날입니다. 먼저 연락해 보세요.', '인연의 기운이 강합니다. 고백이나 데이트에 최고의 날입니다.'],
+  marriage: ['작은 의견 차이를 키우지 마세요. 한발 양보가 복입니다.', '서두르지 않아도 됩니다. 함께 계획을 세워 보세요.', '가족의 지지가 들어옵니다. 중요한 이야기를 꺼내기 좋습니다.', '백년가약의 기운입니다. 상견례·예식 준비에 좋은 날입니다.'],
+  health: ['몸이 신호를 보냅니다. 오늘은 무리하지 말고 푹 쉬세요.', '보통의 컨디션입니다. 물을 자주 마시고 스트레칭하세요.', '몸이 가볍습니다. 가벼운 운동을 시작하기 좋습니다.', '활력이 넘칩니다. 새로운 운동에 도전해 보세요.'],
+  people: ['말 한마디가 오해를 부릅니다. 듣는 쪽에 서 보세요.', '무난한 하루입니다. 약속은 꼭 지키세요.', '사람 사이에서 기회가 생깁니다. 모임에 나가 보세요.', '귀인이 나타납니다. 새로운 인연을 반기세요.'],
+  change: ['큰 결정은 미루세요. 정보를 더 모으는 날입니다.', '준비 단계에 집중하세요. 체크리스트를 만들어 두세요.', '새 길이 보입니다. 이직·이사 정보를 알아보기 좋습니다.', '변화의 기운이 강합니다. 결단을 내려도 좋은 날입니다.'],
+};
+
+function concernCard() {
+  const s = state.saju; const f = state.fortune;
+  const info = characterInfo(s, state.profile);
+  const c = info.concern;
+  const v = c.category === 'total' ? f.scores.total : f.scores[c.category];
+  const tier = v >= 80 ? 3 : v >= 60 ? 2 : v >= 40 ? 1 : 0;
+  return `<div class="card">
+      <h3>${CONCERN_ICONS[c.key]} 고민 맞춤 운세 <span class="tag">${c.label}</span></h3>
+      <div class="concern-card">
+        <div style="display:flex;align-items:baseline;gap:10px"><span class="big" style="color:${scoreColor(v)}">${v}</span><b>오늘의 ${c.stat}</b></div>
+        <p style="margin:6px 0 0">${CONCERN_ADVICE[c.key][tier]}</p>
+      </div>
+      <button class="ghost share-row" type="button" data-go-tab="charm" style="width:100%">${c.label}에 맞는 ${TALISMAN_TYPES.find((t) => t.key === c.talisman).label} 부적 만들기 →</button>
+    </div>`;
+}
+
+// ---------- 수호 캐릭터 + 장착 ----------
+
+function loadEquip() {
+  const e = load(EQUIP_KEY, null);
+  return { charms: [null, null], emote: null, ...(e || {}) };
+}
+
+function charmFromRecord(rec) {
+  if (!rec) return null;
+  return createTalisman(state.saju, { ...state.fortune, dateKey: rec.dateKey, todayElement: rec.todayElement }, rec);
+}
+
+function recordOf(t) {
+  return { type: t.type.key, theme: t.theme, element: t.element, rarity: t.rarity.key, dateKey: t.dateKey, todayElement: state.fortune.todayElement, label: `${t.rarity.label} ${t.type.label}부` };
+}
+
+const sameRecord = (a, b) => a && b && a.type === b.type && a.theme === b.theme && a.element === b.element && a.rarity === b.rarity && a.dateKey === b.dateKey;
+
+function heroOptions() {
+  const eq = loadEquip();
+  const charms = eq.charms.map(charmFromRecord);
+  return { eq, charms, mood: eq.emote || todayEmote(state.fortune), emote: eq.emote };
+}
+
+function renderHero(animate) {
+  const s = state.saju; const f = state.fortune; const p = state.profile;
+  const info = characterInfo(s, p);
+  const { eq, charms, mood, emote } = heroOptions();
+  const stats = characterStats(s, f, info, charms);
+  const svg = renderCharacterSVG(info, { mood, charms, emote, width: 300 });
+
+  // 장착 후보: 지금 공방의 부적 + 도감
+  const today = state.charm.current ? recordOf(state.charm.current) : null;
+  const collection = load(COLLECTION_KEY, []);
+  const candidates = [today, ...collection].filter(Boolean)
+    .filter((r, i, arr) => arr.findIndex((x) => sameRecord(x, r)) === i);
+
+  const slot = (i) => {
+    const t = charms[i];
+    return `<div class="slot ${t ? 'filled' : ''}" data-slot="${i}" title="${t ? '눌러서 해제' : ''}">
+      ${t ? `${renderTalismanSVG(t)}<span>${t.rarity.label} ${t.type.label}부</span>` : `<span>부적 슬롯 ${i + 1}<br>비어 있음</span>`}</div>`;
+  };
+  const emoteSlot = emote
+    ? `<div class="slot emote filled" data-slot="emote">${renderEmoticonSVG(s, f, { profile: p, mood: emote, style: 'sticker', tag: '' })}<span>${EMOTES.find((e) => e.key === emote).label}</span></div>`
+    : `<div class="slot emote" data-slot="emote"><span>이모티콘 슬롯<br>비어 있음</span></div>`;
+
+  const bar = (label, v, max, color) => `<div class="bar"><span>${label}</span><div class="track"><div class="fill" style="width:${Math.min(100, (v / max) * 100)}%;background:${color};color:${color}"></div></div><span class="num">${v}</span></div>`;
+
+  $('[data-panel="hero"]').innerHTML = `
+    <div class="card">
+      <div class="hero-wrap">
+        <div class="hero-stage ${animate ? 'reveal' : ''}">${svg}</div>
+        <div>
+          <p class="muted" style="margin:0">${info.zodiac.name}띠(${info.zodiac.hanja}) · 일간 ${STEMS[s.dayMaster]}(${ELEMENT_KO[info.element]}) · ${info.female ? '여성' : '남성'} · 고민 ${info.concern.label}</p>
+          <h3 class="hero-title">${info.title}</h3>
+          <p class="muted" style="margin-top:0">띠는 동물, 타고난 기운은 한복 색, 성별은 한복 모양, 고민은 손에 든 소품으로 정해졌습니다. 부적과 이모티콘을 장착해 능력치를 올려 보세요.</p>
+          <div class="slots">${slot(0)}${slot(1)}${emoteSlot}</div>
+          <div class="stats" style="grid-template-columns:1fr 1fr">
+            <div class="stat"><div class="k">행운력</div><div class="v" style="color:var(--gold)">${stats.luckPower}</div></div>
+            <div class="stat"><div class="k">오늘의 ${stats.concern.label}</div><div class="v" style="color:${scoreColor(stats.concern.value)}">${stats.concern.value}${stats.bonus ? ` <small style="color:var(--wood)">(+${stats.concern.value - stats.concern.baseValue})</small>` : ''}</div></div>
+          </div>
+          <div class="bars" style="margin-top:12px">${stats.base.map((b, i) => bar(b.label, b.value, 120, EL_COLORS[i])).join('')}</div>
+        </div>
+      </div>
+      <div class="actions" style="margin-top:14px">
+        <button class="primary" type="button" id="btn-hero-png">캐릭터 PNG 저장</button>
+        <button class="ghost" type="button" data-story="hero">스토리 공유 ↗</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>부적 장착 <span class="tag">${candidates.length}장 보유</span></h3>
+      ${candidates.length ? `<div class="equip-list">${candidates.map((r, i) => {
+        const on = eq.charms.some((c) => sameRecord(c, r));
+        return `<button type="button" data-equip="${i}" class="${on ? 'on' : ''}" title="${esc(r.label)}">${renderTalismanSVG(charmFromRecord(r))}</button>`;
+      }).join('')}</div><p class="muted" style="font-size:0.8rem;margin-bottom:0">부적을 누르면 빈 슬롯에 장착되고, 장착된 부적을 다시 누르면 해제됩니다. 슬롯이 다 차면 2번 슬롯과 교체됩니다.</p>`
+      : '<p class="muted" style="margin:0">부적 공방에서 부적을 만들고 도감에 저장하면 여기서 장착할 수 있습니다.</p>'}
+    </div>
+
+    <div class="card">
+      <h3>이모티콘 장착 <span class="tag">표정 + 말풍선</span></h3>
+      <div class="emote-chips">${EMOTES.map((e) => `<button type="button" data-emote="${e.key}" aria-pressed="${emote === e.key}">${renderEmoticonSVG(s, f, { profile: p, mood: e.key, style: 'sticker', tag: '', caption: e.label })}</button>`).join('')}</div>
+    </div>`;
+
+  const panel = $('[data-panel="hero"]');
+  const saveEquip = (next) => { save(EQUIP_KEY, next); renderHero(false); };
+  $$('[data-equip]', panel).forEach((b) => b.addEventListener('click', () => {
+    const r = candidates[Number(b.dataset.equip)];
+    const next = loadEquip();
+    const idx = next.charms.findIndex((c) => sameRecord(c, r));
+    if (idx >= 0) { next.charms[idx] = null; toast('부적을 해제했습니다'); } else {
+      const empty = next.charms.findIndex((c) => !c);
+      next.charms[empty >= 0 ? empty : 1] = r;
+      toast(`${r.label} 장착! 행운력이 올랐습니다 ✦`);
+    }
+    saveEquip(next);
+  }));
+  $$('[data-slot]', panel).forEach((el) => el.addEventListener('click', () => {
+    const next = loadEquip();
+    if (el.dataset.slot === 'emote') next.emote = null; else next.charms[Number(el.dataset.slot)] = null;
+    saveEquip(next);
+  }));
+  $$('[data-emote]', panel).forEach((b) => b.addEventListener('click', () => {
+    const next = loadEquip();
+    next.emote = next.emote === b.dataset.emote ? null : b.dataset.emote;
+    saveEquip(next);
+  }));
+  $('#btn-hero-png').addEventListener('click', () => downloadSVGAsPNG(svg, `character-${info.zodiac.key}.png`, 3));
+}
+
 // ---------- 행운 이모티콘 ----------
 
 function renderEmoji() {
-  const s = state.saju; const f = state.fortune;
-  const g = GUARDIANS[s.dayMaster];
-  const neon = state.emojiNeon;
-  const main = renderEmoticonSVG(s, f, { neon });
-  const set = SET_MOODS.map((m) => ({ m, svg: renderEmoticonSVG(s, f, { mood: m.key, caption: m.caption, neon }) }));
+  const s = state.saju; const f = state.fortune; const p = state.profile;
+  const info = characterInfo(s, p);
+  const style = state.emojiStyle;
+  const main = renderEmoticonSVG(s, f, { profile: p, style });
+  const set = EMOTES.map((m) => ({ m, svg: renderEmoticonSVG(s, f, { profile: p, mood: m.key, style, tag: '' }) }));
 
   $('[data-panel="emoji"]').innerHTML = `
     <div class="card">
@@ -491,23 +648,23 @@ function renderEmoji() {
       <div class="emoji-main">
         <div class="stage" id="emoji-stage">${main}</div>
         <div>
-          <p style="margin-top:0">나의 수호령 <b class="el-${STEM_ELEMENT[s.dayMaster]}">${g.name}</b></p>
-          <p class="muted">일간 ${STEMS[s.dayMaster]}(${ELEMENT_KO[STEM_ELEMENT[s.dayMaster]]})의 기운을 닮은 캐릭터입니다. 표정은 오늘 총운(${f.scores.total}점), 소품은 오늘 가장 좋은 운세(${CATEGORIES.find((c) => c.key === f.best).label})로 매일 바뀝니다.</p>
+          <p style="margin-top:0"><b class="el-${info.element}">${info.title}</b></p>
+          <p class="muted">내 수호 캐릭터로 만든 스티커입니다. 표정은 오늘 총운(${f.scores.total}점), 배지는 오늘 가장 좋은 운세(${CATEGORIES.find((c) => c.key === f.best).label})로 매일 바뀝니다.</p>
           <div class="actions">
-            <button class="chip" type="button" id="btn-emoji-style" aria-pressed="${neon}">${neon ? '네온 스타일' : '파스텔 스타일'}</button>
+            <button class="chip" type="button" id="btn-emoji-style" aria-pressed="${style === 'neon'}">${style === 'neon' ? '네온 배경' : '투명 스티커'}</button>
             <button class="primary" type="button" id="btn-emoji-png">PNG 저장</button>
-            <button class="ghost" type="button" data-story="emoji">스토리 공유 ↗</button>
+            <button class="ghost" type="button" data-story="hero">스토리 공유 ↗</button>
           </div>
         </div>
       </div>
     </div>
     <div class="card">
-      <h3>이모티콘 세트 미리보기 <span class="tag">PREMIUM</span></h3>
+      <h3>이모티콘 세트 8종 <span class="tag">PREMIUM</span></h3>
       <div class="emoji-set">${set.map(({ m, svg }, i) => `<figure data-set="${i}">${svg}<figcaption>${m.label}</figcaption></figure>`).join('')}</div>
-      <p class="muted" style="margin-bottom:0">실서비스에서는 8종 세트를 2,200원에 판매하는 상품으로 기획했습니다. 지금은 눌러서 바로 저장할 수 있습니다.</p>
+      <p class="muted" style="margin-bottom:0">누르면 저장됩니다. 캐릭터 탭에서 이모티콘을 장착하면 캐릭터의 표정과 말풍선이 바뀝니다.</p>
     </div>`;
 
-  $('#btn-emoji-style').addEventListener('click', () => { state.emojiNeon = !state.emojiNeon; renderEmoji(); });
+  $('#btn-emoji-style').addEventListener('click', () => { state.emojiStyle = style === 'neon' ? 'sticker' : 'neon'; renderEmoji(); });
   $('#btn-emoji-png').addEventListener('click', () => downloadSVGAsPNG(main, `lucky-emoji-${f.dateKey}.png`, 3));
   $$('[data-set]').forEach((fig) => fig.addEventListener('click', () => {
     const { m, svg } = set[Number(fig.dataset.set)];
@@ -570,6 +727,7 @@ async function renderStory() {
     profile: state.profile,
     template: tpl,
     url: shareUrl(),
+    hero: { info: characterInfo(state.saju, state.profile), ...heroOptions() },
   });
   if (state.storyTemplate !== tpl) return; // 그사이 다른 템플릿을 고른 경우
   state.storyCanvas = canvas;
@@ -603,6 +761,13 @@ document.addEventListener('click', (e) => {
   if (!btn) return;
   state.storyTemplate = btn.dataset.story;
   selectTab('story');
+});
+
+// 다른 탭으로 이동하는 버튼
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-go-tab]');
+  if (!btn) return;
+  selectTab(btn.dataset.goTab);
 });
 
 // ---------- 시작 ----------
