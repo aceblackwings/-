@@ -1,0 +1,238 @@
+// 사주 엔진: 만세력(절기 기준) → 사주 8글자 → 오행 분포 → 신강/신약 → 용신
+// 외부 라이브러리 없이 동작한다. 절기는 태양 황경을 계산해서 판정한다 (오차 약 ±15분).
+
+export const STEMS = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
+export const STEMS_KO = ['갑', '을', '병', '정', '무', '기', '경', '신', '임', '계'];
+export const BRANCHES = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+export const BRANCHES_KO = ['자', '축', '인', '묘', '진', '사', '오', '미', '신', '유', '술', '해'];
+export const ANIMALS = ['쥐', '소', '호랑이', '토끼', '용', '뱀', '말', '양', '원숭이', '닭', '개', '돼지'];
+
+// 오행 인덱스: 0 목, 1 화, 2 토, 3 금, 4 수 (상생 순서)
+export const ELEMENTS = ['wood', 'fire', 'earth', 'metal', 'water'];
+export const ELEMENT_KO = ['목', '화', '토', '금', '수'];
+export const ELEMENT_HANJA = ['木', '火', '土', '金', '水'];
+
+export const STEM_ELEMENT = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4];
+export const BRANCH_ELEMENT = [4, 2, 0, 0, 2, 1, 1, 2, 3, 3, 2, 4];
+// 지지의 본기(本氣) 천간: 십신 계산에 쓴다
+export const BRANCH_MAIN_STEM = [9, 5, 0, 1, 4, 2, 3, 5, 6, 7, 4, 8];
+
+const mod = (n, m) => ((n % m) + m) % m;
+
+// ---------- 천문 계산 ----------
+
+/** 그레고리력 날짜(UT 기준 시각, 시간은 소수 허용) → 율리우스일 */
+export function julianDay(y, m, d, hourUT = 12) {
+  if (m <= 2) { y -= 1; m += 12; }
+  const a = Math.floor(y / 100);
+  const b = 2 - a + Math.floor(a / 4);
+  return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + d + b - 1524.5 + hourUT / 24;
+}
+
+/** 정수 율리우스 일수 (일주 계산용) */
+export function julianDayNumber(y, m, d) {
+  return Math.round(julianDay(y, m, d, 12));
+}
+
+/** 태양의 겉보기 황경 (도). Meeus 저정밀 공식 */
+export function sunLongitude(jd) {
+  const T = (jd - 2451545.0) / 36525;
+  const rad = Math.PI / 180;
+  const L0 = 280.46646 + 36000.76983 * T + 0.0003032 * T * T;
+  const M = (357.52911 + 35999.05029 * T - 0.0001537 * T * T) * rad;
+  const C = (1.914602 - 0.004817 * T - 0.000014 * T * T) * Math.sin(M)
+    + (0.019993 - 0.000101 * T) * Math.sin(2 * M)
+    + 0.000289 * Math.sin(3 * M);
+  const omega = (125.04 - 1934.136 * T) * rad;
+  const lambda = L0 + C - 0.00569 - 0.00478 * Math.sin(omega);
+  return mod(lambda, 360);
+}
+
+/**
+ * 한국 표준시의 UTC 오프셋(시간). 역사적 변경 반영 (서머타임 제외)
+ *  ~1911: UTC+8:30 / 1912~1954.3.20: UTC+9 / 1954.3.21~1961.8.9: UTC+8:30 / 1961.8.10~: UTC+9
+ */
+export function koreaUtcOffset(jdUT) {
+  if (jdUT < 2419402.5) return 8.5; // 1912-01-01
+  if (jdUT < 2434822.5) return 9; // 1954-03-21
+  if (jdUT < 2437521.5) return 8.5; // 1961-08-10
+  return 9;
+}
+
+// ---------- 날짜 보조 ----------
+
+function addDays(y, m, d, n) {
+  const t = new Date(Date.UTC(y, m - 1, d + n));
+  return [t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate()];
+}
+
+/** 날짜 → 일주 인덱스(0~59, 0 = 甲子). 2000-01-01 = 戊午(54) 기준으로 검증됨 */
+export function dayPillarIndex(y, m, d) {
+  return mod(julianDayNumber(y, m, d) + 49, 60);
+}
+
+export function pillarFromIndex(idx60) {
+  return { stem: idx60 % 10, branch: idx60 % 12 };
+}
+
+// ---------- 사주 계산 ----------
+
+/**
+ * @param {object} input
+ * @param {number} input.year, input.month, input.day  양력 생년월일
+ * @param {number} [input.hour], [input.minute]          출생 시각 (한국 표준시)
+ * @param {boolean} [input.timeKnown=true]
+ * @param {boolean} [input.longitudeCorrection=true]     한국 경도 보정 (-30분, 진태양시 근사)
+ * @param {'early'|'late'} [input.zasiMode='early']       early: 23시에 날짜 변경 / late: 야자시 (0시에 날짜 변경)
+ */
+export function computeSaju(input) {
+  const {
+    year, month, day,
+    hour = 12, minute = 0,
+    timeKnown = true,
+    longitudeCorrection = true,
+    zasiMode = 'early',
+  } = input;
+
+  // 1) 절기 판정: 실제 시각(KST → UT)으로 태양 황경을 구한다
+  const h = timeKnown ? hour + minute / 60 : 12;
+  const utcOffset = koreaUtcOffset(julianDay(year, month, day, 0));
+  const lambda = sunLongitude(julianDay(year, month, day, h - utcOffset));
+
+  // 2) 연주: 입춘(황경 315°) 전이면 전년도
+  let sajuYear = year;
+  if (month <= 2 && lambda >= 250 && lambda < 315) sajuYear -= 1;
+  const yearStem = mod(sajuYear - 4, 10);
+  const yearBranch = mod(sajuYear - 4, 12);
+
+  // 3) 월주: 입춘부터 30°마다 寅, 卯, 辰 ...
+  const monthOrder = Math.floor(mod(lambda - 315, 360) / 30); // 0 = 寅월
+  const monthStem = mod(mod(yearStem, 5) * 2 + 2 + monthOrder, 10);
+  const monthBranch = mod(monthOrder + 2, 12);
+
+  // 4) 일주와 시주
+  let [dy, dm, dd] = [year, month, day];
+  let hourPillar = null;
+  let dayIdx;
+
+  if (timeKnown) {
+    // 한국 중앙(동경 127.5°)의 태양시 = UTC+8:30. 표준시가 UTC+9인 시기에는 30분을 뺀다
+    let mins = hour * 60 + minute - (longitudeCorrection ? Math.round((utcOffset - 8.5) * 60) : 0);
+    if (mins < 0) { mins += 1440; [dy, dm, dd] = addDays(dy, dm, dd, -1); }
+    const isLateZi = mins >= 23 * 60;
+    if (isLateZi && zasiMode === 'early') [dy, dm, dd] = addDays(dy, dm, dd, 1);
+    dayIdx = dayPillarIndex(dy, dm, dd);
+
+    const hourBranch = Math.floor((mins / 60 + 1) / 2) % 12;
+    // 야자시: 일주는 당일, 시간의 천간은 다음 날 일간 기준
+    const stemBaseDay = (isLateZi && zasiMode === 'late')
+      ? pillarFromIndex(mod(dayIdx + 1, 60)).stem
+      : pillarFromIndex(dayIdx).stem;
+    const hourStem = mod(mod(stemBaseDay, 5) * 2 + hourBranch, 10);
+    hourPillar = { stem: hourStem, branch: hourBranch };
+  } else {
+    dayIdx = dayPillarIndex(dy, dm, dd);
+  }
+
+  const dayPillar = pillarFromIndex(dayIdx);
+  const pillars = {
+    hour: hourPillar,
+    day: dayPillar,
+    month: { stem: monthStem, branch: monthBranch },
+    year: { stem: yearStem, branch: yearBranch },
+  };
+
+  const elements = elementScores(pillars);
+  const strength = analyzeStrength(dayPillar.stem, elements);
+
+  return {
+    input: { year, month, day, hour, minute, timeKnown, longitudeCorrection, zasiMode },
+    utcOffset,
+    sajuYear,
+    solarLongitude: lambda,
+    pillars,
+    dayMaster: dayPillar.stem,
+    animal: ANIMALS[yearBranch],
+    elements,
+    ...strength,
+  };
+}
+
+/** 오행 점수 (합계 100). 천간 1.0, 지지 1.0, 월지 1.5 */
+export function elementScores(pillars) {
+  const raw = [0, 0, 0, 0, 0];
+  for (const [key, p] of Object.entries(pillars)) {
+    if (!p) continue;
+    raw[STEM_ELEMENT[p.stem]] += 1;
+    raw[BRANCH_ELEMENT[p.branch]] += key === 'month' ? 1.5 : 1;
+  }
+  const total = raw.reduce((a, b) => a + b, 0);
+  const scores = raw.map((v) => Math.round((v / total) * 100));
+  // 반올림 오차 보정
+  const diff = 100 - scores.reduce((a, b) => a + b, 0);
+  if (diff !== 0) scores[scores.indexOf(Math.max(...scores))] += diff;
+  return scores;
+}
+
+export const parentOf = (el) => mod(el - 1, 5);   // 나를 생해 주는 오행
+export const childOf = (el) => mod(el + 1, 5);    // 내가 생하는 오행
+export const controllerOf = (el) => mod(el - 2, 5); // 나를 극하는 오행
+
+export function analyzeStrength(dayStem, scores) {
+  const me = STEM_ELEMENT[dayStem];
+  const support = scores[me] + scores[parentOf(me)];
+  let strength;
+  if (support >= 50) strength = '신강';
+  else if (support <= 35) strength = '신약';
+  else strength = '중화';
+
+  const pickLowest = (cands) => cands.reduce((a, b) => (scores[b] < scores[a] ? b : a));
+  let yongsin;
+  if (strength === '신강') yongsin = pickLowest([childOf(me), mod(me + 2, 5), mod(me + 3, 5)]);
+  else if (strength === '신약') yongsin = pickLowest([parentOf(me), me]);
+  else yongsin = pickLowest([0, 1, 2, 3, 4]);
+
+  const weakest = pickLowest([0, 1, 2, 3, 4]);
+  const strongest = [0, 1, 2, 3, 4].reduce((a, b) => (scores[b] > scores[a] ? b : a));
+  return { strength, support, yongsin, gisin: controllerOf(yongsin), weakest, strongest };
+}
+
+const TEN_GOD_NAMES = [
+  ['비견', '겁재'],
+  ['식신', '상관'],
+  ['편재', '정재'],
+  ['편관', '정관'],
+  ['편인', '정인'],
+];
+
+/** 일간 기준 다른 천간의 십신 */
+export function tenGod(dayStem, otherStem) {
+  const rel = mod(STEM_ELEMENT[otherStem] - STEM_ELEMENT[dayStem], 5);
+  const samePolarity = dayStem % 2 === otherStem % 2;
+  return TEN_GOD_NAMES[rel][samePolarity ? 0 : 1];
+}
+
+/** 오늘(한국 시간)의 날짜 정보 */
+export function todayKST(now = new Date()) {
+  const k = new Date(now.getTime() + 9 * 3600 * 1000);
+  return { year: k.getUTCFullYear(), month: k.getUTCMonth() + 1, day: k.getUTCDate() };
+}
+
+export function pillarLabel(p) {
+  return `${STEMS[p.stem]}${BRANCHES[p.branch]}`;
+}
+
+export function pillarLabelKo(p) {
+  return `${STEMS_KO[p.stem]}${BRANCHES_KO[p.branch]}`;
+}
+
+/** 문자열 → 0~1 사이 고정 난수 (같은 입력이면 같은 값) */
+export function seededRandom(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  h ^= h >>> 13; h = Math.imul(h, 0x5bd1e995); h ^= h >>> 15;
+  return (h >>> 0) / 4294967296;
+}

@@ -1,0 +1,6 @@
+{
+  "name": "saju-app-prototype",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node tests/saju.test.mjs && node tests/fortune.test.mjs && node tests/lunar.test.mjs && node tests/growth.test.mjs && node tests/compat.test.mjs && node tests/personality.test.mjs && node tests/pairtalk.test.mjs && node tests/dex.test.mjs && node tests/luck.test.mjs && node tests/gacha.test.mjs && node tests/chat.test.mjs && node tests/realtime.test.mjs" }
+}

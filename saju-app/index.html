@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>12지신 강림 · 사주 & 부적 & 신수 육성</title>
+  <meta name="description" content="생년월일로 사주를 분석하고, 오늘의 운세와 오행 기반 부적·행운 이모티콘을 만들어 주는 프로토타입">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Song+Myung&family=Noto+Sans+KR:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+
+  <header class="top">
+    <div class="brand">
+      <span class="brand-mark">符</span>
+      <div>
+        <h1>12지신 <em>강림</em></h1>
+        <p class="tagline">사주 × 부적 × 신수 육성</p>
+      </div>
+    </div>
+    <button id="btn-edit" class="ghost hidden" type="button">정보 수정</button>
+  </header>
+
+  <main>
+    <!-- 입력 -->
+    <section id="view-input" class="card intro">
+      <div class="steps-dots"><i class="on"></i><i></i><i></i></div>
+      <form id="birth-form" autocomplete="off">
+        <div class="step" data-step="1">
+          <h2>내 수호신을 깨워 볼까요? 🐉</h2>
+          <p class="muted">생일만 알려 주면 내 띠의 12지신이 강림해요. 정보는 이 기기에만 저장됩니다.</p>
+          <fieldset class="cal">
+            <legend>생년월일</legend>
+            <div class="seg" role="radiogroup" aria-label="달력 종류">
+              <label><input type="radio" name="calendar" value="solar" checked><span>양력</span></label>
+              <label><input type="radio" name="calendar" value="lunar"><span>음력</span></label>
+            </div>
+            <div class="ymd">
+              <label>년<input name="year" type="number" inputmode="numeric" min="1900" max="2100" placeholder="1992" required></label>
+              <label>월<select name="month" required></select></label>
+              <label>일<select name="day" required></select></label>
+            </div>
+            <label class="check leap-row hidden"><input name="leap" type="checkbox"> <span id="leap-label">윤달</span></label>
+            <p class="conv muted" id="conv-preview" aria-live="polite"></p>
+          </fieldset>
+          <label>이름 (선택 · 캐릭터가 불러 줄 이름)
+            <input name="name" type="text" maxlength="12" placeholder="예: 은하">
+          </label>
+          <button class="primary" type="button" data-next="2">다음 →</button>
+        </div>
+
+        <div class="step hidden" data-step="2">
+          <h2>요즘 가장 큰 고민은 뭐예요?</h2>
+          <p class="muted">수호신이 이 고민을 30일 동안 매일 조금씩 함께 풀어 갈 거예요.</p>
+          <fieldset class="cal">
+            <legend>지금 가장 큰 고민</legend>
+            <div class="concern-grid" id="concern-grid" role="radiogroup" aria-label="고민"></div>
+          </fieldset>
+          <fieldset class="cal">
+            <legend>성별</legend>
+            <div class="seg" role="radiogroup" aria-label="성별">
+              <label><input type="radio" name="gender" value="female"><span>여성</span></label>
+              <label><input type="radio" name="gender" value="male"><span>남성</span></label>
+            </div>
+          </fieldset>
+          <div class="step-nav"><button class="ghost" type="button" data-prev="1">← 이전</button><button class="primary" type="button" data-next="3">다음 →</button></div>
+        </div>
+
+        <div class="step hidden" data-step="3">
+          <h2>태어난 시간을 알면 더 정확해요</h2>
+          <p class="muted">몰라도 괜찮아요. 나중에 '정보 수정'에서 언제든 넣을 수 있어요.</p>
+          <div class="row">
+            <label class="grow">태어난 시간
+              <input name="time" type="time" value="12:00">
+            </label>
+            <label class="check"><input name="timeUnknown" type="checkbox"> 시간 모름</label>
+          </div>
+          <details class="advanced">
+          <summary>고급 설정</summary>
+          <label class="check"><input name="lonCorr" type="checkbox" checked> 한국 경도 보정 (-30분, 진태양시 근사)</label>
+          <label>자시(23~01시) 처리
+            <select name="zasi">
+              <option value="early">23시에 날짜 변경 (전통)</option>
+              <option value="late">야자시 (0시에 날짜 변경)</option>
+            </select>
+          </label>
+        </details>
+          <button class="primary" type="submit">🐉 내 수호신 소환하기</button>
+          <button class="ghost" type="button" id="btn-skip-time" style="width:100%">시간은 몰라요 · 바로 소환하기</button>
+          <button class="ghost" type="button" data-prev="2" style="width:100%">← 이전</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- 결과 -->
+    <section id="view-result" class="hidden">
+      <nav class="tabs" role="tablist">
+        <button role="tab" data-tab="today" aria-selected="true">🏠 오늘</button>
+        <button role="tab" data-tab="chat">💬 수호신</button>
+        <button role="tab" data-tab="hero">🐉 캐릭터</button>
+        <button role="tab" data-tab="compat">💞 친구</button>
+        <button role="tab" data-tab="feng">🗺️ 풍수 지도</button>
+        <button role="tab" data-tab="report">📅 올해 리포트</button>
+        <button role="tab" data-tab="saju">사주</button>
+        <button role="tab" data-tab="charm">부적 공방</button>
+        <button role="tab" data-tab="emoji">이모티콘</button>
+        <button role="tab" data-tab="story">스토리 공유</button>
+      </nav>
+
+      <div class="panel hidden" data-panel="saju"></div>
+      <div class="panel" data-panel="today"></div>
+      <div class="panel hidden" data-panel="feng"></div>
+      <div class="panel hidden" data-panel="chat"></div>
+      <div class="panel hidden" data-panel="report"></div>
+      <div class="panel hidden" data-panel="hero"></div>
+      <div class="panel hidden" data-panel="compat"></div>
+      <div class="panel hidden" data-panel="charm"></div>
+      <div class="panel hidden" data-panel="emoji"></div>
+      <div class="panel hidden" data-panel="story"></div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p>※ 운세와 부적의 효과 수치는 재미를 위한 게임 요소입니다.</p>
+    <p>12지신 강림 프로토타입 v0.15 · 실시간 단톡 궁합방 · 응원 우편함 · AI 수호신 대화 · 부적 선물 · 계절 축제 · 고민 해결 여정 · 풍수 지도 · 운명 뽑기 · 월별 리포트 · 승천 14단계 · 대운 · 친구 궁합 · 양력·음력 · 절기·합삭 천문 계산</p>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
