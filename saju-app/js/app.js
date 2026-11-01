@@ -23,6 +23,7 @@ import { RATES, PITY, PRICES, EXTRA_PER_DAY, drawPack, emptyGacha, todayGacha, i
 import { ASCENSION, abilitiesAt, nextAscension, ascensionOf, trialProgress, growthBoost, TRIALS } from './ascension.js';
 import { journeyStep, emptyJourney, completeStep, JOURNEY_DAYS, JOURNEYS } from './journey.js';
 import { isCrisis, crisisReply, buildInstructions, buildMessages, offlineReply, QUICK_ASKS, FREE_CHATS } from './chat.js';
+import { emptyMemory, extractMemories, mergeMemory, memoryLines, followUp, markAsked, recallFor, describe as describeMemory, forget, forgetAll, needsSummary, applySummary, summaryMessages, offlineSummary, SUMMARY_EVERY, MEMORY_LIMIT } from './memory.js';
 import { festivalStatus } from './festivals.js';
 import { makeCode, normalizeCode, publicCard, cardToSaju, cleanCard, pendingCheers, joinTeamRoom, openMailbox, CHEER_MESSAGES, CHEER_DAILY_LIMIT, CHEER_CHARGE, cheerText, cheerId } from './realtime.js';
 import { dailySpots, distanceM, treasureRarity, bearingName, ARRIVE_RADIUS, DEMO_CENTER, PARTNER_SAMPLES } from './fengshui.js';
@@ -50,6 +51,7 @@ const JOURNEY_KEY = 'unmyeong2099.journey';
 const FENG_KEY = 'unmyeong2099.feng';
 const SOC_KEY = 'unmyeong2099.social';
 const CHAT_KEY = 'unmyeong2099.chat';
+const MEM_KEY = 'unmyeong2099.memory';
 const RT_KEY = 'unmyeong2099.realtime';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
 const EL_COLORS = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
@@ -941,7 +943,55 @@ function chatContext() {
     yongsin: s.yongsin, weakest: s.weakest, strength: s.strength, fortune: state.fortune,
     concern: info.concern.label, journeyStep: journeyStep(info.concern.key, Math.min(j.done, JOURNEY_DAYS - 1), s.yongsin).title,
     daewoon: d ? `${pillarLabelFull(d)} (${d.startAge}~${d.endAge}세)` : null, luckIndex: luckNow().index,
+    memory: memoryLines(loadMemory(), state.fortune.dateKey),
   };
+}
+
+function loadMemory() {
+  return { ...emptyMemory(), ...load(MEM_KEY, {}) };
+}
+
+/** 대화 한 번이 끝난 뒤: 기억 추출·합치기, 필요하면 지난 대화 요약 */
+async function rememberTurn(text, history, fuMark) {
+  const today = state.fortune.dateKey;
+  let mem = loadMemory();
+  if (fuMark) mem = markAsked(mem, fuMark);
+  if (mem.on === false || isCrisis(text)) { save(MEM_KEY, mem); return; }
+  mem = mergeMemory(mem, extractMemories(text, today), today);
+  mem.pending = (mem.pending || 0) + 2;
+  save(MEM_KEY, mem);
+  if (!needsSummary(mem)) return;
+  const turns = history.slice(-mem.pending);
+  let summary = null;
+  try {
+    const sample = await getSample();
+    if (sample) summary = (await sample(summaryMessages(mem.summary, turns), { modelTier: 'quick', cache: false })).text;
+  } catch { summary = null; }
+  if (!summary || !summary.trim()) summary = offlineSummary(mem, turns, today);
+  save(MEM_KEY, applySummary(loadMemory(), summary.trim()));
+  if (!$('[data-panel="chat"]').classList.contains('hidden')) renderChat();
+}
+
+function memoryCard() {
+  const mem = loadMemory();
+  const today = state.fortune.dateKey;
+  const icon = { event: '📅', like: '💖', person: '👥', topic: '💭' };
+  const items = mem.items || [];
+  const list = mem.on === false
+    ? '<p class="muted">기억 끄기 상태예요. 수호신이 새로운 이야기를 기억하지 않아요.</p>'
+    : !items.length && !mem.summary
+      ? '<p class="muted">아직 기억한 이야기가 없어요. "내일 면접 있어"처럼 말해 주면 다음에 먼저 안부를 물어요.</p>'
+      : `${mem.summary ? `<div class="mem-sum">📝 ${esc(mem.summary)}</div>` : ''}<ul class="mem-list">${items.map((x) => `<li><span>${icon[x.kind]} ${esc(describeMemory(x, today))}${x.count > 1 ? ` <small>×${x.count}</small>` : ''}</span><button type="button" class="mem-x" data-forget="${esc(x.id)}" aria-label="이 기억 지우기">✕</button></li>`).join('')}</ul>`;
+  return `
+    <div class="card memory">
+      <h3>🧠 수호신의 기억 <span class="tag">${items.length}/${MEMORY_LIMIT}</span></h3>
+      ${list}
+      <div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap">
+        <button class="ghost" type="button" id="btn-mem-toggle">${mem.on === false ? '기억 켜기' : '기억 끄기'}</button>
+        <button class="ghost" type="button" id="btn-mem-clear">모두 잊기</button>
+      </div>
+      <p class="muted" style="font-size:0.74rem;margin:8px 0 0">기억은 이 기기에만 저장돼요. 전화번호·생년월일·주소처럼 민감한 내용은 기억하지 않고, 대화 ${SUMMARY_EVERY}마디마다 짧게 요약해요. 친구와 공유되지 않아요.</p>
+    </div>`;
 }
 
 function loadChat() {
@@ -965,7 +1015,9 @@ function renderChat() {
   const sub = isSubscribed(loadGacha(), state.fortune.dateKey);
   const left = sub ? '무제한' : `${Math.max(0, FREE_CHATS - c.used)}/${FREE_CHATS}`;
   const face = faceSVG(info, stage, 'smile', 40);
-  const hist = c.history.length ? c.history : [{ role: 'guardian', text: `${speak(zIdx(), 'greet', { index: 1, stage })} 무엇이든 물어봐. ${info.concern.label} 고민도 좋고, 오늘 운세도 좋아!` }];
+  const baseHist = c.history.length ? c.history : [{ role: 'guardian', text: `${speak(zIdx(), 'greet', { index: 1, stage })} 무엇이든 물어봐. ${info.concern.label} 고민도 좋고, 오늘 운세도 좋아!` }];
+  const fu = followUp(loadMemory(), state.fortune.dateKey);
+  const hist = fu ? [...baseHist, { role: 'guardian', text: `💭 ${fu.text}`, recall: true }] : baseHist;
   panel.innerHTML = `
     <div class="card chat">
       <h3>💬 수호신과 대화 <span class="tag">${state.sample ? 'AI 수호신' : '수호신'} · 오늘 ${left}</span></h3>
@@ -974,11 +1026,15 @@ function renderChat() {
       <form id="chat-form" class="chat-form"><input name="q" type="text" maxlength="200" placeholder="${info.zodiac.name} 수호신에게 물어보기…" autocomplete="off"><button class="primary" type="submit">보내기</button></form>
       <p class="muted" style="font-size:0.74rem;margin:8px 0 0">무료 하루 ${FREE_CHATS}회 · 👑 수호 구독 무제한. 수호신의 답은 재미와 마음가짐을 위한 것이며, 의료·법률·투자 결정은 전문가와 상의하세요. 힘든 마음이 들면 ☎ 109 (24시간)</p>
       <button class="ghost" type="button" id="btn-chat-clear" style="margin-top:6px">대화 지우기</button>
-    </div>`;
+    </div>
+    ${memoryCard()}`;
   const log = $('#chat-log', panel); log.scrollTop = log.scrollHeight;
   $('#chat-form', panel).addEventListener('submit', (e) => { e.preventDefault(); const q = e.target.q.value.trim(); if (q) sendChat(q); });
   $$('[data-ask]', panel).forEach((b) => b.addEventListener('click', () => sendChat(b.dataset.ask)));
   $('#btn-chat-clear', panel).addEventListener('click', () => { save(CHAT_KEY, { ...loadChat(), history: [] }); renderChat(); });
+  $$('[data-forget]', panel).forEach((b) => b.addEventListener('click', () => { save(MEM_KEY, forget(loadMemory(), b.dataset.forget)); renderChat(); toast('그 기억은 지웠어요'); }));
+  $('#btn-mem-toggle', panel).addEventListener('click', () => { const m = loadMemory(); save(MEM_KEY, { ...m, on: m.on === false }); renderChat(); toast(m.on === false ? '수호신이 다시 이야기를 기억해요' : '이제 새 이야기를 기억하지 않아요'); });
+  $('#btn-mem-clear', panel).addEventListener('click', () => { if (confirm('수호신의 기억을 모두 지울까요?')) { save(MEM_KEY, forgetAll(loadMemory())); renderChat(); toast('모든 기억을 지웠어요'); } });
 }
 
 async function sendChat(text) {
@@ -987,6 +1043,9 @@ async function sendChat(text) {
   const sub = isSubscribed(loadGacha(), state.fortune.dateKey);
   if (!sub && c.used >= FREE_CHATS && !isCrisis(text)) { toast('오늘 무료 대화를 모두 썼어요. 내일 또 만나거나 수호 구독으로 무제한 대화할 수 있어요'); openShop(); return; }
   const ctx = chatContext();
+  const mem = loadMemory();
+  const fu = followUp(mem, state.fortune.dateKey);
+  if (fu) ctx.followUp = fu.text; else ctx.recall = recallFor(mem, text, state.fortune.dateKey);
   const history = [...c.history, { role: 'user', text }];
   save(CHAT_KEY, { ...c, history });
   renderChat();
@@ -1016,7 +1075,9 @@ async function sendChat(text) {
   }
   state.chatBusy = false;
   const c2 = loadChat();
-  save(CHAT_KEY, { ...c2, used: c2.used + (isCrisis(text) ? 0 : 1), history: [...history, { role: 'guardian', text: answer }].slice(-30) });
+  const fullHistory = [...history, { role: 'guardian', text: answer }];
+  save(CHAT_KEY, { ...c2, used: c2.used + (isCrisis(text) ? 0 : 1), history: fullHistory.slice(-30) });
+  rememberTurn(text, fullHistory, fu?.mark);
   renderChat();
   grow((g) => complete(g, state.fortune.dateKey, 'chat', qBonus('chat')));
 }

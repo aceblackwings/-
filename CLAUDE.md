@@ -12,7 +12,7 @@
 
 ## 실행·테스트
 - 로컬: `cd saju-app && python3 -m http.server 8000` → http://localhost:8000
-- 테스트: `cd saju-app && npm test` (node 테스트 파일 12개, 모두 통과 상태 유지)
+- 테스트: `cd saju-app && npm test` (node 테스트 파일 13개, 모두 통과 상태 유지)
 - 화면 확인: Playwright(`require('playwright')`, 크로미움 내장)로 스크린샷
 
 ## 모듈 지도 (`saju-app/js/`)
@@ -33,6 +33,7 @@
 | fengshui.js | 풍수 기운 스팟·보물 |
 | festivals.js | 계절 축제 달력 |
 | chat.js | AI 수호신 대화(지시문·안전·오프라인 답변) |
+| memory.js | 수호신의 기억: 일정·주제·사람·좋아하는 것 추출, 요약, 지난 일정 안부, 개인정보 제외 (`unmyeong2099.memory`) |
 | realtime.js | 실시간 궁합방(room)·친구 우편함(db) 도우미 |
 | story.js | 인스타 스토리 카드(캔버스) |
 | app.js | 화면·상태·localStorage(`unmyeong2099.*` 키) |
@@ -46,4 +47,4 @@
 6. 사용자 응대는 한국어, 공식적이고 격려하는 톤
 
 ## 다음 할 일 후보
-AI 수호신 기억(요약), 계절 한정 패키지, 해외판 튜토리얼과 다국어, 정식 앱 전환(React Native/Flutter + 서버)
+(완료: v0.16 수호신의 기억) 계절 한정 패키지, 해외판 튜토리얼과 다국어, 정식 앱 전환(React Native/Flutter + 서버)

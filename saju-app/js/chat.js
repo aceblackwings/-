@@ -36,7 +36,12 @@ ${ctx.stage === 1 ? '- 아기 단계라 문장 앞에 가끔 "뀨!"를 붙인다
 - 오늘 행운: 색 ${f.luck.color}, 숫자 ${f.luck.number}, 방향 ${f.luck.direction}, 음식 ${f.luck.food}
 - 지금 대운: ${ctx.daewoon || '정보 없음'} · 개운 지수 ${ctx.luckIndex}/100
 - 가장 큰 고민: ${ctx.concern} · 고민 해결 여정 오늘의 걸음: "${ctx.journeyStep}"
-
+${ctx.memory?.length ? `
+[수호신의 기억 — 이전 대화에서 기기에 남긴 메모]
+${ctx.memory.join('\n')}
+- 기억은 대답과 관련 있을 때만 한 가지를 자연스럽게 꺼낸다. 목록처럼 읊지 않는다.
+` : ''}${ctx.followUp ? `- 이번 대답 첫 문장에서 먼저 안부를 묻는다: "${ctx.followUp}"
+` : ''}
 [대답 규칙]
 1. 한국어, 3~5문장, 띠 말투와 말버릇을 꼭 지킨다.
 2. 공감 한 문장 → 사주 근거 한 문장(위 정보 중 관련 있는 것) → 오늘 할 수 있는 아주 작은 행동 1개 → 응원 한 문장.
@@ -103,7 +108,8 @@ export function offlineReply(ctx, text) {
     today: `오늘의 고민 해결 걸음 "${ctx.journeyStep}" 하나만 해 보자`,
   };
   const empathy = intent.key === 'mood' ? `${ctx.userName}, 마음이 무거웠구나. 이야기해 줘서 고마워.` : `${ctx.userName}의 ${intent.label} 이야기구나.`;
-  return `${empathy} 오늘 ${intent.label}은 ${score}점, ${tone}. ${ctx.pers.me}가 보기엔 ${f.tenGod}의 날이라 "${f.info.title}"의 기운이 흐르고, 너한테 필요한 건 ${el} 기운이야. ${actions[intent.key]}. 언제나 ${ctx.pers.me}가 옆에 있어, ${t}`;
+  const recall = ctx.followUp ? `${ctx.followUp} ` : ctx.recall ? `${ctx.recall} ` : '';
+  return `${recall}${empathy} 오늘 ${intent.label}은 ${score}점, ${tone}. ${ctx.pers.me}가 보기엔 ${f.tenGod}의 날이라 "${f.info.title}"의 기운이 흐르고, 너한테 필요한 건 ${el} 기운이야. ${actions[intent.key]}. 언제나 ${ctx.pers.me}가 옆에 있어, ${t}`;
 }
 
 export const QUICK_ASKS = ['오늘 운세 자세히 알려 줘', '요즘 고민 상담해 줘', '오늘 뭐 입을까?', '연애운 어때?', '나한테 맞는 부적 추천해 줘'];
