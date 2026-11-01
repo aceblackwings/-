@@ -8,10 +8,11 @@ import {
 } from './talisman.js';
 import { renderEmoticonSVG, EMOTES, todayEmote } from './emoticon.js';
 import {
-  CONCERNS, characterInfo, renderCharacterSVG, characterStats, STAGE_UNLOCKS,
+  CONCERNS, characterInfo, renderCharacterSVG, characterStats, STAGE_UNLOCKS, characterMarkup, ZODIAC,
 } from './character.js';
 import { computeCompat, renderCompatSVG } from './compat.js';
 import { personalityOf, speak } from './personality.js';
+import { pairDialogue, pairLine } from './pairtalk.js';
 import { renderStoryCanvas, shareStory, STORY_TEMPLATES } from './story.js';
 import {
   STAGES, STREAK_REWARDS, emptyGrowth, checkIn, complete, addExp, evolve, claimStreakReward, summary, stageName,
@@ -862,7 +863,8 @@ function renderCompat() {
       </form>
       ${friends.length ? `<div class="chips" style="margin-top:12px">${friends.map((fr, i) => `<button class="chip" type="button" data-friend="${i}" aria-pressed="${i === sel}">${esc(fr.name)}</button>`).join('')}</div>` : ''}
     </div>
-    <div id="compat-result">${sel !== null && friends[sel] ? compatResultHTML(friends[sel], sel) : '<div class="card"><p class="muted" style="margin:0">친구를 추가하면 두 캐릭터가 함께 나오는 궁합 카드가 만들어집니다.</p></div>'}</div>`;
+    <div id="compat-result">${sel !== null && friends[sel] ? compatResultHTML(friends[sel], sel) : '<div class="card"><p class="muted" style="margin:0">친구를 추가하면 두 캐릭터가 함께 나오는 궁합 카드가 만들어집니다.</p></div>'}</div>
+    ${zodiacMapHTML()}`;
 
   const form = $('#friend-form', panel);
   form.addEventListener('submit', (e) => {
@@ -896,6 +898,40 @@ function renderCompat() {
   $('#btn-compat-png', panel)?.addEventListener('click', () => downloadSVGAsPNG(state.compat.svg, `compat-${state.compat.friendName}.png`, 3));
 }
 
+/** 캐릭터 얼굴만 잘라 낸 작은 SVG */
+function faceSVG(info, stage, mood = 'smile', size = 64) {
+  const { defs, body } = characterMarkup(info, { stage, mood, aura: false });
+  const vb = { 1: '66 134 188 188', 2: '56 100 208 208', 3: '50 80 220 220' }[stage] || '40 56 240 240';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" width="${size}" height="${size}"><defs>${defs}</defs>${body}</svg>`;
+}
+
+function dialogueHTML(aInfo, bInfo, dlg, aStage) {
+  const [a, b] = dlg.lines;
+  return `<div class="dialogue">
+    <div class="dlg-title">${dlg.special ? '⭐ 전설의 조합 전용 대화' : `${dlg.relation.label} 관계의 대화`}</div>
+    <div class="dlg-row"><div class="dlg-face">${faceSVG(aInfo, aStage, 'smile')}<span>${aInfo.zodiac.name}</span></div>${speechBubble([a.text], 'left')}</div>
+    <div class="dlg-row right">${speechBubble([b.text], 'right')}<div class="dlg-face">${faceSVG(bInfo, 2, 'smile')}<span>${bInfo.zodiac.name}</span></div></div>
+  </div>`;
+}
+
+function zodiacMapHTML() {
+  const me = state.saju.pillars.year.branch;
+  const stage = heroOptions().stage;
+  const myInfo = characterInfo(state.saju, state.profile);
+  const cards = ZODIAC.map((z, b) => {
+    const fake = { pillars: { year: { branch: b } }, dayMaster: (b * 3) % 10 };
+    const info = characterInfo(fake, { gender: b % 2 ? 'female' : 'male', concern: 'people' });
+    const line = pairLine(me, b, { stage });
+    const back = pairLine(b, me, {});
+    const tone = { samhap: '#ff4d8d', yukhap: '#ffc93c', same: '#39ff88', normal: '#9a94c4', wonjin: '#c77dff', chung: '#00e5ff' }[line.relation.type];
+    return `<details class="zmap"><summary>${faceSVG(info, 2, 'smile', 52)}<b>${z.name}띠</b><em style="color:${tone};border-color:${tone}">${line.special ? '⭐ ' : ''}${line.relation.label}</em></summary>
+      <p><b>${myInfo.zodiac.name}:</b> ${esc(line.text)}</p><p><b>${z.name}:</b> ${esc(back.text)}</p></details>`;
+  }).join('');
+  return `<div class="card"><h3>🐾 12띠 관계도 <span class="tag">${myInfo.zodiac.name}띠 기준</span></h3>
+    <p class="muted" style="margin-top:0;font-size:0.85rem">띠를 누르면 내 캐릭터와 그 띠가 나누는 대화가 나와요. ⭐는 옛이야기가 담긴 전설의 조합!</p>
+    <div class="zmap-grid">${cards}</div></div>`;
+}
+
 function compatResultHTML(fr, idx) {
   const fs = friendSaju(fr);
   if (fs.error) return `<div class="card"><p class="muted">${fs.error}</p></div>`;
@@ -905,7 +941,8 @@ function compatResultHTML(fr, idx) {
   const { charms, stage } = heroOptions();
   const myName = state.profile.name || '나';
   const svg = renderCompatSVG(myInfo, friendInfo, c, { myName, friendName: fr.name, myStage: stage, myCharms: charms });
-  state.compat = { myInfo, friendInfo, compat: c, svg, myName, friendName: fr.name, friendSaju: fs, myStage: stage, myCharms: charms };
+  const dialogue = pairDialogue(state.saju.pillars.year.branch, fs.pillars.year.branch, { stageA: stage, stageB: 2 });
+  state.compat = { myInfo, friendInfo, compat: c, svg, myName, friendName: fr.name, friendSaju: fs, myStage: stage, myCharms: charms, dialogue };
   const bar = (label, v) => `<div class="bar"><span>${label}</span><div class="track"><div class="fill" style="width:${v}%;background:${scoreColor(v)};color:${scoreColor(v)}"></div></div><span class="num">${v}</span></div>`;
   return `<div class="card">
     <div class="compat-stage">${svg}</div>
@@ -918,7 +955,7 @@ function compatResultHTML(fr, idx) {
       <li><b>오행 보완</b> 서로 부족한 기운을 채워 주는 정도 <em>+${c.complement}</em></li>
       <li><b>오늘의 기운</b> 오늘 날짜에 따라 달라지는 보너스 <em>${c.todayBonus >= 0 ? '+' : ''}${c.todayBonus}</em></li>
     </ul>
-    ${speechBubble([`${myInfo.zodiac.name}: ${speak(state.saju.pillars.year.branch, 'compat', { stage, index: c.score >= 75 ? 0 : c.score >= 48 ? 1 : 2, vars: { friend: fr.name } })}`])}
+    ${dialogueHTML(myInfo, friendInfo, state.compat.dialogue, stage)}
     <p class="concern-card" style="margin:10px 0 0">💡 오늘의 팁: ${c.tip}</p>
     <div class="actions" style="margin-top:12px">
       <button class="primary" type="button" data-story="compat">📸 궁합 카드 스토리 공유</button>

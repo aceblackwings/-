@@ -334,3 +334,21 @@ select option { background: #1d1742; color: #ffffff; }
 .hero-stage.jump { animation: heroJump 0.5s cubic-bezier(.3, 1.6, .5, 1); }
 @keyframes heroJump { 0% { transform: none; } 35% { transform: translateY(-14px) scale(1.03, 0.97); } 70% { transform: translateY(2px) scale(0.98, 1.02); } 100% { transform: none; } }
 .pers { border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; background: rgba(255, 255, 255, 0.03); }
+
+/* 띠끼리 대화 */
+.dialogue { margin-top: 12px; border: 1px solid var(--line); border-radius: 16px; padding: 10px 12px; background: rgba(255, 255, 255, 0.02); }
+.dlg-title { font-size: 0.8rem; color: var(--gold); margin-bottom: 4px; }
+.dlg-row { display: flex; gap: 8px; align-items: center; }
+.dlg-row.right { justify-content: flex-end; }
+.dlg-row .speech { flex: 1; margin: 6px 0; }
+.dlg-face { flex: none; display: grid; justify-items: center; font-size: 0.7rem; color: var(--muted); }
+.dlg-face svg { border-radius: 50%; background: radial-gradient(circle, rgba(123, 92, 255, 0.35), rgba(13, 10, 31, 0.9)); border: 2px solid var(--line); }
+.speech.right::after { left: auto; right: -9px; top: 18px; bottom: auto; transform: none; border: 10px solid transparent; border-left-color: #fff; border-right: 0; }
+.zmap-grid { display: grid; gap: 6px; }
+.zmap { border: 1px solid var(--line); border-radius: 12px; padding: 4px 10px; background: rgba(255, 255, 255, 0.02); }
+.zmap summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; }
+.zmap summary::-webkit-details-marker { display: none; }
+.zmap summary svg { border-radius: 50%; background: rgba(123, 92, 255, 0.2); flex: none; }
+.zmap summary em { margin-left: auto; font-style: normal; font-size: 0.75rem; border: 1px solid; border-radius: 999px; padding: 1px 8px; }
+.zmap p { margin: 4px 0 8px; font-size: 0.86rem; color: #cfcaf2; }
+.zmap p b { color: #fff; }

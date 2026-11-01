@@ -258,7 +258,16 @@ async function drawCompat(ctx, d) {
   ctx.restore();
   glowText(ctx, `${c.myName} × ${c.friendName}`, 540, 1130, { font: `800 56px ${SANS}`, align: 'center', glow: c.compat.grade.color, blur: 18 });
   ctx.font = `400 34px ${SANS}`;
-  wrap(ctx, c.compat.grade.desc, 860).slice(0, 2).forEach((line, i) => glowText(ctx, line, 540, 1196 + i * 48, { font: `400 34px ${SANS}`, color: '#cfcaf2', align: 'center' }));
+  if (c.dialogue) {
+    ctx.font = `600 30px ${SANS}`;
+    const [a, b] = c.dialogue.lines;
+    const la = wrap(ctx, `${c.myInfo.zodiac.name}: “${a.text}”`, 900)[0];
+    const lb = wrap(ctx, `${c.friendInfo.zodiac.name}: “${b.text}”`, 900)[0];
+    glowText(ctx, la, 540, 1194, { font: `600 30px ${SANS}`, color: '#ffe39a', align: 'center' });
+    glowText(ctx, lb, 540, 1240, { font: `600 30px ${SANS}`, color: '#bfe9ff', align: 'center' });
+  } else {
+    wrap(ctx, c.compat.grade.desc, 860).slice(0, 2).forEach((line, i) => glowText(ctx, line, 540, 1196 + i * 48, { font: `400 34px ${SANS}`, color: '#cfcaf2', align: 'center' }));
+  }
   chips(ctx, [
     { text: `연애 ${c.compat.sub.love}`, dot: '#ff4d8d' },
     { text: `우정 ${c.compat.sub.friend}`, dot: '#39ff88' },
@@ -278,7 +287,7 @@ export async function renderStoryCanvas(d) {
   const ctx = canvas.getContext('2d');
   const accent = d.template === 'charm' ? d.talisman.rarity.color : d.template === 'hero' ? EL_COLORS[d.hero.info.element] : d.template === 'compat' ? d.compat.grade?.color || d.compat.compat.grade.color : '#00E5FF';
 
-  await ensureFonts(`운명공방2099나도오늘의부적받기✦※효과수치는재미를위한게임요소입니다${d.profile.name || ''}님의${d.fortune.info.title}${d.fortune.info.desc}${CATEGORIES.map((c) => c.label).join('')}총운행운색숫자${d.fortune.luck.color}${d.fortune.luck.direction}${d.talisman.type.label}${d.talisman.type.hanja}${d.talisman.effects.map((e) => e.stat).join('')}기운보충수호캐릭터${d.hero.info.title}${d.hero.info.concern.stat}띠개장착부적일간연애우정일친구궁합×천생연분찰떡궁합든든한짝꿍티격태격케미밀당중인사이${d.compat ? d.compat.myName + d.compat.friendName + d.compat.compat.grade.desc : ''}${STEMS.join('')}일반희귀영웅전설신화목화토금수木火土金水符0123456789.:/[]+-%()`);
+  await ensureFonts(`운명공방2099나도오늘의부적받기✦※효과수치는재미를위한게임요소입니다${d.profile.name || ''}님의${d.fortune.info.title}${d.fortune.info.desc}${CATEGORIES.map((c) => c.label).join('')}총운행운색숫자${d.fortune.luck.color}${d.fortune.luck.direction}${d.talisman.type.label}${d.talisman.type.hanja}${d.talisman.effects.map((e) => e.stat).join('')}기운보충수호캐릭터${d.hero.info.title}${d.hero.info.concern.stat}띠개장착부적일간연애우정일친구궁합×천생연분찰떡궁합든든한짝꿍티격태격케미밀당중인사이${d.compat ? d.compat.myName + d.compat.friendName + d.compat.compat.grade.desc + (d.compat.dialogue ? d.compat.dialogue.lines.map((l) => l.text).join('') + d.compat.myInfo.zodiac.name + d.compat.friendInfo.zodiac.name : '') : ''}${STEMS.join('')}일반희귀영웅전설신화목화토금수木火土金水符0123456789.:/[]+-%()`);
 
   background(ctx, accent);
   header(ctx, d);
