@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>운명공방 2099 · 사주 & 부적 프로토타입</title>
+  <meta name="description" content="생년월일로 사주를 분석하고, 오늘의 운세와 오행 기반 부적·행운 이모티콘을 만들어 주는 프로토타입">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Song+Myung&family=Noto+Sans+KR:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+
+  <header class="top">
+    <div class="brand">
+      <span class="brand-mark">符</span>
+      <div>
+        <h1>운명공방 <em>2099</em></h1>
+        <p class="tagline">사주 × 부적 × 네온</p>
+      </div>
+    </div>
+    <button id="btn-edit" class="ghost hidden" type="button">정보 수정</button>
+  </header>
+
+  <main>
+    <!-- 입력 -->
+    <section id="view-input" class="card intro">
+      <h2>생년월일을 알려 주세요</h2>
+      <p class="muted">입력한 정보는 이 기기에만 저장되고, 서버로 전송되지 않습니다.</p>
+      <form id="birth-form" autocomplete="off">
+        <label>이름 (선택)
+          <input name="name" type="text" maxlength="12" placeholder="예: 은하">
+        </label>
+        <label>생년월일 (양력)
+          <input name="date" type="date" required min="1900-01-01" max="2100-12-31">
+        </label>
+        <div class="row">
+          <label class="grow">태어난 시간
+            <input name="time" type="time" value="12:00">
+          </label>
+          <label class="check"><input name="timeUnknown" type="checkbox"> 시간 모름</label>
+        </div>
+        <details class="advanced">
+          <summary>고급 설정</summary>
+          <label class="check"><input name="lonCorr" type="checkbox" checked> 한국 경도 보정 (-30분, 진태양시 근사)</label>
+          <label>자시(23~01시) 처리
+            <select name="zasi">
+              <option value="early">23시에 날짜 변경 (전통)</option>
+              <option value="late">야자시 (0시에 날짜 변경)</option>
+            </select>
+          </label>
+        </details>
+        <button class="primary" type="submit">내 운명 스캔하기 ✦</button>
+      </form>
+    </section>
+
+    <!-- 결과 -->
+    <section id="view-result" class="hidden">
+      <nav class="tabs" role="tablist">
+        <button role="tab" data-tab="saju" aria-selected="true">사주 분석</button>
+        <button role="tab" data-tab="today">오늘의 운세</button>
+        <button role="tab" data-tab="charm">부적 공방</button>
+        <button role="tab" data-tab="emoji">행운 이모티콘</button>
+      </nav>
+
+      <div class="panel" data-panel="saju"></div>
+      <div class="panel hidden" data-panel="today"></div>
+      <div class="panel hidden" data-panel="charm"></div>
+      <div class="panel hidden" data-panel="emoji"></div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p>※ 운세와 부적의 효과 수치는 재미를 위한 게임 요소입니다.</p>
+    <p>프로토타입 v0.1 · 양력 입력만 지원 · 절기는 천문 계산(오차 약 ±15분)</p>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

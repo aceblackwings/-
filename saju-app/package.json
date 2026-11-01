@@ -1,0 +1,6 @@
+{
+  "name": "saju-app-prototype",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node tests/saju.test.mjs && node tests/fortune.test.mjs" }
+}
