@@ -33,6 +33,7 @@ import { preloadCharImages } from './assets.js';
 import { emptyGuide, showNextYear, nextStep, progress as guideProgress, isUnlocked, stepFor, completeStep as completeGuideStep, setAll as guideSetAll } from './guide.js';
 import { emptyMemory, extractMemories, mergeMemory, memoryLines, followUp, markAsked, recallFor, describe as describeMemory, forget, forgetAll, needsSummary, applySummary, summaryMessages, offlineSummary, SUMMARY_EVERY, MEMORY_LIMIT } from './memory.js';
 import { festivalStatus } from './festivals.js';
+import { emptyRecords, logDay, pendingFeedback, setFeedback, addItem, hasItem, setItemMemo, removeItem, dayList, stats as recordStats, streak as recordStreak, FEEDBACK, ITEM_KIND, MEMO_MAX } from './records.js';
 import { makeCode, normalizeCode, publicCard, cardToSaju, cleanCard, pendingCheers, joinTeamRoom, openMailbox, CHEER_MESSAGES, CHEER_DAILY_LIMIT, CHEER_CHARGE, cheerText, cheerId } from './realtime.js';
 import { dailySpots, distanceM, treasureRarity, bearingName, ARRIVE_RADIUS, DEMO_CENTER, PARTNER_SAMPLES } from './fengshui.js';
 import { renderStoryCanvas, shareStory, STORY_TEMPLATES } from './story.js';
@@ -63,6 +64,7 @@ const MEM_KEY = 'unmyeong2099.memory';
 const SEASON_KEY = 'unmyeong2099.season';
 const RT_KEY = 'unmyeong2099.realtime';
 const GUIDE_KEY = 'unmyeong2099.guide';
+const RECORDS_KEY = 'unmyeong2099.records';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
 const EL_COLORS = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
 
@@ -288,10 +290,10 @@ function initForm() {
 // ---------- 탭 ----------
 
 // 주 탭 5개 + 하위 화면 묶음
-const TAB_PARENT = { saju: 'ask', report: 'ask', feng: 'ask', charm: 'hero', emoji: 'hero', story: 'hero', gallery: 'hero' };
+const TAB_PARENT = { saju: 'ask', report: 'ask', feng: 'ask', charm: 'hero', emoji: 'hero', story: 'hero', gallery: 'hero', records: 'hero' };
 const SUBNAV = {
   ask: [['ask', '🔮 질문 메뉴'], ['saju', '📜 내 사주'], ['report', '📅 올해·5년'], ['feng', '🧭 풍수 지도']],
-  hero: [['hero', '🐉 캐릭터'], ['charm', '📜 부적 만들기'], ['emoji', '😊 이모티콘'], ['story', '📸 스토리 카드'], ['gallery', '🧪 전체 미리보기']],
+  hero: [['hero', '🐉 캐릭터'], ['records', '📒 기록함'], ['charm', '📜 부적 만들기'], ['emoji', '😊 이모티콘'], ['story', '📸 스토리 카드'], ['gallery', '🧪 전체 미리보기']],
 };
 
 function selectTab(name) {
@@ -308,6 +310,7 @@ function selectTab(name) {
   }
   if (name === 'ask') renderAsk();
   if (name === 'gallery') renderGallery();
+  if (name === 'records') renderRecords();
   if (name === 'story') renderStory();
   if (name === 'hero') renderHero(true);
   if (name === 'feng') renderFeng();
@@ -389,6 +392,7 @@ function askAnswerHTML(key) {
         <p class="muted" style="margin:0;font-size:0.84rem">가장 좋은 날은 <b style="color:var(--wood)">${a.best.full} ${a.best.score}점</b>${a.low ? `, 조심할 날은 <b style="color:var(--fire)">${a.low.full}</b>` : ''}이에요.</p></div>
       <div class="ask-guardian"><div class="av">${face}</div><p>${esc(line)}</p></div>
       <button class="primary ask-cta" type="button" data-ask-cta="${key}">${a.cta.label} →</button>
+      ${saveBtnHTML('ask', key)}
       <p class="muted" style="font-size:0.72rem;margin:8px 0 0;text-align:center">운세는 재미와 마음가짐을 위한 참고예요. 의료·법률·투자 결정은 전문가와 상의하세요.</p>
     </div>`;
 }
@@ -630,6 +634,7 @@ function readingCardHTML() {
     <div class="rd-box when"><h5>📌 실제 흐름</h5><ul>${r.highlights.map((t) => `<li>${t}</li>`).join('')}</ul></div>
     <div class="rd-box tips"><h5>✅ 이렇게 해 보세요</h5><ol>${r.tips.map((t) => `<li>${t}</li>`).join('')}</ol></div>
     <div class="ask-guardian"><div class="av">${face}</div><p>${esc(closingLine(r.kind, r.score, personalityOf(zIdx()).key === 'rooster'))}</p></div>
+    ${saveBtnHTML('reading', kind)}
     <p class="muted" style="font-size:0.72rem;margin:6px 0 0">풀이는 정통 계산(십신·용신·합충)을 바탕으로 한 참고용 해석이에요. 중요한 결정은 여러 상황을 함께 살펴 주세요.</p>`;
   return `<div class="card reading" id="reading-card">
     <h3>📖 나의 운세 풀이</h3>
@@ -854,6 +859,7 @@ function timelineHTML() {
   return `<div class="timeline" id="timeline">
     ${vis[0] === 'next' ? R.next() : ''}
     ${guideCardHTML()}
+    ${yesterdayCardHTML()}
     <div class="tl-title"><h3>나의 운 흐름</h3><small>${vis.length >= 7 ? '오늘에서 대운까지, 같은 계산으로 이어 봐요' : '카드를 누르면 펼쳐져요'}</small></div>
     ${vis.filter((k) => k !== 'next').map((k) => R[k]()).join('')}
   </div>`;
@@ -891,6 +897,138 @@ document.addEventListener('click', (e) => {
     const el = t && (t.startsWith('.') || t.startsWith('#') ? $(t) : $(`[data-tl="${t}"]`));
     (el?.closest('.card') || el)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, 40);
+});
+
+
+// ---------- 기록함 (v0.22): 날마다 본 운세 저장 + "어제 운세 맞았나요?" + 결과 저장·메모 ----------
+const loadRecords = () => ({ ...emptyRecords(), ...load(RECORDS_KEY, {}) });
+
+/** 오늘 운세를 기록함에 남김 (홈을 볼 때마다, 같은 날은 덮어씀) */
+function logToday() {
+  const f = state.fortune; if (!f) return;
+  save(RECORDS_KEY, logDay(loadRecords(), { dateKey: f.dateKey, title: f.info.title, score: f.scores.total, best: catLabel(f.best), worst: catLabel(f.worst), mission: f.info.mission }));
+}
+
+/** 홈: 어제 기록이 있고 아직 답하지 않았을 때만 나오는 한 장 */
+function yesterdayCardHTML() {
+  const f = state.fortune; if (!f) return '';
+  const p = pendingFeedback(loadRecords(), f.date);
+  if (!p) return '';
+  const [, m, d] = p.dateKey.split('-');
+  return `<div class="card yday" id="yday">
+    <div class="yday-top"><b>📒 어제 운세, 맞았나요?</b><button type="button" class="linkish" data-fb-skip="${p.dateKey}">건너뛰기</button></div>
+    <p class="yday-was">${m}/${d} <b>${esc(p.title)}</b> · <span style="color:${scoreColor(p.score)}">${p.score}점</span>${p.best ? ` · 좋았던 분야 ${esc(p.best)}` : ''}</p>
+    <div class="yday-btns">${Object.entries(FEEDBACK).map(([k, v]) => `<button type="button" class="ghost" data-fb="${k}" data-fb-day="${p.dateKey}">${v.icon} ${v.label}</button>`).join('')}</div>
+    <input type="text" class="yday-memo" maxlength="${MEMO_MAX}" placeholder="한 줄 메모 (선택) · 예: 오후에 좋은 소식이 왔어요" aria-label="어제 메모">
+    <small class="muted">답하면 +2 EXP · 기록은 이 기기에만 저장돼요</small>
+  </div>`;
+}
+
+/** 결과 저장 버튼 (질문 답·운세 풀이·신수 카드) */
+function saveBtnHTML(kind, key) {
+  const saved = state.fortune && hasItem(loadRecords(), kind, state.fortune.dateKey, key);
+  return `<button type="button" class="ghost rec-save ${saved ? 'saved' : ''}" data-rec-save="${kind}" data-rec-key="${key}">${saved ? '📌 기록함에 저장됨 · 보러 가기' : '📌 기록함에 저장'}</button>`;
+}
+
+/** 저장할 내용 만들기 (그때 본 문장을 그대로 보관) */
+function recordItemFor(kind, key) {
+  const dk = state.fortune.dateKey;
+  if (kind === 'ask') {
+    const a = buildAnswer(key, state.saju, weekFortunes());
+    return { kind, key, dateKey: dk, title: `${a.icon} ${a.q}`, score: a.score, summary: `${a.when} ${a.catLabel}, ${a.tone}`, lines: [a.text, a.basis, a.tip, `가장 좋은 날: ${a.best.full} ${a.best.score}점`] };
+  }
+  if (kind === 'reading') {
+    const r = readingFor(key); if (!r) return null;
+    const label = { next: `${timelineData().next?.sajuYear}년`, daewoon: '대운', year: '올해', month: '이달' }[key] || '';
+    return { kind, key, dateKey: dk, title: `📖 ${label} 운세 풀이 · ${r.god}`, score: r.score, summary: `${r.keyword} · ${r.range}`, lines: [r.intro[0], ...r.highlights.slice(0, 2), ...r.tips.slice(0, 2)] };
+  }
+  return null;
+}
+
+function renderRecords() {
+  const panel = $('[data-panel="records"]'); if (!panel || !state.fortune) return;
+  const rec = loadRecords(); const st = recordStats(rec); const days = dayList(rec, 30);
+  const md = (k) => { const [, m, d] = k.split('-'); return `${m}/${d}`; };
+  const filter = state.recFilter || 'all';
+  const items = rec.items.filter((x) => filter === 'all' || x.kind === filter);
+  panel.innerHTML = `
+    <div class="card rec-head">
+      <h3>📒 나의 기록함</h3>
+      <p class="muted" style="margin:-4px 0 12px;font-size:0.84rem">날마다 본 운세가 자동으로 남고, 다음 날 맞았는지 체크할 수 있어요. 기록은 이 기기에만 저장돼요.</p>
+      <div class="rec-stats">
+        <div><b>${st.logged}</b><small>기록한 날</small></div>
+        <div><b>${recordStreak(rec, state.fortune.date)}</b><small>연속으로 본 날</small></div>
+        <div><b>${st.hitRate === null ? '-' : `${st.hitRate}%`}</b><small>맞았어요 비율</small></div>
+        <div><b>${st.items}</b><small>저장한 결과</small></div>
+      </div>
+      ${st.answered >= 5 && st.highHit !== null && st.lowHit !== null ? `<p class="rec-insight">🔎 점수가 높았던 날은 ${st.highHit}%, 낮았던 날은 ${st.lowHit}% "맞았다"고 답했어요.</p>` : st.answered ? `<p class="rec-insight">🔎 ${5 - st.answered > 0 ? `${5 - st.answered}번 더 답하면 점수와 실제 하루가 얼마나 맞는지 분석해 드려요.` : ''}</p>` : ''}
+    </div>
+    <div class="card">
+      <h3>🗓️ 날마다 운세 <small class="muted">최근 30일</small></h3>
+      ${days.length ? `<ul class="rec-days">${days.map((d) => `<li>
+        <span class="rec-date">${md(d.dateKey)}</span>
+        <span class="rec-title"><b>${esc(d.title)}</b>${d.memo ? `<small>“${esc(d.memo)}”</small>` : ''}</span>
+        <em style="color:${scoreColor(d.score)}">${d.score}</em>
+        <span class="rec-fb">${d.feedback ? `${FEEDBACK[d.feedback].icon}` : d.dateKey === state.fortune.dateKey ? '<small>오늘</small>' : `<button type="button" class="linkish" data-rec-ask="${d.dateKey}">체크</button>`}</span>
+      </li>`).join('')}</ul>` : '<p class="muted">아직 기록이 없어요. 오늘 탭을 열면 오늘 운세가 자동으로 남아요.</p>'}
+    </div>
+    <div class="card">
+      <h3>📌 저장한 결과</h3>
+      <div class="gal-tabs">${[['all', '전체'], ...Object.entries(ITEM_KIND).map(([k, v]) => [k, `${v.icon} ${v.label}`])].map(([k, l]) => `<button type="button" data-rec-filter="${k}" aria-pressed="${k === filter}">${l}</button>`).join('')}</div>
+      ${items.length ? items.map((x) => `<details class="rec-item">
+        <summary><span class="rec-date">${md(x.dateKey)}</span><span class="rec-title"><b>${esc(x.title)}</b><small>${esc(x.summary)}</small></span>${x.score !== null ? `<em style="color:${scoreColor(x.score)}">${x.score}</em>` : ''}</summary>
+        ${x.lines.map((l) => `<p>${esc(l)}</p>`).join('')}
+        <div class="rec-memo-row"><input type="text" maxlength="${MEMO_MAX}" value="${esc(x.memo || '')}" placeholder="메모 남기기" data-rec-memo="${esc(x.id)}" aria-label="메모"><button type="button" class="ghost" data-rec-del="${esc(x.id)}">삭제</button></div>
+      </details>`).join('') : `<p class="muted">${filter === 'all' ? '운세 보기의 질문 답이나 운세 풀이 아래 「📌 기록함에 저장」을 누르면 여기에 모여요.' : '이 종류로 저장한 결과가 아직 없어요.'}</p>`}
+    </div>`;
+}
+
+function answerFeedback(dateKey, value, memo) {
+  const r = setFeedback(loadRecords(), dateKey, value, memo);
+  save(RECORDS_KEY, r.rec);
+  if (r.changed) grow((g) => addExp(g, 2), value === 'yes' ? '🎯 기록 완료! 수호신이 기뻐해요' : '📒 기록 완료! 솔직한 답이 다음 풀이에 도움이 돼요');
+  else if (value === 'skip') toast('오늘은 건너뛸게요');
+}
+
+document.addEventListener('click', (e) => {
+  const fb = e.target.closest('[data-fb]');
+  if (fb) { const memo = $('#yday .yday-memo')?.value; answerFeedback(fb.dataset.fbDay, fb.dataset.fb, memo); $('#yday')?.remove(); return; }
+  const sk = e.target.closest('[data-fb-skip]');
+  if (sk) { answerFeedback(sk.dataset.fbSkip, 'skip'); $('#yday')?.remove(); return; }
+  const sv = e.target.closest('[data-rec-save]');
+  if (sv) {
+    const { recSave: kind, recKey: key } = sv.dataset;
+    if (sv.classList.contains('saved')) { state.recFilter = kind; selectTab('records'); return; }
+    const item = recordItemFor(kind, key); if (!item) return;
+    save(RECORDS_KEY, addItem(loadRecords(), item).rec);
+    sv.classList.add('saved'); sv.textContent = '📌 기록함에 저장됨 · 보러 가기';
+    toast('📒 기록함에 저장했어요 (내 수호신 > 기록함)');
+    return;
+  }
+  const flt = e.target.closest('[data-rec-filter]');
+  if (flt) { state.recFilter = flt.dataset.recFilter; renderRecords(); return; }
+  const del = e.target.closest('[data-rec-del]');
+  if (del) { save(RECORDS_KEY, removeItem(loadRecords(), del.dataset.recDel)); renderRecords(); toast('삭제했어요'); return; }
+  const ask = e.target.closest('[data-rec-ask]');
+  if (ask) {
+    const k = ask.dataset.recAsk; const d = loadRecords().days[k];
+    const box = document.createElement('div'); box.className = 'evo-modal';
+    box.innerHTML = `<div class="evo-box"><h3 style="margin:0 0 6px">📒 ${k.split('-').slice(1).join('/')} 운세, 맞았나요?</h3>
+      <p class="muted" style="margin:0 0 12px">${esc(d.title)} · ${d.score}점</p>
+      <div class="yday-btns">${Object.entries(FEEDBACK).map(([v, x]) => `<button type="button" class="ghost" data-fb-modal="${v}">${x.icon} ${x.label}</button>`).join('')}</div>
+      <input type="text" class="yday-memo" maxlength="${MEMO_MAX}" placeholder="한 줄 메모 (선택)" value="${esc(d.memo || '')}">
+      <button type="button" class="ghost" data-fb-close style="width:100%;margin-top:8px">닫기</button></div>`;
+    document.body.appendChild(box);
+    box.addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-fb-modal]');
+      if (b) { answerFeedback(k, b.dataset.fbModal, box.querySelector('.yday-memo').value); box.remove(); renderRecords(); return; }
+      if (ev.target.closest('[data-fb-close]') || ev.target === box) box.remove();
+    });
+  }
+});
+document.addEventListener('change', (e) => {
+  const m = e.target.closest('[data-rec-memo]');
+  if (m) { save(RECORDS_KEY, setItemMemo(loadRecords(), m.dataset.recMemo, m.value)); toast('메모를 저장했어요'); }
 });
 
 function refreshTimeline(scrollTo) {
@@ -933,6 +1071,7 @@ function bonusLineHTML(f) {
 
 function renderToday() {
   const f = state.fortune; const s = state.saju;
+  logToday();
   const missions = load(MISSION_KEY, {});
   const done = !!missions[f.dateKey];
 

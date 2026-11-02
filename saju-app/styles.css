@@ -746,3 +746,33 @@ select option { background: #1d1742; color: #ffffff; }
 .linkish { background: none; border: 0; color: var(--muted); text-decoration: underline; font: inherit; font-size: 0.78rem; cursor: pointer; padding: 4px; }
 .tl-card.tl-next .tl-sum small { white-space: normal; }
 .tl-next-hint { display: block; color: var(--gold); font-size: 0.74rem; margin-top: 2px; opacity: 0.9; }
+
+/* ---------- v0.22 기록함 · 어제 운세 맞았나요? ---------- */
+.yday { border: 1.5px solid rgba(255, 143, 179, 0.55); background: linear-gradient(160deg, rgba(255, 143, 179, 0.10), rgba(20, 16, 44, 0.92)); }
+.yday-top { display: flex; justify-content: space-between; align-items: center; }
+.yday-top b { font-size: 1rem; }
+.yday-was { margin: 6px 0 10px; font-size: 0.88rem; color: #d9d4ff; }
+.yday-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
+.yday-btns button { padding: 10px 4px; font-size: 0.84rem; }
+.yday-memo { width: 100%; box-sizing: border-box; margin-bottom: 4px; }
+.yday small { display: block; text-align: center; font-size: 0.72rem; }
+.rec-save { width: 100%; margin-top: 8px; font-size: 0.86rem; }
+.rec-save.saved { color: var(--gold); border-color: rgba(255, 201, 60, 0.5); }
+.rec-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; }
+.rec-stats div { background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line); border-radius: 12px; padding: 8px 2px; }
+.rec-stats b { display: block; font-size: 1.15rem; color: var(--neon); }
+.rec-stats small { font-size: 0.68rem; color: var(--muted); }
+.rec-insight { margin: 10px 0 0; font-size: 0.84rem; color: #d9d4ff; }
+.rec-days { list-style: none; margin: 0; padding: 0; }
+.rec-days li, .rec-item summary { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.rec-date { flex: none; width: 40px; color: var(--muted); font-size: 0.8rem; font-family: 'JetBrains Mono', monospace; }
+.rec-title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.rec-title b { font-size: 0.88rem; font-weight: 600; }
+.rec-title small { color: var(--muted); font-size: 0.74rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec-days em, .rec-item summary em { font-style: normal; font-weight: 800; width: 28px; text-align: right; }
+.rec-fb { flex: none; width: 40px; text-align: center; }
+.rec-item summary { cursor: pointer; list-style: none; }
+.rec-item summary::-webkit-details-marker { display: none; }
+.rec-item p { margin: 8px 0; font-size: 0.86rem; line-height: 1.55; color: #d9d4ff; }
+.rec-memo-row { display: flex; gap: 6px; margin: 8px 0 12px; }
+.rec-memo-row input { flex: 1; min-width: 0; }
