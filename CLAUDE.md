@@ -56,6 +56,7 @@
 - 1차 시범: 호랑이 세트 43장, 복사용 시트 `docs/prompts/tiger-pilot.md` → 확정 후 12띠 확장
 - 배경 제거 도구: `python3 -I saju-app/tools/chroma.py 입력 출력 [green|magenta] [크기]` (쥐 시험 그림으로 검증, `docs/prompts/chroma-test-rat.png`)
 - 힉스필드 무제한은 웹사이트에서만 적용(API·CLI·MCP는 크레딧 차감, 나노바나나 프로 1장 2크레딧). 사용자는 윈도우라 Remote Control 불가 → 웹에서 생성 후 구글 드라이브 폴더로 전달받아 처리
+- 구글 드라이브 업로드 폴더: 「12지신 강림 그림」(id `1_KYUmT0L1sS_Ysf38ccgx-Rk1NRdpFoy`) > 「호랑이 시범 세트」(id `17X6Ho-Qfm50zlIw9kWbqHf33kWNyN-Er`). `search_files`(parentId) → `download_file_content`로 가져오기
 
 ## 다음 할 일 후보
 (완료: v0.16 수호신의 기억, v0.17 계절 한정 패키지, v0.18 질문형 운세 메뉴·탭 5개, v0.19 운의 층 엔진 통합, v0.20 타임라인 홈·사주 한 장 요약·전체 미리보기 갤러리, v0.20.1 말투 개편·운세 풀이·등급별 그림 차별화)
