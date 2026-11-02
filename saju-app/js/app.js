@@ -33,6 +33,7 @@ import { preloadCharImages } from './assets.js';
 import { emptyGuide, showNextYear, nextStep, progress as guideProgress, isUnlocked, stepFor, completeStep as completeGuideStep, setAll as guideSetAll } from './guide.js';
 import { emptyMemory, extractMemories, mergeMemory, memoryLines, followUp, markAsked, recallFor, describe as describeMemory, forget, forgetAll, needsSummary, applySummary, summaryMessages, offlineSummary, SUMMARY_EVERY, MEMORY_LIMIT } from './memory.js';
 import { festivalStatus } from './festivals.js';
+import { CARD_AREAS, SPREADS, drawReading } from './cards.js';
 import { weekWealth, SAFETY_LINES } from './wealthweek.js';
 import { makeBackup, parseBackup, backupText, backupFileName, PREFIX as BACKUP_PREFIX } from './backup.js';
 import { emptyRecords, logDay, pendingFeedback, setFeedback, addItem, hasItem, setItemMemo, removeItem, dayList, stats as recordStats, streak as recordStreak, FEEDBACK, ITEM_KIND, MEMO_MAX } from './records.js';
@@ -292,9 +293,9 @@ function initForm() {
 // ---------- 탭 ----------
 
 // 주 탭 5개 + 하위 화면 묶음
-const TAB_PARENT = { saju: 'ask', report: 'ask', feng: 'ask', charm: 'hero', emoji: 'hero', story: 'hero', gallery: 'hero', records: 'hero' };
+const TAB_PARENT = { cards: 'ask', saju: 'ask', report: 'ask', feng: 'ask', charm: 'hero', emoji: 'hero', story: 'hero', gallery: 'hero', records: 'hero' };
 const SUBNAV = {
-  ask: [['ask', '🔮 질문 메뉴'], ['saju', '📜 내 사주'], ['report', '📅 올해·5년'], ['feng', '🧭 풍수 지도']],
+  ask: [['ask', '🔮 질문 메뉴'], ['cards', '🃏 신수 카드'], ['saju', '📜 내 사주'], ['report', '📅 올해·5년'], ['feng', '🧭 풍수 지도']],
   hero: [['hero', '🐉 캐릭터'], ['records', '📒 기록함'], ['charm', '📜 부적 만들기'], ['emoji', '😊 이모티콘'], ['story', '📸 스토리 카드'], ['gallery', '🧪 전체 미리보기']],
 };
 
@@ -313,6 +314,7 @@ function selectTab(name) {
   if (name === 'ask') renderAsk();
   if (name === 'gallery') renderGallery();
   if (name === 'records') renderRecords();
+  if (name === 'cards') renderCards();
   if (name === 'story') renderStory();
   if (name === 'hero') renderHero(true);
   if (name === 'feng') renderFeng();
@@ -359,6 +361,7 @@ function renderAsk() {
     <div class="card ask-menu">
       <h3>🔮 무엇이 궁금하세요?</h3>
       <p class="muted" style="margin:-4px 0 12px;font-size:0.84rem">궁금한 것을 누르면 ${characterInfo(state.saju, state.profile).zodiac.name} 수호신이 내 사주로 바로 풀어 드려요.</p>
+      <button type="button" class="card-banner" data-sub-go="cards"><span>🃏</span><b>12지신 신수 카드 뽑기</b><small>궁금한 것을 정하고 카드 한 장 · 세 장</small></button>
       <div class="ask-grid">${menu.map((m) => `<button type="button" class="ask-item ${m.mine ? 'mine' : ''}" data-ask-open="${m.key}">
         <span class="ask-ic">${m.icon}</span><b>${m.q}</b><small>${m.sub}</small>${m.mine ? '<em>내 고민</em>' : ''}</button>`).join('')}</div>
     </div>`;
@@ -1064,6 +1067,70 @@ document.addEventListener('change', (e) => {
   reader.onload = () => restoreBackup(String(reader.result || ''));
   reader.readAsText(inp.files[0]);
   inp.value = '';
+});
+
+// ---------- 12지신 신수 카드 (v0.24): 60장(12지신 × 오행) 뽑기, 결과는 기록함에 자동 저장 ----------
+const cardPerson = () => { const i = state.saju.input; return `${i.year}-${i.month}-${i.day}-${i.timeKnown ? `${i.hour}:${i.minute}` : 'x'}`; };
+
+function cardFaceHTML(r, i) {
+  const info = characterInfo(galSaju(r.zodiac, r.element), state.profile);
+  const art = renderCharacterSVG(info, { stage: 3, width: 120, backdrop: false, mood: r.fit === 'slow' ? 'calm' : 'smile' });
+  return `<div class="sc-card el-${r.element}" style="--el:${EL_COLORS[r.element]};animation-delay:${i * 0.18}s">
+    <small class="sc-pos">${r.position}</small>
+    <div class="sc-art">${art}</div>
+    <b>${r.name}</b>
+    <span>${ZODIAC[r.zodiac].hanja} · ${['木', '火', '土', '金', '水'][r.element]} · ${r.keyword}</span>
+  </div>`;
+}
+
+function renderCards() {
+  const panel = $('[data-panel="cards"]'); if (!panel || !state.fortune) return;
+  const c = state.cards = state.cards || { area: 'today', spread: 'one', shown: false };
+  const dk = state.fortune.dateKey;
+  const res = c.shown ? drawReading({ person: cardPerson(), dateKey: dk, area: c.area, spread: c.spread, saju: state.saju }) : null;
+  const A = CARD_AREAS.find((a) => a.key === c.area);
+  panel.innerHTML = `
+    <div class="card sc-pick">
+      <h3>🃏 12지신 신수 카드</h3>
+      <p class="muted" style="margin:-4px 0 12px;font-size:0.84rem">궁금한 것을 마음속으로 떠올리고 카드를 뽑아 보세요. 12지신 × 오행 60장이 모두 같은 확률(1/60)로 나오고, 같은 날 같은 질문에는 같은 카드가 나와요.</p>
+      <div class="sc-areas">${CARD_AREAS.map((a) => `<button type="button" data-card-area="${a.key}" aria-pressed="${a.key === c.area}">${a.icon} ${a.label}</button>`).join('')}</div>
+      <div class="gal-tabs sc-spread">${Object.entries(SPREADS).map(([k, v]) => `<button type="button" data-card-spread="${k}" aria-pressed="${k === c.spread}">${v.label}</button>`).join('')}</div>
+      ${res ? '' : `<button type="button" class="primary sc-draw" data-card-draw>${A.icon} ${A.label} 카드 ${c.spread === 'one' ? '한 장' : '세 장'} 뽑기</button>`}
+    </div>
+    ${res ? `<div class="card sc-result">
+      <div class="sc-cards n${res.readings.length}">${res.readings.map(cardFaceHTML).join('')}</div>
+      <p class="sc-summary">${A.icon} <b>${A.label}</b> · ${esc(res.summary)}</p>
+      ${res.readings.map((r) => `<div class="sc-read">
+        <h4>${res.readings.length > 1 ? `<em>${r.position}</em> ` : ''}${r.name}</h4>
+        <p>${r.message}</p>
+        <p class="sc-area">${A.icon} ${r.areaLine}</p>
+        <p class="sc-fit">${r.fitLine}</p>
+        <ul><li>✅ ${r.action}</li><li>🌧️ ${r.caution}</li></ul>
+      </div>`).join('')}
+      <p class="muted" style="font-size:0.78rem;margin:8px 0">📒 이 결과는 기록함에 저장됐어요. 다른 질문을 고르면 새 카드를 뽑을 수 있어요.</p>
+      <div class="bk-row"><button type="button" class="ghost" data-card-again>다른 질문 뽑기</button><button type="button" class="ghost" data-sub-go="records">기록함 보기</button></div>
+      <p class="muted" style="font-size:0.72rem;margin:8px 0 0;text-align:center">카드는 마음을 정리하는 재미 요소예요. 의료·법률·투자 결정은 전문가와 상의하세요.</p>
+    </div>` : ''}`;
+  if (res) {
+    const item = { kind: 'card', key: `${c.area}|${c.spread}`, dateKey: dk, title: `🃏 ${A.label} · ${res.readings.map((r) => r.name).join(' / ')}`, score: null, summary: res.summary,
+      lines: res.readings.flatMap((r) => [`${res.readings.length > 1 ? `[${r.position}] ` : ''}${r.name}: ${r.message}`, `${r.areaLine} ${r.action}`]) };
+    const added = addItem(loadRecords(), item);
+    save(RECORDS_KEY, added.rec);
+    if (added.isNew && state.cards.justDrew) grow((g) => addExp(g, 2), '🃏 신수 카드가 기록함에 저장됐어요');
+    state.cards.justDrew = false;
+  }
+}
+
+document.addEventListener('click', (e) => {
+  const go = e.target.closest('[data-sub-go]');
+  if (go) { if (go.dataset.subGo === 'records') state.recFilter = 'card'; selectTab(go.dataset.subGo); return; }
+  if (!state.cards) return;
+  const ar = e.target.closest('[data-card-area]');
+  if (ar) { state.cards.area = ar.dataset.cardArea; state.cards.shown = hasItem(loadRecords(), 'card', state.fortune.dateKey, `${state.cards.area}|${state.cards.spread}`); renderCards(); return; }
+  const sp = e.target.closest('[data-card-spread]');
+  if (sp) { state.cards.spread = sp.dataset.cardSpread; state.cards.shown = hasItem(loadRecords(), 'card', state.fortune.dateKey, `${state.cards.area}|${state.cards.spread}`); renderCards(); return; }
+  if (e.target.closest('[data-card-draw]')) { state.cards.shown = true; state.cards.justDrew = true; renderCards(); $('.sc-result')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  if (e.target.closest('[data-card-again]')) { state.cards.shown = false; renderCards(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 });
 
 function answerFeedback(dateKey, value, memo) {
