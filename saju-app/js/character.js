@@ -1,6 +1,7 @@
 // 12지신 수호 캐릭터 생성기 (SVG)
 // 띠(연지) → 동물 / 일간 오행 → 한복 색 / 성별 → 한복 스타일 / 고민 → 소품
 // 장착: 부적 2칸(허리·머리 옆), 이모티콘 1칸(표정 + 말풍선)
+import { charImage } from './assets.js';
 import { seasonAccessorySVG, seasonEffectSVG, seasonSceneSVG, SEASON_PACKS } from './season.js';
 
 export const CONCERNS = [
@@ -526,11 +527,20 @@ export function characterMarkup(info, opts = {}) {
     ${stage >= 4 ? '' : `<text x="160" y="58" font-size="20" text-anchor="middle" fill="${trim}" opacity="0.5" font-family="'Song Myung', serif">${z.hanja}</text>`}` : '';
 
   const oc = outfitIndex(stage, el);
+  // 이미지 그림이 있으면 몸 전체를 그림으로 (단계 장식은 그림에 포함), 부적·소품·말풍선은 그 위에 겹친다
+  const img = opts.noImage ? null : charImage(z.key, stage, el);
   const blinkEyes = opts.animate
     ? `<g transform="translate(0 180)"><g><animateTransform attributeName="transform" type="scale" values="1 1;1 1;1 0.1;1 1" keyTimes="0;0.9;0.95;1" dur="4.2s" repeatCount="indefinite"/><g transform="translate(0 -180)">${eyes(mood, female)}</g></g></g>`
     : eyes(mood, female);
 
-  const figure = `
+  const figure = img ? `
+    <ellipse cx="160" cy="384" rx="76" ry="10" fill="#000" opacity="0.28"/>
+    <image href="${img}" x="-15" y="63" width="350" height="350" preserveAspectRatio="xMidYMid meet"/>
+    ${miniCharm(charms[0], 112, 352, -10)}
+    ${stage >= 2 ? prop(concern.key) : ''}
+    ${opts.season ? seasonAccessorySVG(opts.season.key) : ''}
+    ${miniCharm(charms[1], 48, 96, -14, 0.9)}
+    ${emoteBubble(emote)}` : `
     ${stage >= 5 ? wings(oc, id) : ''}
     ${stage >= 5 ? spiritTails(oc, id) : ''}
     ${stage >= 3 ? cape(oc, id) : ''}
@@ -571,7 +581,7 @@ export function characterMarkup(info, opts = {}) {
   const asc = stage >= 11 ? godAura(stage, id) : stage >= 6 ? spiritBeast(stage, id) : '';
   const tint = opts.backdrop && stage >= 6 ? `<rect width="320" height="400" fill="${ASC_COLOR[stage]}" opacity="0.12"/>` : '';
   const scene = opts.season?.effect ? seasonSceneSVG(opts.season.key) : '';
-  const body = `${backdrop}${tint}${asc}${scene}${auraMarkup}${scaled}${ascensionFront(stage)}${stage >= 3 ? orbs(stage, el, id) : ''}${stage >= 5 ? particles(id) : ''}${miniCharm(charms[2], 276, 300, 12, 0.9)}${opts.season?.effect ? seasonEffectSVG(SEASON_PACKS[opts.season.key].effect, opts.animate, stage) : ''}`;
+  const body = `${backdrop}${tint}${asc}${scene}${auraMarkup}${scaled}${ascensionFront(stage)}${stage >= 3 && !img ? orbs(stage, el, id) : ''}${stage >= 5 ? particles(id) : ''}${miniCharm(charms[2], 276, 300, 12, 0.9)}${opts.season?.effect ? seasonEffectSVG(SEASON_PACKS[opts.season.key].effect, opts.animate, stage) : ''}`;
   return { id, defs, body };
 }
 

@@ -29,6 +29,7 @@ import { dateToJdn } from './lunar.js';
 import { layersAt, monthPeriod, explainParts, TEN_GOD_MOD, weekOf, yearOf, monthDays, sajuYearOf, categoryScores } from './period.js';
 import { orderedMenu, buildAnswer, concernAsk, ASK_MENU } from './ask.js';
 import { buildReading, FIELD_LABEL, closingLine } from './reading.js';
+import { preloadCharImages } from './assets.js';
 import { emptyMemory, extractMemories, mergeMemory, memoryLines, followUp, markAsked, recallFor, describe as describeMemory, forget, forgetAll, needsSummary, applySummary, summaryMessages, offlineSummary, SUMMARY_EVERY, MEMORY_LIMIT } from './memory.js';
 import { festivalStatus } from './festivals.js';
 import { makeCode, normalizeCode, publicCard, cardToSaju, cleanCard, pendingCheers, joinTeamRoom, openMailbox, CHEER_MESSAGES, CHEER_DAILY_LIMIT, CHEER_CHARGE, cheerText, cheerId } from './realtime.js';
@@ -138,6 +139,7 @@ function start(profile, mode = 'today') {
   renderAll();
   selectTab(mode === 'summon' ? 'today' : (state.lastTab || 'today'));
   if (mode === 'summon') setTimeout(showSajuCard, 200);
+  preloadCharImages().then((n) => { if (n && !$('[data-panel="hero"]').classList.contains('hidden')) renderHero(false); });
   const lastSeen = loadGrowth().streak.last;
   state.backLine = null;
   state.heroLine = null;
@@ -2071,7 +2073,7 @@ function showSummon() {
 // ---------- 🧪 전체 미리보기 갤러리 (테스트용) ----------
 // 12지신 캐릭터(띠 12 × 진화 14단계 × 성별 × 오행), 부적(종류 6 × 등급 5 × 테마 2), 이모티콘(표정 8 × 스타일 × 등급), 한정 소품 11종을 한 화면에서 확인
 function galState() {
-  state.gal = state.gal || { set: true, tab: 'char', stage: 2, gender: state.profile.gender || 'female', el: STEM_ELEMENT[state.saju.dayMaster], theme: 'neon', style: 'neon', rarity: 'epic', zodiac: state.saju.pillars.year.branch };
+  state.gal = state.gal || { img: true, set: true, tab: 'char', stage: 2, gender: state.profile.gender || 'female', el: STEM_ELEMENT[state.saju.dayMaster], theme: 'neon', style: 'neon', rarity: 'epic', zodiac: state.saju.pillars.year.branch };
   return state.gal;
 }
 
@@ -2094,10 +2096,10 @@ function renderGallery() {
   const zChips = `<div class="gal-row"><span>띠</span><div class="chips">${ZODIAC.map((z, b) => chip('zodiac', b, z.name, g.zodiac === b)).join('')}</div></div>`;
   let controls = ''; let grid = '';
   if (g.tab === 'char') {
-    controls = stageChips + elChips + genderChips;
+    controls = `<div class="gal-row"><span>그림</span><div class="chips">${chip('img', 'on', '이미지 우선', g.img)}${chip('img', 'off', '코드 그림만', !g.img)}</div></div>${stageChips}${elChips}${genderChips}`;
     grid = ZODIAC.map((z, b) => {
       const info = characterInfo(galSaju(b, g.el), profile);
-      return `<figure class="gal-item">${renderCharacterSVG(info, { stage: g.stage, width: 150, backdrop: true, mood: 'smile' })}<figcaption><b>${z.name}(${z.hanja})</b><small>${stageName(g.stage, info.female)} · ${info.name}</small></figcaption></figure>`;
+      return `<figure class="gal-item">${renderCharacterSVG(info, { stage: g.stage, width: 150, backdrop: true, mood: 'smile', noImage: !g.img })}<figcaption><b>${z.name}(${z.hanja})</b><small>${stageName(g.stage, info.female)} · ${info.name}</small></figcaption></figure>`;
     }).join('');
   } else if (g.tab === 'charm') {
     controls = `<div class="gal-row"><span>테마</span><div class="chips">${chip('theme', 'classic', '전통 주사', g.theme === 'classic')}${chip('theme', 'neon', '네온 2099', g.theme === 'neon')}</div></div>${elChips}`;
@@ -2126,9 +2128,10 @@ function renderGallery() {
 }
 
 document.addEventListener('click', (e) => {
-  const b = e.target.closest('[data-gal-set],[data-gal-tab],[data-gal-stage],[data-gal-el],[data-gal-gender],[data-gal-theme],[data-gal-style],[data-gal-rarity],[data-gal-zodiac]');
+  const b = e.target.closest('[data-gal-img],[data-gal-set],[data-gal-tab],[data-gal-stage],[data-gal-el],[data-gal-gender],[data-gal-theme],[data-gal-style],[data-gal-rarity],[data-gal-zodiac]');
   if (!b) return;
   const g = galState(); const d = b.dataset;
+  if (d.galImg) g.img = d.galImg === 'on';
   if (d.galSet) g.set = d.galSet === 'set';
   if (d.galTab) g.tab = d.galTab;
   if (d.galStage) g.stage = Number(d.galStage);

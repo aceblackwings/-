@@ -63,4 +63,15 @@ t('한정 소품: 꾸미기 세트는 계절 장면까지, 무료 소품은 소�
     assert.ok(set.length > item.length + 500, k);
   }
 });
+import { CHAR_ASSETS, charImage } from '../js/assets.js';
+import fs from 'node:fs';
+t('이미지 그림: 목록에 있는 조합만 이미지, 나머지는 코드 그림 · 파일이 실제로 있음', () => {
+  for (const k of CHAR_ASSETS) assert.ok(fs.statSync(new URL(`../assets/char/${k}.webp`, import.meta.url)).size > 1000, k);
+  const tiger = (el, stage, noImage) => renderCharacterSVG(characterInfo(galSaju(2, el), { gender: 'female', concern: 'job' }), { stage, noImage });
+  assert.ok(tiger(1, 2).includes('assets/char/tiger_s2_fire.webp'));
+  assert.ok(tiger(1, 9).includes('tiger_s5_fire.webp')); // 승천 단계는 5단계 그림 + 코드 효과
+  assert.ok(!tiger(0, 2).includes('<image')); // 목(木) 호랑이는 아직 코드 그림
+  assert.ok(!tiger(1, 2, true).includes('<image'));
+  assert.equal(charImage('rat', 2, 1), null);
+});
 console.log(`\n${pass} passed`);

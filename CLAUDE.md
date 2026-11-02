@@ -12,7 +12,7 @@
 
 ## 실행·테스트
 - 로컬: `cd saju-app && python3 -m http.server 8000` → http://localhost:8000
-- 테스트: `cd saju-app && npm test` (node 테스트 파일 18개, 모두 통과 상태 유지)
+- 테스트: `cd saju-app && npm test` (node 테스트 파일 18개(갤러리 테스트에 이미지 연결 검사 포함), 모두 통과 상태 유지)
 - 화면 확인: Playwright(`require('playwright')`, 크로미움 내장)로 스크린샷
 - 디자인 확인: `http://localhost:8000/?gallery=1` (12지신 띠×14단계×성별×오행, 부적 6종×5등급×2테마, 이모티콘 8표정×스타일×등급, 한정 소품 11종)
 
@@ -41,6 +41,7 @@
 | memory.js | 수호신의 기억: 일정·주제·사람·좋아하는 것 추출, 요약, 지난 일정 안부, 개인정보 제외 (`unmyeong2099.memory`) |
 | realtime.js | 실시간 궁합방(room)·친구 우편함(db) 도우미 |
 | story.js | 인스타 스토리 카드(캔버스) |
+| assets.js | 이미지 그림 목록(`CHAR_ASSETS`)·주소(`charImage`)·미리 불러오기(`preloadCharImages`, 스토리 카드용 data URL). 목록에 있는 조합만 이미지, 없으면 SVG. 6~14단계는 5단계 그림 + 코드 승천 효과 |
 | app.js | 화면·상태·localStorage(`unmyeong2099.*` 키). 홈 = **운의 타임라인**(`timelineHTML`: 오늘·이번 주·이달·올해·대운·타고난 나, 카드마다 근거·층 이동·한 걸음 버튼), 첫 가입 = `showSajuCard`(사주 한 장 요약) → `showSummon`, 🧪 `renderGallery`(내 수호신 > 전체 미리보기, `?gallery=1`로 바로 열림, 프로필이 없으면 저장하지 않는 견본 프로필 사용) |
 
 ## 설계 원칙 (지켜야 할 것)
@@ -53,6 +54,7 @@
 
 ## 그림 제작 (이미지 생성 도구)
 - 규격·프롬프트·이름 규칙: `docs/art-production-guide.md`. 원본은 `saju-app/assets/raw/`에 올라옴 → 배경(#00FF00/#FF00FF) 제거, 512·256 WebP 변환, 이미지가 있으면 사용·없으면 SVG 대체, 등급 효과·글자는 코드가 덧입힘
+- **들어간 그림(2026-11-02)**: 호랑이 화(火) 진화 1~5단계 → `saju-app/assets/char/tiger_s{1-5}_fire.webp`(768px, 53~92KB). 드라이브 원본 파일 이름은 생성 시각순(05:57=s2, 06:12:41=s1, 06:12:51=s3, 06:13=s4, 06:16=s5). 새 그림 추가 순서: 드라이브에서 받기 → `tools/chroma.py` → 768 WebP → `assets.js CHAR_ASSETS`에 키 추가
 - 1차 시범: 호랑이 세트 43장, 복사용 시트 `docs/prompts/tiger-pilot.md` → 확정 후 12띠 확장
 - 배경 제거 도구: `python3 -I saju-app/tools/chroma.py 입력 출력 [green|magenta] [크기]` (쥐 시험 그림으로 검증, `docs/prompts/chroma-test-rat.png`)
 - 힉스필드 무제한은 웹사이트에서만 적용(API·CLI·MCP는 크레딧 차감, 나노바나나 프로 1장 2크레딧). 사용자는 윈도우라 Remote Control 불가 → 웹에서 생성 후 구글 드라이브 폴더로 전달받아 처리
