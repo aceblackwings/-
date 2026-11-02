@@ -33,6 +33,7 @@ import { preloadCharImages } from './assets.js';
 import { emptyGuide, showNextYear, nextStep, progress as guideProgress, isUnlocked, stepFor, completeStep as completeGuideStep, setAll as guideSetAll } from './guide.js';
 import { emptyMemory, extractMemories, mergeMemory, memoryLines, followUp, markAsked, recallFor, describe as describeMemory, forget, forgetAll, needsSummary, applySummary, summaryMessages, offlineSummary, SUMMARY_EVERY, MEMORY_LIMIT } from './memory.js';
 import { festivalStatus } from './festivals.js';
+import { expertTable, sinsalOf, calcBasis, STAGE_NOTE, makeChart, addChart, removeChart, emptyCharts, RELATIONS } from './expert.js';
 import { CARD_AREAS, SPREADS, drawReading } from './cards.js';
 import { weekWealth, SAFETY_LINES } from './wealthweek.js';
 import { makeBackup, parseBackup, backupText, backupFileName, PREFIX as BACKUP_PREFIX } from './backup.js';
@@ -68,6 +69,7 @@ const SEASON_KEY = 'unmyeong2099.season';
 const RT_KEY = 'unmyeong2099.realtime';
 const GUIDE_KEY = 'unmyeong2099.guide';
 const RECORDS_KEY = 'unmyeong2099.records';
+const CHARTS_KEY = 'unmyeong2099.charts';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
 const EL_COLORS = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
 
@@ -530,7 +532,8 @@ function renderSaju() {
       <p class="muted">${strengthText(s)}</p>
       <button class="primary" type="button" data-go="charm" style="width:100%">부족한 ${ELEMENT_KO[s.weakest]} 기운 부적 만들러 가기 →</button>
     </div>
-    ${daewoonCardHTML()}`;
+    ${daewoonCardHTML()}
+    ${expertCardHTML()}`;
   $('[data-panel="saju"]').insertAdjacentHTML('afterbegin', readingCardHTML());
   $$('[data-go]', $('[data-panel="saju"]')).forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); selectTab(b.dataset.go); }));
 }
@@ -1131,6 +1134,119 @@ document.addEventListener('click', (e) => {
   if (sp) { state.cards.spread = sp.dataset.cardSpread; state.cards.shown = hasItem(loadRecords(), 'card', state.fortune.dateKey, `${state.cards.area}|${state.cards.spread}`); renderCards(); return; }
   if (e.target.closest('[data-card-draw]')) { state.cards.shown = true; state.cards.justDrew = true; renderCards(); $('.sc-result')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
   if (e.target.closest('[data-card-again]')) { state.cards.shown = false; renderCards(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+});
+
+// ---------- 전문가 보기 (v0.25): 지장간·12운성·신살·공망·대운표·계산 기준 + 가족·지인 명식 ----------
+const loadCharts = () => ({ ...emptyCharts(), ...load(CHARTS_KEY, {}) });
+
+/** 선택한 명식의 {label, profile, saju} */
+function chartSubject(cs) {
+  const c = cs.list.find((x) => x.id === cs.sel);
+  if (!c) return { id: 'me', label: state.profile.name ? `${state.profile.name}(나)` : '나', profile: state.profile, saju: state.saju };
+  const solar = solarDateOf(c);
+  if (!solar || solar.error) return { id: c.id, label: c.name, profile: c, saju: null, error: '날짜를 변환할 수 없어요.' };
+  return { id: c.id, label: c.name, profile: c, saju: computeSaju(profileToInput(c)) };
+}
+
+function expertCardHTML() {
+  const cs = loadCharts();
+  const head = `<div class="ex-head"><h3>🔬 전문가 보기</h3><button type="button" class="ex-switch ${cs.on ? 'on' : ''}" data-ex-toggle aria-pressed="${cs.on}"><i></i>${cs.on ? '켜짐' : '꺼짐'}</button></div>`;
+  if (!cs.on) return `<div class="card expert" id="expert">${head}<p class="muted" style="margin:0;font-size:0.84rem">지장간·12운성·신살·공망·대운표와 계산 기준을 한 번에 봐요. 가족·지인 명식도 여러 개 저장할 수 있어요(이 기기에만 보관).</p></div>`;
+  const sub = chartSubject(cs);
+  const people = [{ id: 'me', name: state.profile.name || '나' }, ...cs.list];
+  const chips = `<div class="ex-people">${people.map((p) => `<button type="button" data-ex-sel="${p.id}" aria-pressed="${p.id === sub.id}">${p.id === 'me' ? '🙋 ' : ''}${esc(p.name)}${p.relation ? `<small>${esc(p.relation)}</small>` : ''}</button>`).join('')}<button type="button" data-ex-add>➕ 명식 추가</button></div>`;
+  const form = state.exAdd ? `<form class="ex-form" data-ex-form autocomplete="off">
+    <div class="ex-grid"><label>이름·별명<input name="name" maxlength="12" required placeholder="예: 엄마"></label>
+      <label>관계<select name="relation">${RELATIONS.map((r) => `<option>${r}</option>`).join('')}</select></label></div>
+    <div class="ex-grid three"><label>년<input name="year" type="number" inputmode="numeric" min="1900" max="2100" required placeholder="1965"></label>
+      <label>월<input name="month" type="number" inputmode="numeric" min="1" max="12" required></label>
+      <label>일<input name="day" type="number" inputmode="numeric" min="1" max="31" required></label></div>
+    <div class="ex-grid"><label>달력<select name="calendar"><option value="solar">양력</option><option value="lunar">음력</option></select></label>
+      <label>태어난 시간 (모르면 비움)<input name="time" type="time"></label></div>
+    <div class="ex-grid"><label>성별 (대운용)<select name="gender"><option value="">모름</option><option value="female">여성</option><option value="male">남성</option></select></label>
+      <label class="check" style="align-self:end"><input type="checkbox" name="leap"> 음력 윤달</label></div>
+    <div class="bk-row"><button type="button" class="ghost" data-ex-cancel>취소</button><button type="submit" class="primary">저장</button></div>
+    <p class="muted" style="font-size:0.74rem;margin:6px 0 0">명식은 이 기기에만 저장되고 친구·서버로 보내지 않아요. 본인 동의를 받고 저장해 주세요.</p>
+  </form>` : '';
+  if (!sub.saju) return `<div class="card expert" id="expert">${head}${chips}${form}<p class="muted">${sub.error}</p></div>`;
+  const s = sub.saju; const tb = expertTable(s);
+  const cell = (r, f) => (r.empty ? '<td class="ex-empty">-</td>' : `<td>${f(r)}</td>`);
+  const table = `<div class="ex-table-wrap"><table class="ex-table">
+    <tr><th></th>${tb.map((r) => `<th>${r.label}</th>`).join('')}</tr>
+    <tr><th>십신</th>${tb.map((r) => cell(r, (x) => x.stemGod)).join('')}</tr>
+    <tr class="ex-big"><th>천간</th>${tb.map((r) => cell(r, (x) => x.stem)).join('')}</tr>
+    <tr class="ex-big"><th>지지</th>${tb.map((r) => cell(r, (x) => `${x.branch}${x.gongmang ? '<sup title="공망">空</sup>' : ''}`)).join('')}</tr>
+    <tr><th>십신</th>${tb.map((r) => cell(r, (x) => x.branchGod)).join('')}</tr>
+    <tr><th>지장간</th>${tb.map((r) => cell(r, (x) => x.hidden.map((h) => `${h.stem}<small>${h.god}</small>`).join('<br>'))).join('')}</tr>
+    <tr><th>12운성</th>${tb.map((r) => cell(r, (x) => `<span title="${STAGE_NOTE[x.stage]}">${x.stage}</span>`)).join('')}</tr>
+  </table></div>`;
+  const ss = sinsalOf(s);
+  const gm = tb.find((r) => r.key === 'day');
+  const sinsal = `<div class="ex-block"><h5>⭐ 신살 · 공망</h5>${ss.length ? `<ul>${ss.map((x) => `<li><b>${x.name}</b> ${x.branch} <small>(${x.where.join('·')})</small> — ${x.note}</li>`).join('')}</ul>` : '<p class="muted">대표 신살(천을귀인·문창·역마·도화·화개·양인)이 원국에 없어요.</p>'}
+    <p class="muted" style="margin:4px 0 0;font-size:0.8rem">공망(空): 일주 ${gm.stem}${gm.branch} 기준 ${(() => { const i = [...Array(60).keys()].find((n) => n % 10 === s.pillars.day.stem && n % 12 === s.pillars.day.branch); const b = (i - (i % 10)) % 12; return `${BRANCHES[(b + 10) % 12]}${BRANCHES[(b + 11) % 12]}`; })()} — 원국에 있으면 표에 空 표시. 신살은 성향을 보는 참고 자료예요.</p></div>`;
+  const g = sub.profile.gender;
+  const dw = g ? computeDaewoon(s, g) : null;
+  const dwHTML = `<div class="ex-block"><h5>🏔️ 대운표 ${dw ? `<small>${dw.forward ? '순행' : '역행'} · ${dw.startAge}세 시작</small>` : ''}</h5>${dw ? `<div class="ex-dw">${dw.pillars.map((p) => `<span><small>${p.startAge}세</small><b>${STEMS[p.stem]}${BRANCHES[p.branch]}</b><i style="color:${scoreColor(p.score)}">${p.score}</i><small>${tenGod(s.dayMaster, p.stem)}</small></span>`).join('')}</div>` : '<p class="muted">성별을 넣으면 대운표가 나와요.</p>'}</div>`;
+  const p = sub.profile;
+  const basis = `<div class="ex-block"><h5>⚙️ 계산 기준</h5><ul class="ex-basis">${calcBasis(s).map((x) => `<li><b>${x.k}</b><span>${x.v}</span></li>`).join('')}</ul>
+    <div class="ex-grid"><label class="check"><input type="checkbox" data-ex-lon ${p.lonCorr !== false ? 'checked' : ''} ${p.timeUnknown ? 'disabled' : ''}> 경도 보정(-30분)</label>
+      <label>자시 처리<select data-ex-zasi><option value="early" ${p.zasi !== 'late' ? 'selected' : ''}>23시에 날짜 변경</option><option value="late" ${p.zasi === 'late' ? 'selected' : ''}>야자시(0시)</option></select></label></div>
+    <p class="muted" style="font-size:0.76rem;margin:4px 0 0">바꾸면 ${sub.id === 'me' ? '오늘 운세·대운까지 모든 화면이' : '이 명식이'} 바로 다시 계산돼요.</p></div>`;
+  const i = s.input;
+  return `<div class="card expert" id="expert">${head}${chips}${form}
+    <p class="ex-who"><b>${esc(sub.label)}</b> · 양력 ${i.year}.${i.month}.${i.day}${i.timeKnown ? ` ${String(i.hour).padStart(2, '0')}:${String(i.minute).padStart(2, '0')}` : ' (시간 모름)'} · ${s.animal}띠 · 일간 ${STEMS[s.dayMaster]}(${ELEMENT_KO[STEM_ELEMENT[s.dayMaster]]}) · ${s.strength} · 용신 ${ELEMENT_KO[s.yongsin]}</p>
+    ${table}${sinsal}${dwHTML}${basis}
+    ${sub.id !== 'me' ? `<button type="button" class="ghost" data-ex-del="${sub.id}" style="width:100%;margin-top:8px">이 명식 삭제</button>` : ''}
+  </div>`;
+}
+
+function refreshExpert() {
+  const el = $('#expert'); if (!el) return;
+  const tmp = document.createElement('div'); tmp.innerHTML = expertCardHTML(); el.replaceWith(tmp.firstElementChild);
+}
+
+/** 내 계산 기준을 바꾸면 모든 화면을 다시 계산 */
+function applyMyBasis(patch) {
+  const profile = { ...state.profile, ...patch };
+  save(STORE_KEY, profile);
+  state.profile = profile;
+  state.saju = computeSaju(profileToInput(profile));
+  state.fortune = applyAbilities(computeFortune(state.saju, undefined, { gender: profile.gender }));
+  state.tl = null; state.week = null;
+  renderAll();
+  toast('⚙️ 계산 기준을 바꿔 모든 화면을 다시 계산했어요');
+  setTimeout(() => $('#expert')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#expert')) return;
+  if (e.target.closest('[data-ex-toggle]')) { const cs = loadCharts(); save(CHARTS_KEY, { ...cs, on: !cs.on }); refreshExpert(); return; }
+  const sel = e.target.closest('[data-ex-sel]');
+  if (sel) { save(CHARTS_KEY, { ...loadCharts(), sel: sel.dataset.exSel }); state.exAdd = false; refreshExpert(); return; }
+  if (e.target.closest('[data-ex-add]')) { state.exAdd = true; refreshExpert(); $('#expert input[name=name]')?.focus(); return; }
+  if (e.target.closest('[data-ex-cancel]')) { state.exAdd = false; refreshExpert(); return; }
+  const del = e.target.closest('[data-ex-del]');
+  if (del && confirm('이 명식을 삭제할까요?')) { save(CHARTS_KEY, removeChart(loadCharts(), del.dataset.exDel)); refreshExpert(); toast('명식을 삭제했어요'); }
+});
+document.addEventListener('submit', (e) => {
+  const f = e.target.closest('[data-ex-form]'); if (!f) return;
+  e.preventDefault();
+  const d = Object.fromEntries(new FormData(f).entries());
+  const m = makeChart({ ...d, leap: !!d.leap });
+  if (!m.ok) { toast(`⚠️ ${m.error}`); return; }
+  const r = addChart(loadCharts(), m.chart);
+  if (!r.ok) { toast(`⚠️ ${r.error}`); return; }
+  save(CHARTS_KEY, r.store); state.exAdd = false; refreshExpert(); toast(`🔬 ${m.chart.name}님의 명식을 저장했어요`);
+});
+document.addEventListener('change', (e) => {
+  if (!e.target.closest('#expert')) return;
+  const lon = e.target.closest('[data-ex-lon]'); const zasi = e.target.closest('[data-ex-zasi]');
+  if (!lon && !zasi) return;
+  const patch = lon ? { lonCorr: lon.checked } : { zasi: zasi.value };
+  const cs = loadCharts();
+  if (cs.sel === 'me' || !cs.list.some((c) => c.id === cs.sel)) { applyMyBasis(patch); return; }
+  save(CHARTS_KEY, { ...cs, list: cs.list.map((c) => (c.id === cs.sel ? { ...c, ...patch } : c)) });
+  refreshExpert();
 });
 
 function answerFeedback(dateKey, value, memo) {

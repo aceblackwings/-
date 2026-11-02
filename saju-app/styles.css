@@ -821,3 +821,35 @@ select option { background: #1d1742; color: #ffffff; }
 .sc-read p { margin: 6px 0; font-size: 0.88rem; line-height: 1.55; color: #d9d4ff; }
 .sc-read .sc-fit { font-size: 0.82rem; color: var(--muted); }
 .sc-read ul { margin: 6px 0 0; padding-left: 0; list-style: none; font-size: 0.84rem; line-height: 1.6; }
+
+/* ---------- v0.25 전문가 보기 · 여러 명식 ---------- */
+.ex-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; } .ex-head h3 { margin: 0; }
+.ex-switch { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.05); color: var(--muted); font: inherit; font-size: 0.8rem; cursor: pointer; }
+.ex-switch i { width: 30px; height: 18px; border-radius: 999px; background: rgba(255, 255, 255, 0.15); position: relative; }
+.ex-switch i::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left 0.2s; }
+.ex-switch.on { color: var(--neon); border-color: var(--neon); } .ex-switch.on i { background: var(--neon); } .ex-switch.on i::after { left: 14px; }
+.ex-people { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.ex-people button { padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.04); color: #d9d4ff; font: inherit; font-size: 0.82rem; cursor: pointer; }
+.ex-people button small { margin-left: 4px; color: var(--muted); font-size: 0.7rem; }
+.ex-people button[aria-pressed="true"] { border-color: var(--neon); color: #fff; background: rgba(0, 229, 255, 0.12); }
+.ex-form { border: 1px dashed var(--line); border-radius: 12px; padding: 10px; margin-bottom: 10px; }
+.ex-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; } .ex-grid.three { grid-template-columns: 1.4fr 1fr 1fr; }
+.ex-grid label { font-size: 0.78rem; color: var(--muted); } .ex-grid input, .ex-grid select { width: 100%; box-sizing: border-box; }
+.ex-who { font-size: 0.84rem; margin: 0 0 8px; color: #d9d4ff; }
+.ex-table-wrap { overflow-x: auto; }
+.ex-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 0.78rem; }
+.ex-table th, .ex-table td { border: 1px solid var(--line); padding: 5px 3px; }
+.ex-table th { color: var(--muted); font-weight: 600; font-size: 0.72rem; }
+.ex-table tr.ex-big td { font-size: 1.35rem; font-family: 'Song Myung', serif; }
+.ex-table td small { display: block; font-size: 0.64rem; color: var(--muted); }
+.ex-table sup { color: var(--fire); font-size: 0.62rem; margin-left: 1px; }
+.ex-empty { color: var(--muted); }
+.ex-block { margin-top: 12px; } .ex-block h5 { margin: 0 0 6px; font-size: 0.92rem; } .ex-block h5 small { color: var(--muted); font-weight: 400; }
+.ex-block ul { margin: 0; padding-left: 18px; font-size: 0.84rem; line-height: 1.6; }
+.ex-dw { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.ex-dw span { display: flex; flex-direction: column; align-items: center; padding: 6px 2px; border: 1px solid var(--line); border-radius: 10px; font-size: 0.74rem; }
+.ex-dw b { font-family: 'Song Myung', serif; font-size: 1.05rem; } .ex-dw i { font-style: normal; font-weight: 800; } .ex-dw small { color: var(--muted); font-size: 0.66rem; }
+.ex-basis { list-style: none; padding: 0 !important; } .ex-basis li { display: grid; grid-template-columns: 110px 1fr; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+.ex-basis b { font-weight: 600; color: var(--muted); font-size: 0.78rem; } .ex-basis span { font-size: 0.8rem; }
+.ex-grid label.check { display: flex; align-items: center; gap: 6px; color: #d9d4ff; font-size: 0.82rem; align-self: end; padding-bottom: 10px; }
+.ex-grid label.check input { width: auto; margin: 0; }
