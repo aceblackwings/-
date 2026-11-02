@@ -1,10 +1,10 @@
 # 프로젝트 인수인계: 12지신 강림 (사주 × 부적 × 신수 육성 소셜 앱 프로토타입)
 
-새 대화에서 이어서 작업할 때 이 파일부터 읽으세요. **마지막 작업(2026-11-02)**: 12띠 그림 프롬프트 시트·띠별 드라이브 폴더·자동 처리 도구 준비 완료 → 사용자가 띠별 폴더에 1K 그림 13장씩 올리면 「그림 제작」 절의 처리 순서대로 반영.
+새 대화에서 이어서 작업할 때 이 파일부터 읽으세요. **마지막 작업(2026-11-02 저녁)**: v0.21 홈 개편 — 첫 화면 = 2027년(내년) 운세·오늘(펼침)·올해 3장 + 「다음 할 일」 길잡이 퀘스트 9단계로 나머지 기능을 하나씩 엶(기획 `docs/home-quest-plan.md`). 그 전 작업: 12띠 그림 프롬프트 시트·드라이브 폴더·자동 처리 도구 준비 완료 → 사용자가 띠별 폴더에 1K 그림 13장씩 올리면 「그림 제작」 절의 처리 순서대로 반영.
 
 ## 위치
 - 앱: `saju-app/` (빌드 없는 정적 웹, ES 모듈). 루트 `index.html`은 별개 프로젝트(일일계도상소) — 건드리지 않음
-- 기획·조사 문서: `docs/` (**최신 기획: `docs/core-saju-review-plan.md` — 핵심 사주 타임라인·엔진 통합·경쟁 앱 리뷰 분석·v0.19~ 로드맵**, 전략: `docs/strategy-v013.md`, 방향: `docs/kaiun-loop-direction.md`, 승천·가챠: `docs/ascension-gacha-report.md`, 소셜 설계: `docs/social-design.md`)
+- 기획·조사 문서: `docs/` (**홈 개편: `docs/home-quest-plan.md`**, **최신 기획: `docs/core-saju-review-plan.md` — 핵심 사주 타임라인·엔진 통합·경쟁 앱 리뷰 분석·v0.19~ 로드맵**, 전략: `docs/strategy-v013.md`, 방향: `docs/kaiun-loop-direction.md`, 승천·가챠: `docs/ascension-gacha-report.md`, 소셜 설계: `docs/social-design.md`)
 - 작업 브랜치: **최신 작업은 `ccr-c85c770a-b6ueyf`**(v0.16~ 그림 파이프라인까지, 아직 main에 병합 전). 새 세션이 다른 브랜치를 받으면 먼저 `git fetch origin ccr-c85c770a-b6ueyf && git merge origin/ccr-c85c770a-b6ueyf`로 최신 작업을 가져온 뒤 시작. (예전 브랜치 `claude/exciting-johnson-1f6o78`는 v0.15까지, PR #1로 main에 병합됨)
 - 미리보기(Claude 아티팩트): slug `f5ff35d3-d121-45d3-8a5e-b1b6c7e1fffe`, URL https://claude.ai/artifact/XNrP2AFTcULKijQSe1xzC5
   - 갱신: `Artifact` 도구 — 먼저 `action:read`(url), 바뀐 파일은 `read`의 `paths`로 확인 후 `publish`(url, file_path=`saju-app/index.html`, files={"styles.css":..., "js/x.js":"saju-app/js/x.js"}). 예전 `publish_files` 도구는 더 이상 없음
@@ -12,7 +12,7 @@
 
 ## 실행·테스트
 - 로컬: `cd saju-app && python3 -m http.server 8000` → http://localhost:8000
-- 테스트: `cd saju-app && npm test` (node 테스트 파일 18개(갤러리 테스트에 이미지 연결 검사 포함), 모두 통과 상태 유지)
+- 테스트: `cd saju-app && npm test` (node 테스트 파일 19개(갤러리 테스트에 이미지 연결 검사 포함), 모두 통과 상태 유지)
 - 화면 확인: Playwright(`require('playwright')`, 크로미움 내장)로 스크린샷
 - 디자인 확인: `http://localhost:8000/?gallery=1` (12지신 띠×14단계×성별×오행, 부적 6종×5등급×2테마, 이모티콘 8표정×스타일×등급, 한정 소품 11종)
 
@@ -35,6 +35,7 @@
 | journey.js | 고민 해결 여정 30일 |
 | fengshui.js | 풍수 기운 스팟·보물 |
 | festivals.js | 계절 축제 달력 |
+| guide.js | **홈 길잡이(v0.21)**: 퀘스트 9단계(`GUIDE_STEPS`: next→week→month→mission→draw→ask→daewoon→journey→todo)와 각 단계가 여는 홈 구역, `showNextYear`(9월 이후·입춘 전에만 내년 카드), `isUnlocked`·`completeStep`·`setAll`(전체 보기). 저장 `unmyeong2099.guide` |
 | ask.js | 운세 보기 질문형 메뉴판: 질문 10개(내 고민 우선), 답(점수·근거·팁·7일 흐름), 한 걸음 버튼 연결 |
 | season.js | 계절 한정 패키지(꾸미기 세트는 `seasonSceneSVG` 계절 장면 11종 포함): 시즌 일정(명절 우선), 무료 트랙 미션·보상, 꾸미기 세트, 한정 소품·배경 효과 SVG (`unmyeong2099.season`) |
 | chat.js | AI 수호신 대화(지시문·안전·오프라인 답변) |
@@ -42,10 +43,10 @@
 | realtime.js | 실시간 궁합방(room)·친구 우편함(db) 도우미 |
 | story.js | 인스타 스토리 카드(캔버스) |
 | assets.js / asset-manifest.js | 이미지 그림 목록(`asset-manifest.js`는 ingest.py가 자동 생성)·주소(`charImage`·`emoImage`, 오행별 파일 우선 → 띠 공통)·미리 불러오기(`preloadCharImages(띠)`, 스토리 카드용 data URL). 없으면 SVG. 6~14단계는 5단계 그림 + 코드 승천 효과 |
-| app.js | 화면·상태·localStorage(`unmyeong2099.*` 키). 홈 = **운의 타임라인**(`timelineHTML`: 오늘·이번 주·이달·올해·대운·타고난 나, 카드마다 근거·층 이동·한 걸음 버튼), 첫 가입 = `showSajuCard`(사주 한 장 요약) → `showSummon`, 🧪 `renderGallery`(내 수호신 > 전체 미리보기, `?gallery=1`로 바로 열림, 프로필이 없으면 저장하지 않는 견본 프로필 사용) |
+| app.js | 화면·상태·localStorage(`unmyeong2099.*` 키). 홈(v0.21) = 내년 카드(`tlNext`, 금색) + 타임라인(잠긴 층은 숨김, `tlVisible`) + 「다음 할 일」(`guideCardHTML`) + 길잡이로 연 구역만(`renderToday`의 `sections`). 다른 화면이 잠긴 구역을 부르면 `ensureUnlocked`로 바로 엶. 운세 풀이에 「🎁 2027년」 탭(`readingFor('next')`). 홈 = **운의 타임라인**(`timelineHTML`: 오늘·이번 주·이달·올해·대운·타고난 나, 카드마다 근거·층 이동·한 걸음 버튼), 첫 가입 = `showSajuCard`(사주 한 장 요약) → `showSummon`, 🧪 `renderGallery`(내 수호신 > 전체 미리보기, `?gallery=1`로 바로 열림, 프로필이 없으면 저장하지 않는 견본 프로필 사용) |
 
 ## 설계 원칙 (지켜야 할 것)
-1. 초보자 우선: 3단계 시작, 홈 = 오늘 할 일 3가지. 주 탭 5개(오늘·운세 보기·상담·궁합·친구·내 수호신), 하위 화면은 `TAB_PARENT`·`SUBNAV`(app.js)로 묶음. 기능은 "질문 → 답 → 한 걸음 버튼 1개"로 연결
+1. 초보자 우선: 3단계 시작, 홈 첫 화면 = 내년·오늘·올해 3장 + 다음 할 일 1개(새 기능은 홈에 바로 붙이지 말고 길잡이 단계로 열 것). 주 탭 5개(오늘·운세 보기·상담·궁합·친구·내 수호신), 하위 화면은 `TAB_PARENT`·`SUBNAV`(app.js)로 묶음. 기능은 "질문 → 답 → 한 걸음 버튼 1개"로 연결
 2. 정통 기본 흐름은 부풀리지 않고, 개운 반영은 "게임 요소"로 나란히 표시. 오늘 운세 `scores`는 정통값만, 게임 보너스는 `gameScores`·`abilityBonus`로 분리. 모든 화면은 period.js 값을 써서 같은 날짜는 같은 점수
 3. 결제로 운을 직접 올리지 않음(유료 뽑기 부적 충전 50%)
 4. 확률 공개, 위기 신호 시 109 안내, 의료·법률·투자 단정 금지
@@ -63,7 +64,7 @@
 - 힉스필드 무제한은 웹사이트에서만(API·CLI·MCP는 크레딧 차감). 사용자는 윈도우라 Remote Control 불가
 
 ## 다음 할 일 후보
-(완료: v0.16 수호신의 기억, v0.17 계절 한정 패키지, v0.18 질문형 운세 메뉴·탭 5개, v0.19 운의 층 엔진 통합, v0.20 타임라인 홈·사주 한 장 요약·전체 미리보기 갤러리, v0.20.1 말투 개편·운세 풀이·등급별 그림 차별화)
+(완료: v0.21 홈 길잡이·내년 운세, v0.16 수호신의 기억, v0.17 계절 한정 패키지, v0.18 질문형 운세 메뉴·탭 5개, v0.19 운의 층 엔진 통합, v0.20 타임라인 홈·사주 한 장 요약·전체 미리보기 갤러리, v0.20.1 말투 개편·운세 풀이·등급별 그림 차별화)
 - **1순위: `docs/core-saju-review-plan.md` 로드맵** (~~v0.19 엔진 통합~~ ~~v0.20 타임라인 홈~~ 완료 → **다음: v0.21 기록함** → v0.22 이번 주 재물 흐름 → v0.23 신수 카드 → v0.24 전문가 보기)
 - 사용성 개편 다음 단계: ② 모든 결과 화면 끝에 한 걸음 버튼 ③ 12지신 신수 카드(자체 카드 뽑기) ④ 7일 기능 소개 + 첫 주 게임 용어 감추기
 - 해외판 튜토리얼과 다국어, 정식 앱 전환(React Native/Flutter + 서버)

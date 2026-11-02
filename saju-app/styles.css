@@ -726,3 +726,22 @@ select option { background: #1d1742; color: #ffffff; }
 .rd-field.mine { outline: 1.5px solid #ff8fb3; }
 .tl-read { width: 100%; margin-top: 8px; font-size: 0.86rem; }
 @media (max-width: 400px) { .rd-two, .rd-fields { grid-template-columns: 1fr; } }
+
+/* ---------- v0.21 내년 운세 카드 · 다음 할 일 길잡이 ---------- */
+.tl-card.tl-next { border: 1.5px solid rgba(255, 201, 60, 0.6); background: linear-gradient(135deg, rgba(70, 40, 10, 0.55), rgba(20, 16, 44, 0.9)); box-shadow: 0 6px 26px rgba(255, 201, 60, 0.12); margin-bottom: 4px; }
+.tl-card.tl-next::before { background: linear-gradient(var(--gold), transparent); }
+.tl-card.tl-next .tl-sum b { color: var(--gold); font-size: 1.05rem; }
+.guide { border: 1.5px solid rgba(0, 229, 255, 0.5); background: linear-gradient(160deg, rgba(0, 229, 255, 0.10), rgba(20, 16, 44, 0.92)); }
+.guide.done { border-style: dashed; color: var(--muted); font-size: 0.86rem; text-align: center; }
+.guide-top { display: flex; justify-content: space-between; align-items: baseline; }
+.guide-top b { font-size: 1rem; } .guide-top small { color: var(--neon); font-weight: 700; }
+.guide-track { height: 6px; border-radius: 999px; background: rgba(255,255,255,0.08); margin: 8px 0 12px; overflow: hidden; }
+.guide-track i { display: block; height: 100%; background: linear-gradient(90deg, var(--neon), var(--gold)); border-radius: 999px; }
+.guide h4 { margin: 0 0 4px; font-size: 1.08rem; }
+.guide p { margin: 0 0 12px; font-size: 0.9rem; line-height: 1.55; color: #d9d4ff; }
+.guide-go { width: 100%; padding: 13px; font-size: 1rem; }
+.guide-foot { display: flex; flex-direction: column; gap: 4px; align-items: center; margin-top: 10px; }
+.guide-foot small { color: var(--muted); font-size: 0.74rem; text-align: center; }
+.linkish { background: none; border: 0; color: var(--muted); text-decoration: underline; font: inherit; font-size: 0.78rem; cursor: pointer; padding: 4px; }
+.tl-card.tl-next .tl-sum small { white-space: normal; }
+.tl-next-hint { display: block; color: var(--gold); font-size: 0.74rem; margin-top: 2px; opacity: 0.9; }

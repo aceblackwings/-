@@ -30,6 +30,7 @@ import { layersAt, monthPeriod, explainParts, TEN_GOD_MOD, weekOf, yearOf, month
 import { orderedMenu, buildAnswer, concernAsk, ASK_MENU } from './ask.js';
 import { buildReading, FIELD_LABEL, closingLine } from './reading.js';
 import { preloadCharImages } from './assets.js';
+import { emptyGuide, showNextYear, nextStep, progress as guideProgress, isUnlocked, stepFor, completeStep as completeGuideStep, setAll as guideSetAll } from './guide.js';
 import { emptyMemory, extractMemories, mergeMemory, memoryLines, followUp, markAsked, recallFor, describe as describeMemory, forget, forgetAll, needsSummary, applySummary, summaryMessages, offlineSummary, SUMMARY_EVERY, MEMORY_LIMIT } from './memory.js';
 import { festivalStatus } from './festivals.js';
 import { makeCode, normalizeCode, publicCard, cardToSaju, cleanCard, pendingCheers, joinTeamRoom, openMailbox, CHEER_MESSAGES, CHEER_DAILY_LIMIT, CHEER_CHARGE, cheerText, cheerId } from './realtime.js';
@@ -61,6 +62,7 @@ const CHAT_KEY = 'unmyeong2099.chat';
 const MEM_KEY = 'unmyeong2099.memory';
 const SEASON_KEY = 'unmyeong2099.season';
 const RT_KEY = 'unmyeong2099.realtime';
+const GUIDE_KEY = 'unmyeong2099.guide';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
 const EL_COLORS = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
 
@@ -397,7 +399,7 @@ function runAskCta(key) {
   state.askOpen = null;
   if (c.action === 'charm') { state.charm.type = c.talisman; state.charm.element = state.saju.yongsin; selectTab('charm'); renderCharm(true); return; }
   if (c.action === 'chat') { selectTab('chat'); setTimeout(() => { const i = $('#chat-form input'); if (i) { i.value = c.ask; i.focus(); } }, 50); return; }
-  if (c.action === 'journey') { selectTab('today'); setTimeout(() => ($('#btn-journey') || $('.journey'))?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300); return; }
+  if (c.action === 'journey') { selectTab('today'); ensureUnlocked('journey'); setTimeout(() => ($('#btn-journey') || $('.journey'))?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300); return; }
   selectTab(c.action);
 }
 
@@ -582,6 +584,14 @@ function readingFor(kind) {
       highlights: [`지금 ${age}세, 이 대운이 ${left}년 남았어요.`, next ? `다음 대운은 ${next.startAge}세부터 ${STEMS[next.stem]}${BRANCHES[next.branch]}(${pillarTheme(s, next).theme}) — 점수 ${next.score}점이에요.` : ''].filter(Boolean),
     });
   }
+  if (kind === 'next') {
+    const y = d.next; if (!y) return null;
+    const diff = y.year.score - d.year.year.score;
+    return buildReading('year', { ...y.year, god: tenGod(s.dayMaster, y.year.pillar.stem) }, {
+      saju: s, concern: state.profile.concern, when: `${y.sajuYear}년은`, range: `${y.sajuYear}년 입춘(${y.months[0].start.month}/${y.months[0].start.day})부터 1년`,
+      highlights: [`올해(${d.year.sajuYear}년 ${d.year.year.score}점)보다 ${diff === 0 ? '비슷한 흐름이에요' : `${Math.abs(diff)}점 ${diff > 0 ? '올라가요' : '내려가요'}`}.`, `좋은 달: ${y.best.map((m) => `${m.solarMonth}월(${m.score})`).join(', ')}`, `조심할 달: ${y.caution.map((m) => `${m.solarMonth}월(${m.score})`).join(', ')}`].filter(Boolean),
+    });
+  }
   if (kind === 'year') {
     const y = d.year;
     return buildReading('year', { ...L.year, god: tenGod(s.dayMaster, L.year.pillar.stem) }, {
@@ -597,8 +607,9 @@ function readingFor(kind) {
 }
 
 function readingCardHTML() {
-  const kind = state.readKind || 'year';
-  const kinds = [['daewoon', '🏔️ 대운'], ['year', '📅 올해'], ['month', '🌙 이달']];
+  const nx = timelineData().next;
+  const kind = state.readKind === 'next' && !nx ? 'year' : (state.readKind || 'year');
+  const kinds = [...(nx ? [['next', `🎁 ${nx.sajuYear}년`]] : []), ['daewoon', '🏔️ 대운'], ['year', '📅 올해'], ['month', '🌙 이달']];
   const r = readingFor(kind);
   const info = characterInfo(state.saju, state.profile);
   const face = faceSVG(info, heroOptions().stage, r && r.score >= 55 ? 'smile' : 'fighting', 40);
@@ -637,6 +648,8 @@ document.addEventListener('click', (e) => {
 /** 타임라인 카드에서 풀이로 바로 가기 */
 function openReading(kind) {
   state.readKind = kind; selectTab('saju');
+  const el = $('#reading-card');
+  if (el) { const tmp = document.createElement('div'); tmp.innerHTML = readingCardHTML(); el.replaceWith(tmp.firstElementChild); }
   setTimeout(() => $('#reading-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
 }
 
@@ -662,16 +675,47 @@ function timelineData() {
   const sy = sajuYearOf(f.date);
   const year = yearOf(s, sy, g);
   const dw = g ? computeDaewoon(s, g) : null;
-  state.tl = { key, week, month, year, dw };
+  const next = showNextYear(f.date, sy) ? yearOf(s, sy + 1, g) : null;
+  state.tl = { key, week, month, year, dw, next };
   return state.tl;
+}
+
+// ---------- 홈 길잡이 (v0.21): 처음엔 내년·오늘·올해만, 나머지는 퀘스트로 하나씩 ----------
+const loadGuide = () => ({ ...emptyGuide(), ...load(GUIDE_KEY, {}) });
+const guideCtx = () => ({ showNext: !!timelineData().next });
+const unlocked = (sec) => isUnlocked(loadGuide(), sec);
+
+/** 퀘스트 완료 → 저장·경험치. 새로 끝냈으면 true */
+function finishGuide(key) {
+  const r = completeGuideStep(loadGuide(), key);
+  if (!r.changed) return false;
+  save(GUIDE_KEY, r.guide);
+  const nx = nextStep(r.guide, guideCtx());
+  grow((g) => addExp(g, 3), `🧭 길잡이 완료!${nx ? ` 다음: ${nx.title(timelineData().next?.sajuYear)}` : ' 모든 기능이 열렸어요'}`);
+  return true;
+}
+
+/** 다른 화면에서 잠긴 구역을 부르면 그 자리에서 열어 준다 (막다른 길 없음) */
+function ensureUnlocked(sec) {
+  if (unlocked(sec)) return false;
+  const k = stepFor(sec); if (!k) return false;
+  finishGuide(k); renderToday();
+  return true;
+}
+
+/** 홈에 보이는 타임라인 순서 (잠긴 층은 뺌) */
+function tlVisible() {
+  const d = timelineData();
+  return [...(d.next ? ['next'] : []), ...TL_ORDER.filter((k) => k === 'today' || k === 'year' || unlocked(k))];
 }
 
 function tlCard(k, summary, body) {
   const open = (state.tlOpen || new Set(['today'])).has(k);
   const m = TL_META[k];
-  const i = TL_ORDER.indexOf(k);
-  const nav = `<div class="tl-nav">${i > 0 ? `<button type="button" class="ghost" data-tl-go="${TL_ORDER[i - 1]}">▲ ${TL_META[TL_ORDER[i - 1]].label}</button>` : '<span></span>'}${i < TL_ORDER.length - 1 ? `<button type="button" class="ghost" data-tl-go="${TL_ORDER[i + 1]}">더 넓게 보기: ${TL_META[TL_ORDER[i + 1]].label} ▼</button>` : ''}</div>`;
-  return `<section class="tl-card ${open ? 'open' : ''}" data-tl="${k}">
+  const vis = tlVisible().filter((x) => x !== 'next');
+  const i = vis.indexOf(k);
+  const nav = i < 0 ? '' : `<div class="tl-nav">${i > 0 ? `<button type="button" class="ghost" data-tl-go="${vis[i - 1]}">▲ ${TL_META[vis[i - 1]].label}</button>` : '<span></span>'}${i < vis.length - 1 ? `<button type="button" class="ghost" data-tl-go="${vis[i + 1]}">더 넓게 보기: ${TL_META[vis[i + 1]].label} ▼</button>` : ''}</div>`;
+  return `<section class="tl-card ${k === 'next' ? 'tl-next' : ''} ${open ? 'open' : ''}" data-tl="${k}">
     <button type="button" class="tl-head" data-tl-toggle="${k}" aria-expanded="${open}">
       <span class="tl-ic">${m.icon}</span><span class="tl-sum"><b>${m.label}</b>${summary}</span><span class="tl-caret">${open ? '▴' : '▾'}</span>
     </button>
@@ -782,13 +826,71 @@ function tlNatal() {
   return tlCard('natal', sum, body);
 }
 
+/** 내년 운세 (9월 이후·입춘 전에만). 올해 카드와 같은 엔진, 사주년 + 1 */
+function tlNext(d) {
+  const y = d.next; const th = pillarTheme(state.saju, y.year.pillar);
+  const diff = y.year.score - d.year.year.score;
+  const diffTxt = diff === 0 ? '올해와 비슷' : `올해보다 ${diff > 0 ? '▲' : '▼'}${Math.abs(diff)}`;
+  const h1 = Math.round(y.months.slice(0, 6).reduce((a, b) => a + b.score, 0) / 6);
+  const h2 = Math.round(y.months.slice(6).reduce((a, b) => a + b.score, 0) / 6);
+  const isOpen = (state.tlOpen || new Set(['today'])).has('next');
+  const sum = `<small>${plKo(y.year.pillar)}년 · ${th.theme} · <span style="white-space:nowrap">${diffTxt}</span>${isOpen ? '' : '<i class="tl-next-hint">👆 눌러서 좋은 달·조심할 달 보기</i>'}</small>${scoreChip(y.year.score)}`;
+  const mbars = y.months.map((m) => `<div class="yr-col" title="${m.term} ${md2(m.start)}~"><i style="height:${Math.max(6, m.score * 0.6)}px;background:${scoreColor(m.score)}"></i><span>${m.solarMonth}</span></div>`).join('');
+  const body = `
+    <p class="tl-lead"><b>${y.sajuYear}년은 「${th.god} · ${th.theme}」의 해</b>예요. ${y.year.score >= 60 ? '새로 시작하고 넓혀 가기 좋은 해입니다.' : y.year.score >= 45 ? '차근차근 다지는 만큼 결실이 쌓이는 해입니다.' : '속도를 줄이고 내실을 챙길수록 단단해지는 해입니다.'} ${diff > 0 ? '올해보다 흐름이 한결 나아져요.' : diff < 0 ? '올해보다 조심스럽게 걸으면 좋아요.' : ''}</p>
+    <div class="yr-bars">${mbars}</div>
+    <p class="muted" style="font-size:0.76rem;margin:2px 0 8px">${y.sajuYear}년 입춘(${md2(y.months[0].start)})부터 12절기월 · 숫자는 양력 기준 달</p>
+    <div class="tl-kit"><span>상반기 ${h1} · 하반기 ${h2}</span><span>🌟 좋은 달 ${y.best.map((m) => `${m.solarMonth}월`).join(' · ')}</span><span>⚠️ 조심할 달 ${y.caution.map((m) => `${m.solarMonth}월`).join(' · ')}</span></div>
+    <p class="why-calc">${y.sajuYear}년 ${y.year.score} = 세운 ${y.year.base}${y.daewoon ? ` × 70% + 대운 ${y.daewoon.score} × 30%` : ''} · 근거: ${explainParts(y.year.parts)}</p>
+    ${stepBtn(`📖 ${y.sajuYear}년 운세 풀이 자세히 읽기`, 'read-next')}`;
+  TL_META.next = { icon: '🎁', label: `${y.sajuYear}년 운세` };
+  return tlCard('next', sum, body);
+}
+
 function timelineHTML() {
   const d = timelineData();
+  const R = { next: () => tlNext(d), today: tlToday, week: () => tlWeek(d), month: () => tlMonth(d), year: () => tlYear(d), daewoon: () => tlDaewoon(d), natal: tlNatal };
+  const vis = tlVisible();
   return `<div class="timeline" id="timeline">
-    <div class="tl-title"><h3>나의 운 흐름</h3><small>오늘에서 대운까지, 같은 계산으로 이어 봐요</small></div>
-    ${tlToday()}${tlWeek(d)}${tlMonth(d)}${tlYear(d)}${tlDaewoon(d)}${tlNatal()}
+    ${vis[0] === 'next' ? R.next() : ''}
+    <div class="tl-title"><h3>나의 운 흐름</h3><small>${vis.length >= 7 ? '오늘에서 대운까지, 같은 계산으로 이어 봐요' : '카드를 누르면 펼쳐져요'}</small></div>
+    ${vis.filter((k) => k !== 'next').map((k) => R[k]()).join('')}
   </div>`;
 }
+
+/** 「다음 할 일」 퀘스트 카드: 진행도 + 지금 할 1가지 + 버튼 1개 */
+function guideCardHTML() {
+  const g = loadGuide(); const ctx = guideCtx(); const ny = timelineData().next?.sajuYear;
+  const p = guideProgress(g, ctx); const st = nextStep(g, ctx);
+  const toggle = `<button type="button" class="linkish" data-guide-all="${g.all ? 0 : 1}">${g.all ? '처음처럼 간단히 보기' : '모든 기능 한 번에 펼치기'}</button>`;
+  if (!st) return `<div class="card guide done" id="guide"><p style="margin:0">🧭 길잡이 완료 · 모든 기능이 열렸어요 ${p.total}/${p.total}</p></div>`;
+  return `<div class="card guide" id="guide">
+    <div class="guide-top"><b>🧭 다음 할 일</b><small>${p.done} / ${p.total}</small></div>
+    <div class="guide-track"><i style="width:${Math.round((p.done / p.total) * 100)}%"></i></div>
+    <h4>${st.icon} ${st.title(ny)}</h4>
+    <p>${st.desc(ny)}</p>
+    <button class="primary guide-go" type="button" data-guide-go="${st.key}">${st.btn} →</button>
+    <div class="guide-foot"><small>하나씩 하다 보면 기능이 차례로 열려요 · 완료할 때마다 +3 EXP</small>${toggle}</div>
+  </div>`;
+}
+
+/** 퀘스트 버튼: 완료 → 연 구역으로 이동·펼침 */
+const GUIDE_TARGET = { week: 'week', month: 'month', daewoon: 'daewoon', mission: '#btn-mission', draw: '#btn-daily', ask: '.ask-home', journey: '.journey, #btn-journey', todo: '.card.todo' };
+document.addEventListener('click', (e) => {
+  const all = e.target.closest('[data-guide-all]');
+  if (all) { save(GUIDE_KEY, guideSetAll(loadGuide(), all.dataset.guideAll === '1')); renderToday(); return; }
+  const go = e.target.closest('[data-guide-go]'); if (!go) return;
+  const k = go.dataset.guideGo;
+  if (k === 'next') { state.tlOpen = new Set(['next', 'today']); finishGuide('next'); renderToday(); setTimeout(() => $('[data-tl="next"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30); return; }
+  finishGuide(k);
+  const t = GUIDE_TARGET[k];
+  if (t && !t.startsWith('.') && !t.startsWith('#')) state.tlOpen = new Set([t]);
+  renderToday();
+  setTimeout(() => {
+    const el = t && (t.startsWith('.') || t.startsWith('#') ? $(t) : $(`[data-tl="${t}"]`));
+    (el?.closest('.card') || el)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 40);
+});
 
 function refreshTimeline(scrollTo) {
   const el = $('#timeline'); if (!el) return;
@@ -799,7 +901,13 @@ function refreshTimeline(scrollTo) {
 
 document.addEventListener('click', (e) => {
   const tg = e.target.closest('[data-tl-toggle]');
-  if (tg) { const k = tg.dataset.tlToggle; const set = new Set(state.tlOpen || ['today']); if (set.has(k)) set.delete(k); else set.add(k); state.tlOpen = set; refreshTimeline(); return; }
+  if (tg) {
+    const k = tg.dataset.tlToggle; const set = new Set(state.tlOpen || ['today']);
+    if (set.has(k)) set.delete(k); else set.add(k);
+    state.tlOpen = set;
+    if (k === 'next' && set.has(k) && finishGuide('next')) { renderToday(); return; }
+    refreshTimeline(); return;
+  }
   const go = e.target.closest('[data-tl-go]');
   if (go) { const k = go.dataset.tlGo; state.tlOpen = new Set([k]); refreshTimeline(k); return; }
   const st = e.target.closest('[data-tl-step]');
@@ -809,7 +917,7 @@ document.addEventListener('click', (e) => {
   if (a === 'charm-today') { runAskCta('today'); return; }
   if (a === 'charm-month') { state.charm.type = 'luck'; state.charm.element = state.saju.yongsin; selectTab('charm'); renderCharm(true); return; }
   if (a === 'chat-week') { const b = d.week.best.date; selectTab('chat'); setTimeout(() => { const i = $('#chat-form input'); if (i) { i.value = `이번 주 ${b.month}/${b.day}(${dowOf(b)})이 좋은 날이래. 그날 뭘 하면 좋을까?`; i.focus(); } }, 50); return; }
-  if (a === 'journey') { setTimeout(() => ($('#btn-journey') || $('.journey'))?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); return; }
+  if (a === 'journey') { ensureUnlocked('journey'); setTimeout(() => ($('#btn-journey') || $('.journey'))?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); return; }
   if (a === 'five') { selectTab('report'); setTimeout(() => $('.dw-row')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 200); return; }
   selectTab(a);
 });
@@ -827,34 +935,25 @@ function renderToday() {
   const missions = load(MISSION_KEY, {});
   const done = !!missions[f.dateKey];
 
-  $('[data-panel="today"]').innerHTML = `
-    ${timelineHTML()}
-
-    ${askChipsHTML()}
-
-    ${seasonCardHTML()}
-    ${festivalCardHTML()}
-
-    ${todaySayCard()}
-
-    ${todoCardHTML()}
-
-    ${journeyCardHTML()}
-
-    ${dailyCardHTML()}
-
-    ${concernCard()}
-
-    <div class="card">
-      <h3>오늘의 액땜 미션</h3>
+  const missionCard = `<div class="card">
+      <h3>🧧 오늘의 액땜 미션</h3>
       <div class="mission ${done ? 'done' : ''}">
         <div style="flex:1"><b>${f.info.mission}</b><br><span class="muted">${done ? '정화 완료! 오늘의 액막이 부적이 한 단계 강해졌습니다.' : '완료하면 액막이 부적이 정화되어 효과가 강해집니다.'}</span></div>
         <button class="${done ? 'ghost' : 'primary'}" type="button" id="btn-mission">${done ? '완료됨 ✓' : '미션 완료'}</button>
       </div>
-    </div>
-    ${storyButton('fortune', '오늘의 운세를 스토리로 공유')}`;
+    </div>`;
+  // 길잡이로 연 구역만 보인다. 모두 열리면 예전과 같은 전체 홈
+  const sections = [
+    ['ask', askChipsHTML], ['season', seasonCardHTML], ['festival', festivalCardHTML], ['say', todaySayCard],
+    ['todo', todoCardHTML], ['journey', journeyCardHTML], ['daily', dailyCardHTML], ['concern', concernCard],
+    ['mission', () => missionCard], ['story', () => storyButton('fortune', '오늘의 운세를 스토리로 공유')],
+  ];
+  $('[data-panel="today"]').innerHTML = `
+    ${timelineHTML()}
+    ${guideCardHTML()}
+    ${sections.filter(([k]) => unlocked(k)).map(([, fn]) => fn()).join('\n')}`;
 
-  $('#btn-mission').addEventListener('click', () => {
+  $('#btn-mission')?.addEventListener('click', () => {
     const m = load(MISSION_KEY, {});
     m[f.dateKey] = !m[f.dateKey];
     const missionLead = m[f.dateKey] ? `${say('missionDone')} (액막이 부적 등급 +1)` : '';
@@ -2041,6 +2140,7 @@ function showSajuCard() {
     <p class="muted" style="font-size:0.76rem;margin:4px 0 10px">${s.elements.map((v, e) => `${ELEMENT_HANJA[e]}${v}`).join(' · ')} · 필요한 기운 ${ELEMENT_HANJA[s.yongsin]} ${ELEMENT_KO[s.yongsin]}</p>
     <ul class="sc-list">
       ${L.daewoon ? `<li><span>🏔️ 지금 대운</span><b>${L.daewoon.startAge}~${L.daewoon.endAge}세 · ${th(L.daewoon.pillar).theme}의 10년</b></li>` : ''}
+      ${(() => { const nx = timelineData().next; return nx ? `<li><span>🎁 ${nx.sajuYear}년</span><b>${th(nx.year.pillar).god} · ${th(nx.year.pillar).theme} (${nx.year.score}점)</b></li>` : ''; })()}
       <li><span>📅 올해</span><b>${th(L.year.pillar).god} · ${th(L.year.pillar).theme} (${L.year.score}점)</b></li>
       <li><span>🌙 이달</span><b>${f.period.term}부터 · ${th(L.month.pillar).theme} (${L.month.score}점)</b></li>
       <li><span>☀️ 오늘</span><b>${f.info.title} (${f.scores.total}점)</b></li>

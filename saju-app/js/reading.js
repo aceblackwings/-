@@ -207,7 +207,7 @@ export function buildReading(kind, layer, ctx) {
   const R = GOD_READING[god];
   const innerGod = tenGod(saju.dayMaster, BRANCH_MAIN_STEM[layer.pillar.branch]);
   const I = GOD_READING[innerGod];
-  const when = kind === 'daewoon' ? '이 10년은' : kind === 'year' ? '올해는' : '이달은';
+  const when = ctx.when || (kind === 'daewoon' ? '이 10년은' : kind === 'year' ? '올해는' : '이달은');
   const score = layer.score;
   const focus = CONCERN_FIELD[ctx.concern] || null;
   const intro = [
