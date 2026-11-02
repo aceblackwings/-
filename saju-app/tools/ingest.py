@@ -20,6 +20,16 @@ def order(files):
         return (0, m.group(1) + m.group(2)) if m else (1, os.path.basename(f))
     return sorted(files, key=k)
 
+def detect_bg(path, fallback):
+    """그림 테두리 색을 보고 크로마키 색(green/magenta)을 고른다. 시트 지정색과 다르게 생성된 그림 대비."""
+    im = Image.open(path).convert('RGB'); w, h = im.size
+    px = [im.getpixel((x, y)) for x in range(0, w, max(1, w // 32)) for y in (0, h - 1)] + \
+         [im.getpixel((x, y)) for y in range(0, h, max(1, h // 32)) for x in (0, w - 1)]
+    green = sum(1 for r, g, b in px if g - max(r, b) > 60)
+    magenta = sum(1 for r, g, b in px if min(r, b) - g > 60)
+    if max(green, magenta) < len(px) * 0.3: return fallback
+    return 'green' if green >= magenta else 'magenta'
+
 def zodiac(key, src):
     spec = json.load(open(os.path.join(HERE, 'zodiac_specs.json')))[key]
     files = order([f for f in glob.glob(os.path.join(src, '*')) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))])
@@ -31,12 +41,13 @@ def zodiac(key, src):
     tmp = os.path.join(src, '_cut'); os.makedirs(tmp, exist_ok=True)
     for (kind, name, size), f in zip(targets, files):
         cut = os.path.join(tmp, name + '.png')
-        bbox, clear = remove(f, cut, spec['bg'])
+        bg = detect_bg(f, spec['bg'])
+        bbox, clear = remove(f, cut, bg)
         im = Image.open(cut).resize((size, size), Image.LANCZOS)
         out = os.path.join(APP, 'assets', kind, name + '.webp')
         im.save(out, 'WEBP', quality=88, method=6)
         flag = '배경이 거의 안 지워짐(배경색 확인)' if clear < 0.25 else ('그림이 너무 작음' if clear > 0.9 else '')
-        report['items'].append({'file': os.path.basename(f), 'to': f'{kind}/{name}.webp', 'kb': os.path.getsize(out) // 1024, 'clear': round(clear, 2), 'flag': flag})
+        report['items'].append({'file': os.path.basename(f), 'to': f'{kind}/{name}.webp', 'kb': os.path.getsize(out) // 1024, 'bg': bg, 'clear': round(clear, 2), 'flag': flag})
     contact(tmp, [t[1] for t in targets][:len(files)], os.path.join(src, 'contact.jpg'))
     manifest()
     return report
