@@ -4,7 +4,7 @@
 
 ## 위치
 - 앱: `saju-app/` (빌드 없는 정적 웹, ES 모듈). 루트 `index.html`은 별개 프로젝트(일일계도상소) — 건드리지 않음
-- 기획·조사 문서: `docs/` (최신 전략: `docs/strategy-v013.md`, 방향: `docs/kaiun-loop-direction.md`, 승천·가챠: `docs/ascension-gacha-report.md`, 소셜 설계: `docs/social-design.md`)
+- 기획·조사 문서: `docs/` (**최신 기획: `docs/core-saju-review-plan.md` — 핵심 사주 타임라인·엔진 통합·경쟁 앱 리뷰 분석·v0.19~ 로드맵**, 전략: `docs/strategy-v013.md`, 방향: `docs/kaiun-loop-direction.md`, 승천·가챠: `docs/ascension-gacha-report.md`, 소셜 설계: `docs/social-design.md`)
 - 작업 브랜치: `claude/exciting-johnson-1f6o78` (커밋 후 `git push -u origin claude/exciting-johnson-1f6o78`)
 - 미리보기(Claude 아티팩트): slug `f5ff35d3-d121-45d3-8a5e-b1b6c7e1fffe`, URL https://claude.ai/artifact/XNrP2AFTcULKijQSe1xzC5
   - 갱신: `publish_files`(slug, base_version=get_artifact로 확인, files: `index.html`, `styles.css`, `js/*.js`를 같은 경로로)
@@ -50,5 +50,6 @@
 
 ## 다음 할 일 후보
 (완료: v0.16 수호신의 기억, v0.17 계절 한정 패키지, v0.18 질문형 운세 메뉴·탭 5개)
+- **1순위: `docs/core-saju-review-plan.md` 로드맵** (v0.19 엔진 통합 → v0.20 타임라인 홈 → v0.21 기록함 → v0.22 이번 주 재물 흐름 → v0.23 신수 카드 → v0.24 전문가 보기)
 - 사용성 개편 다음 단계: ② 모든 결과 화면 끝에 한 걸음 버튼 ③ 12지신 신수 카드(자체 카드 뽑기) ④ 7일 기능 소개 + 첫 주 게임 용어 감추기
 - 해외판 튜토리얼과 다국어, 정식 앱 전환(React Native/Flutter + 서버)
