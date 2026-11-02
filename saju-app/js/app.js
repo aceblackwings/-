@@ -28,11 +28,12 @@ import { seasonStatus, SEASON_PACKS, SEASON_MISSIONS, FREE_TIERS, PACK_PRICE, em
 import { dateToJdn } from './lunar.js';
 import { layersAt, monthPeriod, explainParts, TEN_GOD_MOD, weekOf, yearOf, monthDays, sajuYearOf, categoryScores } from './period.js';
 import { orderedMenu, buildAnswer, concernAsk, ASK_MENU } from './ask.js';
-import { buildReading, FIELD_LABEL, closingLine } from './reading.js';
+import { buildReading, FIELD_LABEL, closingLine, GOD_READING } from './reading.js';
 import { preloadCharImages } from './assets.js';
 import { GUIDE_STEPS, emptyGuide, showNextYear, nextStep, progress as guideProgress, isUnlocked, stepFor, completeStep as completeGuideStep, setAll as guideSetAll } from './guide.js';
 import { emptyMemory, extractMemories, mergeMemory, memoryLines, followUp, markAsked, recallFor, describe as describeMemory, forget, forgetAll, needsSummary, applySummary, summaryMessages, offlineSummary, SUMMARY_EVERY, MEMORY_LIMIT } from './memory.js';
 import { festivalStatus } from './festivals.js';
+import { yearCard, monthRange, savePledge, pledgeReviewDue, reviewPledge, PLEDGE_MAX } from './yearcard.js';
 import { buildMissions, markDone as dmMarkDone, allDone as dmAllDone, claimBonus as dmClaimBonus, DM_BONUS_EXP } from './daymission.js';
 import { ensureStart, inFirstWeek, plainTerms, hasGameTerms } from './firstweek.js';
 import { expertTable, sinsalOf, calcBasis, STAGE_NOTE, makeChart, addChart, removeChart, emptyCharts, RELATIONS } from './expert.js';
@@ -74,6 +75,7 @@ const RECORDS_KEY = 'unmyeong2099.records';
 const CHARTS_KEY = 'unmyeong2099.charts';
 const FW_KEY = 'unmyeong2099.firstweek';
 const DM_KEY = 'unmyeong2099.dmission';
+const PLEDGE_KEY = 'unmyeong2099.pledge';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
 const EL_COLORS = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
 
@@ -646,6 +648,7 @@ function readingCardHTML() {
     ${r.focusLine ? `<div class="rd-box focus"><h5>🎯 내 고민(${info.concern.label})에는</h5><p>${r.focusLine}</p></div>` : ''}
     <div class="rd-fields">${Object.entries(r.fields).map(([k, t]) => `<div class="rd-field ${k === r.focus ? 'mine' : ''}"><b>${FIELD_LABEL[k]}</b><p>${t}</p></div>`).join('')}</div>
     <div class="rd-box when"><h5>📌 실제 흐름</h5><ul>${r.highlights.map((t) => `<li>${t}</li>`).join('')}</ul></div>
+    ${monthsTableHTML(kind)}
     <div class="rd-box tips"><h5>✅ 이렇게 해 보세요</h5><ol>${r.tips.map((t) => `<li>${t}</li>`).join('')}</ol></div>
     <div class="ask-guardian"><div class="av">${face}</div><p>${esc(closingLine(r.kind, r.score, personalityOf(zIdx()).key === 'rooster'))}</p></div>
     ${saveBtnHTML('reading', kind)}
@@ -865,25 +868,67 @@ function tlNatal() {
   return tlCard('natal', sum, body);
 }
 
-/** 내년 운세 (9월 이후·입춘 전에만). 올해 카드와 같은 엔진, 사주년 + 1 */
+/** 내년 운세 (9월 이후·입춘 전에만, v0.28 신년운세 구성): 총평·키워드 → 분야별 별 → 사계절 → 꼭 기억할 달 → 행운 키트 → 다짐 */
 function tlNext(d) {
-  const y = d.next; const th = pillarTheme(state.saju, y.year.pillar);
-  const diff = y.year.score - d.year.year.score;
-  const diffTxt = diff === 0 ? '올해와 비슷' : `올해보다 ${diff > 0 ? '▲' : '▼'}${Math.abs(diff)}`;
-  const h1 = Math.round(y.months.slice(0, 6).reduce((a, b) => a + b.score, 0) / 6);
-  const h2 = Math.round(y.months.slice(6).reduce((a, b) => a + b.score, 0) / 6);
+  const y = d.next; const c = yearCard(y, d.year, state.saju);
+  const diffTxt = Math.abs(c.diff) <= 2 ? '올해와 비슷' : `올해보다 ${c.diff > 0 ? '▲' : '▼'}${Math.abs(c.diff)}`;
   const isOpen = (state.tlOpen || new Set(['today'])).has('next');
-  const sum = `<small>${plKo(y.year.pillar)}년 · ${th.theme} · <span style="white-space:nowrap">${diffTxt}</span>${isOpen ? '' : '<i class="tl-next-hint">👆 눌러서 좋은 달·조심할 달 보기</i>'}</small>${scoreChip(y.year.score)}`;
-  const mbars = y.months.map((m) => `<div class="yr-col" title="${m.term} ${md2(m.start)}~"><i style="height:${Math.max(6, m.score * 0.6)}px;background:${scoreColor(m.score)}"></i><span>${m.solarMonth}</span></div>`).join('');
+  const sum = `<span class="ny-title">「${c.title}」</span><small>${plKo(y.year.pillar)}년 · ${diffTxt}<span class="ny-tags">${c.tags.map((t) => `#${t}`).join(' ')}</span>${isOpen ? '' : '<i class="tl-next-hint">👆 눌러서 분야별 운·좋은 달 보기</i>'}</small>${scoreChip(y.year.score)}`;
+  const pledge = load(PLEDGE_KEY, {})[c.year];
+  const st = '★★★★★';
   const body = `
-    <p class="tl-lead"><b>${y.sajuYear}년은 「${th.god} · ${th.theme}」의 해</b>예요. ${y.year.score >= 60 ? '새로 시작하고 넓혀 가기 좋은 해입니다.' : y.year.score >= 45 ? '차근차근 다지는 만큼 결실이 쌓이는 해입니다.' : '속도를 줄이고 내실을 챙길수록 단단해지는 해입니다.'} ${diff > 0 ? '올해보다 흐름이 한결 나아져요.' : diff < 0 ? '올해보다 조심스럽게 걸으면 좋아요.' : ''}</p>
-    <div class="yr-bars">${mbars}</div>
-    <p class="muted" style="font-size:0.76rem;margin:2px 0 8px">${y.sajuYear}년 입춘(${md2(y.months[0].start)})부터 12절기월 · 숫자는 양력 기준 달</p>
-    <div class="tl-kit"><span>상반기 ${h1} · 하반기 ${h2}</span><span>🌟 좋은 달 ${y.best.map((m) => `${m.solarMonth}월`).join(' · ')}</span><span>⚠️ 조심할 달 ${y.caution.map((m) => `${m.solarMonth}월`).join(' · ')}</span></div>
-    <p class="why-calc">${y.sajuYear}년 ${y.year.score} = 세운 ${y.year.base}${y.daewoon ? ` × 70% + 대운 ${y.daewoon.score} × 30%` : ''} · 근거: ${explainParts(y.year.parts)}</p>
-    ${stepBtn(`📖 ${y.sajuYear}년 운세 풀이 자세히 읽기`, 'read-next')}`;
+    <p class="tl-lead">${c.summary}</p>
+    <div class="ny-sec"><h5>분야별 ${c.year}년</h5>
+      <ul class="ny-fields">${c.fields.map((f) => `<li><span>${f.icon} ${f.label}</span><b class="ny-stars" aria-label="별 ${f.stars}개">${st.slice(0, f.stars)}<i>${st.slice(f.stars)}</i></b><small>${f.line}</small></li>`).join('')}</ul></div>
+    <div class="ny-sec"><h5>계절별 흐름</h5>
+      <div class="ny-seasons">${c.seasons.map((x) => `<div class="ny-season ${x.tone}"><b>${x.icon} ${x.label}</b><small>${x.months.join('·')}월</small><em>${x.mark} ${x.word}</em><p>${x.advice}</p></div>`).join('')}</div></div>
+    <div class="ny-sec"><h5>꼭 기억할 달</h5>
+      <ul class="ny-months">${c.keyMonths.map((m) => `<li class="${m.kind}"><span>${m.kind === 'good' ? '🌟' : '⚠️'} <b>${m.month}월</b><small>${m.range}</small></span><p>${m.line}</p></li>`).join('')}</ul></div>
+    <div class="ny-sec"><h5>${c.year} 행운 키트</h5>
+      <div class="tl-kit"><span><i class="ny-dot" style="background:${c.luck.hex}"></i>${c.luck.color}</span><span>🔢 ${c.luck.numbers.join(' · ')}</span><span>🧭 ${c.luck.direction}</span><span>🤝 힘이 되는 띠 ${c.luck.zodiac.join(' · ')}</span><span>🎁 ${c.luck.item}</span></div></div>
+    <div class="ny-sec ny-pledge"><h5>✍️ ${c.year} 다짐 한 줄</h5>
+      ${pledge ? `<p class="ny-pledged">「${esc(pledge.text)}」 <button type="button" class="linkish" data-pledge-edit>고치기</button></p><small class="muted">${c.year}년 12월에 수호신이 얼마나 이뤘는지 물어볼게요.</small>`
+        : `<form data-pledge="${c.year}" class="ny-pledge-form"><input name="text" maxlength="${PLEDGE_MAX}" placeholder="예: 매일 30분 걷기 · 자격증 하나 따기" aria-label="${c.year} 다짐"><button class="primary" type="submit">저장</button></form><small class="muted">기록함에 저장되고, ${c.year}년 12월에 돌아보기 미션으로 다시 만나요.</small>`}</div>
+    <p class="why-calc">${c.year}년 ${y.year.score} = 세운 ${y.year.base}${y.daewoon ? ` × 70% + 대운 ${y.daewoon.score} × 30%` : ''} · 분야 별은 같은 점수의 구간(★5 75+ · ★4 65+ · ★3 55+) · 근거: ${explainParts(y.year.parts)}</p>
+    <button class="ghost tl-read" type="button" data-tl-step="read-next">📖 12달 자세히 보기 · ${c.year}년 운세 풀이</button>`;
   TL_META.next = { icon: '🎁', label: `${y.sajuYear}년 운세` };
   return tlCard('next', sum, body);
+}
+
+document.addEventListener('submit', (e) => {
+  const f = e.target.closest('[data-pledge]'); if (!f) return;
+  e.preventDefault();
+  const year = Number(f.dataset.pledge); const text = f.text.value;
+  const r = savePledge(load(PLEDGE_KEY, {}), year, text);
+  if (!r.ok) { toast('다짐을 한 줄 적어 주세요'); return; }
+  save(PLEDGE_KEY, r.store);
+  save(RECORDS_KEY, addItem(loadRecords(), { kind: 'pledge', key: String(year), dateKey: state.fortune.dateKey, title: `✍️ ${year}년 다짐`, summary: r.store[year].text, lines: [`${year}년 12월에 돌아보기 미션으로 다시 물어볼게요.`] }).rec);
+  state.tlOpen = new Set(['next']); refreshTimeline('next');
+  toast(`✍️ ${year}년 다짐을 기록함에 저장했어요`);
+});
+document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-pledge-edit]')) {
+    const y = timelineData().next?.sajuYear; const st = load(PLEDGE_KEY, {}); const old = st[y]?.text || '';
+    delete st[y]; save(PLEDGE_KEY, st); refreshTimeline('next');
+    setTimeout(() => { const i = $('[data-pledge] input'); if (i) { i.value = old; i.focus(); } }, 30);
+    return;
+  }
+  const rv = e.target.closest('[data-pledge-rv]');
+  if (rv) {
+    save(PLEDGE_KEY, reviewPledge(load(PLEDGE_KEY, {}), Number(rv.dataset.year), rv.dataset.pledgeRv));
+    dmDone('check');
+    grow((g) => addExp(g, 3), rv.dataset.pledgeRv === 'yes' ? '✍️ 다짐을 이뤘군요! 정말 멋져요' : '✍️ 돌아본 것만으로도 한 걸음이에요. 내년 다짐도 함께 세워요');
+    renderToday();
+  }
+});
+
+/** 운세 풀이(내년·올해)의 12달 표: 절기월 기간 · 점수 · 그달 기운 */
+function monthsTableHTML(kind) {
+  const d = timelineData(); const y = kind === 'next' ? d.next : kind === 'year' ? d.year : null;
+  if (!y) return '';
+  const km = yearCard(y, d.year, state.saju).keyMonths; // 카드의 「꼭 기억할 달」과 같은 표시
+  const top = new Set(km.filter((m) => m.kind === 'good').map((m) => m.month)); const low = new Set(km.filter((m) => m.kind === 'caution').map((m) => m.month));
+  return `<div class="rd-box months"><h5>🗓️ 12달 자세히 <small>입춘부터 절기월 · 기간은 양력</small></h5><ul class="rd-months">${y.months.map((m, i) => `<li class="${top.has(m.solarMonth) ? 'good' : low.has(m.solarMonth) ? 'caution' : ''}"><span>${m.solarMonth}월 <small>${monthRange(y.months, i)}</small></span><b style="color:${scoreColor(m.score)}">${m.score}</b><small>${GOD_READING[m.god].keyword}${top.has(m.solarMonth) ? ' 🌟' : low.has(m.solarMonth) ? ' ⚠️' : ''}</small></li>`).join('')}</ul></div>`;
 }
 
 function timelineHTML() {
@@ -906,7 +951,7 @@ function missionCardHTML() {
     dateKey: f.dateKey,
     month: { term: per.term, start: per.start, end: per.end, theme: pillarTheme(state.saju, f.layers.month.pillar).theme, best: d.month.best },
     today: { mission: f.info.mission, score: f.scores.total },
-    pending: pendingFeedback(loadRecords(), f.date),
+    pending: pendingFeedback(loadRecords(), f.date), pledgeReview: pledgeReviewDue(load(PLEDGE_KEY, {}), f.date),
     discovery: g.all ? null : nextStep(g, gctx), steps: GUIDE_STEPS, nextYear: d.next?.sajuYear, progress: guideProgress(g, gctx),
     actDone: !!load(MISSION_KEY, {})[f.dateKey], state: load(DM_KEY, {})[f.dateKey],
   });
@@ -914,7 +959,8 @@ function missionCardHTML() {
   const row = (m, i) => {
     let act = '';
     if (!m.done) {
-      if (m.action.type === 'feedback') act = `<div class="yday-btns">${Object.entries(FEEDBACK).map(([k, v]) => `<button type="button" class="ghost" data-fb="${k}" data-fb-day="${m.action.dateKey}">${v.icon} ${v.label}</button>`).join('')}</div>
+      if (m.action.type === 'pledge') act = `<div class="yday-btns">${[['yes', '🎯 이뤘어요'], ['half', '🤔 절반쯤'], ['no', '🌱 다음 해에']].map(([k, l]) => `<button type="button" class="ghost" data-pledge-rv="${k}" data-year="${m.action.year}">${l}</button>`).join('')}</div>`;
+      else if (m.action.type === 'feedback') act = `<div class="yday-btns">${Object.entries(FEEDBACK).map(([k, v]) => `<button type="button" class="ghost" data-fb="${k}" data-fb-day="${m.action.dateKey}">${v.icon} ${v.label}</button>`).join('')}</div>
         <input type="text" class="yday-memo" maxlength="${MEMO_MAX}" placeholder="한 줄 메모 (선택)" aria-label="어제 메모"><button type="button" class="linkish" data-fb-skip="${m.action.dateKey}">기억이 안 나요 · 건너뛰기</button>`;
       else act = `<button type="button" class="${i === ms.findIndex((x) => !x.done) ? 'primary' : 'ghost'} dm-go" data-dm="${m.key}">${m.btn} →</button>`;
     }

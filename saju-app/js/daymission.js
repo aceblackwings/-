@@ -1,6 +1,6 @@
 // 오늘의 미션 3가지(v0.27): 이달 운세에서 이어지는 하루 퀘스트
 // ① 이달의 실천: 이달(절기월) 기운 위에서 오늘 할 행동 하나 (= 오늘의 액땜 미션, 완료하면 액막이 부적 정화)
-// ② 돌아보기: 어제 운세 맞았나요?(기록이 있을 때) → 없으면 이달 좋은 날 확인 / 오늘 점수의 근거 보기를 번갈아
+// ② 돌아보기: (12월이면) 올해 다짐 돌아보기 → 어제 운세 맞았나요?(기록이 있을 때) → 없으면 이달 좋은 날 확인 / 오늘 점수의 근거 보기를 번갈아
 // ③ 새 기능 열기: 길잡이 순서(guide.js)대로 하루 한 가지. 다 열면 신수 카드·상담·질문·기록함을 번갈아
 // 세 가지를 다 하면 보너스와 함께 「내일 미리보기」가 열려 다음 날로 자연스럽게 이어진다.
 // 리뷰 근거(docs/core-saju-review-plan.md 4장): 짧은 매일 습관, 지난 운세 확인, 월운 절입일 표기, 낮은 날에도 행동 하나
@@ -37,7 +37,10 @@ export function buildMissions(ctx) {
     btn: '했어요', action: { type: 'self' }, done: !!ctx.actDone,
   };
   let check;
-  if (ctx.pending) {
+  if (ctx.pledgeReview) {
+    const pr = ctx.pledgeReview;
+    check = { key: 'check', icon: '✍️', tag: `돌아보기 · ${pr.year}년 다짐`, title: `${pr.year}년 다짐, 얼마나 이뤘나요?`, desc: `「${pr.text}」`, btn: null, action: { type: 'pledge', year: pr.year }, done: !!st.check };
+  } else if (ctx.pending) {
     const p = ctx.pending; const [, pm, pd] = p.dateKey.split('-');
     check = { key: 'check', icon: '📒', tag: '돌아보기 · 어제', title: '어제 운세, 맞았나요?', desc: `${pm}/${pd} ${p.title} · ${p.score}점`, btn: null, action: { type: 'feedback', dateKey: p.dateKey }, done: !!st.check };
   } else if (day % 2 === 0 && m.best?.length) {

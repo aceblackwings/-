@@ -57,4 +57,9 @@ t('③을 끝낸 날은 다음 단계가 아니라 오늘 연 기능을 그대�
   assert.equal(buildMissions({ ...base, discovery: null, state: r['2026-11-2'] })[2].title, ROTATION.find((x) => x.key === 'chat').title);
 });
 
+t('12월에 올해 다짐이 있으면 ②는 다짐 돌아보기가 먼저', () => {
+  const ms = buildMissions({ ...base, pledgeReview: { year: 2026, text: '매일 걷기' }, pending: { dateKey: '2026-12-1', title: 'x', score: 60 } });
+  assert.equal(ms[1].action.type, 'pledge'); assert.ok(ms[1].desc.includes('매일 걷기'));
+});
+
 console.log(`${pass} passed`);

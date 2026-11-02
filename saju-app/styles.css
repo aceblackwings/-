@@ -885,3 +885,36 @@ select option { background: #1d1742; color: #ffffff; }
 .dm-done { margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: rgba(57, 255, 136, 0.08); border: 1px solid rgba(57, 255, 136, 0.4); }
 .dm-done p { margin: 4px 0 0; font-size: 0.86rem; line-height: 1.5; }
 .dm-body .yday-btns button { padding: 9px 2px; font-size: 0.78rem; white-space: nowrap; letter-spacing: -0.02em; }
+
+/* ---------- v0.28 신년(내년) 운세 카드 ---------- */
+.ny-title { color: #ffe9a8; font-weight: 700; }
+.ny-tags { display: block; color: var(--gold); font-size: 0.74rem; margin-top: 2px; opacity: 0.9; }
+.ny-sec { margin-top: 14px; }
+.ny-sec h5 { margin: 0 0 8px; font-size: 0.9rem; color: var(--gold); }
+.ny-fields { list-style: none; margin: 0; padding: 0; }
+.ny-fields li { display: grid; grid-template-columns: 92px auto; grid-template-rows: auto auto; column-gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.ny-fields li span { font-size: 0.86rem; }
+.ny-fields li small { grid-column: 1 / -1; color: #cfc9f2; font-size: 0.8rem; margin-top: 2px; }
+.ny-stars { color: var(--gold); letter-spacing: 1px; font-size: 0.9rem; } .ny-stars i { font-style: normal; color: rgba(255, 255, 255, 0.18); }
+.ny-seasons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ny-season { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; background: rgba(255, 255, 255, 0.03); }
+.ny-season.best { border-color: rgba(255, 201, 60, 0.6); background: rgba(255, 201, 60, 0.08); }
+.ny-season.slow { border-style: dashed; }
+.ny-season b { font-size: 0.9rem; } .ny-season small { color: var(--muted); font-size: 0.7rem; margin-left: 4px; }
+.ny-season em { display: block; font-style: normal; font-size: 0.78rem; margin: 3px 0 2px; color: #ffe9a8; }
+.ny-season.slow em { color: #a9d8ff; } .ny-season.good em { color: #d9d4ff; }
+.ny-season p { margin: 0; font-size: 0.76rem; line-height: 1.45; color: var(--muted); }
+.ny-months { list-style: none; margin: 0; padding: 0; }
+.ny-months li { padding: 7px 0; border-bottom: 1px solid var(--line); }
+.ny-months li span b { font-size: 0.95rem; } .ny-months li span small { color: var(--muted); font-size: 0.74rem; margin-left: 6px; }
+.ny-months li p { margin: 2px 0 0; font-size: 0.82rem; line-height: 1.5; color: #d9d4ff; }
+.ny-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+.ny-pledge-form { display: flex; gap: 6px; margin-bottom: 4px; } .ny-pledge-form input { flex: 1; min-width: 0; } .ny-pledge-form button { padding: 8px 14px; }
+.ny-pledged { margin: 0 0 4px; font-size: 0.92rem; color: #fff; }
+.rd-months { list-style: none; margin: 0; padding: 0; }
+.rd-months li { display: grid; grid-template-columns: 1fr 34px 1.1fr; gap: 6px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 0.82rem; }
+.rd-months li span small { color: var(--muted); font-size: 0.7rem; margin-left: 2px; }
+.rd-months li > small { color: #cfc9f2; font-size: 0.76rem; }
+.rd-months li.good { background: rgba(255, 201, 60, 0.06); } .rd-months li.caution { background: rgba(255, 46, 99, 0.06); }
+.tl-card.tl-next .tl-sum .ny-title { grid-column: 1; display: block; font-size: 1rem; margin: 2px 0 1px; line-height: 1.35; }
+.tl-card.tl-next .tl-sum .tl-score { grid-row: 1 / span 3; }
