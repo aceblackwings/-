@@ -1,11 +1,11 @@
 # 프로젝트 인수인계: 12지신 강림 (사주 × 부적 × 신수 육성 소셜 앱 프로토타입)
 
-새 대화에서 이어서 작업할 때 이 파일부터 읽으세요.
+새 대화에서 이어서 작업할 때 이 파일부터 읽으세요. **마지막 작업(2026-11-02)**: 12띠 그림 프롬프트 시트·띠별 드라이브 폴더·자동 처리 도구 준비 완료 → 사용자가 띠별 폴더에 1K 그림 13장씩 올리면 「그림 제작」 절의 처리 순서대로 반영.
 
 ## 위치
 - 앱: `saju-app/` (빌드 없는 정적 웹, ES 모듈). 루트 `index.html`은 별개 프로젝트(일일계도상소) — 건드리지 않음
 - 기획·조사 문서: `docs/` (**최신 기획: `docs/core-saju-review-plan.md` — 핵심 사주 타임라인·엔진 통합·경쟁 앱 리뷰 분석·v0.19~ 로드맵**, 전략: `docs/strategy-v013.md`, 방향: `docs/kaiun-loop-direction.md`, 승천·가챠: `docs/ascension-gacha-report.md`, 소셜 설계: `docs/social-design.md`)
-- 작업 브랜치: `claude/exciting-johnson-1f6o78` (커밋 후 `git push -u origin claude/exciting-johnson-1f6o78`)
+- 작업 브랜치: **최신 작업은 `ccr-c85c770a-b6ueyf`**(v0.16~ 그림 파이프라인까지, 아직 main에 병합 전). 새 세션이 다른 브랜치를 받으면 먼저 `git fetch origin ccr-c85c770a-b6ueyf && git merge origin/ccr-c85c770a-b6ueyf`로 최신 작업을 가져온 뒤 시작. (예전 브랜치 `claude/exciting-johnson-1f6o78`는 v0.15까지, PR #1로 main에 병합됨)
 - 미리보기(Claude 아티팩트): slug `f5ff35d3-d121-45d3-8a5e-b1b6c7e1fffe`, URL https://claude.ai/artifact/XNrP2AFTcULKijQSe1xzC5
   - 갱신: `Artifact` 도구 — 먼저 `action:read`(url), 바뀐 파일은 `read`의 `paths`로 확인 후 `publish`(url, file_path=`saju-app/index.html`, files={"styles.css":..., "js/x.js":"saju-app/js/x.js"}). 예전 `publish_files` 도구는 더 이상 없음
   - 선언된 capability: `sample`(AI 대화), `room`(실시간), `db`+`user`(우편함). 새 capability는 **선언 먼저 → 코드 게시**
