@@ -36,7 +36,7 @@ def remove(src, dst, key='green', size=None):
         hue, sat, val = _hsv(r, g, b)
         h0 = _border_hue(hue, sat, val)
         dh = np.abs((hue - h0 + 180) % 360 - 180)
-        a_h = np.clip((dh - 14) / (26 - 14), 0, 1)        # 색상이 배경과 14° 이내 → 투명, 26° 이상 → 불투명
+        a_h = np.clip((dh - 8) / (16 - 8), 0, 1)          # 색상이 배경과 8° 이내 → 투명, 16° 이상 → 불투명 (배경 편차는 보통 4° 이내, 분홍 하트는 20° 이상)
         a_s = np.clip((0.62 - sat) / (0.62 - 0.45), 0, 1)  # 채도가 낮은 흰색·회색·연보라 털은 불투명 (배경 채도 0.7 이상)
         a_v = np.clip((0.75 - val) / (0.75 - 0.55), 0, 1)  # 어두운 보라 외곽선·눈동자는 불투명 (배경 명도 0.9 이상)
         alpha = np.maximum(a_h, np.maximum(a_s, a_v))
