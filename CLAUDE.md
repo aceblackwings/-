@@ -55,6 +55,9 @@
 ## 그림 제작 (이미지 생성 도구)
 - 규격·프롬프트·이름 규칙: `docs/art-production-guide.md`. 원본은 `saju-app/assets/raw/`에 올라옴 → 배경(#00FF00/#FF00FF) 제거, 512·256 WebP 변환, 이미지가 있으면 사용·없으면 SVG 대체, 등급 효과·글자는 코드가 덧입힘
 - **들어간 그림(2026-11-02)**: 호랑이 화(火) 진화 1~5단계 → `saju-app/assets/char/tiger_s{1-5}_fire.webp`(768px, 53~92KB). 드라이브 원본 파일 이름은 생성 시각순(05:57=s2, 06:12:41=s1, 06:12:51=s3, 06:13=s4, 06:16=s5). 새 그림 추가 순서: 드라이브에서 받기 → `tools/chroma.py` → 768 WebP → `assets.js CHAR_ASSETS`에 키 추가
+- **표정 8종(2026-11-02)**: `saju-app/assets/emo/tiger_{표정}_fire.webp`(512px) → `assets.js EMO_ASSETS`·`emoImage`. 그림 속 소품이 있어 코드 소품(moodFront/Back)은 생략, 등급 장면·메달은 덧입힘
+- 2차 업로드 점검 결과: 부적 상징 6·한정 소품 7장에 사람이 함께 그려짐(프롬프트 문제) → `docs/prompts/tiger-pilot-redo.md`로 재생성. 부적 종이 2장 누락. 장면 11장 중 4장(064725·064828·064914·064921)은 6.3MB 초과로 드라이브 도구로 못 받음 → GitHub `saju-app/assets/raw/`로 받기. 깨끗한 것: 보름달 등불·창포 비녀·별핀·송편 바구니, 장면 7장
+- 드라이브 다운로드 주의: 동시에 여러 장 받으면 연결이 끊김 → 한 장씩. 약 6.3MB(base64 8.4M자) 넘는 파일은 받을 수 없음
 - 1차 시범: 호랑이 세트 43장, 복사용 시트 `docs/prompts/tiger-pilot.md` → 확정 후 12띠 확장
 - 배경 제거 도구: `python3 -I saju-app/tools/chroma.py 입력 출력 [green|magenta] [크기]` (쥐 시험 그림으로 검증, `docs/prompts/chroma-test-rat.png`)
 - 힉스필드 무제한은 웹사이트에서만 적용(API·CLI·MCP는 크레딧 차감, 나노바나나 프로 1장 2크레딧). 사용자는 윈도우라 Remote Control 불가 → 웹에서 생성 후 구글 드라이브 폴더로 전달받아 처리

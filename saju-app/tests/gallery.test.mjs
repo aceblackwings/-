@@ -49,7 +49,7 @@ t('등급이 오를수록 그림이 달라짐: 부적 상징·팔괘·날개·12
   for (const ty of TALISMAN_TYPES) assert.notEqual(renderTalismanSVG(createTalisman(s0, f, { type: ty.key, rarity: 'rare' })).length, 0);
 });
 t('이모티콘: 표정마다 다른 소품, 등급마다 장면이 더해짐', () => {
-  const e = (mood, rarity) => renderEmoticonSVG(s0, f, { mood, rarity, style: 'neon', stage: 3, profile: { gender: 'female', concern: 'job' } });
+  const e = (mood, rarity) => renderEmoticonSVG(s0, f, { mood, rarity, style: 'neon', stage: 3, noImage: true, profile: { gender: 'female', concern: 'job' } });
   assert.ok(e('fighting', 'common').includes('必勝')); assert.ok(e('sleepy', 'common').includes('Zz')); assert.ok(e('thanks', 'common').includes('福'));
   const sizes = ['common', 'rare', 'epic', 'legend', 'myth'].map((r) => e('love', r).length);
   for (let i = 1; i < sizes.length; i++) assert.ok(sizes[i] > sizes[i - 1], `등급 ${i}`);
@@ -63,7 +63,7 @@ t('한정 소품: 꾸미기 세트는 계절 장면까지, 무료 소품은 소�
     assert.ok(set.length > item.length + 500, k);
   }
 });
-import { CHAR_ASSETS, charImage } from '../js/assets.js';
+import { CHAR_ASSETS, charImage, EMO_ASSETS } from '../js/assets.js';
 import fs from 'node:fs';
 t('이미지 그림: 목록에 있는 조합만 이미지, 나머지는 코드 그림 · 파일이 실제로 있음', () => {
   for (const k of CHAR_ASSETS) assert.ok(fs.statSync(new URL(`../assets/char/${k}.webp`, import.meta.url)).size > 1000, k);
@@ -73,5 +73,10 @@ t('이미지 그림: 목록에 있는 조합만 이미지, 나머지는 코드 �
   assert.ok(!tiger(0, 2).includes('<image')); // 목(木) 호랑이는 아직 코드 그림
   assert.ok(!tiger(1, 2, true).includes('<image'));
   assert.equal(charImage('rat', 2, 1), null);
+  for (const k of EMO_ASSETS) assert.ok(fs.statSync(new URL(`../assets/emo/${k}.webp`, import.meta.url)).size > 1000, k);
+  const emo = renderEmoticonSVG(galSaju(2, 1), f, { mood: 'fighting', rarity: 'legend', profile: { gender: 'female', concern: 'job' } });
+  assert.ok(emo.includes('assets/emo/tiger_fighting_fire.webp') && !emo.includes('必勝')); // 그림 속 머리띠 → 코드 소품 생략
+  assert.ok(emo.includes('-gold)')); // 등급 장면(금메달)은 그대로
+  assert.ok(renderEmoticonSVG(galSaju(2, 0), f, { mood: 'fighting', profile: { gender: 'female', concern: 'job' } }).includes('必勝')); // 목(木) 호랑이는 코드 그림
 });
 console.log(`\n${pass} passed`);

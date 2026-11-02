@@ -1,6 +1,7 @@
 // 오늘의 행운 이모티콘: 12지신 캐릭터 스티커 (흰 테두리 + 굵은 캡션)
 import { CATEGORIES } from './fortune.js';
 import { characterInfo, characterMarkup, EMOTES } from './character.js';
+import { emoImage } from './assets.js';
 
 export { EMOTES };
 
@@ -100,6 +101,8 @@ export function renderEmoticonSVG(saju, fortune, opts = {}) {
   const tag = opts.tag ?? `${best.label}운 +${bonus}%`;
   const neon = (opts.style || 'neon') === 'neon';
   const { defs, body } = characterMarkup(info, { mood, charms: opts.charms, aura: false, stage: opts.stage });
+  // 표정 그림이 있으면 몸·표정·소품을 그림으로 (코드 소품은 생략), 등급 장면·메달·글자는 그대로 덧입힌다
+  const emoImg = opts.noImage ? null : emoImage(info.zodiac.key, mood, info.element);
 
   const rar = opts.rarity || 'common';
   const RC = { common: null, rare: '#4fc3ff', epic: '#c77dff', legend: '#ffd166', myth: '#ff4d8d' }[rar];
@@ -134,11 +137,11 @@ export function renderEmoticonSVG(saju, fortune, opts = {}) {
   ${bg}
   ${rarBack}
   ${scene.back}
-  ${moodBack(mood)}
+  ${emoImg ? '' : moodBack(mood)}
   <g filter="url(#${id}-sticker)">
-    <g transform="translate(14 -10) scale(0.66)">${body}</g>
+    ${emoImg ? `<image href="${emoImg}" x="14" y="2" width="212" height="212" preserveAspectRatio="xMidYMid meet"/>` : `<g transform="translate(14 -10) scale(0.66)">${body}</g>`}
   </g>
-  ${moodFront(mood)}
+  ${emoImg ? '' : moodFront(mood)}
   ${scene.front}
   ${rarFront}
   ${tag ? `<g transform="translate(10 12)"><rect width="${Math.min(130, 22 + tag.length * 10)}" height="26" rx="13" fill="#ffd166" stroke="#241b2f" stroke-width="2.5"/><text x="${Math.min(130, 22 + tag.length * 10) / 2}" y="18" font-size="13" font-weight="800" text-anchor="middle" fill="#241b2f" font-family="'Noto Sans KR', sans-serif">${esc(tag)}</text></g>` : ''}
