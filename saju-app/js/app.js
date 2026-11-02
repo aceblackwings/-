@@ -33,6 +33,8 @@ import { preloadCharImages } from './assets.js';
 import { emptyGuide, showNextYear, nextStep, progress as guideProgress, isUnlocked, stepFor, completeStep as completeGuideStep, setAll as guideSetAll } from './guide.js';
 import { emptyMemory, extractMemories, mergeMemory, memoryLines, followUp, markAsked, recallFor, describe as describeMemory, forget, forgetAll, needsSummary, applySummary, summaryMessages, offlineSummary, SUMMARY_EVERY, MEMORY_LIMIT } from './memory.js';
 import { festivalStatus } from './festivals.js';
+import { weekWealth, SAFETY_LINES } from './wealthweek.js';
+import { makeBackup, parseBackup, backupText, backupFileName, PREFIX as BACKUP_PREFIX } from './backup.js';
 import { emptyRecords, logDay, pendingFeedback, setFeedback, addItem, hasItem, setItemMemo, removeItem, dayList, stats as recordStats, streak as recordStreak, FEEDBACK, ITEM_KIND, MEMO_MAX } from './records.js';
 import { makeCode, normalizeCode, publicCard, cardToSaju, cleanCard, pendingCheers, joinTeamRoom, openMailbox, CHEER_MESSAGES, CHEER_DAILY_LIMIT, CHEER_CHARGE, cheerText, cheerId } from './realtime.js';
 import { dailySpots, distanceM, treasureRarity, bearingName, ARRIVE_RADIUS, DEMO_CENTER, PARTNER_SAMPLES } from './fengshui.js';
@@ -763,8 +765,28 @@ function tlWeek(d) {
     <p class="tl-lead">🌟 <b>${w.best.date.month}/${w.best.date.day}(${dowOf(w.best.date)})</b>이 이번 주 가장 좋은 날 — ${TEN_GOD_INFO[w.best.god].title}. ⚠️ <b>${w.worst.date.month}/${w.worst.date.day}(${dowOf(w.worst.date)})</b>은 ${TEN_GOD_INFO[w.worst.god].caution}에 조심하세요.</p>
     <div class="tl-kit">${['wealth', 'love', 'career'].map((c) => { const b = bestCat(c); return `<span>${CATEGORIES.find((x) => x.key === c).icon} ${CATEGORIES.find((x) => x.key === c).label} 최고: ${dowOf(b.date)}요일 ${b.scores[c]}</span>`; }).join('')}</div>
     <details class="why"><summary>요일별 한 줄 보기</summary><ul class="wk-lines">${lines}</ul></details>
-    ${stepBtn(`${dowOf(w.best.date)}요일을 어떻게 쓸지 수호신과 계획하기`, 'chat-week')}`;
+    ${stepBtn(`${dowOf(w.best.date)}요일을 어떻게 쓸지 수호신과 계획하기`, 'chat-week')}
+    ${wealthWeekHTML(w)}`;
   return tlCard('week', sum, body);
+}
+
+/** 이번 주 재물 흐름 (v0.23 작은 실험): 재물 점수 7일 · 가장 좋은 날 · 재미로 보는 행운 숫자(만 19세 이상) */
+function wealthWeekHTML(week) {
+  const i = state.saju.input;
+  const ww = weekWealth(week, { birth: { year: i.year, month: i.month, day: i.day }, today: state.fortune.date, yongsin: state.saju.yongsin, seed: `${i.year}-${i.month}-${i.day}-${i.timeKnown ? i.hour : 'x'}` });
+  const cols = ww.days.map((x, k) => `<div class="ww-col ${x.isToday ? 'now' : ''} ${x === ww.best ? 'best' : ''}"><i style="height:${Math.max(6, x.score * 0.5)}px;background:${scoreColor(x.score)}"></i><span>${DOW_KO[k]}</span></div>`).join('');
+  const b = ww.best.date;
+  return `<div class="ww">
+    <h5>💰 이번 주 재물 흐름 <small>평균 ${ww.avg}</small></h5>
+    <div class="ww-bars">${cols}</div>
+    <p>재물운이 가장 좋은 날은 <b>${b.month}/${b.day}(${dowOf(b)}) ${ww.best.score}점</b>이에요. ${ww.tip}</p>
+    ${ww.eligible ? `<details class="ww-num"><summary>🎲 재미로 보는 행운 숫자</summary>
+      <div class="ww-balls">${ww.numbers.map((n) => `<span>${n}</span>`).join('')}</div>
+      <p class="muted">${b.month}/${b.day} 일진과 필요한 기운(${ELEMENT_KO[state.saju.yongsin]})의 수로 만든 숫자예요. 다시 봐도 같은 숫자가 나와요.</p>
+      ${SAFETY_LINES.map((l) => `<p class="ww-safe">${l}</p>`).join('')}
+    </details>` : ''}
+    ${stepBtn('이번 주 재물운을 채우는 부적 받기', 'charm-wealth')}
+  </div>`;
 }
 
 function tlMonth(d) {
@@ -980,8 +1002,69 @@ function renderRecords() {
         ${x.lines.map((l) => `<p>${esc(l)}</p>`).join('')}
         <div class="rec-memo-row"><input type="text" maxlength="${MEMO_MAX}" value="${esc(x.memo || '')}" placeholder="메모 남기기" data-rec-memo="${esc(x.id)}" aria-label="메모"><button type="button" class="ghost" data-rec-del="${esc(x.id)}">삭제</button></div>
       </details>`).join('') : `<p class="muted">${filter === 'all' ? '운세 보기의 질문 답이나 운세 풀이 아래 「📌 기록함에 저장」을 누르면 여기에 모여요.' : '이 종류로 저장한 결과가 아직 없어요.'}</p>`}
-    </div>`;
+    </div>
+    ${backupCardHTML()}`;
 }
+
+// ---------- 백업 (v0.23): 이 기기의 기록을 파일·글자로 내보내고 가져오기 ----------
+function backupCardHTML() {
+  return `<div class="card backup" id="backup">
+    <h3>💾 백업</h3>
+    <p class="muted" style="margin:-4px 0 10px;font-size:0.84rem">기록·수호신·부적·사주 정보는 이 기기에만 저장돼요. 기기를 바꾸거나 브라우저 기록을 지우기 전에 백업해 두세요.</p>
+    <div class="bk-row"><button type="button" class="primary" data-bk="file">📥 파일로 저장</button><button type="button" class="ghost" data-bk="copy">📋 글자로 복사</button></div>
+    <details class="bk-in"><summary>📤 백업 가져오기</summary>
+      <label class="bk-file">백업 파일 고르기<input type="file" accept=".json,application/json" data-bk-file></label>
+      <textarea rows="3" placeholder="또는 복사해 둔 백업 글자를 붙여 넣기" data-bk-text></textarea>
+      <button type="button" class="ghost" data-bk="import" style="width:100%">가져오기</button>
+    </details>
+    <p class="bk-warn">⚠️ 백업에는 생년월일이 들어 있어요. 다른 사람에게 보내거나 공개된 곳에 올리지 마세요.</p>
+  </div>`;
+}
+
+function currentBackup() {
+  const entries = {};
+  try { for (let k = 0; k < localStorage.length; k++) { const key = localStorage.key(k); if (key.startsWith(BACKUP_PREFIX)) entries[key] = localStorage.getItem(key); } } catch { /* 저장소 없음 */ }
+  return makeBackup(entries);
+}
+
+function restoreBackup(text) {
+  const r = parseBackup(text);
+  if (!r.ok) { toast(`⚠️ ${r.error}`); return; }
+  const when = r.savedAt ? r.savedAt.slice(0, 10) : '알 수 없는 날';
+  if (!confirm(`${when}에 만든 백업(${r.count}가지 기록)으로 바꿀까요?\n지금 이 기기의 기록은 백업 내용으로 덮어써져요.`)) return;
+  try {
+    Object.keys(localStorage).filter((k) => k.startsWith(BACKUP_PREFIX)).forEach((k) => localStorage.removeItem(k));
+    Object.entries(r.entries).forEach(([k, v]) => localStorage.setItem(k, v));
+  } catch { toast('⚠️ 이 브라우저에서는 저장할 수 없어요'); return; }
+  toast('💾 백업을 가져왔어요. 다시 불러올게요');
+  setTimeout(() => location.reload(), 700);
+}
+
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-bk]'); if (!b) return;
+  const act = b.dataset.bk;
+  if (act === 'file') {
+    const bk = currentBackup();
+    const url = URL.createObjectURL(new Blob([backupText(bk)], { type: 'application/json' }));
+    const a = document.createElement('a'); a.href = url; a.download = backupFileName(bk); document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    toast(`📥 ${bk.count}가지 기록을 파일로 저장했어요`);
+  }
+  if (act === 'copy') {
+    const txt = backupText(currentBackup());
+    try { await navigator.clipboard.writeText(txt); toast('📋 백업 글자를 복사했어요. 메모장 등 안전한 곳에 붙여 두세요'); } catch {
+      const ta = $('[data-bk-text]'); if (ta) { $('.bk-in').open = true; ta.value = txt; ta.select(); } toast('복사가 막혀 있어요. 아래 칸의 글자를 직접 복사해 주세요');
+    }
+  }
+  if (act === 'import') restoreBackup($('[data-bk-text]')?.value || '');
+});
+document.addEventListener('change', (e) => {
+  const inp = e.target.closest('[data-bk-file]'); if (!inp || !inp.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = () => restoreBackup(String(reader.result || ''));
+  reader.readAsText(inp.files[0]);
+  inp.value = '';
+});
 
 function answerFeedback(dateKey, value, memo) {
   const r = setFeedback(loadRecords(), dateKey, value, memo);
@@ -1054,6 +1137,7 @@ document.addEventListener('click', (e) => {
   const a = st.dataset.tlStep; const d = timelineData();
   if (a.startsWith('read-')) { openReading(a.slice(5)); return; }
   if (a === 'charm-today') { runAskCta('today'); return; }
+  if (a === 'charm-wealth') { state.charm.type = 'wealth'; state.charm.element = state.saju.yongsin; selectTab('charm'); renderCharm(true); return; }
   if (a === 'charm-month') { state.charm.type = 'luck'; state.charm.element = state.saju.yongsin; selectTab('charm'); renderCharm(true); return; }
   if (a === 'chat-week') { const b = d.week.best.date; selectTab('chat'); setTimeout(() => { const i = $('#chat-form input'); if (i) { i.value = `이번 주 ${b.month}/${b.day}(${dowOf(b)})이 좋은 날이래. 그날 뭘 하면 좋을까?`; i.focus(); } }, 50); return; }
   if (a === 'journey') { ensureUnlocked('journey'); setTimeout(() => ($('#btn-journey') || $('.journey'))?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); return; }

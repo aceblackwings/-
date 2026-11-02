@@ -776,3 +776,24 @@ select option { background: #1d1742; color: #ffffff; }
 .rec-item p { margin: 8px 0; font-size: 0.86rem; line-height: 1.55; color: #d9d4ff; }
 .rec-memo-row { display: flex; gap: 6px; margin: 8px 0 12px; }
 .rec-memo-row input { flex: 1; min-width: 0; }
+
+/* ---------- v0.23 이번 주 재물 흐름 · 백업 ---------- */
+.ww { margin-top: 14px; padding: 12px; border-radius: 14px; border: 1px solid rgba(255, 201, 60, 0.35); background: rgba(255, 201, 60, 0.05); }
+.ww h5 { margin: 0 0 8px; font-size: 0.95rem; } .ww h5 small { color: var(--muted); font-weight: 400; margin-left: 4px; }
+.ww p { margin: 8px 0; font-size: 0.86rem; line-height: 1.55; }
+.ww-bars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; align-items: end; height: 64px; }
+.ww-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; height: 100%; }
+.ww-col i { width: 70%; border-radius: 6px 6px 2px 2px; opacity: 0.85; }
+.ww-col span { font-size: 0.72rem; color: var(--muted); }
+.ww-col.best i { opacity: 1; box-shadow: 0 0 10px var(--gold); } .ww-col.best span { color: var(--gold); font-weight: 700; }
+.ww-col.now span { color: var(--neon); }
+.ww-num summary { cursor: pointer; font-size: 0.86rem; color: var(--gold); padding: 4px 0; }
+.ww-balls { display: flex; gap: 6px; justify-content: center; margin: 8px 0; flex-wrap: wrap; }
+.ww-balls span { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; background: radial-gradient(circle at 35% 30%, #fff8d6, var(--gold)); color: #3a2a00; }
+.ww-safe { font-size: 0.76rem !important; color: var(--muted); margin: 4px 0 !important; }
+.ww .tl-step { margin-top: 6px; }
+.bk-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.bk-in { margin-top: 10px; } .bk-in summary { cursor: pointer; color: var(--muted); font-size: 0.86rem; padding: 4px 0; }
+.bk-in textarea { width: 100%; box-sizing: border-box; margin: 8px 0; font-size: 0.8rem; }
+.bk-file { display: block; font-size: 0.84rem; margin-top: 8px; } .bk-file input { display: block; margin-top: 4px; font-size: 0.8rem; }
+.bk-warn { margin: 10px 0 0; font-size: 0.76rem; color: #ffb3c7; }
