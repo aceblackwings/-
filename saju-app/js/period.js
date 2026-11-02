@@ -123,8 +123,17 @@ export function categoryScores(layerScore, god, extra = {}) {
   return out;
 }
 
+const COMBINE6 = new Set(['0-1', '2-11', '3-10', '4-9', '5-8', '6-7']); // 육합
+/** 두 지지의 관계: 육합 'combine' · 충 'clash' · 없음 null */
+export function branchRelation(a, b) {
+  const key = a < b ? `${a}-${b}` : `${b}-${a}`;
+  if (COMBINE6.has(key)) return 'combine';
+  if (Math.abs(a - b) === 6) return 'clash';
+  return null;
+}
+
 /** 오늘 일진 지지와 원국 지지들의 합·충 → 분야 보정 */
-export function dayRelations(saju, dayPillar, relationOf) {
+export function dayRelations(saju, dayPillar, relationOf = branchRelation) {
   const relations = [];
   const extra = { total: 0, love: 0, health: 0, social: 0 };
   for (const [key, p] of Object.entries(saju.pillars)) {
@@ -138,14 +147,21 @@ export function dayRelations(saju, dayPillar, relationOf) {
   return { relations, extra };
 }
 
+/** 그날의 6분야 점수 (오늘 운세 computeFortune과 똑같은 계산) */
+export function dayScores(saju, date, gender) {
+  const L = layersAt(saju, date, gender);
+  const { relations, extra } = dayRelations(saju, L.day.pillar);
+  return { L, relations, scores: categoryScores(L.day.score, L.day.god, extra) };
+}
+
 /** 이번 주(월~일) 7일 */
 export function weekOf(saju, date, gender) {
   const jd = dateToJdn(date.year, date.month, date.day);
   const dow = (new Date(Date.UTC(date.year, date.month - 1, date.day)).getUTCDay() + 6) % 7; // 월=0
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = jdnToDate(jd - dow + i);
-    const L = layersAt(saju, d, gender);
-    return { date: d, score: L.day.score, god: L.day.god, pillar: L.day.pillar, isToday: i === dow };
+    const { L, scores } = dayScores(saju, d, gender);
+    return { date: d, score: scores.total, scores, god: L.day.god, pillar: L.day.pillar, isToday: i === dow };
   });
   const avg = round(days.reduce((a, b) => a + b.score, 0) / 7);
   const best = days.reduce((a, b) => (b.score > a.score ? b : a));
@@ -177,3 +193,14 @@ export function explainParts(parts) {
 
 export const branchName = (b) => BRANCHES[b];
 export { STEM_ELEMENT };
+
+/** 이달(절기월)의 날짜별 총운(오늘 운세와 같은 값): 좋은 날 3일, 조심할 날 2일, 70점 이상인 날 수 */
+export function monthDays(saju, date, gender) {
+  const per = monthPeriod(date);
+  const a = dateToJdn(per.start.year, per.start.month, per.start.day);
+  const b = dateToJdn(per.end.year, per.end.month, per.end.day);
+  const days = [];
+  for (let j = a; j <= b; j++) { const d = jdnToDate(j); const { L, scores } = dayScores(saju, d, gender); days.push({ date: d, score: scores.total, god: L.day.god }); }
+  const sorted = [...days].sort((x, y) => y.score - x.score || dateToJdn(x.date.year, x.date.month, x.date.day) - dateToJdn(y.date.year, y.date.month, y.date.day));
+  return { period: per, days, best: sorted.slice(0, 3), caution: sorted.slice(-2).reverse(), good: days.filter((d) => d.score >= 70).length };
+}

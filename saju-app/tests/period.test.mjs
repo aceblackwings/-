@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { computeSaju } from '../js/saju.js';
 import { computeFortune } from '../js/fortune.js';
 import { scoreParts, computeDaewoon, daewoonAt } from '../js/luck.js';
-import { layersAt, datePillars, monthPeriod, weekOf, yearOf, sajuYearOf, TEN_GOD_MOD, LAYER_WEIGHT } from '../js/period.js';
+import { layersAt, datePillars, monthPeriod, weekOf, yearOf, sajuYearOf, monthDays, TEN_GOD_MOD, LAYER_WEIGHT } from '../js/period.js';
 let pass = 0;
 const t = (name, fn) => { fn(); pass++; console.log('ok -', name); };
 const s = computeSaju({ year: 1998, month: 5, day: 20, hour: 9, minute: 30 });
@@ -69,11 +69,12 @@ t('입춘 기준 해: 2026 입춘(2/4) 전날은 을사년, 입춘부터 병오�
   assert.deepEqual([before.stem, before.branch], [1, 5]); assert.deepEqual([after.stem, after.branch], [2, 6]);
   assert.equal(sajuYearOf({ year: 2026, month: 2, day: 3 }), 2025); assert.equal(sajuYearOf({ year: 2026, month: 2, day: 4 }), 2026);
 });
-t('이번 주는 월~일 7일, 오늘 점수와 같은 값', () => {
+t('이번 주는 월~일 7일, 각 날 점수 = 그날 오늘 운세 총운', () => {
   const w = weekOf(s, D, 'female');
   assert.equal(w.days.length, 7); assert.deepEqual([w.days[0].date.month, w.days[0].date.day], [11, 2]); // 2026-11-02 월요일
   const today = w.days.find((d) => d.isToday);
-  assert.equal(today.score, computeFortune(s, D, { gender: 'female' }).layers.day.score);
+  assert.equal(today.score, computeFortune(s, D, { gender: 'female' }).scores.total);
+  for (const d of w.days) assert.equal(d.score, computeFortune(s, d.date, { gender: 'female' }).scores.total);
   assert.ok(w.best.score >= w.avg && w.worst.score <= w.avg);
 });
 t('올해 12절기월: 입춘부터 시작하고 각 달 점수 = 그 달 중순의 이달 층', () => {
@@ -103,5 +104,11 @@ t('5년 흐름의 올해 기본값 = 층 엔진의 올해 점수 (화면 사이 
     const fc = fiveYearForecast(b, g, { year: 2026, month: 11, day: 2 }, 0, 1);
     for (const row of fc) assert.equal(row.base, layersAt(b, { year: row.year, month: 7, day: 1 }, g).year.score, `${row.year}`);
   }
+});
+t('이달의 날짜: 절기월 전체(입동월 30일), 좋은 날·조심할 날은 그날 총운', () => {
+  const m = monthDays(s, { year: 2026, month: 11, day: 10 }, 'female');
+  assert.equal(m.period.term, '입동'); assert.equal(m.days.length, 30);
+  for (const d of [...m.best, ...m.caution]) assert.equal(d.score, computeFortune(s, d.date, { gender: 'female' }).scores.total);
+  assert.ok(m.best[0].score >= m.best[2].score && m.caution[0].score <= m.caution[1].score);
 });
 console.log(`${pass} passed (with 5-year check)`);

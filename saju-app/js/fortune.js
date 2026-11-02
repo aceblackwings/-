@@ -4,7 +4,7 @@ import {
   STEM_ELEMENT, BRANCH_ELEMENT, ELEMENT_KO, ELEMENT_HANJA,
   dayPillarIndex, pillarFromIndex, tenGod, seededRandom, todayKST, childOf,
 } from './saju.js';
-import { layersAt, categoryScores, dayRelations, monthPeriod, explainParts } from './period.js';
+import { layersAt, categoryScores, dayRelations, monthPeriod, explainParts, branchRelation } from './period.js';
 
 export const CATEGORIES = [
   { key: 'total', label: '총운', icon: '✦' },
@@ -59,15 +59,6 @@ export const ELEMENT_LUCK = [
   { color: '흰색·은색', hex: '#E0E0FF', numbers: [4, 9], direction: '서쪽', food: '무, 배, 흰살생선', time: '오후 3시~7시 (申酉시)', item: '은 액세서리, 금속 시계' },
   { color: '검정·남색', hex: '#00E5FF', numbers: [1, 6], direction: '북쪽', food: '해산물, 검은콩, 미역국', time: '오후 9시~새벽 1시 (亥子시)', item: '물병, 어항, 유리 소품' },
 ];
-
-const COMBINE = new Set(['0-1', '2-11', '3-10', '4-9', '5-8', '6-7']); // 육합
-
-function branchRelation(a, b) {
-  const key = a < b ? `${a}-${b}` : `${b}-${a}`;
-  if (COMBINE.has(key)) return 'combine';
-  if (Math.abs(a - b) === 6) return 'clash';
-  return null;
-}
 
 function tierOf(score) {
   if (score >= 80) return 3;
