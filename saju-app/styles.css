@@ -860,3 +860,28 @@ select option { background: #1d1742; color: #ffffff; }
 .intro-day b { display: block; margin-top: 4px; font-size: 0.98rem; }
 .intro-day p { margin: 4px 0 8px; font-size: 0.86rem; line-height: 1.55; color: #d9d4ff; }
 .intro-day [data-intro-go] { width: 100%; padding: 9px; font-size: 0.88rem; }
+
+/* ---------- v0.27 홈: 오늘 펼침 · 이달·올해 작은 창 · 오늘의 미션 3가지 ---------- */
+.tl-card.compact .tl-head { padding-top: 10px; padding-bottom: 10px; }
+.tl-card.compact:not(.open) .tl-ic { font-size: 1.15rem; }
+.tl-card.compact:not(.open) .tl-sum b { font-size: 0.95rem; }
+.tl-card.compact:not(.open) .tl-score { transform: scale(0.82); }
+.tl-hint { margin: 2px 0 10px; text-align: center; font-size: 0.74rem; color: var(--muted); }
+.dmission { border: 1.5px solid rgba(0, 229, 255, 0.5); background: linear-gradient(160deg, rgba(0, 229, 255, 0.09), rgba(20, 16, 44, 0.92)); }
+.dm-top { display: flex; justify-content: space-between; align-items: baseline; } .dm-top b { font-size: 1.02rem; } .dm-top small { color: var(--neon); font-weight: 700; }
+.dm-list { list-style: none; margin: 0; padding: 0; }
+.dm-item { display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+.dm-item:first-child { border-top: 0; padding-top: 2px; }
+.dm-num { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 0.82rem; border: 1.5px solid var(--neon); color: var(--neon); }
+.dm-item.done .dm-num { background: var(--neon); color: #0b0820; }
+.dm-body { flex: 1; min-width: 0; }
+.dm-body small { display: block; color: var(--muted); font-size: 0.72rem; }
+.dm-body b { display: block; font-size: 0.96rem; margin: 2px 0; line-height: 1.4; }
+.dm-item.done .dm-body b { color: var(--muted); text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, 0.25); font-weight: 600; font-size: 0.88rem; }
+.dm-body p { margin: 2px 0 8px; font-size: 0.84rem; line-height: 1.5; color: #d9d4ff; }
+.dm-go { width: 100%; padding: 10px; font-size: 0.9rem; }
+.dm-body .yday-btns { margin-bottom: 6px; }
+.dm-body .linkish { display: block; margin: 2px auto 0; }
+.dm-done { margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: rgba(57, 255, 136, 0.08); border: 1px solid rgba(57, 255, 136, 0.4); }
+.dm-done p { margin: 4px 0 0; font-size: 0.86rem; line-height: 1.5; }
+.dm-body .yday-btns button { padding: 9px 2px; font-size: 0.78rem; white-space: nowrap; letter-spacing: -0.02em; }

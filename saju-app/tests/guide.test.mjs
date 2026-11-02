@@ -9,14 +9,15 @@ assert.equal(showNextYear({ year: 2027, month: 1, day: 20 }, 2026), true, '입�
 assert.equal(showNextYear({ year: 2027, month: 3, day: 1 }, 2027), false, '입춘 후 3월은 숨김');
 
 // 퀘스트 순서
-assert.equal(activeSteps({ showNext: true }).length, 9);
-assert.equal(activeSteps({ showNext: false }).length, 8);
+assert.equal(activeSteps({ showNext: true }).length, 11);
+assert.equal(activeSteps({ showNext: false }).length, 10);
+assert.ok(GUIDE_STEPS.every((s) => s.go), '모든 단계에 갈 곳이 있음');
 assert.equal(nextStep(emptyGuide(), { showNext: true }).key, 'next');
 assert.equal(nextStep(emptyGuide(), { showNext: false }).key, 'week');
 assert.equal(GUIDE_STEPS[0].title(2027), '2027년 운세 펼쳐 보기');
 
 // 처음에는 기본 3장 외에는 잠김
-for (const sec of ['week', 'month', 'mission', 'daily', 'ask', 'daewoon', 'natal', 'journey', 'todo', 'season']) {
+for (const sec of ['week', 'daily', 'ask', 'daewoon', 'natal', 'journey', 'todo', 'season']) {
   assert.equal(isUnlocked(emptyGuide(), sec), false, `${sec} 잠김`);
   assert.ok(stepFor(sec), `${sec}을 여는 퀘스트가 있음`);
 }
@@ -29,9 +30,9 @@ r = completeStep(g, 'nope'); assert.equal(r.changed, false, '없는 키 무시')
 assert.equal(nextStep(g, { showNext: true }).key, 'week');
 g = completeStep(g, 'week').guide;
 assert.equal(isUnlocked(g, 'week'), true);
-assert.equal(isUnlocked(g, 'month'), false);
-assert.deepEqual(progress(g, { showNext: true }), { done: 2, total: 9 });
-assert.deepEqual(progress(g, { showNext: false }), { done: 1, total: 8 });
+assert.equal(isUnlocked(g, 'daewoon'), false);
+assert.deepEqual(progress(g, { showNext: true }), { done: 2, total: 11 });
+assert.deepEqual(progress(g, { showNext: false }), { done: 1, total: 10 });
 g = completeStep(g, 'daewoon').guide;
 assert.ok(isUnlocked(g, 'daewoon') && isUnlocked(g, 'natal'), '대운 퀘스트는 타고난 나까지 연다');
 

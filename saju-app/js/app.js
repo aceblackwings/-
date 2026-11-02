@@ -30,10 +30,11 @@ import { layersAt, monthPeriod, explainParts, TEN_GOD_MOD, weekOf, yearOf, month
 import { orderedMenu, buildAnswer, concernAsk, ASK_MENU } from './ask.js';
 import { buildReading, FIELD_LABEL, closingLine } from './reading.js';
 import { preloadCharImages } from './assets.js';
-import { emptyGuide, showNextYear, nextStep, progress as guideProgress, isUnlocked, stepFor, completeStep as completeGuideStep, setAll as guideSetAll } from './guide.js';
+import { GUIDE_STEPS, emptyGuide, showNextYear, nextStep, progress as guideProgress, isUnlocked, stepFor, completeStep as completeGuideStep, setAll as guideSetAll } from './guide.js';
 import { emptyMemory, extractMemories, mergeMemory, memoryLines, followUp, markAsked, recallFor, describe as describeMemory, forget, forgetAll, needsSummary, applySummary, summaryMessages, offlineSummary, SUMMARY_EVERY, MEMORY_LIMIT } from './memory.js';
 import { festivalStatus } from './festivals.js';
-import { ensureStart, inFirstWeek, todayIntro, markSeen, dayIndex, plainTerms, hasGameTerms, FIRST_WEEK_DAYS } from './firstweek.js';
+import { buildMissions, markDone as dmMarkDone, allDone as dmAllDone, claimBonus as dmClaimBonus, DM_BONUS_EXP } from './daymission.js';
+import { ensureStart, inFirstWeek, plainTerms, hasGameTerms } from './firstweek.js';
 import { expertTable, sinsalOf, calcBasis, STAGE_NOTE, makeChart, addChart, removeChart, emptyCharts, RELATIONS } from './expert.js';
 import { CARD_AREAS, SPREADS, drawReading } from './cards.js';
 import { weekWealth, SAFETY_LINES } from './wealthweek.js';
@@ -72,6 +73,7 @@ const GUIDE_KEY = 'unmyeong2099.guide';
 const RECORDS_KEY = 'unmyeong2099.records';
 const CHARTS_KEY = 'unmyeong2099.charts';
 const FW_KEY = 'unmyeong2099.firstweek';
+const DM_KEY = 'unmyeong2099.dmission';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
 const EL_COLORS = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
 
@@ -723,7 +725,7 @@ function ensureUnlocked(sec) {
 /** 홈에 보이는 타임라인 순서 (잠긴 층은 뺌) */
 function tlVisible() {
   const d = timelineData();
-  return [...(d.next ? ['next'] : []), ...TL_ORDER.filter((k) => k === 'today' || k === 'year' || unlocked(k))];
+  return [...(d.next ? ['next'] : []), ...TL_ORDER.filter((k) => k === 'today' || k === 'month' || k === 'year' || unlocked(k))];
 }
 
 function tlCard(k, summary, body) {
@@ -732,7 +734,7 @@ function tlCard(k, summary, body) {
   const vis = tlVisible().filter((x) => x !== 'next');
   const i = vis.indexOf(k);
   const nav = i < 0 ? '' : `<div class="tl-nav">${i > 0 ? `<button type="button" class="ghost" data-tl-go="${vis[i - 1]}">▲ ${TL_META[vis[i - 1]].label}</button>` : '<span></span>'}${i < vis.length - 1 ? `<button type="button" class="ghost" data-tl-go="${vis[i + 1]}">더 넓게 보기: ${TL_META[vis[i + 1]].label} ▼</button>` : ''}</div>`;
-  return `<section class="tl-card ${k === 'next' ? 'tl-next' : ''} ${open ? 'open' : ''}" data-tl="${k}">
+  return `<section class="tl-card ${k === 'next' ? 'tl-next' : k !== 'today' ? 'compact' : ''} ${open ? 'open' : ''}" data-tl="${k}">
     <button type="button" class="tl-head" data-tl-toggle="${k}" aria-expanded="${open}">
       <span class="tl-ic">${m.icon}</span><span class="tl-sum"><b>${m.label}</b>${summary}</span><span class="tl-caret">${open ? '▴' : '▾'}</span>
     </button>
@@ -890,48 +892,110 @@ function timelineHTML() {
   const vis = tlVisible();
   return `<div class="timeline" id="timeline">
     ${vis[0] === 'next' ? R.next() : ''}
-    ${guideCardHTML()}
-    ${yesterdayCardHTML()}
-    ${introCardHTML()}
-    <div class="tl-title"><h3>나의 운 흐름</h3><small>${vis.length >= 7 ? '오늘에서 대운까지, 같은 계산으로 이어 봐요' : '카드를 누르면 펼쳐져요'}</small></div>
     ${vis.filter((k) => k !== 'next').map((k) => R[k]()).join('')}
+    <p class="tl-hint">카드를 누르면 펼쳐져요 · 모든 점수는 같은 계산으로 이어져요</p>
+  </div>
+  ${missionCardHTML()}`;
+}
+
+/** 「오늘의 미션 3가지」(v0.27): 이달 운세에서 이어지는 하루 퀘스트 — 이달의 실천 · 돌아보기 · 새 기능 열기 */
+function missionCardHTML() {
+  const f = state.fortune; const d = timelineData(); const per = d.month.period;
+  const g = loadGuide(); const gctx = guideCtx();
+  const ms = buildMissions({
+    dateKey: f.dateKey,
+    month: { term: per.term, start: per.start, end: per.end, theme: pillarTheme(state.saju, f.layers.month.pillar).theme, best: d.month.best },
+    today: { mission: f.info.mission, score: f.scores.total },
+    pending: pendingFeedback(loadRecords(), f.date),
+    discovery: g.all ? null : nextStep(g, gctx), steps: GUIDE_STEPS, nextYear: d.next?.sajuYear, progress: guideProgress(g, gctx),
+    actDone: !!load(MISSION_KEY, {})[f.dateKey], state: load(DM_KEY, {})[f.dateKey],
+  });
+  const n = ms.filter((m) => m.done).length;
+  const row = (m, i) => {
+    let act = '';
+    if (!m.done) {
+      if (m.action.type === 'feedback') act = `<div class="yday-btns">${Object.entries(FEEDBACK).map(([k, v]) => `<button type="button" class="ghost" data-fb="${k}" data-fb-day="${m.action.dateKey}">${v.icon} ${v.label}</button>`).join('')}</div>
+        <input type="text" class="yday-memo" maxlength="${MEMO_MAX}" placeholder="한 줄 메모 (선택)" aria-label="어제 메모"><button type="button" class="linkish" data-fb-skip="${m.action.dateKey}">기억이 안 나요 · 건너뛰기</button>`;
+      else act = `<button type="button" class="${i === ms.findIndex((x) => !x.done) ? 'primary' : 'ghost'} dm-go" data-dm="${m.key}">${m.btn} →</button>`;
+    }
+    return `<li class="dm-item ${m.done ? 'done' : ''}" ${m.action.type === 'feedback' && !m.done ? 'id="yday"' : ''}>
+      <span class="dm-num">${m.done ? '✓' : i + 1}</span>
+      <div class="dm-body"><small>${m.icon} ${m.tag}</small><b>${esc(m.title)}</b>${m.done ? '' : `<p>${m.desc}</p>${act}`}</div>
+    </li>`;
+  };
+  let foot = '';
+  if (n === 3) {
+    const t = new Date(Date.UTC(f.date.year, f.date.month - 1, f.date.day + 1));
+    const tm = computeFortune(state.saju, { year: t.getUTCFullYear(), month: t.getUTCMonth() + 1, day: t.getUTCDate() }, { gender: state.profile.gender });
+    foot = `<div class="dm-done"><b>🎉 오늘의 미션 완료!</b><p>내일 미리보기 · ${tm.date.month}/${tm.date.day}(${dowOf(tm.date)}) <b style="color:${scoreColor(tm.scores.total)}">${tm.scores.total}점</b> — ${tm.info.title}. 내일도 세 가지가 기다리고 있어요.</p></div>`;
+  }
+  return `<div class="card dmission" id="dmission">
+    <div class="dm-top"><b>✅ 오늘의 미션</b><small>${n} / 3</small></div>
+    <div class="guide-track"><i style="width:${Math.round((n / 3) * 100)}%"></i></div>
+    <ol class="dm-list">${ms.map(row).join('')}</ol>
+    ${foot}
+    <div class="guide-foot"><small>${n === 3 ? '내일 새 미션이 열려요' : `세 가지를 모두 하면 +${DM_BONUS_EXP} EXP와 내일 미리보기가 열려요`}</small><button type="button" class="linkish" data-guide-all="${g.all ? 0 : 1}">${g.all ? '처음처럼 간단히 보기' : '모든 기능 한 번에 펼치기'}</button></div>
   </div>`;
 }
 
-/** 「다음 할 일」 퀘스트 카드: 진행도 + 지금 할 1가지 + 버튼 1개 */
-function guideCardHTML() {
-  const g = loadGuide(); const ctx = guideCtx(); const ny = timelineData().next?.sajuYear;
-  const p = guideProgress(g, ctx); const st = nextStep(g, ctx);
-  const toggle = `<button type="button" class="linkish" data-guide-all="${g.all ? 0 : 1}">${g.all ? '처음처럼 간단히 보기' : '모든 기능 한 번에 펼치기'}</button>`;
-  if (!st) return `<div class="card guide done" id="guide"><p style="margin:0">🧭 길잡이 완료 · 모든 기능이 열렸어요 ${p.total}/${p.total}</p></div>`;
-  return `<div class="card guide" id="guide">
-    <div class="guide-top"><b>🧭 다음 할 일</b><small>${p.done} / ${p.total}</small></div>
-    <div class="guide-track"><i style="width:${Math.round((p.done / p.total) * 100)}%"></i></div>
-    <h4>${st.icon} ${st.title(ny)}</h4>
-    <p>${st.desc(ny)}</p>
-    <button class="primary guide-go" type="button" data-guide-go="${st.key}">${st.btn} →</button>
-    <div class="guide-foot"><small>하나씩 하다 보면 기능이 차례로 열려요 · 완료할 때마다 +3 EXP</small>${toggle}</div>
-  </div>`;
+/** 미션 ②·③ 완료 저장 → 셋 다 했으면 보너스 */
+function dmDone(key, openKey) {
+  const dk = state.fortune.dateKey;
+  const r = dmMarkDone(load(DM_KEY, {}), dk, key, openKey);
+  if (r.changed) save(DM_KEY, r.store);
+  checkDayBonus();
+}
+function checkDayBonus() {
+  const dk = state.fortune.dateKey;
+  const st = load(DM_KEY, {})[dk] || {};
+  if (!(load(MISSION_KEY, {})[dk] && st.check && st.open)) return;
+  const b = dmClaimBonus(load(DM_KEY, {}), dk);
+  if (b.changed) { save(DM_KEY, b.store); setTimeout(() => grow((gg) => addExp(gg, DM_BONUS_EXP), '🎉 오늘의 미션 3가지 완료! 내일 미리보기가 열렸어요'), 900); }
 }
 
-/** 퀘스트 버튼: 완료 → 연 구역으로 이동·펼침 */
-const GUIDE_TARGET = { week: 'week', month: 'month', daewoon: 'daewoon', mission: '#btn-mission', draw: '#btn-daily', ask: '.ask-home', journey: '.journey, #btn-journey', todo: '.card.todo' };
+/** 미션 ① 이달의 실천 = 오늘의 액땜 미션 (완료하면 액막이 부적 정화 + 용신 충전) */
+function completeActMission() {
+  const f = state.fortune; const m = load(MISSION_KEY, {});
+  if (m[f.dateKey]) return;
+  m[f.dateKey] = true; save(MISSION_KEY, m);
+  grow((g) => complete(g, f.dateKey, 'mission', qBonus('mission')), `${say('missionDone')} (액막이 부적 등급 +1)`);
+  setTimeout(() => charge(state.saju.yongsin, 4, 'mission', '🧧 실천 완료'), 2400);
+  renderCharm(false);
+  checkDayBonus();
+}
+
+/** 홈 안의 구역으로 가기 ('home:next' · 'home:week' · 'home:.css선택자') */
+function goHomeTarget(t) {
+  const k = t.slice(5);
+  if (/^[a-z]+$/.test(k)) state.tlOpen = new Set([k, ...(k === 'next' ? ['today'] : [])]);
+  renderToday();
+  setTimeout(() => {
+    const el = /^[a-z]+$/.test(k) ? $(`[data-tl="${k}"]`) : $(k);
+    (el?.closest('.card, .tl-card') || el)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 40);
+}
+
 document.addEventListener('click', (e) => {
   const all = e.target.closest('[data-guide-all]');
   if (all) { save(GUIDE_KEY, guideSetAll(loadGuide(), all.dataset.guideAll === '1')); renderToday(); return; }
-  const go = e.target.closest('[data-guide-go]'); if (!go) return;
-  const k = go.dataset.guideGo;
-  if (k === 'next') { state.tlOpen = new Set(['next', 'today']); finishGuide('next'); renderToday(); setTimeout(() => $('[data-tl="next"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30); return; }
-  finishGuide(k);
-  const t = GUIDE_TARGET[k];
-  if (t && !t.startsWith('.') && !t.startsWith('#')) state.tlOpen = new Set([t]);
+  const b = e.target.closest('[data-dm]'); if (!b) return;
+  const key = b.dataset.dm;
+  if (key === 'act') { completeActMission(); renderToday(); return; }
+  // ②·③은 그 화면으로 이동하면 완료
+  const f = state.fortune; const g = loadGuide(); const gctx = guideCtx(); const d = timelineData(); const per = d.month.period;
+  const ms = buildMissions({ dateKey: f.dateKey, month: { term: per.term, start: per.start, end: per.end, theme: '', best: d.month.best }, today: { mission: '', score: f.scores.total }, pending: pendingFeedback(loadRecords(), f.date), discovery: g.all ? null : nextStep(g, gctx), nextYear: d.next?.sajuYear, progress: guideProgress(g, gctx), state: {} });
+  const m = ms.find((x) => x.key === key); if (!m) return;
+  const a = m.action;
+  dmDone(key, a.type === 'guide' ? a.key : a.type === 'tab' ? a.tab : undefined);
+  if (a.type === 'open-month') { goHomeTarget('home:month'); return; }
+  if (a.type === 'why') { renderToday(); setTimeout(() => { const w = $('[data-tl="today"] details.why'); if (w) { w.open = true; w.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }, 40); return; }
+  if (a.type === 'guide') finishGuide(a.key);
+  const go = a.type === 'guide' ? a.go : a.tab;
+  if (go.startsWith('home:')) { goHomeTarget(go); return; }
+  if (go === 'ask') state.askOpen = null;
   renderToday();
-  setTimeout(() => {
-    const el = t && (t.startsWith('.') || t.startsWith('#') ? $(t) : $(`[data-tl="${t}"]`));
-    (el?.closest('.card') || el)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, 40);
+  selectTab(go);
 });
-
 
 // ---------- 기록함 (v0.22): 날마다 본 운세 저장 + "어제 운세 맞았나요?" + 결과 저장·메모 ----------
 const loadRecords = () => ({ ...emptyRecords(), ...load(RECORDS_KEY, {}) });
@@ -940,21 +1004,6 @@ const loadRecords = () => ({ ...emptyRecords(), ...load(RECORDS_KEY, {}) });
 function logToday() {
   const f = state.fortune; if (!f) return;
   save(RECORDS_KEY, logDay(loadRecords(), { dateKey: f.dateKey, title: f.info.title, score: f.scores.total, best: catLabel(f.best), worst: catLabel(f.worst), mission: f.info.mission }));
-}
-
-/** 홈: 어제 기록이 있고 아직 답하지 않았을 때만 나오는 한 장 */
-function yesterdayCardHTML() {
-  const f = state.fortune; if (!f) return '';
-  const p = pendingFeedback(loadRecords(), f.date);
-  if (!p) return '';
-  const [, m, d] = p.dateKey.split('-');
-  return `<div class="card yday" id="yday">
-    <div class="yday-top"><b>📒 어제 운세, 맞았나요?</b><button type="button" class="linkish" data-fb-skip="${p.dateKey}">건너뛰기</button></div>
-    <p class="yday-was">${m}/${d} <b>${esc(p.title)}</b> · <span style="color:${scoreColor(p.score)}">${p.score}점</span>${p.best ? ` · 좋았던 분야 ${esc(p.best)}` : ''}</p>
-    <div class="yday-btns">${Object.entries(FEEDBACK).map(([k, v]) => `<button type="button" class="ghost" data-fb="${k}" data-fb-day="${p.dateKey}">${v.icon} ${v.label}</button>`).join('')}</div>
-    <input type="text" class="yday-memo" maxlength="${MEMO_MAX}" placeholder="한 줄 메모 (선택) · 예: 오후에 좋은 소식이 왔어요" aria-label="어제 메모">
-    <small class="muted">답하면 +2 EXP · 기록은 이 기기에만 저장돼요</small>
-  </div>`;
 }
 
 /** 결과 저장 버튼 (질문 답·운세 풀이·신수 카드) */
@@ -1254,34 +1303,8 @@ document.addEventListener('change', (e) => {
   refreshExpert();
 });
 
-// ---------- 첫 7일 (v0.26): 날마다 기능 하나 소개 + 첫 주에는 EXP·Lv. 대신 쉬운 말 ----------
+// ---------- 첫 7일 (v0.26): 첫 주에는 EXP·Lv. 대신 쉬운 말 (기능 소개는 v0.27부터 「오늘의 미션」 ③이 맡음) ----------
 const firstWeek = () => load(FW_KEY, null);
-
-function introCardHTML() {
-  const f = state.fortune; if (!f) return '';
-  const it = todayIntro(firstWeek(), f.dateKey); if (!it) return '';
-  return `<div class="card intro-day" id="intro-day">
-    <div class="intro-top"><small>처음 일주일 안내 · ${it.day}/${FIRST_WEEK_DAYS}일차</small><button type="button" class="linkish" data-intro-close>닫기</button></div>
-    <b>${it.icon} ${it.title}</b>
-    <p>${it.desc}</p>
-    <button type="button" class="ghost" data-intro-go="${it.go}">${it.btn} →</button>
-  </div>`;
-}
-
-document.addEventListener('click', (e) => {
-  const go = e.target.closest('[data-intro-go]'); const close = e.target.closest('[data-intro-close]');
-  if (!go && !close) return;
-  save(FW_KEY, markSeen(firstWeek(), state.fortune.dateKey));
-  $('#intro-day')?.remove();
-  if (!go) return;
-  const to = go.dataset.introGo;
-  if (to === 'today-why') {
-    const w = $('[data-tl="today"] details.why'); if (w) { w.open = true; w.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-    return;
-  }
-  if (to === 'ask') { state.askOpen = null; }
-  selectTab(to);
-});
 
 /** 첫 주에는 화면에 나오는 게임 용어를 쉬운 말로 바꿔 보여 준다 (한 곳에서 처리) */
 let plainObserver = null;
@@ -1309,9 +1332,9 @@ function answerFeedback(dateKey, value, memo) {
 
 document.addEventListener('click', (e) => {
   const fb = e.target.closest('[data-fb]');
-  if (fb) { const memo = $('#yday .yday-memo')?.value; answerFeedback(fb.dataset.fbDay, fb.dataset.fb, memo); $('#yday')?.remove(); return; }
+  if (fb) { const memo = $('#yday .yday-memo')?.value; answerFeedback(fb.dataset.fbDay, fb.dataset.fb, memo); dmDone('check'); renderToday(); return; }
   const sk = e.target.closest('[data-fb-skip]');
-  if (sk) { answerFeedback(sk.dataset.fbSkip, 'skip'); $('#yday')?.remove(); return; }
+  if (sk) { answerFeedback(sk.dataset.fbSkip, 'skip'); dmDone('check'); renderToday(); return; }
   const sv = e.target.closest('[data-rec-save]');
   if (sv) {
     const { recSave: kind, recKey: key } = sv.dataset;
@@ -1388,40 +1411,17 @@ function bonusLineHTML(f) {
 }
 
 function renderToday() {
-  const f = state.fortune; const s = state.saju;
   logToday();
-  const missions = load(MISSION_KEY, {});
-  const done = !!missions[f.dateKey];
-
-  const missionCard = `<div class="card">
-      <h3>🧧 오늘의 액땜 미션</h3>
-      <div class="mission ${done ? 'done' : ''}">
-        <div style="flex:1"><b>${f.info.mission}</b><br><span class="muted">${done ? '정화 완료! 오늘의 액막이 부적이 한 단계 강해졌습니다.' : '완료하면 액막이 부적이 정화되어 효과가 강해집니다.'}</span></div>
-        <button class="${done ? 'ghost' : 'primary'}" type="button" id="btn-mission">${done ? '완료됨 ✓' : '미션 완료'}</button>
-      </div>
-    </div>`;
   // 길잡이로 연 구역만 보인다. 모두 열리면 예전과 같은 전체 홈
   const sections = [
     ['ask', askChipsHTML], ['season', seasonCardHTML], ['festival', festivalCardHTML], ['say', todaySayCard],
     ['todo', todoCardHTML], ['journey', journeyCardHTML], ['daily', dailyCardHTML], ['concern', concernCard],
-    ['mission', () => missionCard], ['story', () => storyButton('fortune', '오늘의 운세를 스토리로 공유')],
+    ['story', () => storyButton('fortune', '오늘의 운세를 스토리로 공유')],
   ];
   $('[data-panel="today"]').innerHTML = `
     ${timelineHTML()}
     ${sections.filter(([k]) => unlocked(k)).map(([, fn]) => fn()).join('\n')}`;
 
-  $('#btn-mission')?.addEventListener('click', () => {
-    const m = load(MISSION_KEY, {});
-    m[f.dateKey] = !m[f.dateKey];
-    const missionLead = m[f.dateKey] ? `${say('missionDone')} (액막이 부적 등급 +1)` : '';
-    save(MISSION_KEY, m);
-    renderToday();
-    renderCharm(false);
-    if (m[f.dateKey]) {
-      grow((g) => complete(g, f.dateKey, 'mission', qBonus('mission')), missionLead);
-      setTimeout(() => charge(state.saju.yongsin, 4, 'mission', '🧧 액땜 완료'), 2400);
-    }
-  });
   $('#btn-daily')?.addEventListener('click', claimDaily);
   $('#btn-journey')?.addEventListener('click', doJourneyStep);
   $$('[data-todo]').forEach((b) => b.addEventListener('click', () => {
