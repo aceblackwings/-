@@ -1,6 +1,7 @@
 """생성 그림 일괄 처리: 원본 폴더 → (생성 시각순으로 시트 번호에 맞춤) → 배경 제거 → WebP → 앱 목록 갱신
 사용:
   python3 -I tools/ingest.py zodiac <띠키> <원본폴더>      예: zodiac horse /tmp/raw/horse
+  python3 -I tools/ingest.py zodiac rat /tmp/raw/rat swap=calm:sleepy   (생성 순서가 바뀐 두 칸을 맞바꿈, 여러 개면 쉼표)
   python3 -I tools/ingest.py manifest                       (assets 폴더를 훑어 js/asset-manifest.js만 다시 만들기)
 원본 파일 이름이 힉스필드 기본 이름(hf_YYYYMMDD_HHMMSS_...)이면 생성 시각순, 아니면 이름순으로 정렬한다.
 """
@@ -30,10 +31,13 @@ def detect_bg(path, fallback):
     if max(green, magenta) < len(px) * 0.3: return fallback
     return 'green' if green >= magenta else 'magenta'
 
-def zodiac(key, src):
+def zodiac(key, src, swaps=()):
     spec = json.load(open(os.path.join(HERE, 'zodiac_specs.json')))[key]
     files = order([f for f in glob.glob(os.path.join(src, '*')) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))])
     targets = [('char', f'{key}_{s}', 768) for s in STAGES] + [('emo', f'{key}_{m}', 512) for m in MOODS]
+    for a, b in swaps:  # 사용자가 시트 순서와 다르게 생성한 두 칸 맞바꾸기
+        ia = next(i for i, t in enumerate(targets) if t[1] == f'{key}_{a}'); ib = next(i for i, t in enumerate(targets) if t[1] == f'{key}_{b}')
+        targets[ia], targets[ib] = targets[ib], targets[ia]
     report = {'zodiac': key, 'found': len(files), 'expected': len(targets), 'items': []}
     if len(files) != len(targets):
         report['warning'] = f'그림 수가 다릅니다: {len(files)}장 (필요 {len(targets)}장). 생성 시각순으로 앞에서부터 맞췄으니 확인이 필요합니다.'
@@ -73,4 +77,6 @@ def manifest():
 
 if __name__ == '__main__':
     if sys.argv[1] == 'manifest': print(manifest())
-    elif sys.argv[1] == 'zodiac': print(json.dumps(zodiac(sys.argv[2], sys.argv[3]), ensure_ascii=False, indent=1))
+    elif sys.argv[1] == 'zodiac':
+        swaps = [tuple(x.split(':')) for a in sys.argv[4:] if a.startswith('swap=') for x in a[5:].split(',')]
+        print(json.dumps(zodiac(sys.argv[2], sys.argv[3], swaps), ensure_ascii=False, indent=1))
