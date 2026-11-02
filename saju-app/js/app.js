@@ -853,6 +853,7 @@ function timelineHTML() {
   const vis = tlVisible();
   return `<div class="timeline" id="timeline">
     ${vis[0] === 'next' ? R.next() : ''}
+    ${guideCardHTML()}
     <div class="tl-title"><h3>나의 운 흐름</h3><small>${vis.length >= 7 ? '오늘에서 대운까지, 같은 계산으로 이어 봐요' : '카드를 누르면 펼쳐져요'}</small></div>
     ${vis.filter((k) => k !== 'next').map((k) => R[k]()).join('')}
   </div>`;
@@ -950,7 +951,6 @@ function renderToday() {
   ];
   $('[data-panel="today"]').innerHTML = `
     ${timelineHTML()}
-    ${guideCardHTML()}
     ${sections.filter(([k]) => unlocked(k)).map(([, fn]) => fn()).join('\n')}`;
 
   $('#btn-mission')?.addEventListener('click', () => {

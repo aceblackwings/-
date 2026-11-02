@@ -197,8 +197,9 @@ button.ghost:hover, button.chip:hover { border-color: var(--neon); }
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
   background: rgba(15, 12, 34, 0.95); border: 1px solid var(--neon); color: #fff;
-  padding: 10px 18px; border-radius: 999px; z-index: 20; font-size: 0.9rem;
+  padding: 10px 18px; border-radius: 18px; z-index: 20; font-size: 0.9rem;
   box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
+  width: max-content; max-width: calc(100vw - 32px); box-sizing: border-box; text-align: center; line-height: 1.45;
 }
 
 /* 생년월일 (양력/음력) */

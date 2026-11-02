@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { computeSaju } from '../js/saju.js';
 import { computeFortune } from '../js/fortune.js';
-import { scoreParts, computeDaewoon, daewoonAt } from '../js/luck.js';
-import { layersAt, datePillars, monthPeriod, weekOf, yearOf, sajuYearOf, monthDays, TEN_GOD_MOD, LAYER_WEIGHT } from '../js/period.js';
+import { scoreParts, computeDaewoon, daewoonAt, SCORE_BASE } from '../js/luck.js';
+import { layersAt, datePillars, monthPeriod, weekOf, yearOf, sajuYearOf, monthDays, TEN_GOD_MOD, LAYER_WEIGHT, NEG_MOD_WEIGHT, dayScores } from '../js/period.js';
 let pass = 0;
 const t = (name, fn) => { fn(); pass++; console.log('ok -', name); };
 const s = computeSaju({ year: 1998, month: 5, day: 20, hour: 9, minute: 30 });
@@ -28,16 +28,17 @@ t('위 층이 아래 층에 스며듦: 올해=세운70%+대운30%, 이달=월운
 t('오늘 총운 = 오늘 층 + 십신 보정 + 합·충 (근거와 점수가 같은 계산)', () => {
   for (const b of births) {
     const f = computeFortune(b, D, { gender: 'female' });
-    const rel = f.relations.reduce((a, r) => a + (r.type === 'combine' ? 4 : -5) * (r.pillar === 'day' ? 1.5 : 1), 0);
-    const want = Math.round(Math.max(5, Math.min(98, f.layers.day.score + TEN_GOD_MOD[f.tenGod][0] + rel)));
+    const rel = f.relations.reduce((a, r) => a + (r.type === 'combine' ? 4 : -3) * (r.pillar === 'day' ? 1.5 : 1), 0);
+    const mod = TEN_GOD_MOD[f.tenGod][0]; const m = mod < 0 ? mod * NEG_MOD_WEIGHT : mod;
+    const want = Math.round(Math.max(5, Math.min(98, f.layers.day.score + m + rel)));
     assert.equal(f.scores.total, want);
   }
 });
 t('점수 근거(parts)의 합 = 기본 점수 (범위 안일 때)', () => {
   for (const b of births) {
     const p = datePillars(D).day; const sp = scoreParts(b, p);
-    const raw = Math.round(52 + sp.parts.reduce((a, x) => a + x.delta, 0));
-    if (raw > 18 && raw < 92) assert.equal(sp.score, raw);
+    const raw = Math.round(SCORE_BASE + sp.parts.reduce((a, x) => a + x.delta, 0));
+    if (raw > 30 && raw < 95) assert.equal(sp.score, raw);
   }
 });
 t('대운은 luck.js 대운표와 같은 값', () => {
@@ -85,7 +86,7 @@ t('올해 12절기월: 입춘부터 시작하고 각 달 점수 = 그 달 중순
   assert.equal(m.score, layersAt(s, { year: 2026, month: 11, day: 17 }, 'female').month.score);
   assert.equal(y.best.length, 3);
 });
-t('점수 분포: 극단값이 드물고(80점 이상 < 8%, 30점 미만 < 3%) 매일 변화가 있음', () => {
+t('점수 분포(v0.22 눈금): 평균 60점 이상, 80점 이상 < 18%, 50점 미만은 가끔(0~6%), 매일 변화가 있음', () => {
   const all = [];
   for (const b of births) for (let d = 0; d < 365; d += 5) {
     const dt = new Date(Date.UTC(2026, 0, 1 + d));
@@ -94,8 +95,10 @@ t('점수 분포: 극단값이 드물고(80점 이상 < 8%, 30점 미만 < 3%) �
   const n = all.length; const mu = all.reduce((a, b) => a + b, 0) / n;
   const sd = Math.sqrt(all.reduce((a, b) => a + (b - mu) ** 2, 0) / n);
   assert.ok(sd >= 8 && sd <= 16, `sd ${sd}`);
-  assert.ok(all.filter((x) => x >= 80).length / n < 0.08);
-  assert.ok(all.filter((x) => x < 30).length / n < 0.03);
+  assert.ok(mu >= 60, `mean ${mu}`);
+  assert.ok(all.filter((x) => x >= 80).length / n < 0.18);
+  const low = all.filter((x) => x < 50).length / n;
+  assert.ok(low > 0 && low <= 0.06, `under 50 ${low}`);
 });
 console.log(`\n${pass} passed`);
 import { fiveYearForecast } from '../js/luck.js';
@@ -110,5 +113,19 @@ t('이달의 날짜: 절기월 전체(입동월 30일), 좋은 날·조심할 �
   assert.equal(m.period.term, '입동'); assert.equal(m.days.length, 30);
   for (const d of [...m.best, ...m.caution]) assert.equal(d.score, computeFortune(s, d.date, { gender: 'female' }).scores.total);
   assert.ok(m.best[0].score >= m.best[2].score && m.caution[0].score <= m.caution[1].score);
+});
+t('점수 눈금(v0.22): 평균 60점 이상, 50점 밑은 드물게', () => {
+  const day = []; const yr = [];
+  for (const b of births) for (let k = 0; k < 40; k++) {
+    const d = { year: 2026, month: 1 + (k % 12), day: 1 + ((k * 7) % 28) };
+    const { L, scores } = dayScores(b, d, 'female');
+    day.push(scores.total); yr.push(L.year.score);
+  }
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  const low = (a) => a.filter((x) => x < 50).length / a.length;
+  assert.ok(mean(day) >= 60, `오늘 평균 ${mean(day)}`);
+  assert.ok(mean(yr) >= 60, `올해 평균 ${mean(yr)}`);
+  assert.ok(low(day) > 0 && low(day) <= 0.06, `오늘 50점 미만 비율 ${low(day)}`);
+  assert.ok(low(yr) <= 0.08, `올해 50점 미만 비율 ${low(yr)}`);
 });
 console.log(`${pass} passed (with 5-year check)`);

@@ -113,11 +113,13 @@ export const CAT_KEYS = ['total', 'wealth', 'love', 'career', 'health', 'social'
  * 층 점수 → 분야 점수. 총운·분야 모두 같은 식: 층 점수 + 그 층 천간의 십신 보정 + (오늘만) 합·충
  * 문장은 이 점수 구간에서만 고르므로 그래프와 설명이 어긋나지 않는다
  */
+export const NEG_MOD_WEIGHT = 0.6; // 점수 눈금(v0.22): 분야 보정의 마이너스 몫은 60%만 반영
 export function categoryScores(layerScore, god, extra = {}) {
   const mods = TEN_GOD_MOD[god];
   const out = {};
   CAT_KEYS.forEach((k, i) => {
-    const raw = layerScore + mods[i] + (extra[k] || 0);
+    const m = mods[i] < 0 ? mods[i] * NEG_MOD_WEIGHT : mods[i];
+    const raw = layerScore + m + (extra[k] || 0);
     out[k] = round(clamp(raw, 5, 98));
   });
   return out;
@@ -142,7 +144,7 @@ export function dayRelations(saju, dayPillar, relationOf = branchRelation) {
     if (!r) continue;
     const w = key === 'day' ? 1.5 : 1;
     relations.push({ pillar: key, type: r });
-    if (r === 'combine') { extra.total += 4 * w; extra.love += 5 * w; extra.social += 5 * w; } else { extra.total -= 5 * w; extra.health -= 5 * w; extra.social -= 3 * w; }
+    if (r === 'combine') { extra.total += 4 * w; extra.love += 5 * w; extra.social += 5 * w; } else { extra.total -= 3 * w; extra.health -= 3 * w; extra.social -= 2 * w; }
   }
   return { relations, extra };
 }

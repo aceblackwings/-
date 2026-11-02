@@ -63,14 +63,18 @@ const pairKey = (a, b) => (a < b ? `${a}-${b}` : `${b}-${a}`);
 /** 한 기둥(대운·세운)이 내 사주에 얼마나 도움이 되는지 0~100 */
 /**
  * 한 간지가 내 원국에 주는 영향 (점수 + 근거). 대운·세운·월운·일운 모두 이 함수 하나로 계산한다.
- * 기본 52 + 천간 오행 적합도 + 지지 오행 적합도×0.8 + 일지와의 합(+6)·충(-7), 18~92로 제한
+ * 기본 SCORE_BASE + 천간 오행 적합도 + 지지 오행 적합도×0.8 + 일지와의 합(+6)·충(CLASH), 30~95로 제한
+ * 점수 눈금(v0.22): 평균 60점대, 50점 밑은 드물게 — 기본값을 올리고 부담 요인(기신·충)은 부드럽게 반영
  */
+export const SCORE_BASE = 59;
+export const GISIN_DELTA = -7;
+export const CLASH_DELTA = -5;
 export function scoreParts(saju, p) {
   const parts = [];
   const fitOf = (e) => {
     if (e === saju.yongsin) return [14, '필요한 기운(용신)'];
     if (e === parentOf(saju.yongsin)) return [7, '용신을 돕는 기운'];
-    if (e === saju.gisin) return [-12, '부담이 되는 기운(기신)'];
+    if (e === saju.gisin) return [GISIN_DELTA, '부담이 되는 기운(기신)'];
     if (e === childOf(saju.yongsin)) return [2, '용신이 낳는 기운'];
     return [0, null];
   };
@@ -80,9 +84,9 @@ export function scoreParts(saju, p) {
   if (lb) parts.push({ kind: 'branch', element: BRANCH_ELEMENT[p.branch], delta: Math.round(fb * 0.8 * 10) / 10, label: `지지 ${lb}` });
   const dayBranch = saju.pillars.day.branch;
   if (COMBINE.has(pairKey(p.branch, dayBranch))) parts.push({ kind: 'combine', delta: 6, label: '내 일지와 합(合) — 손발이 맞음' });
-  if (Math.abs(p.branch - dayBranch) === 6) parts.push({ kind: 'clash', delta: -7, label: '내 일지와 충(沖) — 변화·마찰' });
-  const raw = 52 + parts.reduce((a, b) => a + b.delta, 0);
-  return { score: Math.round(clamp(raw, 18, 92)), parts };
+  if (Math.abs(p.branch - dayBranch) === 6) parts.push({ kind: 'clash', delta: CLASH_DELTA, label: '내 일지와 충(沖) — 변화·마찰' });
+  const raw = SCORE_BASE + parts.reduce((a, b) => a + b.delta, 0);
+  return { score: Math.round(clamp(raw, 30, 95)), parts };
 }
 
 export function pillarScore(saju, p) {
