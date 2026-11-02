@@ -619,3 +619,19 @@ select option { background: #1d1742; color: #ffffff; }
 .ask-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .ask-chips .chip { font-size: 0.86rem; }
 .ask-chips .chip.more { color: var(--neon); border-color: var(--neon); }
+
+/* 점수 근거 (v0.19 층 엔진) */
+.why { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; }
+.why summary { cursor: pointer; font-weight: 700; font-size: 0.9rem; color: var(--neon); list-style: none; }
+.why summary::-webkit-details-marker { display: none; }
+.why summary::after { content: ' ▾'; }
+.why[open] summary::after { content: ' ▴'; }
+.why summary small { color: var(--muted); font-weight: 400; }
+.why-layers { list-style: none; margin: 8px 0 6px; padding: 0; display: grid; gap: 6px; }
+.why-layers li { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 8px 10px; font-size: 0.85rem; }
+.why-layers li b { font-size: 1rem; text-align: right; }
+.why-layers li small { grid-column: 1 / -1; color: var(--muted); font-size: 0.74rem; line-height: 1.45; }
+.why-calc { font-size: 0.8rem; color: #cfcaf2; margin: 4px 0 0; line-height: 1.5; }
+.bonus-line { font-size: 0.8rem; margin: 8px 0 0; color: var(--gold); }
+.bonus-line small { color: var(--muted); }
+.mcell small { font-size: 0.62rem; }

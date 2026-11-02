@@ -617,7 +617,8 @@ export function characterStats(saju, fortune, info, charms = []) {
     const target = base[t.element];
     target.value += t.effects[2].value;
   });
-  const concernScore = fortune.scores[info.concern.category] ?? fortune.scores.total;
+  const sc = fortune.gameScores || fortune.scores; // 게임 능력치는 보너스가 더해진 점수 사용
+  const concernScore = sc[info.concern.category] ?? sc.total;
   return {
     base: base.map((b) => ({ ...b, value: Math.min(120, b.value) })),
     concern: { label: info.concern.stat, value: Math.min(99, concernScore + Math.round(bonus / 2)), baseValue: concernScore },

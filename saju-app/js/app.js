@@ -25,6 +25,7 @@ import { journeyStep, emptyJourney, completeStep, JOURNEY_DAYS, JOURNEYS } from 
 import { isCrisis, crisisReply, buildInstructions, buildMessages, offlineReply, QUICK_ASKS, FREE_CHATS } from './chat.js';
 import { seasonStatus, SEASON_PACKS, SEASON_MISSIONS, FREE_TIERS, PACK_PRICE, emptySeason, recordSeason, missionProgress, tiersDone, buyPack, ownedItems, seasonLook, activeTitle, seasonsAround, itemName, titleName, withEul } from './season.js';
 import { dateToJdn } from './lunar.js';
+import { layersAt, monthPeriod, explainParts, TEN_GOD_MOD } from './period.js';
 import { orderedMenu, buildAnswer, concernAsk, ASK_MENU } from './ask.js';
 import { emptyMemory, extractMemories, mergeMemory, memoryLines, followUp, markAsked, recallFor, describe as describeMemory, forget, forgetAll, needsSummary, applySummary, summaryMessages, offlineSummary, SUMMARY_EVERY, MEMORY_LIMIT } from './memory.js';
 import { festivalStatus } from './festivals.js';
@@ -124,7 +125,7 @@ const validYear = (y) => Number.isInteger(y) && y >= 1900 && y <= 2100;
 function start(profile, mode = 'today') {
   state.profile = profile;
   state.saju = computeSaju(profileToInput(profile));
-  state.fortune = computeFortune(state.saju);
+  state.fortune = computeFortune(state.saju, undefined, { gender: state.profile.gender });
   state.fortune = applyAbilities(state.fortune);
   state.charm.element = state.saju.weakest;
   state.charm.reroll = 0;
@@ -320,7 +321,7 @@ function weekFortunes() {
   const list = Array.from({ length: 7 }, (_, i) => {
     if (i === 0) return state.fortune;
     const dt = new Date(Date.UTC(d0.year, d0.month - 1, d0.day + i));
-    return applyAbilities(computeFortune(state.saju, { year: dt.getUTCFullYear(), month: dt.getUTCMonth() + 1, day: dt.getUTCDate() }));
+    return applyAbilities(computeFortune(state.saju, { year: dt.getUTCFullYear(), month: dt.getUTCMonth() + 1, day: dt.getUTCDate() }, { gender: state.profile.gender }));
   });
   state.week = { key, list };
   return list;
@@ -535,6 +536,36 @@ function strengthText(s) {
 
 // ---------- 오늘의 운세 ----------
 
+const md2 = (d) => `${d.month}/${d.day}`;
+
+/** 오늘 점수가 어디서 왔는지: 대운 → 올해 → 이달 → 오늘 (모두 같은 엔진) */
+function whyTodayHTML(f) {
+  const L = f.layers; if (!L) return '';
+  const godMod = TEN_GOD_MOD[f.tenGod][0];
+  const relSum = f.scores.total - Math.round(L.day.score + godMod);
+  const pl = (p) => `${STEMS[p.stem]}${BRANCHES[p.branch]}`;
+  const row = (icon, label, val, note) => `<li><span>${icon} ${label}</span><b style="color:${scoreColor(val)}">${val}</b><small>${note}</small></li>`;
+  return `<details class="why"><summary>왜 ${f.scores.total}점인가요? <small>근거 보기</small></summary>
+    <ul class="why-layers">
+      ${L.daewoon ? row('🏔️', `대운 ${pl(L.daewoon.pillar)} (${L.daewoon.startAge}~${L.daewoon.endAge}세)`, L.daewoon.score, `${L.daewoon.god} · ${explainParts(L.daewoon.parts)}`) : ''}
+      ${row('📅', `올해 ${pl(L.year.pillar)}년`, L.year.score, `세운 ${L.year.base}${L.daewoon ? ` × 70% + 대운 × 30%` : ''} · ${L.year.god}`)}
+      ${row('🌙', `이달 ${pl(L.month.pillar)}월 (${f.period.term} ${md2(f.period.start)}~${md2(f.period.end)})`, L.month.score, `월운 ${L.month.base} × 60% + 올해 × 40% · ${L.month.god}`)}
+      ${row('☀️', `오늘 ${pl(L.day.pillar)}일`, L.day.score, `일진 ${L.day.base} × 70% + 이달 × 30%`)}
+    </ul>
+    <p class="why-calc">오늘 총운 <b>${f.scores.total}</b> = 오늘 층 ${L.day.score} ${godMod >= 0 ? '+' : '−'} 십신(${f.tenGod}) ${Math.abs(godMod)}${relSum ? ` ${relSum > 0 ? '+' : '−'} 원국과의 합·충 ${Math.abs(relSum)}` : ''}</p>
+    <p class="why-calc">일진 근거: ${f.why}</p>
+    <p class="muted" style="font-size:0.74rem;margin:6px 0 0">같은 생년월일·같은 날짜는 언제 봐도 같은 점수가 나와요. 무작위 요소는 쓰지 않습니다.</p>
+  </details>`;
+}
+
+/** 게임 보너스는 정통 점수와 따로 표시 (설계 원칙 2) */
+function bonusLineHTML(f) {
+  const b = Object.entries(f.abilityBonus || {}).filter(([, v]) => v);
+  if (!b.length) return '';
+  const label = Object.fromEntries(CATEGORIES.map((c) => [c.key, c.label]));
+  return `<p class="bonus-line">🐉 수호신 능력 보너스(게임): ${b.map(([k, v]) => `${label[k]} +${v}`).join(' · ')} <small>— 캐릭터 능력치에만 쓰이고, 위 정통 점수에는 더하지 않았어요</small></p>`;
+}
+
 function renderToday() {
   const f = state.fortune; const s = state.saju;
   const missions = load(MISSION_KEY, {});
@@ -561,6 +592,8 @@ function renderToday() {
         </div>
       </div>
       <p class="muted">${f.summary}${rel ? ` 오늘은 내 사주의 ${rel} 관계가 생깁니다.` : ''}</p>
+      ${whyTodayHTML(f)}
+      ${bonusLineHTML(f)}
     </div>
 
     ${askChipsHTML()}
@@ -2026,26 +2059,28 @@ function monthlyReport() {
   const stage = heroOptions().stage;
   const ab = abilitiesAt(stage);
   const yp = yearPillar(y);
-  const yScore = pillarScore(s, yp);
-  const dw = state.profile.gender ? computeDaewoon(s, state.profile.gender) : null;
-  const d = dw ? daewoonAt(dw, y - s.input.year) : null;
   const abAvg = Math.round((ab.cat.total + ab.cat.wealth + ab.cat.love + ab.cat.career + ab.cat.health) / 5);
+  // 정통 기본값은 오늘 운세와 같은 층 엔진(period.js)에서: 이달 = 월운 60% + 올해(세운 70% + 대운 30%) 40%
+  const midYear = layersAt(s, { year: y, month: 7, day: 1 }, state.profile.gender);
+  const yScore = midYear.year.score;
   const months = Array.from({ length: 12 }, (_, i) => {
     const m = i + 1;
-    const mp = computeSaju({ year: y, month: m, day: 15, timeKnown: false }).pillars.month;
-    const base = Math.round(pillarScore(s, mp) * 0.55 + yScore * 0.25 + (d ? d.score : 52) * 0.2);
+    const L = layersAt(s, { year: y, month: m, day: 15 }, state.profile.gender);
+    const mp = L.month.pillar;
+    const per = monthPeriod({ year: y, month: m, day: 15 });
+    const base = L.month.score;
     const habit = (index / 100) * 12 * (1 + i * 0.03);
     const improved = Math.min(99, Math.round(base + habit + abAvg + (stage >= 5 ? 6 : 0)));
     const god = tenGod(s.dayMaster, mp.stem);
-    const cats = MONTH_GOD_MOD[god].map((v) => Math.max(10, Math.min(99, improved + v)));
+    const cats = MONTH_GOD_MOD[god].map((v) => Math.max(10, Math.min(99, base + v))); // 분야별도 정통값 기준
     const el = STEM_ELEMENT[mp.stem];
     const mission = el === s.yongsin ? `용신 ${ELEMENT_HANJA[el]}의 달! 이달엔 ${ELEMENT_KO[el]} 기운 부적을 장착해 흐름을 타세요.`
       : el === s.gisin ? `${ELEMENT_HANJA[el]} 기운이 강한 달입니다. 용신 ${ELEMENT_HANJA[s.yongsin]} 부적으로 균형을 잡으세요.`
         : `이달의 개운 포인트는 ${ELEMENT_HANJA[s.weakest]} ${ELEMENT_KO[s.weakest]} 기운 채우기입니다.`;
-    return { m, pillar: mp, base, improved, god, theme: pillarTheme(s, mp).theme, cats, mission };
+    return { m, pillar: mp, base, improved, god, theme: pillarTheme(s, mp).theme, cats, mission, start: per.start, end: per.end, term: per.term, why: explainParts(L.month.parts) };
   });
-  const sorted = [...months].sort((a, b) => b.improved - a.improved);
-  return { year: y, yp, yScore, months, best: sorted.slice(0, 3), caution: sorted.slice(-2), avgBase: Math.round(months.reduce((a, b) => a + b.base, 0) / 12), avgImp: Math.round(months.reduce((a, b) => a + b.improved, 0) / 12), index };
+  const sorted = [...months].sort((a, b) => b.base - a.base);
+  return { year: y, yp, yScore, yLayer: midYear.year, dwLayer: midYear.daewoon, months, best: sorted.slice(0, 3), caution: sorted.slice(-2), avgBase: Math.round(months.reduce((a, b) => a + b.base, 0) / 12), avgImp: Math.round(months.reduce((a, b) => a + b.improved, 0) / 12), index };
 }
 
 function monthChartSVG(r, cur) {
@@ -2058,7 +2093,7 @@ function monthChartSVG(r, cur) {
       const x = L + i * bw + 3; const now = mo.m === cur; const past = mo.m < cur;
       return `<rect x="${x}" y="${y(mo.base)}" width="${bw - 6}" height="${H - B - y(mo.base)}" rx="3" fill="rgba(154,148,196,${past ? 0.25 : 0.45})"/>
         <rect x="${x}" y="${y(mo.improved)}" width="${bw - 6}" height="${Math.max(0, y(mo.base) - y(mo.improved))}" rx="3" fill="${now ? '#ff8fb3' : '#ffc93c'}" opacity="${past ? 0.5 : 0.95}"/>
-        <text x="${x + (bw - 6) / 2}" y="${y(mo.improved) - 3}" font-size="8.5" fill="#fff" text-anchor="middle">${mo.improved}</text>
+        <text x="${x + (bw - 6) / 2}" y="${y(mo.improved) - 3}" font-size="8.5" fill="#fff" text-anchor="middle">${mo.base}</text>
         <text x="${x + (bw - 6) / 2}" y="${H - 10}" font-size="9" fill="${now ? '#ff8fb3' : '#cfcaf2'}" text-anchor="middle" font-weight="${now ? 800 : 400}">${mo.m}월</text>`;
     }).join('')}
   </svg>`;
@@ -2068,7 +2103,8 @@ function renderReport() {
   const panel = $('[data-panel="report"]');
   if (!panel || !state.saju) return;
   const r = monthlyReport();
-  const cur = state.fortune.date.month;
+  // 지금 진행 중인 달 = 절기월 (예: 11/2는 아직 입동 전이라 10월·한로월)
+  const cur = state.fortune.period?.solarMonth || state.fortune.date.month;
   const sub = isSubscribed(loadGacha(), state.fortune.dateKey);
   const sel = state.reportMonth || cur;
   const mo = r.months[sel - 1];
@@ -2078,22 +2114,25 @@ function renderReport() {
     <div class="card">
       <h3>📅 ${r.year}년 운세 리포트 <span class="tag">${pillarLabelFull(r.yp)}년</span></h3>
       <div class="report-head">
-        <div class="luck-ring" style="--p:${r.avgImp}"><b>${r.avgImp}</b><span>올해 평균</span></div>
+        <div class="luck-ring" style="--p:${r.yScore}"><b>${r.yScore}</b><span>올해 운(정통)</span></div>
         <div>
           <p style="margin:0"><b>올해의 테마: ${th.god} · ${th.theme}</b></p>
-          <p class="muted" style="margin:4px 0 0;font-size:0.84rem">정통 기본 평균 <b>${r.avgBase}</b> → 개운 반영 <b style="color:var(--gold)">${r.avgImp}</b> (개운 지수 ${r.index})</p>
+          <p class="muted" style="margin:4px 0 0;font-size:0.84rem">올해 = 세운 ${r.yLayer.base}${r.dwLayer ? ` × 70% + 대운 ${r.dwLayer.score} × 30%` : ''} · 달 평균 <b>${r.avgBase}</b></p>
+          <p class="muted" style="margin:2px 0 0;font-size:0.8rem">🎮 개운 반영(게임) 평균 <b style="color:var(--gold)">${r.avgImp}</b> · 개운 지수 ${r.index}</p>
           <p style="margin:6px 0 0;font-size:0.85rem">🌟 좋은 달: ${r.best.map((b) => `<b>${b.m}월</b>`).join(' · ')} &nbsp; ⚠️ 조심할 달: ${r.caution.map((b) => `${b.m}월`).join(' · ')}</p>
         </div>
       </div>
       ${monthChartSVG(r, cur)}
-      <div class="fc-legend"><span><i style="background:#9a94c4"></i>정통 기본</span><span><i style="background:#ffc93c"></i>개운으로 더해진 몫</span><span><i style="background:#ff8fb3"></i>이번 달</span></div>
+      <div class="fc-legend"><span><i style="background:#9a94c4"></i>정통 기본 (숫자)</span><span><i style="background:#ffc93c"></i>개운으로 더해진 몫(게임)</span><span><i style="background:#ff8fb3"></i>이번 달</span></div>
     </div>
     <div class="card">
-      <div class="month-grid">${r.months.map((x) => `<button type="button" class="mcell ${x.m === sel ? 'sel' : ''} ${x.m === cur ? 'now' : ''} ${x.m < cur ? 'past' : ''}" data-month="${x.m}" style="--h:${x.improved}"><b>${x.m}월</b><span>${x.improved}</span><small>${STEMS[x.pillar.stem]}${BRANCHES[x.pillar.branch]}</small></button>`).join('')}</div>
+      <div class="month-grid">${r.months.map((x) => `<button type="button" class="mcell ${x.m === sel ? 'sel' : ''} ${x.m === cur ? 'now' : ''} ${x.m < cur ? 'past' : ''}" data-month="${x.m}" style="--h:${x.base}"><b>${x.m}월</b><span>${x.base}</span><small>${STEMS[x.pillar.stem]}${BRANCHES[x.pillar.branch]} · ${x.start.month}/${x.start.day}~</small></button>`).join('')}</div>
     </div>
     <div class="card">
       <h3>${sel}월 상세 <span class="tag">${pillarLabelFull(mo.pillar)}월 · ${mo.god}</span></h3>
-      <p style="margin-top:0">${mo.theme}의 기운이 흐르는 달입니다. 기본 <b>${mo.base}</b> → 개운 반영 <b style="color:var(--gold)">${mo.improved}</b>${mo.m < cur ? ' (지난 달)' : mo.m === cur ? ' · 지금 진행 중' : ''}</p>
+      <p class="muted" style="margin:-4px 0 6px;font-size:0.82rem">📆 ${mo.term} ${mo.start.month}/${mo.start.day} ~ ${mo.end.month}/${mo.end.day} (월운은 절입일부터 바뀌어요)</p>
+      <p style="margin-top:0">${mo.theme}의 기운이 흐르는 달입니다. 정통 <b>${mo.base}</b>${mo.improved > mo.base ? ` · 🎮 개운 반영 <b style="color:var(--gold)">${mo.improved}</b>` : ''}${mo.m < cur ? ' (지난 달)' : mo.m === cur ? ' · 지금 진행 중' : ''}</p>
+      <p class="why-calc" style="margin:0 0 8px">근거: ${mo.why}</p>
       ${free ? `<div class="bars">${mo.cats.map((v, i) => `<div class="bar"><span>${MONTH_CATS[i]}</span><div class="track"><div class="fill" style="width:${v}%;background:${scoreColor(v)};color:${scoreColor(v)}"></div></div><span class="num">${v}</span></div>`).join('')}</div>
         <p class="concern-card" style="margin:10px 0 0">🧧 이달의 개운 미션: ${mo.mission}</p>`
       : `<div class="locked-detail"><p>👑 분야별 점수와 이달의 개운 미션은 <b>이번 달·다음 달</b>은 무료, 나머지 달은 수호 구독에서 볼 수 있어요.</p><button class="primary" type="button" id="btn-report-sub">수호 구독 알아보기</button></div>`}
@@ -2107,9 +2146,10 @@ function renderReport() {
 /** 단계 능력이 반영된 오늘 운세 점수 */
 function applyAbilities(fortune) {
   const ab = abilitiesAt(loadGrowth().evolved);
-  const f = { ...fortune, scores: { ...fortune.scores }, abilityBonus: ab.cat };
-  Object.entries(ab.cat).forEach(([k, v]) => { if (v && f.scores[k] !== undefined) f.scores[k] = Math.min(98, f.scores[k] + v); });
-  return f;
+  // 정통 점수(scores)는 그대로 두고, 게임용 점수(gameScores)에만 능력 보너스를 더한다
+  const gameScores = { ...fortune.scores };
+  Object.entries(ab.cat).forEach(([k, v]) => { if (v && gameScores[k] !== undefined) gameScores[k] = Math.min(98, gameScores[k] + v); });
+  return { ...fortune, gameScores, abilityBonus: ab.cat };
 }
 
 /** 진화 가능한 최고 단계 (레벨 + 개운 지수 + 누적 기운) */
@@ -2221,7 +2261,7 @@ function bindGrowth(panel, info) {
     const to = evolvableStage(summary(g, state.fortune.dateKey));
     if (to <= before) return;
     save(GROWTH_KEY, { ...g, evolved: to });
-    state.fortune = applyAbilities(computeFortune(state.saju));
+    state.fortune = applyAbilities(computeFortune(state.saju, undefined, { gender: state.profile.gender }));
     showEvolution(info, before, to);
   });
   $$('[data-claim]', panel).forEach((b) => b.addEventListener('click', () => {

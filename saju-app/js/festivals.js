@@ -19,7 +19,8 @@ const TERMS = [
   { key: 'dongji', name: '동지', icon: '🥣', lon: 270, element: 4, desc: '밤이 가장 긴 날. 팥죽으로 액운을 쫓아요.' },
 ];
 
-function termDate(year, lon) {
+/** 그해 태양 황경 lon° 절기의 한국 날짜 */
+export function termDate(year, lon) {
   const guess = 2451545 + (year - 2000) * 365.2422 + ((lon - 280 + 360) % 360) / 360 * 365.2422;
   const jde = solarTermJDE(lon, guess);
   const jdUT = jde - deltaT(year) / 86400;
