@@ -702,3 +702,27 @@ select option { background: #1d1742; color: #ffffff; }
 .gal-item svg { max-width: 100%; height: auto; border-radius: 10px; }
 .gal-item figcaption { text-align: center; display: grid; gap: 1px; } .gal-item figcaption b { font-size: 0.84rem; } .gal-item figcaption small { color: var(--muted); font-size: 0.7rem; }
 .gallery code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 6px; }
+
+/* 📖 운세 풀이 */
+.rd-tabs { grid-template-columns: repeat(3, 1fr); }
+.rd-head { display: flex; align-items: center; gap: 10px; margin: 6px 0 10px; }
+.rd-head h4 { margin: 0; font-size: 1.05rem; } .rd-head small { color: var(--muted); font-size: 0.78rem; }
+.rd-head > div:nth-child(2) { flex: 1; }
+.rd-head .tl-score { flex: none; }
+.rd-pillar { display: grid; gap: 0; border: 1px solid var(--gold); border-radius: 12px; padding: 4px 10px; font-family: 'Song Myung', serif; font-size: 1.3rem; line-height: 1.2; text-align: center; color: var(--gold); }
+.rd-p { margin: 0 0 8px; font-size: 0.93rem; line-height: 1.7; }
+.rd-box { border-radius: 14px; padding: 10px 12px; margin: 10px 0; background: rgba(255,255,255,0.04); border: 1px solid var(--line); }
+.rd-box h5 { margin: 0 0 6px; font-size: 0.9rem; }
+.rd-box p, .rd-box li { font-size: 0.87rem; line-height: 1.6; margin: 0 0 4px; }
+.rd-box ul, .rd-box ol { margin: 0; padding-left: 18px; }
+.rd-box.good { border-color: rgba(57,255,136,0.35); background: rgba(57,255,136,0.06); }
+.rd-box.watch { border-color: rgba(255,201,60,0.35); background: rgba(255,201,60,0.06); }
+.rd-box.focus { border-color: rgba(255,143,179,0.45); background: rgba(255,143,179,0.07); }
+.rd-box.when { border-color: rgba(0,229,255,0.35); }
+.rd-two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .rd-two .rd-box { margin: 0; }
+.rd-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 10px 0; }
+.rd-field { background: rgba(255,255,255,0.04); border-radius: 12px; padding: 8px 10px; }
+.rd-field b { font-size: 0.84rem; } .rd-field p { margin: 4px 0 0; font-size: 0.8rem; line-height: 1.55; color: #d9d4ff; }
+.rd-field.mine { outline: 1.5px solid #ff8fb3; }
+.tl-read { width: 100%; margin-top: 8px; font-size: 0.86rem; }
+@media (max-width: 400px) { .rd-two, .rd-fields { grid-template-columns: 1fr; } }

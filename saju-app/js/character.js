@@ -1,7 +1,7 @@
 // 12지신 수호 캐릭터 생성기 (SVG)
 // 띠(연지) → 동물 / 일간 오행 → 한복 색 / 성별 → 한복 스타일 / 고민 → 소품
 // 장착: 부적 2칸(허리·머리 옆), 이모티콘 1칸(표정 + 말풍선)
-import { seasonAccessorySVG, seasonEffectSVG, SEASON_PACKS } from './season.js';
+import { seasonAccessorySVG, seasonEffectSVG, seasonSceneSVG, SEASON_PACKS } from './season.js';
 
 export const CONCERNS = [
   { key: 'exam', label: '시험·합격', title: '합격을 부르는', category: 'career', talisman: 'exam', stat: '합격운' },
@@ -570,7 +570,8 @@ export function characterMarkup(info, opts = {}) {
   const backdrop = opts.backdrop ? stageBackdrop(stage, el, id) : '';
   const asc = stage >= 11 ? godAura(stage, id) : stage >= 6 ? spiritBeast(stage, id) : '';
   const tint = opts.backdrop && stage >= 6 ? `<rect width="320" height="400" fill="${ASC_COLOR[stage]}" opacity="0.12"/>` : '';
-  const body = `${backdrop}${tint}${asc}${auraMarkup}${scaled}${ascensionFront(stage)}${stage >= 3 ? orbs(stage, el, id) : ''}${stage >= 5 ? particles(id) : ''}${miniCharm(charms[2], 276, 300, 12, 0.9)}${opts.season?.effect ? seasonEffectSVG(SEASON_PACKS[opts.season.key].effect, opts.animate, stage) : ''}`;
+  const scene = opts.season?.effect ? seasonSceneSVG(opts.season.key) : '';
+  const body = `${backdrop}${tint}${asc}${scene}${auraMarkup}${scaled}${ascensionFront(stage)}${stage >= 3 ? orbs(stage, el, id) : ''}${stage >= 5 ? particles(id) : ''}${miniCharm(charms[2], 276, 300, 12, 0.9)}${opts.season?.effect ? seasonEffectSVG(SEASON_PACKS[opts.season.key].effect, opts.animate, stage) : ''}`;
   return { id, defs, body };
 }
 

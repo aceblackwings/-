@@ -4,9 +4,9 @@ import {
 } from './saju.js';
 import { computeFortune, CATEGORIES, DAY_MASTER_PROFILE, TEN_GOD_INFO } from './fortune.js';
 import {
-  createTalisman, renderTalismanSVG, downloadSVGAsPNG, TALISMAN_TYPES, THEMES, RARITIES,
+  createTalisman, renderTalismanSVG, downloadSVGAsPNG, TALISMAN_TYPES, THEMES, RARITIES, EMBLEM_NAME,
 } from './talisman.js';
-import { renderEmoticonSVG, EMOTES, todayEmote } from './emoticon.js';
+import { renderEmoticonSVG, EMOTES, todayEmote, MOOD_PROP } from './emoticon.js';
 import {
   CONCERNS, characterInfo, renderCharacterSVG, characterStats, STAGE_UNLOCKS, characterMarkup, ZODIAC,
 } from './character.js';
@@ -23,10 +23,12 @@ import { RATES, PITY, PRICES, EXTRA_PER_DAY, drawPack, emptyGacha, todayGacha, i
 import { ASCENSION, abilitiesAt, nextAscension, ascensionOf, trialProgress, growthBoost, TRIALS } from './ascension.js';
 import { journeyStep, emptyJourney, completeStep, JOURNEY_DAYS, JOURNEYS } from './journey.js';
 import { isCrisis, crisisReply, buildInstructions, buildMessages, offlineReply, QUICK_ASKS, FREE_CHATS } from './chat.js';
+import { SCENE_NAME } from './season.js';
 import { seasonStatus, SEASON_PACKS, SEASON_MISSIONS, FREE_TIERS, PACK_PRICE, emptySeason, recordSeason, missionProgress, tiersDone, buyPack, ownedItems, seasonLook, activeTitle, seasonsAround, itemName, titleName, withEul } from './season.js';
 import { dateToJdn } from './lunar.js';
 import { layersAt, monthPeriod, explainParts, TEN_GOD_MOD, weekOf, yearOf, monthDays, sajuYearOf, categoryScores } from './period.js';
 import { orderedMenu, buildAnswer, concernAsk, ASK_MENU } from './ask.js';
+import { buildReading, FIELD_LABEL, closingLine } from './reading.js';
 import { emptyMemory, extractMemories, mergeMemory, memoryLines, followUp, markAsked, recallFor, describe as describeMemory, forget, forgetAll, needsSummary, applySummary, summaryMessages, offlineSummary, SUMMARY_EVERY, MEMORY_LIMIT } from './memory.js';
 import { festivalStatus } from './festivals.js';
 import { makeCode, normalizeCode, publicCard, cardToSaju, cleanCard, pendingCheers, joinTeamRoom, openMailbox, CHEER_MESSAGES, CHEER_DAILY_LIMIT, CHEER_CHARGE, cheerText, cheerId } from './realtime.js';
@@ -516,6 +518,7 @@ function renderSaju() {
       <button class="primary" type="button" data-go="charm" style="width:100%">부족한 ${ELEMENT_KO[s.weakest]} 기운 부적 만들러 가기 →</button>
     </div>
     ${daewoonCardHTML()}`;
+  $('[data-panel="saju"]').insertAdjacentHTML('afterbegin', readingCardHTML());
   $$('[data-go]', $('[data-panel="saju"]')).forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); selectTab(b.dataset.go); }));
 }
 
@@ -560,6 +563,79 @@ function whyTodayHTML(f) {
     <p class="why-calc">일진 근거: ${f.why}</p>
     <p class="muted" style="font-size:0.74rem;margin:6px 0 0">같은 생년월일·같은 날짜는 언제 봐도 같은 점수가 나와요. 무작위 요소는 쓰지 않습니다.</p>
   </details>`;
+}
+
+// ---------- 운세 풀이: 대운·올해·이달 (읽을거리) ----------
+
+function readingFor(kind) {
+  const s = state.saju; const f = state.fortune; const L = f.layers; const g = state.profile.gender;
+  const d = timelineData();
+  if (kind === 'daewoon') {
+    if (!L.daewoon) return null;
+    const age = f.date.year - s.input.year;
+    const left = L.daewoon.endAge - age + 1;
+    const next = d.dw.pillars.find((p) => p.startAge === L.daewoon.endAge + 1);
+    return buildReading('daewoon', L.daewoon, {
+      saju: s, concern: state.profile.concern, range: `${L.daewoon.startAge}~${L.daewoon.endAge}세 · ${s.input.year + L.daewoon.startAge}~${s.input.year + L.daewoon.endAge}년`,
+      highlights: [`지금 ${age}세, 이 대운이 ${left}년 남았어요.`, next ? `다음 대운은 ${next.startAge}세부터 ${STEMS[next.stem]}${BRANCHES[next.branch]}(${pillarTheme(s, next).theme}) — 점수 ${next.score}점이에요.` : ''].filter(Boolean),
+    });
+  }
+  if (kind === 'year') {
+    const y = d.year;
+    return buildReading('year', { ...L.year, god: tenGod(s.dayMaster, L.year.pillar.stem) }, {
+      saju: s, concern: state.profile.concern, range: `${y.sajuYear}년 입춘(${md2(y.months[0].start)})부터`,
+      highlights: [`좋은 달: ${y.best.map((m) => `${m.solarMonth}월(${m.score})`).join(', ')}`, `조심할 달: ${y.caution.map((m) => `${m.solarMonth}월(${m.score})`).join(', ')}`, L.daewoon ? `지금 대운(${STEMS[L.daewoon.pillar.stem]}${BRANCHES[L.daewoon.pillar.branch]})이 올해 점수의 30%를 함께 만들어요.` : ''].filter(Boolean),
+    });
+  }
+  const md = d.month; const per = md.period;
+  return buildReading('month', L.month, {
+    saju: s, concern: state.profile.concern, range: `${per.term} ${md2(per.start)} ~ ${md2(per.end)}`,
+    highlights: [`좋은 날: ${md.best.map((x) => `${md2(x.date)}(${dowOf(x.date)}) ${x.score}점`).join(', ')}`, `조심할 날: ${md.caution.map((x) => `${md2(x.date)}(${dowOf(x.date)})`).join(', ')}`, `70점 이상인 날이 ${md.good}일 있어요. 다음 달(${per.nextTerm})은 ${md2(per.nextStart)}부터예요.`],
+  });
+}
+
+function readingCardHTML() {
+  const kind = state.readKind || 'year';
+  const kinds = [['daewoon', '🏔️ 대운'], ['year', '📅 올해'], ['month', '🌙 이달']];
+  const r = readingFor(kind);
+  const info = characterInfo(state.saju, state.profile);
+  const face = faceSVG(info, heroOptions().stage, r && r.score >= 55 ? 'smile' : 'fighting', 40);
+  const body = !r ? '<p class="muted">대운은 성별에 따라 순행·역행이 달라져요. 정보 수정에서 성별을 넣으면 풀이가 열려요.</p>' : `
+    <div class="rd-head">
+      <div class="rd-pillar"><b>${STEMS[r.pillar.stem]}</b><b>${BRANCHES[r.pillar.branch]}</b></div>
+      <div><h4>${r.god} · ${r.keyword}</h4><small>${r.range}</small></div>
+      <em class="tl-score" style="color:${scoreColor(r.score)};border-color:${scoreColor(r.score)}">${r.score}</em>
+    </div>
+    ${r.intro.map((t) => `<p class="rd-p">${t}</p>`).join('')}
+    <div class="rd-box why-box"><h5>🔍 왜 이런 흐름일까요</h5>${r.why.map((t) => `<p>${t}</p>`).join('')}</div>
+    <div class="rd-two">
+      <div class="rd-box good"><h5>🌟 살리면 좋은 점</h5><ul>${r.good.map((t) => `<li>${t}</li>`).join('')}</ul></div>
+      <div class="rd-box watch"><h5>🌧️ 미리 챙길 점</h5><ul>${r.watch.map((t) => `<li>${t}</li>`).join('')}</ul></div>
+    </div>
+    ${r.focusLine ? `<div class="rd-box focus"><h5>🎯 내 고민(${info.concern.label})에는</h5><p>${r.focusLine}</p></div>` : ''}
+    <div class="rd-fields">${Object.entries(r.fields).map(([k, t]) => `<div class="rd-field ${k === r.focus ? 'mine' : ''}"><b>${FIELD_LABEL[k]}</b><p>${t}</p></div>`).join('')}</div>
+    <div class="rd-box when"><h5>📌 실제 흐름</h5><ul>${r.highlights.map((t) => `<li>${t}</li>`).join('')}</ul></div>
+    <div class="rd-box tips"><h5>✅ 이렇게 해 보세요</h5><ol>${r.tips.map((t) => `<li>${t}</li>`).join('')}</ol></div>
+    <div class="ask-guardian"><div class="av">${face}</div><p>${esc(closingLine(r.kind, r.score, personalityOf(zIdx()).key === 'rooster'))}</p></div>
+    <p class="muted" style="font-size:0.72rem;margin:6px 0 0">풀이는 정통 계산(십신·용신·합충)을 바탕으로 한 참고용 해석이에요. 중요한 결정은 여러 상황을 함께 살펴 주세요.</p>`;
+  return `<div class="card reading" id="reading-card">
+    <h3>📖 나의 운세 풀이</h3>
+    <div class="gal-tabs rd-tabs">${kinds.map(([k, l]) => `<button type="button" data-read="${k}" aria-pressed="${k === kind}">${l}</button>`).join('')}</div>
+    ${body}
+  </div>`;
+}
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-read]'); if (!b) return;
+  state.readKind = b.dataset.read;
+  const el = $('#reading-card'); if (!el) return;
+  const tmp = document.createElement('div'); tmp.innerHTML = readingCardHTML(); el.replaceWith(tmp.firstElementChild);
+});
+
+/** 타임라인 카드에서 풀이로 바로 가기 */
+function openReading(kind) {
+  state.readKind = kind; selectTab('saju');
+  setTimeout(() => $('#reading-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
 }
 
 // ---------- 운의 타임라인 (v0.20) ----------
@@ -650,6 +726,7 @@ function tlMonth(d) {
     ${catBars(cats)}
     <div class="tl-kit"><span>🌟 좋은 날 ${md.best.map((x) => `${md2(x.date)}(${x.score})`).join(' · ')}</span><span>⚠️ 조심할 날 ${md.caution.map((x) => `${md2(x.date)}(${x.score})`).join(' · ')}</span><span>70점 이상 ${md.good}일 / ${md.days.length}일</span></div>
     <p class="why-calc">이달 ${L.month.score} = 월운 ${L.month.base} × 60% + 올해 ${L.year.score} × 40% · 근거: ${explainParts(L.month.parts)}</p>
+    <button class="ghost tl-read" type="button" data-tl-step="read-month">📖 이달 운세 풀이 자세히 읽기</button>
     ${stepBtn(`이달 부족한 ${ELEMENT_KO[state.saju.yongsin]} 기운 채우기`, 'charm-month')}`;
   return tlCard('month', sum, body);
 }
@@ -667,6 +744,7 @@ function tlYear(d) {
     <p class="muted" style="font-size:0.76rem;margin:2px 0 8px">입춘(${md2(y.months[0].start)})부터 12절기월 · 숫자는 양력 기준 달</p>
     <div class="tl-kit"><span>상반기 ${h1} · 하반기 ${h2}</span><span>🌟 좋은 달 ${y.best.map((m) => `${m.solarMonth}월`).join(' · ')}</span><span>⚠️ 조심할 달 ${y.caution.map((m) => `${m.solarMonth}월`).join(' · ')}</span></div>
     <p class="why-calc">올해 ${y.year.score} = 세운 ${y.year.base}${y.daewoon ? ` × 70% + 대운 ${y.daewoon.score} × 30%` : ''} · 근거: ${explainParts(y.year.parts)}</p>
+    <button class="ghost tl-read" type="button" data-tl-step="read-year">📖 올해 운세 풀이 자세히 읽기</button>
     <div class="tl-two">${stepBtn('올해 고민, 30일 해결 여정으로 풀기', 'journey')}<button class="ghost" type="button" data-tl-step="report">월별 리포트 자세히</button></div>`;
   return tlCard('year', sum, body);
 }
@@ -684,6 +762,7 @@ function tlDaewoon(d) {
     ${cur ? `<p class="tl-lead"><b>지금은 「${th.god} · ${th.theme}」의 10년</b>이에요. ${daewoonComment(s, cur, 0)}</p>` : '<p class="tl-lead">아직 첫 대운이 시작되기 전이에요. 타고난 원국의 흐름대로 자라는 시기입니다.</p>'}
     <div class="dw-chips">${chips}</div>
     <p class="why-calc">${d.dw.forward ? '순행' : '역행'} 대운 · ${d.dw.startAge}세 시작 (태어난 날부터 절기까지 ${d.dw.days}일 ÷ 3)${cur ? ` · 근거: ${explainParts(layersAt(s, state.fortune.date, state.profile.gender).daewoon.parts)}` : ''}</p>
+    <button class="ghost tl-read" type="button" data-tl-step="read-daewoon">📖 대운 풀이 자세히 읽기</button>
     ${stepBtn('앞으로 5년 흐름 보기', 'five')}`;
   return tlCard('daewoon', sum, body);
 }
@@ -724,6 +803,7 @@ document.addEventListener('click', (e) => {
   const st = e.target.closest('[data-tl-step]');
   if (!st) return;
   const a = st.dataset.tlStep; const d = timelineData();
+  if (a.startsWith('read-')) { openReading(a.slice(5)); return; }
   if (a === 'charm-today') { runAskCta('today'); return; }
   if (a === 'charm-month') { state.charm.type = 'luck'; state.charm.element = state.saju.yongsin; selectTab('charm'); renderCharm(true); return; }
   if (a === 'chat-week') { const b = d.week.best.date; selectTab('chat'); setTimeout(() => { const i = $('#chat-form input'); if (i) { i.value = `이번 주 ${b.month}/${b.day}(${dowOf(b)})이 좋은 날이래. 그날 뭘 하면 좋을까?`; i.focus(); } }, 50); return; }
@@ -1305,7 +1385,7 @@ function seasonCardHTML() {
         <ul class="season-tiers">${tiers}</ul>
       </div>
     </div>
-    <div class="shop-item season-set"><div><b>👘 ${ss.theme} 꾸미기 세트</b><small>${ss.item} 바로 받기 · 계절 배경 효과(${EFFECT_LABEL[ss.effect]}) · 금빛 칭호 · 한정 스티커</small></div>
+    <div class="shop-item season-set"><div><b>👘 ${ss.theme} 꾸미기 세트</b><small>${ss.item} 바로 받기 · 계절 장면(${SCENE_NAME[ss.key]}) · 배경 효과(${EFFECT_LABEL[ss.effect]}) · 금빛 칭호</small></div>
       <button class="primary" type="button" data-season="buy" ${owned.set ? 'disabled' : ''}>${owned.set ? '보유 중' : `${PACK_PRICE.toLocaleString()}원`}</button></div>
     <p class="muted" style="font-size:0.74rem;margin:6px 0 0">꾸미기 전용이라 운세·오행 수치는 변하지 않아요. 무료 트랙 미션 4개를 모두 하면 ${withEul(ss.item)} 무료로 받아요. 모든 아이템에 「${ss.year} ${ss.name}」이 새겨지고, 시즌이 끝나면 같은 디자인은 다시 판매하지 않아요.</p>
   </div>`;
@@ -1320,6 +1400,7 @@ function openSeasonShop() {
     <div class="season-modal-art">${seasonPreviewSVG(ss.key, 220, 'set')}</div>
     <ul class="season-contents">
       <li>👘 <b>${esc(itemName(ss))}</b> — 바로 장착</li>
+      <li>🏞️ 계절 장면 — ${SCENE_NAME[ss.key]}</li>
       <li>✨ 계절 배경 효과 — ${EFFECT_LABEL[ss.effect]} (켜고 끌 수 있어요)</li>
       <li>🏅 금빛 칭호 — ${esc(titleName(ss, true))}</li>
       <li>🏷️ 한정 스티커 — ${esc(ss.sticker)}</li>
@@ -1508,7 +1589,7 @@ async function sendChat(text) {
   const log = $('#chat-log');
   const face = faceSVG(characterInfo(state.saju, state.profile), ctx.stage, 'smile', 40);
   const bubble = document.createElement('div');
-  bubble.className = 'msg bot'; bubble.innerHTML = `<div class="av">${face}</div><p class="typing">${ctx.pers.me}가 생각하는 중…</p>`;
+  bubble.className = 'msg bot'; bubble.innerHTML = `<div class="av">${face}</div><p class="typing">${ctx.zodiacName} 수호신이 생각하는 중…</p>`;
   log.appendChild(bubble); log.scrollTop = log.scrollHeight;
   const p = bubble.querySelector('p');
   let answer;
@@ -1990,7 +2071,7 @@ function showSummon() {
 // ---------- 🧪 전체 미리보기 갤러리 (테스트용) ----------
 // 12지신 캐릭터(띠 12 × 진화 14단계 × 성별 × 오행), 부적(종류 6 × 등급 5 × 테마 2), 이모티콘(표정 8 × 스타일 × 등급), 한정 소품 11종을 한 화면에서 확인
 function galState() {
-  state.gal = state.gal || { tab: 'char', stage: 2, gender: state.profile.gender || 'female', el: STEM_ELEMENT[state.saju.dayMaster], theme: 'neon', style: 'neon', rarity: 'epic', zodiac: state.saju.pillars.year.branch };
+  state.gal = state.gal || { set: true, tab: 'char', stage: 2, gender: state.profile.gender || 'female', el: STEM_ELEMENT[state.saju.dayMaster], theme: 'neon', style: 'neon', rarity: 'epic', zodiac: state.saju.pillars.year.branch };
   return state.gal;
 }
 
@@ -2022,16 +2103,16 @@ function renderGallery() {
     controls = `<div class="gal-row"><span>테마</span><div class="chips">${chip('theme', 'classic', '전통 주사', g.theme === 'classic')}${chip('theme', 'neon', '네온 2099', g.theme === 'neon')}</div></div>${elChips}`;
     grid = TALISMAN_TYPES.map((t) => RARITIES.map((r) => {
       const tl = createTalisman(state.saju, f, { type: t.key, rarity: r.key, theme: g.theme, element: g.el });
-      return `<figure class="gal-item charm">${renderTalismanSVG(tl)}<figcaption><b style="color:${r.color}">${r.label}</b><small>${t.label}부 · ${tl.effects[0].stat} ${tl.effects[0].value > 0 ? '+' : ''}${tl.effects[0].value}%</small></figcaption></figure>`;
+      return `<figure class="gal-item charm">${renderTalismanSVG(tl)}<figcaption><b style="color:${r.color}">${r.label}</b><small>${t.label}부 · ${r.key === 'common' ? '글자만' : EMBLEM_NAME[t.key]}${r.key === 'epic' ? '+팔괘' : r.key === 'legend' ? '+금빛 날개' : r.key === 'myth' ? '+12지신 고리' : ''}</small></figcaption></figure>`;
     }).join('')).join('');
   } else if (g.tab === 'emote') {
     controls = `<div class="gal-row"><span>스타일</span><div class="chips">${chip('style', 'neon', '네온', g.style === 'neon')}${chip('style', 'sticker', '스티커', g.style === 'sticker')}</div></div><div class="gal-row"><span>등급</span><div class="chips">${RARITIES.map((r) => chip('rarity', r.key, r.label, g.rarity === r.key)).join('')}</div></div>${zChips}${stageChips}`;
-    grid = EMOTES.map((e) => `<figure class="gal-item">${renderEmoticonSVG(galSaju(g.zodiac, g.el), f, { mood: e.key, style: g.style, rarity: g.rarity, stage: g.stage, profile, caption: e.label })}<figcaption><b>${e.label}</b><small>${e.key}</small></figcaption></figure>`).join('');
+    grid = EMOTES.map((e) => `<figure class="gal-item">${renderEmoticonSVG(galSaju(g.zodiac, g.el), f, { mood: e.key, style: g.style, rarity: g.rarity, stage: g.stage, profile, caption: e.label })}<figcaption><b>${e.label}</b><small>${MOOD_PROP[e.key]}</small></figcaption></figure>`).join('');
   } else {
-    controls = zChips + stageChips + genderChips;
+    controls = `<div class="gal-row"><span>구성</span><div class="chips">${chip('set', 'item', '무료 소품만', !g.set)}${chip('set', 'set', '꾸미기 세트(장면+효과)', g.set)}</div></div>${zChips}${stageChips}${genderChips}`;
     grid = Object.entries(SEASON_PACKS).map(([k, pk]) => {
       const info = characterInfo(galSaju(g.zodiac, g.el), profile);
-      return `<figure class="gal-item">${renderCharacterSVG(info, { stage: g.stage, width: 150, backdrop: true, mood: 'excited', season: { key: k, effect: true } })}<figcaption><b>${pk.item}</b><small>${pk.theme} · ${k}</small></figcaption></figure>`;
+      return `<figure class="gal-item">${renderCharacterSVG(info, { stage: g.stage, width: 150, backdrop: true, mood: 'excited', season: { key: k, effect: g.set } })}<figcaption><b>${pk.item}</b><small>${g.set ? `${SCENE_NAME[k]} · ` : ''}${pk.theme}</small></figcaption></figure>`;
     }).join('');
   }
   panel.innerHTML = `
@@ -2045,9 +2126,10 @@ function renderGallery() {
 }
 
 document.addEventListener('click', (e) => {
-  const b = e.target.closest('[data-gal-tab],[data-gal-stage],[data-gal-el],[data-gal-gender],[data-gal-theme],[data-gal-style],[data-gal-rarity],[data-gal-zodiac]');
+  const b = e.target.closest('[data-gal-set],[data-gal-tab],[data-gal-stage],[data-gal-el],[data-gal-gender],[data-gal-theme],[data-gal-style],[data-gal-rarity],[data-gal-zodiac]');
   if (!b) return;
   const g = galState(); const d = b.dataset;
+  if (d.galSet) g.set = d.galSet === 'set';
   if (d.galTab) g.tab = d.galTab;
   if (d.galStage) g.stage = Number(d.galStage);
   if (d.galEl) g.el = Number(d.galEl);
@@ -2450,7 +2532,7 @@ function personalityCard() {
     <div><b>${pers.type}</b></div>
     <div class="perks" style="margin-top:4px">${pers.traits.map((t) => `<em>#${t}</em>`).join('')}</div>
     <p style="margin:6px 0 0;font-size:0.88rem">${pers.intro}</p>
-    <p class="muted" style="margin:4px 0 0;font-size:0.8rem">말투: ${pers.voice} · 자기 호칭: "${pers.me}"${heroOptions().stage === 1 ? ' · 아기 단계라 아직 "뀨!"가 먼저 나와요' : heroOptions().stage >= 5 ? ' · 신수가 되어 말에 위엄(✦)이 생겼어요' : ''}</p>
+    <p class="muted" style="margin:4px 0 0;font-size:0.8rem">말투: ${pers.voice} · 자기 호칭: "${pers.me}"${heroOptions().stage === 1 ? ' · 아기 단계라 말 앞에 🍼가 붙어요' : heroOptions().stage >= 5 ? ' · 신수가 되어 말에 위엄(✦)이 생겼어요' : ''}</p>
   </div>`;
 }
 

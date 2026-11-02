@@ -3,6 +3,7 @@
 // - 오프라인: 같은 맥락으로 규칙 기반 답변 (말버릇·사주 근거·작은 행동 1개)
 // - 위기 신호(자해·자살 등)에는 AI 호출 없이 고정 안내 + 상담 전화
 import { ELEMENT_KO, ELEMENT_HANJA } from './saju.js';
+import { meSubject } from './personality.js';
 
 export const CRISIS_WORDS = ['죽고 싶', '자살', '자해', '사라지고 싶', '살기 싫', '목숨', '끝내고 싶'];
 
@@ -24,9 +25,9 @@ export function buildInstructions(ctx) {
 
 [캐릭터]
 - 성격 유형: ${ctx.pers.type} (${ctx.pers.traits.join(', ')})
-- 말투: ${ctx.pers.voice}. 자기 호칭은 "${ctx.pers.me}". 반말로 다정하게.
+- 말투: ${ctx.pers.voice}. 자기 호칭은 "${ctx.pers.me}". ${ctx.pers.key === 'rooster' ? '상냥한 존댓말로.' : '다정한 친구 같은 부드러운 반말로.'} 귀엽지만 유치하지 않게: 문장마다 의성어를 붙이거나 과장된 자기 호칭을 쓰지 않는다.
 - 예시 말투: "${ctx.pers.greet[0]}" / "${ctx.pers.tap[0]}"
-${ctx.stage === 1 ? '- 아기 단계라 문장 앞에 가끔 "뀨!"를 붙인다.' : ''}${ctx.stage >= 5 ? '- 신수 이상 단계라 말에 위엄이 있다.' : ''}
+${ctx.stage === 1 ? '- 아기 단계라 문장이 짧고 순하다.' : ''}${ctx.stage >= 5 ? '- 신수 이상 단계라 말에 차분한 위엄이 있다.' : ''}
 
 [사용자 사주 요약]
 - 이름: ${ctx.userName}
@@ -85,13 +86,7 @@ const INTENTS = [
   { key: 'today', words: ['오늘', '운세', '어때', '하루'], cat: 'total', label: '운세' },
 ];
 
-const TAIL = {
-  rat: '찍!', ox: '음머.', tiger: '어흥!', rabbit: '깡총!', dragon: '크르릉.', snake: '스으.',
-  horse: '히힝!', sheep: '메에~', monkey: '끼끼!', rooster: '꼬끼오!', dog: '멍!', pig: '꿀꿀~',
-};
-
 export function offlineReply(ctx, text) {
-  const t = TAIL[ctx.pers.key] || '';
   const f = ctx.fortune;
   const intent = INTENTS.find((x) => x.words.some((w) => text.includes(w))) || INTENTS[INTENTS.length - 1];
   const score = intent.cat === 'total' ? f.scores.total : f.scores[intent.cat];
@@ -109,7 +104,7 @@ export function offlineReply(ctx, text) {
   };
   const empathy = intent.key === 'mood' ? `${ctx.userName}, 마음이 무거웠구나. 이야기해 줘서 고마워.` : `${ctx.userName}의 ${intent.label} 이야기구나.`;
   const recall = ctx.followUp ? `${ctx.followUp} ` : ctx.recall ? `${ctx.recall} ` : '';
-  return `${recall}${empathy} 오늘 ${intent.label}은 ${score}점, ${tone}. ${ctx.pers.me}가 보기엔 ${f.tenGod}의 날이라 "${f.info.title}"의 기운이 흐르고, 너한테 필요한 건 ${el} 기운이야. ${actions[intent.key]}. 언제나 ${ctx.pers.me}가 옆에 있어, ${t}`;
+  return `${recall}${empathy} 오늘 ${intent.label}은 ${score}점, ${tone}. ${ctx.pers.key === 'rooster' ? '제가 보기엔' : '내가 보기엔'} ${f.tenGod}의 날이라 "${f.info.title}"의 기운이 흐르고, 너한테 필요한 건 ${el} 기운이야. ${actions[intent.key]}. ${ctx.pers.key === 'rooster' ? '언제나 곁에서 응원할게요.' : '언제나 곁에서 응원할게.'}`;
 }
 
 export const QUICK_ASKS = ['오늘 운세 자세히 알려 줘', '요즘 고민 상담해 줘', '오늘 뭐 입을까?', '연애운 어때?', '나한테 맞는 부적 추천해 줘'];

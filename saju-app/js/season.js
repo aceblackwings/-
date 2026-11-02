@@ -226,3 +226,49 @@ export function seasonEffectSVG(effect, animate = false, seed = 1) {
   const glow = effect === 'moon' ? '<circle cx="268" cy="58" r="46" fill="#ffe9a0" opacity="0.18"/><circle cx="268" cy="58" r="28" fill="#fff4c9"/><circle cx="276" cy="50" r="5" fill="#f1dc9a" opacity="0.7"/><circle cx="258" cy="66" r="4" fill="#f1dc9a" opacity="0.6"/>' : '';
   return `<g class="season-fx" pointer-events="none">${glow}${items}</g>`;
 }
+
+/**
+ * 꾸미기 세트 전용 계절 장면 (320×400, 캐릭터 뒤쪽 · 가장자리에만 그려 캐릭터를 가리지 않음)
+ * 무료 트랙 소품만 있으면 소품만, 꾸미기 세트가 있으면 장면 + 배경 효과까지 붙어 차이가 한눈에 보인다
+ */
+export const SCENE_NAME = {
+  ipdong: '눈사람과 설송', dongji: '팥죽 한 그릇', seollal: '청사초롱 줄등', daeboreum: '보름달과 달집', ipchun: '입춘대길 방',
+  chunbun: '벚꽃 가지', dano: '창포 그네', haji: '한여름 해와 수박', chilseok: '오작교 은하수', chubun: '단풍 가지', chuseok: '달토끼와 감 바구니',
+};
+export function seasonSceneSVG(key) {
+  const ground = (fill, stroke) => `<path d="M0 352 q80 -18 160 -6 q80 12 160 -4 V400 H0 Z" fill="${fill}" stroke="${stroke}" stroke-width="2"/>`;
+  const moon = (x, y, r, rabbit) => `<circle cx="${x}" cy="${y}" r="${r + 10}" fill="#fff3c4" opacity="0.25"/><circle cx="${x}" cy="${y}" r="${r}" fill="#fff1b8" stroke="#e8c96a" stroke-width="2"/>${rabbit ? `<g transform="translate(${x} ${y + 4})" fill="#d9b85c" opacity="0.8"><ellipse cx="-4" cy="4" rx="9" ry="7"/><ellipse cx="-8" cy="-8" rx="2.5" ry="7"/><ellipse cx="-3" cy="-9" rx="2.5" ry="7"/><path d="M6 -6 l4 14" stroke="#d9b85c" stroke-width="3"/><ellipse cx="10" cy="10" rx="6" ry="3"/></g>` : ''}`;
+  switch (key) {
+    case 'ipdong': return `${ground('#f4fbff', '#bfe3ff')}
+      <g transform="translate(46 318)"><circle cy="20" r="22" fill="#fff" stroke="#9cc9ea" stroke-width="2"/><circle cy="-10" r="15" fill="#fff" stroke="#9cc9ea" stroke-width="2"/><circle cx="-5" cy="-12" r="2" fill="#241b2f"/><circle cx="5" cy="-12" r="2" fill="#241b2f"/><path d="M0 -8 l9 2 l-9 2 z" fill="#ff9f43"/><path d="M-12 0 q12 6 24 0" stroke="#e63946" stroke-width="5" fill="none"/></g>
+      <g transform="translate(282 300)"><path d="M0 -50 l26 40 h-12 l20 30 h-14 l18 28 h-76 l18 -28 h-14 l20 -30 h-12 z" fill="#2e7d5b" stroke="#1b4d38" stroke-width="2"/><path d="M-14 -16 q14 6 28 0 M-22 14 q22 8 44 0" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/><rect x="-4" y="48" width="8" height="10" fill="#6b4a1f"/></g>`;
+    case 'dongji': return `${ground('#f4fbff', '#c9dceb')}
+      <g transform="translate(52 336)"><ellipse cy="-6" rx="30" ry="9" fill="#8d1b25"/><path d="M-32 -6 q0 30 32 30 q32 0 32 -30 z" fill="#f5f0e1" stroke="#6b4a1f" stroke-width="2"/>${[-14, -4, 6, 16].map((x) => `<circle cx="${x}" cy="-7" r="3.5" fill="#fff"/>`).join('')}<path d="M-8 -22 q-4 -8 0 -14 M6 -22 q-4 -8 0 -14" stroke="#c7c7c7" stroke-width="2" fill="none"/></g>
+      <g transform="translate(276 92)" fill="#ffe08a">${moon(0, 0, 18, false)}</g>`;
+    case 'seollal': return `<path d="M0 34 q160 40 320 0" fill="none" stroke="#6b4a1f" stroke-width="2.5"/>
+      ${[40, 110, 210, 280].map((x, i) => { const y = 34 + Math.sin((x / 320) * Math.PI) * 30; return `<g transform="translate(${x} ${y})"><path d="M0 0 v6" stroke="#6b4a1f" stroke-width="2"/><rect x="-11" y="6" width="22" height="26" rx="6" fill="${i % 2 ? '#e63946' : '#1d4ed8'}"/><rect x="-11" y="16" width="22" height="16" rx="3" fill="${i % 2 ? '#1d4ed8' : '#e63946'}"/><path d="M-4 32 v8 M0 32 v10 M4 32 v8" stroke="#ffd166" stroke-width="2"/></g>`; }).join('')}
+      ${ground('#f3e2c7', '#c9a26b')}`;
+    case 'daeboreum': return `${moon(54, 58, 34, false)}
+      <g transform="translate(276 338)"><path d="M-26 20 L0 -46 L26 20 Z" fill="#c9a26b" stroke="#6b4a1f" stroke-width="2"/><path d="M-18 20 q6 -26 18 -30 q12 4 18 30" fill="#ff7a3d" opacity="0.85"><animate attributeName="opacity" values="0.6;1;0.6" dur="1.2s" repeatCount="indefinite"/></path></g>
+      ${ground('#2b2350', '#4b3f8a')}`;
+    case 'ipchun': return `<g transform="translate(36 120)"><rect x="-16" y="0" width="32" height="140" fill="#fff" stroke="#c0392b" stroke-width="2"/>${['立', '春', '大', '吉'].map((h, i) => `<text y="${24 + i * 32}" font-size="24" text-anchor="middle" fill="#c0392b" font-weight="800" font-family="'Song Myung', serif">${h}</text>`).join('')}</g>
+      ${ground('#c9f7d4', '#5fbf7a')}${[200, 230, 262, 292].map((x) => `<path d="M${x} 352 q-2 -14 0 -20 q-10 -8 -12 -16 q10 0 12 10 q4 -12 14 -12 q-2 10 -12 16" fill="#39d27a" stroke="#1f7a3a" stroke-width="1.5"/>`).join('')}`;
+    case 'chunbun': return `<path d="M320 30 q-60 10 -110 50 M262 46 q-10 20 -36 26" fill="none" stroke="#6b4a1f" stroke-width="5" stroke-linecap="round"/>
+      ${[[250, 44], [222, 66], [286, 30], [236, 80], [204, 76], [270, 58]].map(([x, y]) => `<g transform="translate(${x} ${y})">${[0, 72, 144, 216, 288].map((r) => `<ellipse transform="rotate(${r})" cy="-6" rx="4.5" ry="7" fill="#ffc2d6" stroke="#e05a8a" stroke-width="1"/>`).join('')}<circle r="2.6" fill="#ffd166"/></g>`).join('')}
+      ${ground('#fde7ef', '#f3a8c3')}`;
+    case 'dano': return `<g transform="translate(276 40)" fill="none" stroke="#6b4a1f" stroke-width="3"><path d="M-28 0 h56"/><path d="M-20 0 v250 M20 0 v250"/><rect x="-24" y="250" width="48" height="8" fill="#c9a26b"/></g>
+      ${ground('#c9f0e1', '#2ec4b6')}${[24, 44, 64, 84].map((x) => `<path d="M${x} 360 q-6 -30 4 -54 M${x + 6} 360 q4 -24 -2 -44" fill="none" stroke="#3aa64a" stroke-width="3" stroke-linecap="round"/>`).join('')}`;
+    case 'haji': return `<g transform="translate(270 60)"><circle r="30" fill="#ffd166"/>${Array.from({ length: 12 }, (_, i) => `<path transform="rotate(${i * 30})" d="M0 -38 v-12" stroke="#ff9f1c" stroke-width="4" stroke-linecap="round"/>`).join('')}</g>
+      ${ground('#ffe8b3', '#e8b04b')}<g transform="translate(56 350)"><path d="M-30 0 a30 30 0 0 1 60 0 z" fill="#3aa64a"/><path d="M-25 0 a25 25 0 0 1 50 0 z" fill="#ff4d6d"/>${[-12, 0, 12].map((x) => `<ellipse cx="${x}" cy="-10" rx="1.6" ry="3" fill="#241b2f"/>`).join('')}</g>`;
+    case 'chilseok': return `<path d="M-10 60 q160 -50 340 30" fill="none" stroke="#c7b8ff" stroke-width="26" opacity="0.25"/>
+      ${Array.from({ length: 14 }, (_, i) => `<circle cx="${(i * 47) % 320}" cy="${30 + ((i * 29) % 70)}" r="${1 + (i % 3)}" fill="#fff"/>`).join('')}
+      ${ground('#2b2350', '#4b3f8a')}<path d="M20 362 q140 -60 280 0" fill="none" stroke="#8a7dff" stroke-width="5"/>${[50, 90, 130, 170, 210, 250].map((x) => `<path d="M${x} ${350 - Math.sin(((x - 20) / 280) * Math.PI) * 40} l8 -5 l8 5" fill="none" stroke="#fff" stroke-width="2"/>`).join('')}`;
+    case 'chubun': return `<path d="M0 34 q60 10 110 50 M58 46 q10 20 36 26" fill="none" stroke="#6b4a1f" stroke-width="5" stroke-linecap="round"/>
+      ${[[70, 44], [98, 66], [34, 30], [86, 84], [116, 76]].map(([x, y], i) => `<g transform="translate(${x} ${y}) rotate(${i * 30}) scale(0.9)"><path d="M0 -12 l4 8 l8 -3 l-2 8 l8 3 l-8 5 l3 6 l-8 -1 l-5 8 l-5 -8 l-8 1 l3 -6 l-8 -5 l8 -3 l-2 -8 l8 3 z" fill="${i % 2 ? '#ff6b35' : '#ffc93c'}" stroke="#9a2d0a" stroke-width="1"/></g>`).join('')}
+      ${ground('#f7d9b5', '#d98b4a')}`;
+    case 'chuseok': return `${moon(56, 62, 34, true)}
+      <g transform="translate(272 344)"><path d="M-30 -8 h60 l-8 30 h-44 z" fill="#c9a26b" stroke="#6b4a1f" stroke-width="2"/>${[[-14, -14], [0, -18], [14, -14], [-6, -24], [8, -26]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="8" fill="#ff8a3d" stroke="#b5501a" stroke-width="1.5"/>`).join('')}</g>
+      ${ground('#f3e2c7', '#c9a26b')}`;
+    default: return '';
+  }
+}

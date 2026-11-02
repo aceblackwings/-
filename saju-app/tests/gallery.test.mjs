@@ -38,4 +38,29 @@ t('한정 소품 11종 × 진화 14단계 (배경 효과 포함)', () => {
     clean(svg, `${k}-${st.stage}`); assert.ok(svg.includes('season-acc'));
   }
 });
+t('등급이 오를수록 그림이 달라짐: 부적 상징·팔괘·날개·12지신 고리', () => {
+  for (const theme of ['classic', 'neon']) {
+    const svg = (r) => renderTalismanSVG(createTalisman(s0, f, { type: 'wealth', rarity: r, theme, element: 2 }));
+    assert.ok(!svg('common').includes('class="emblem"'));
+    assert.ok(svg('rare').includes('class="emblem"') && svg('rare').includes('通'));
+    assert.ok(svg('epic').match(/stroke-width="2.2"/g).length >= 16); // 팔괘 효
+    assert.ok(svg('legend').includes('-gold)') && svg('myth').includes('亥'));
+  }
+  for (const ty of TALISMAN_TYPES) assert.notEqual(renderTalismanSVG(createTalisman(s0, f, { type: ty.key, rarity: 'rare' })).length, 0);
+});
+t('이모티콘: 표정마다 다른 소품, 등급마다 장면이 더해짐', () => {
+  const e = (mood, rarity) => renderEmoticonSVG(s0, f, { mood, rarity, style: 'neon', stage: 3, profile: { gender: 'female', concern: 'job' } });
+  assert.ok(e('fighting', 'common').includes('必勝')); assert.ok(e('sleepy', 'common').includes('Zz')); assert.ok(e('thanks', 'common').includes('福'));
+  const sizes = ['common', 'rare', 'epic', 'legend', 'myth'].map((r) => e('love', r).length);
+  for (let i = 1; i < sizes.length; i++) assert.ok(sizes[i] > sizes[i - 1], `등급 ${i}`);
+  assert.ok(e('love', 'myth').includes('-holo)') && e('love', 'legend').includes('-gold)'));
+});
+t('한정 소품: 꾸미기 세트는 계절 장면까지, 무료 소품은 소품만', () => {
+  const info = characterInfo(s0, { gender: 'female', concern: 'job' });
+  for (const k of Object.keys(SEASON_PACKS)) {
+    const item = renderCharacterSVG(info, { stage: 3, season: { key: k, effect: false } });
+    const set = renderCharacterSVG(info, { stage: 3, season: { key: k, effect: true } });
+    assert.ok(set.length > item.length + 500, k);
+  }
+});
 console.log(`\n${pass} passed`);

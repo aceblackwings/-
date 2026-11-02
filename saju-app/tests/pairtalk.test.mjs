@@ -25,7 +25,7 @@ t('대표 조합: 쥐와 소의 십이지 경주', () => {
 t('관계별 대사: 쥐와 말은 충 전용 대사, 쥐와 원숭이는 삼합', () => {
   assert.equal(pairLine(0, 8).relation.type, 'samhap');
   assert.ok(pairLine(0, 8).text.includes('원숭이'));
-  assert.ok(pairLine(3, 3, { stage: 1 }).text.startsWith('뀨'));
+  assert.ok(pairLine(3, 3, { stage: 1 }).text.startsWith('🍼'));
 });
 t('속담 전설 10쌍', () => {
   const pairs = [[6, 10], [7, 8], [0, 8], [1, 3], [4, 11], [1, 2], [3, 10], [9, 11], [2, 7], [6, 9]];

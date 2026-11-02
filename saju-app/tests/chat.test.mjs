@@ -15,7 +15,7 @@ t('위기 신호는 AI 대신 고정 안내 + 109', () => {
 });
 t('지시문에 띠 말투·사주·안전 규칙 포함', () => {
   const ins = buildInstructions(ctx);
-  ['어흥', '용신', '취업', '109', '투자'].forEach((w) => assert.ok(ins.includes(w), w));
+  ['씩씩한 응원단장', '용신', '취업', '109', '투자'].forEach((w) => assert.ok(ins.includes(w), w));
 });
 t('메시지는 user로 시작·끝나고 역할이 번갈아 나옴', () => {
   const hist = [{ role: 'guardian', text: '안녕' }, { role: 'user', text: '면접 걱정돼' }, { role: 'guardian', text: '괜찮아' }];
@@ -26,7 +26,7 @@ t('메시지는 user로 시작·끝나고 역할이 번갈아 나옴', () => {
 });
 t('오프라인 답변: 의도별 사주 근거 + 말버릇', () => {
   const r = offlineReply(ctx, '면접이 내일인데 떨려');
-  assert.ok(r.includes('직장·학업운') && r.includes('어흥'));
+  assert.ok(r.includes('직장·학업운') && r.includes('응원할게'));
   assert.ok(offlineReply(ctx, '코인 사도 될까').includes('전문가'));
 });
 t('축제: 2026-11-07 입동은 진행 중, 11-01은 D-6', () => {
