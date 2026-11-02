@@ -7,7 +7,7 @@
 - 기획·조사 문서: `docs/` (**최신 기획: `docs/core-saju-review-plan.md` — 핵심 사주 타임라인·엔진 통합·경쟁 앱 리뷰 분석·v0.19~ 로드맵**, 전략: `docs/strategy-v013.md`, 방향: `docs/kaiun-loop-direction.md`, 승천·가챠: `docs/ascension-gacha-report.md`, 소셜 설계: `docs/social-design.md`)
 - 작업 브랜치: `claude/exciting-johnson-1f6o78` (커밋 후 `git push -u origin claude/exciting-johnson-1f6o78`)
 - 미리보기(Claude 아티팩트): slug `f5ff35d3-d121-45d3-8a5e-b1b6c7e1fffe`, URL https://claude.ai/artifact/XNrP2AFTcULKijQSe1xzC5
-  - 갱신: `publish_files`(slug, base_version=get_artifact로 확인, files: `index.html`, `styles.css`, `js/*.js`를 같은 경로로)
+  - 갱신: `Artifact` 도구 — 먼저 `action:read`(url), 바뀐 파일은 `read`의 `paths`로 확인 후 `publish`(url, file_path=`saju-app/index.html`, files={"styles.css":..., "js/x.js":"saju-app/js/x.js"}). 예전 `publish_files` 도구는 더 이상 없음
   - 선언된 capability: `sample`(AI 대화), `room`(실시간), `db`+`user`(우편함). 새 capability는 **선언 먼저 → 코드 게시**
 
 ## 실행·테스트
