@@ -65,18 +65,18 @@ t('한정 소품: 꾸미기 세트는 계절 장면까지, 무료 소품은 소�
 });
 import { CHAR_ASSETS, charImage, EMO_ASSETS } from '../js/assets.js';
 import fs from 'node:fs';
-t('이미지 그림: 목록에 있는 조합만 이미지, 나머지는 코드 그림 · 파일이 실제로 있음', () => {
+t('이미지 그림: 띠별 그림은 모든 오행에 쓰고(오행 배지), 없는 띠는 코드 그림 · 파일이 실제로 있음', () => {
   for (const k of CHAR_ASSETS) assert.ok(fs.statSync(new URL(`../assets/char/${k}.webp`, import.meta.url)).size > 1000, k);
-  const tiger = (el, stage, noImage) => renderCharacterSVG(characterInfo(galSaju(2, el), { gender: 'female', concern: 'job' }), { stage, noImage });
-  assert.ok(tiger(1, 2).includes('assets/char/tiger_s2_fire.webp'));
-  assert.ok(tiger(1, 9).includes('tiger_s5_fire.webp')); // 승천 단계는 5단계 그림 + 코드 효과
-  assert.ok(!tiger(0, 2).includes('<image')); // 목(木) 호랑이는 아직 코드 그림
-  assert.ok(!tiger(1, 2, true).includes('<image'));
-  assert.equal(charImage('rat', 2, 1), null);
   for (const k of EMO_ASSETS) assert.ok(fs.statSync(new URL(`../assets/emo/${k}.webp`, import.meta.url)).size > 1000, k);
-  const emo = renderEmoticonSVG(galSaju(2, 1), f, { mood: 'fighting', rarity: 'legend', profile: { gender: 'female', concern: 'job' } });
-  assert.ok(emo.includes('assets/emo/tiger_fighting_fire.webp') && !emo.includes('必勝')); // 그림 속 머리띠 → 코드 소품 생략
+  const tiger = (el, stage, noImage) => renderCharacterSVG(characterInfo(galSaju(2, el), { gender: 'female', concern: 'job' }), { stage, noImage });
+  assert.ok(tiger(1, 2).includes('assets/char/tiger_s2.webp') && tiger(1, 2).includes('火'));
+  assert.ok(tiger(0, 2).includes('assets/char/tiger_s2.webp') && tiger(0, 2).includes('木')); // 목(木) 호랑이도 그림 + 木 배지
+  assert.ok(tiger(1, 9).includes('tiger_s5.webp')); // 승천 단계는 5단계 그림 + 코드 효과
+  assert.ok(!tiger(1, 2, true).includes('<image'));
+  const rat = renderCharacterSVG(characterInfo(galSaju(0, 1), { gender: 'female', concern: 'job' }), { stage: 2 });
+  assert.equal(rat.includes('<image'), CHAR_ASSETS.has('rat_s2'));
+  const emo = renderEmoticonSVG(galSaju(2, 3), f, { mood: 'fighting', rarity: 'legend', profile: { gender: 'female', concern: 'job' } });
+  assert.ok(emo.includes('assets/emo/tiger_fighting.webp') && !emo.includes('必勝')); // 그림 속 머리띠 → 코드 소품 생략
   assert.ok(emo.includes('-gold)')); // 등급 장면(금메달)은 그대로
-  assert.ok(renderEmoticonSVG(galSaju(2, 0), f, { mood: 'fighting', profile: { gender: 'female', concern: 'job' } }).includes('必勝')); // 목(木) 호랑이는 코드 그림
 });
 console.log(`\n${pass} passed`);

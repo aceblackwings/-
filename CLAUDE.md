@@ -41,7 +41,7 @@
 | memory.js | 수호신의 기억: 일정·주제·사람·좋아하는 것 추출, 요약, 지난 일정 안부, 개인정보 제외 (`unmyeong2099.memory`) |
 | realtime.js | 실시간 궁합방(room)·친구 우편함(db) 도우미 |
 | story.js | 인스타 스토리 카드(캔버스) |
-| assets.js | 이미지 그림 목록(`CHAR_ASSETS`)·주소(`charImage`)·미리 불러오기(`preloadCharImages`, 스토리 카드용 data URL). 목록에 있는 조합만 이미지, 없으면 SVG. 6~14단계는 5단계 그림 + 코드 승천 효과 |
+| assets.js / asset-manifest.js | 이미지 그림 목록(`asset-manifest.js`는 ingest.py가 자동 생성)·주소(`charImage`·`emoImage`, 오행별 파일 우선 → 띠 공통)·미리 불러오기(`preloadCharImages(띠)`, 스토리 카드용 data URL). 없으면 SVG. 6~14단계는 5단계 그림 + 코드 승천 효과 |
 | app.js | 화면·상태·localStorage(`unmyeong2099.*` 키). 홈 = **운의 타임라인**(`timelineHTML`: 오늘·이번 주·이달·올해·대운·타고난 나, 카드마다 근거·층 이동·한 걸음 버튼), 첫 가입 = `showSajuCard`(사주 한 장 요약) → `showSummon`, 🧪 `renderGallery`(내 수호신 > 전체 미리보기, `?gallery=1`로 바로 열림, 프로필이 없으면 저장하지 않는 견본 프로필 사용) |
 
 ## 설계 원칙 (지켜야 할 것)
@@ -53,15 +53,14 @@
 6. 사용자 응대는 한국어, 공식적이고 격려하는 톤
 
 ## 그림 제작 (이미지 생성 도구)
-- 규격·프롬프트·이름 규칙: `docs/art-production-guide.md`. 원본은 `saju-app/assets/raw/`에 올라옴 → 배경(#00FF00/#FF00FF) 제거, 512·256 WebP 변환, 이미지가 있으면 사용·없으면 SVG 대체, 등급 효과·글자는 코드가 덧입힘
-- **들어간 그림(2026-11-02)**: 호랑이 화(火) 진화 1~5단계 → `saju-app/assets/char/tiger_s{1-5}_fire.webp`(768px, 53~92KB). 드라이브 원본 파일 이름은 생성 시각순(05:57=s2, 06:12:41=s1, 06:12:51=s3, 06:13=s4, 06:16=s5). 새 그림 추가 순서: 드라이브에서 받기 → `tools/chroma.py` → 768 WebP → `assets.js CHAR_ASSETS`에 키 추가
-- **표정 8종(2026-11-02)**: `saju-app/assets/emo/tiger_{표정}_fire.webp`(512px) → `assets.js EMO_ASSETS`·`emoImage`. 그림 속 소품이 있어 코드 소품(moodFront/Back)은 생략, 등급 장면·메달은 덧입힘
-- 2차 업로드 점검 결과: 부적 상징 6·한정 소품 7장에 사람이 함께 그려짐(프롬프트 문제) → `docs/prompts/tiger-pilot-redo.md`로 재생성. 부적 종이 2장 누락. 장면 11장 중 4장(064725·064828·064914·064921)은 6.3MB 초과로 드라이브 도구로 못 받음 → GitHub `saju-app/assets/raw/`로 받기. 깨끗한 것: 보름달 등불·창포 비녀·별핀·송편 바구니, 장면 7장
-- 드라이브 다운로드 주의: 동시에 여러 장 받으면 연결이 끊김 → 한 장씩. 약 6.3MB(base64 8.4M자) 넘는 파일은 받을 수 없음
-- 1차 시범: 호랑이 세트 43장, 복사용 시트 `docs/prompts/tiger-pilot.md` → 확정 후 12띠 확장
-- 배경 제거 도구: `python3 -I saju-app/tools/chroma.py 입력 출력 [green|magenta] [크기]` (쥐 시험 그림으로 검증, `docs/prompts/chroma-test-rat.png`)
-- 힉스필드 무제한은 웹사이트에서만 적용(API·CLI·MCP는 크레딧 차감, 나노바나나 프로 1장 2크레딧). 사용자는 윈도우라 Remote Control 불가 → 웹에서 생성 후 구글 드라이브 폴더로 전달받아 처리
-- 구글 드라이브 업로드 폴더: 「12지신 강림 그림」(id `1_KYUmT0L1sS_Ysf38ccgx-Rk1NRdpFoy`) > 「호랑이 시범 세트」(id `17X6Ho-Qfm50zlIw9kWbqHf33kWNyN-Er`). `search_files`(parentId) → `download_file_content`로 가져오기
+- **방식(2026-11-02 확정): 띠마다 대표 한복 1벌, 오행은 코드로 표현**(배경 빛 + 오른쪽 아래 오행 배지 `elementBadge`). 띠당 13장(진화 5 + 표정 8) × 12띠 + 공용(부적 상징 6·부적 종이 2·한정 소품 11·계절 장면 11) ≈ 186장. 나중에 `${띠}_s${단계}_${오행}` 파일을 추가하면 그 오행 사용자에게 우선 사용
+- 프롬프트: 띠별 시트 `docs/prompts/zodiac/NN-{띠}.md`(목록 `README.md`, 대표 한복·배경색은 `saju-app/tools/zodiac_specs.json`), 공용 물건 수정본 `docs/prompts/tiger-pilot-redo.md`(사람 금지 강화). 사용자는 **1K(1024px)**로 생성
+- 드라이브: 「12지신 강림 그림」 아래 띠별 폴더(id는 `saju-app/tools/drive_folders.json`, 호랑이 = 「호랑이 시범 세트」). 사용자가 시트 순서대로 생성해 올림(파일 이름은 힉스필드 기본 `hf_YYYYMMDD_HHMMSS_…`)
+- **처리 순서**: ① `search_files`(parentId=띠 폴더) ② `download_file_content`를 **한 장씩**(동시 호출 시 연결 끊김, 결과는 tool-results 파일로 저장됨 → base64 디코드) ③ `python3 -I saju-app/tools/ingest.py zodiac {띠} {원본폴더}` → 생성 시각순으로 시트 01~13에 매칭(01=s2, 02~05=s1,s3,s4,s5, 06~13=표정), 배경 제거, `assets/char/{띠}_s{n}.webp`(768)·`assets/emo/{띠}_{표정}.webp`(512), `js/asset-manifest.js` 자동 갱신, 원본폴더에 `contact.jpg` ④ contact.jpg를 눈으로 확인(사람·글자 섞임, 순서) ⑤ `npm test` → 커밋 → 아티팩트에 새 webp·manifest 게시
+- 드라이브 도구 한도: 약 6.3MB 넘는 파일은 받을 수 없음(1K면 문제없음)
+- 들어간 그림: 호랑이 진화 1~5 + 표정 8(`tiger_s*.webp`, `tiger_{표정}.webp`). 공용 물건: 깨끗한 것 보름달 등불·창포 비녀·별핀·송편 바구니(아직 앱 미연결), 장면 7장 받음(미연결), 장면 4장(064725·064828·064914·064921)은 큰 파일이라 미수령
+- 배경 제거 단독 도구: `python3 -I saju-app/tools/chroma.py 입력 출력 [green|magenta] [크기]`
+- 힉스필드 무제한은 웹사이트에서만(API·CLI·MCP는 크레딧 차감). 사용자는 윈도우라 Remote Control 불가
 
 ## 다음 할 일 후보
 (완료: v0.16 수호신의 기억, v0.17 계절 한정 패키지, v0.18 질문형 운세 메뉴·탭 5개, v0.19 운의 층 엔진 통합, v0.20 타임라인 홈·사주 한 장 요약·전체 미리보기 갤러리, v0.20.1 말투 개편·운세 풀이·등급별 그림 차별화)

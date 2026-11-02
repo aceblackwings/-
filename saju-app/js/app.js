@@ -139,7 +139,7 @@ function start(profile, mode = 'today') {
   renderAll();
   selectTab(mode === 'summon' ? 'today' : (state.lastTab || 'today'));
   if (mode === 'summon') setTimeout(showSajuCard, 200);
-  preloadCharImages().then((n) => { if (n && !$('[data-panel="hero"]').classList.contains('hidden')) renderHero(false); });
+  preloadCharImages(characterInfo(state.saju, profile).zodiac.key).then((n) => { if (n && !$('[data-panel="hero"]').classList.contains('hidden')) renderHero(false); });
   const lastSeen = loadGrowth().streak.last;
   state.backLine = null;
   state.heroLine = null;

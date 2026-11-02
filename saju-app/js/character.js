@@ -536,6 +536,7 @@ export function characterMarkup(info, opts = {}) {
   const figure = img ? `
     <ellipse cx="160" cy="384" rx="76" ry="10" fill="#000" opacity="0.28"/>
     <image href="${img}" x="-15" y="63" width="350" height="350" preserveAspectRatio="xMidYMid meet"/>
+    ${elementBadge(el, 252, 364)}
     ${miniCharm(charms[0], 112, 352, -10)}
     ${stage >= 2 ? prop(concern.key) : ''}
     ${opts.season ? seasonAccessorySVG(opts.season.key) : ''}
@@ -583,6 +584,12 @@ export function characterMarkup(info, opts = {}) {
   const scene = opts.season?.effect ? seasonSceneSVG(opts.season.key) : '';
   const body = `${backdrop}${tint}${asc}${scene}${auraMarkup}${scaled}${ascensionFront(stage)}${stage >= 3 && !img ? orbs(stage, el, id) : ''}${stage >= 5 ? particles(id) : ''}${miniCharm(charms[2], 276, 300, 12, 0.9)}${opts.season?.effect ? seasonEffectSVG(SEASON_PACKS[opts.season.key].effect, opts.animate, stage) : ''}`;
   return { id, defs, body };
+}
+
+/** 그림 캐릭터용 오행 배지: 한복은 띠 대표색이라, 내 오행은 배지·오라 빛으로 보여 준다 */
+function elementBadge(el, x, y) {
+  const c = OUTFIT[el][2];
+  return `<g class="el-badge" transform="translate(${x} ${y})"><circle r="15" fill="#140f2e" stroke="${c}" stroke-width="3"/><text y="1" font-size="15" text-anchor="middle" dominant-baseline="central" fill="${c}" font-weight="800" font-family="'Song Myung', serif">${['木', '火', '土', '金', '水'][el]}</text></g>`;
 }
 
 /** 진화 단계별 해금: 부적 슬롯 수, 이모티콘 슬롯 */
