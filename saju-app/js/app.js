@@ -33,6 +33,7 @@ import { preloadCharImages } from './assets.js';
 import { emptyGuide, showNextYear, nextStep, progress as guideProgress, isUnlocked, stepFor, completeStep as completeGuideStep, setAll as guideSetAll } from './guide.js';
 import { emptyMemory, extractMemories, mergeMemory, memoryLines, followUp, markAsked, recallFor, describe as describeMemory, forget, forgetAll, needsSummary, applySummary, summaryMessages, offlineSummary, SUMMARY_EVERY, MEMORY_LIMIT } from './memory.js';
 import { festivalStatus } from './festivals.js';
+import { ensureStart, inFirstWeek, todayIntro, markSeen, dayIndex, plainTerms, hasGameTerms, FIRST_WEEK_DAYS } from './firstweek.js';
 import { expertTable, sinsalOf, calcBasis, STAGE_NOTE, makeChart, addChart, removeChart, emptyCharts, RELATIONS } from './expert.js';
 import { CARD_AREAS, SPREADS, drawReading } from './cards.js';
 import { weekWealth, SAFETY_LINES } from './wealthweek.js';
@@ -70,6 +71,7 @@ const RT_KEY = 'unmyeong2099.realtime';
 const GUIDE_KEY = 'unmyeong2099.guide';
 const RECORDS_KEY = 'unmyeong2099.records';
 const CHARTS_KEY = 'unmyeong2099.charts';
+const FW_KEY = 'unmyeong2099.firstweek';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
 const EL_COLORS = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
 
@@ -157,6 +159,8 @@ function start(profile, mode = 'today') {
     if (dn(state.fortune.dateKey) - dn(lastSeen) >= 2) state.backLine = say('back');
   }
   grow((g) => checkIn(g, state.fortune.dateKey));
+  save(FW_KEY, ensureStart(load(FW_KEY, null), state.fortune.dateKey, loadGrowth().exp));
+  setupPlainTerms();
   renderToday();
   setTimeout(() => { processDexRewards(); renderCompat(); }, 2600);
   setTimeout(initRealtime, 900);
@@ -888,6 +892,7 @@ function timelineHTML() {
     ${vis[0] === 'next' ? R.next() : ''}
     ${guideCardHTML()}
     ${yesterdayCardHTML()}
+    ${introCardHTML()}
     <div class="tl-title"><h3>나의 운 흐름</h3><small>${vis.length >= 7 ? '오늘에서 대운까지, 같은 계산으로 이어 봐요' : '카드를 누르면 펼쳐져요'}</small></div>
     ${vis.filter((k) => k !== 'next').map((k) => R[k]()).join('')}
   </div>`;
@@ -1248,6 +1253,52 @@ document.addEventListener('change', (e) => {
   save(CHARTS_KEY, { ...cs, list: cs.list.map((c) => (c.id === cs.sel ? { ...c, ...patch } : c)) });
   refreshExpert();
 });
+
+// ---------- 첫 7일 (v0.26): 날마다 기능 하나 소개 + 첫 주에는 EXP·Lv. 대신 쉬운 말 ----------
+const firstWeek = () => load(FW_KEY, null);
+
+function introCardHTML() {
+  const f = state.fortune; if (!f) return '';
+  const it = todayIntro(firstWeek(), f.dateKey); if (!it) return '';
+  return `<div class="card intro-day" id="intro-day">
+    <div class="intro-top"><small>처음 일주일 안내 · ${it.day}/${FIRST_WEEK_DAYS}일차</small><button type="button" class="linkish" data-intro-close>닫기</button></div>
+    <b>${it.icon} ${it.title}</b>
+    <p>${it.desc}</p>
+    <button type="button" class="ghost" data-intro-go="${it.go}">${it.btn} →</button>
+  </div>`;
+}
+
+document.addEventListener('click', (e) => {
+  const go = e.target.closest('[data-intro-go]'); const close = e.target.closest('[data-intro-close]');
+  if (!go && !close) return;
+  save(FW_KEY, markSeen(firstWeek(), state.fortune.dateKey));
+  $('#intro-day')?.remove();
+  if (!go) return;
+  const to = go.dataset.introGo;
+  if (to === 'today-why') {
+    const w = $('[data-tl="today"] details.why'); if (w) { w.open = true; w.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    return;
+  }
+  if (to === 'ask') { state.askOpen = null; }
+  selectTab(to);
+});
+
+/** 첫 주에는 화면에 나오는 게임 용어를 쉬운 말로 바꿔 보여 준다 (한 곳에서 처리) */
+let plainObserver = null;
+function setupPlainTerms() {
+  const on = state.fortune && inFirstWeek(firstWeek(), state.fortune.dateKey);
+  if (!on) { plainObserver?.disconnect(); plainObserver = null; return; }
+  if (plainObserver) return;
+  const fix = (root) => {
+    if (root.nodeType === 3) { if (hasGameTerms(root.nodeValue)) root.nodeValue = plainTerms(root.nodeValue); return; }
+    if (root.nodeType !== 1) return;
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode()) if (hasGameTerms(n.nodeValue)) n.nodeValue = plainTerms(n.nodeValue);
+  };
+  fix(document.body);
+  plainObserver = new MutationObserver((muts) => muts.forEach((m) => m.addedNodes.forEach(fix)));
+  plainObserver.observe(document.body, { childList: true, subtree: true });
+}
 
 function answerFeedback(dateKey, value, memo) {
   const r = setFeedback(loadRecords(), dateKey, value, memo);
