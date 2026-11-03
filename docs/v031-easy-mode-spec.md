@@ -4,8 +4,8 @@
 > 이 문서만 읽고 바로 만들 수 있도록 할 일·파일·완료 기준을 적었다.
 
 ## 0. 시작 전에 (중요)
-- 저장소 **기본 브랜치(`claude/zhuge-liang-advice-window-e8ghwy`)는 v0.15에서 멈춰 있다.** 최신 작업은 `ccr-c85c770a-b6ueyf`에 있다.
-- 새 세션은 반드시 먼저: `git fetch origin ccr-c85c770a-b6ueyf && git checkout ccr-c85c770a-b6ueyf` (또는 지정 브랜치에서 `git merge origin/ccr-c85c770a-b6ueyf`) → `CLAUDE.md` → 이 문서 순서로 읽는다.
+- 기본 브랜치(`claude/zhuge-liang-advice-window-e8ghwy`)에 v0.30까지 모두 병합돼 있다(PR #2). 세션이 지정한 브랜치에서 그대로 시작해 `CLAUDE.md` → 이 문서 순서로 읽는다.
+- 다 만들면 PR을 만들어 기본 브랜치에 병합한다(사용자는 「병합 커밋 만들기」).
 - 테스트 `cd saju-app && npm test` (27개 파일 통과 상태에서 시작).
 
 ## 1. 목표
@@ -54,7 +54,7 @@
 ### 2-7. 마무리
 - `index.html` 바닥글 버전 `v0.31 · 쉬운 모드`
 - `CLAUDE.md`: 맨 앞 "마지막 작업", 모듈 지도에 `easymode.js`, 테스트 개수
-- `npm test` 전체 통과 → 커밋 → 두 브랜치에 푸시(`ccr-c85c770a-b6ueyf`, 세션 지정 브랜치) → 미리보기 아티팩트 게시(`easymode.js`, `app.js`, `firstweek.js`(바꿨다면), `styles.css`, `index.html`)
+- `npm test` 전체 통과 → 커밋 → 세션 지정 브랜치에 푸시 → **기본 브랜치로 PR** → 미리보기 아티팩트 게시(`easymode.js`, `app.js`, `firstweek.js`(바꿨다면), `styles.css`, `index.html`)
 
 ## 3. 화면 확인 (Playwright, 360×780)
 | 장면 | 확인할 것 |
