@@ -5,7 +5,7 @@
 ## 위치
 - 앱: `saju-app/` (빌드 없는 정적 웹, ES 모듈). 루트 `index.html`은 별개 프로젝트(일일계도상소) — 건드리지 않음
 - 기획·조사 문서: `docs/` (최신 전략: `docs/strategy-v013.md`, 방향: `docs/kaiun-loop-direction.md`, 승천·가챠: `docs/ascension-gacha-report.md`, 소셜 설계: `docs/social-design.md`)
-- 작업 브랜치: `claude/exciting-johnson-1f6o78` (커밋 후 `git push -u origin claude/exciting-johnson-1f6o78`)
+- 작업 브랜치: 세션마다 지정된 `claude/*` 브랜치 (이전: `claude/exciting-johnson-1f6o78`, 수호신 기억: `claude/charming-davinci-grrgf7`)
 - 미리보기(Claude 아티팩트): slug `f5ff35d3-d121-45d3-8a5e-b1b6c7e1fffe`, URL https://claude.ai/artifact/XNrP2AFTcULKijQSe1xzC5
   - 갱신: `publish_files`(slug, base_version=get_artifact로 확인, files: `index.html`, `styles.css`, `js/*.js`를 같은 경로로)
   - 선언된 capability: `sample`(AI 대화), `room`(실시간), `db`+`user`(우편함). 새 capability는 **선언 먼저 → 코드 게시**
@@ -32,7 +32,7 @@
 | journey.js | 고민 해결 여정 30일 |
 | fengshui.js | 풍수 기운 스팟·보물 |
 | festivals.js | 계절 축제 달력 |
-| chat.js | AI 수호신 대화(지시문·안전·오프라인 답변) |
+| chat.js | AI 수호신 대화(지시문·안전·오프라인 답변) + 수호신의 기억(주제·메모·6턴마다 요약, 개인정보 지움, `unmyeong2099.memory`) |
 | realtime.js | 실시간 궁합방(room)·친구 우편함(db) 도우미 |
 | story.js | 인스타 스토리 카드(캔버스) |
 | app.js | 화면·상태·localStorage(`unmyeong2099.*` 키) |
@@ -46,4 +46,4 @@
 6. 사용자 응대는 한국어, 공식적이고 격려하는 톤
 
 ## 다음 할 일 후보
-AI 수호신 기억(요약), 계절 한정 패키지, 해외판 튜토리얼과 다국어, 정식 앱 전환(React Native/Flutter + 서버)
+~~AI 수호신 기억(요약)~~ 완료, 계절 한정 패키지, 해외판 튜토리얼과 다국어, 정식 앱 전환(React Native/Flutter + 서버)

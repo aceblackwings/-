@@ -22,7 +22,7 @@ import { STICKERS, renderStickerSVG } from './stickers.js';
 import { RATES, PITY, PRICES, EXTRA_PER_DAY, drawPack, emptyGacha, todayGacha, isSubscribed, drawsLeft, rarityRank } from './gacha.js';
 import { ASCENSION, abilitiesAt, nextAscension, ascensionOf, trialProgress, growthBoost, TRIALS } from './ascension.js';
 import { journeyStep, emptyJourney, completeStep, JOURNEY_DAYS, JOURNEYS } from './journey.js';
-import { isCrisis, crisisReply, buildInstructions, buildMessages, offlineReply, QUICK_ASKS, FREE_CHATS } from './chat.js';
+import { isCrisis, crisisReply, buildInstructions, buildMessages, offlineReply, QUICK_ASKS, FREE_CHATS, normalizeMemory, rememberTurn, needsSummary, buildSummaryMessages, applySummary, memoryDigest, memoryForPrompt, followUp, detectTopic, topTopics, MEMORY_SUMMARY_EVERY } from './chat.js';
 import { festivalStatus } from './festivals.js';
 import { makeCode, normalizeCode, publicCard, cardToSaju, cleanCard, pendingCheers, joinTeamRoom, openMailbox, CHEER_MESSAGES, CHEER_DAILY_LIMIT, CHEER_CHARGE, cheerText, cheerId } from './realtime.js';
 import { dailySpots, distanceM, treasureRarity, bearingName, ARRIVE_RADIUS, DEMO_CENTER, PARTNER_SAMPLES } from './fengshui.js';
@@ -50,6 +50,7 @@ const JOURNEY_KEY = 'unmyeong2099.journey';
 const FENG_KEY = 'unmyeong2099.feng';
 const SOC_KEY = 'unmyeong2099.social';
 const CHAT_KEY = 'unmyeong2099.chat';
+const MEMORY_KEY = 'unmyeong2099.memory';
 const RT_KEY = 'unmyeong2099.realtime';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
 const EL_COLORS = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
@@ -941,7 +942,52 @@ function chatContext() {
     yongsin: s.yongsin, weakest: s.weakest, strength: s.strength, fortune: state.fortune,
     concern: info.concern.label, journeyStep: journeyStep(info.concern.key, Math.min(j.done, JOURNEY_DAYS - 1), s.yongsin).title,
     daewoon: d ? `${pillarLabelFull(d)} (${d.startAge}~${d.endAge}세)` : null, luckIndex: luckNow().index,
+    memory: memoryForPrompt(loadMemory()),
   };
+}
+
+function loadMemory() { return normalizeMemory(load(MEMORY_KEY, null)); }
+
+/** 6턴마다 기억 요약 갱신 (AI 있으면 AI 요약, 없거나 실패하면 규칙 요약) */
+async function refreshMemorySummary(history) {
+  let mem = loadMemory();
+  if (!needsSummary(mem)) return;
+  const sample = await getSample();
+  let text = null; let source = 'rule';
+  if (sample) {
+    try {
+      const res = await sample(buildSummaryMessages(mem, history, characterInfo(state.saju, state.profile).zodiac.name), { modelTier: 'quick', cache: false });
+      if (res?.text) { text = res.text; source = 'ai'; }
+    } catch { /* 규칙 요약으로 대체 */ }
+  }
+  mem = loadMemory();
+  save(MEMORY_KEY, applySummary(mem, text || memoryDigest(mem), source));
+  const old = $('[data-panel="chat"] .card.mem');
+  if (old) { const wasOpen = old.open; old.outerHTML = memoryCard(); const now = $('[data-panel="chat"] .card.mem'); if (now) now.open = wasOpen; bindMemoryCard(); }
+}
+
+function bindMemoryCard() {
+  $('#btn-mem-forget')?.addEventListener('click', () => {
+    if (!confirm('수호신이 기억하는 고민 주제와 메모를 모두 지울까요?')) return;
+    try { localStorage.removeItem(MEMORY_KEY); } catch { /* 저장 불가 환경 */ }
+    toast('수호신이 기억을 비웠어요. 새로운 이야기부터 다시 기억할게요');
+    renderChat();
+  });
+}
+
+function memoryCard() {
+  const m = loadMemory();
+  const tops = topTopics(m, 3);
+  if (!m.turns) {
+    return `<details class="card mem"><summary>🧠 수호신의 기억 <span class="tag">비어 있음</span></summary><p class="muted">대화를 나누면 수호신이 고민 주제와 진행 상황을 짧게 기억해, 다음에 먼저 안부를 물어요. 기억은 이 기기에만 저장돼요.</p></details>`;
+  }
+  return `<details class="card mem"><summary>🧠 수호신의 기억 <span class="tag">${m.turns}번 대화</span></summary>
+    ${tops.length ? `<div class="chips">${tops.map((x) => `<span class="chip">${esc(x.label)} ${x.count}</span>`).join('')}</div>` : ''}
+    ${m.summary ? `<p class="mem-sum">${esc(m.summary)}</p><small class="muted">${m.summarySource === 'ai' ? 'AI 수호신이 정리한 요약' : '자동 정리 요약'} · ${Math.max(0, MEMORY_SUMMARY_EVERY - (m.turns - m.summarizedAt))}번 더 대화하면 새로 정리해요</small>` : `<p class="muted">${esc(memoryDigest(m))}</p><small class="muted">${Math.max(0, MEMORY_SUMMARY_EVERY - (m.turns - m.summarizedAt))}번 더 대화하면 요약을 정리해요</small>`}
+    ${m.notes.length ? `<ul class="mem-notes">${m.notes.slice().reverse().map((n) => `<li><b>${esc(n.date.split('-').slice(1).join('/'))}</b> ${esc(n.text)}</li>`).join('')}</ul>` : ''}
+    <p class="muted" style="font-size:0.74rem">기억은 이 기기에만 저장되고 친구·서버에 공유되지 않아요. 생년월일·전화번호 같은 정보는 지운 뒤 기억해요. 힘든 마음을 털어놓은 대화는 기억하지 않아요.</p>
+    <button class="ghost" type="button" id="btn-mem-forget">기억 모두 잊게 하기</button>
+  </details>`;
 }
 
 function loadChat() {
@@ -965,7 +1011,10 @@ function renderChat() {
   const sub = isSubscribed(loadGacha(), state.fortune.dateKey);
   const left = sub ? '무제한' : `${Math.max(0, FREE_CHATS - c.used)}/${FREE_CHATS}`;
   const face = faceSVG(info, stage, 'smile', 40);
-  const hist = c.history.length ? c.history : [{ role: 'guardian', text: `${speak(zIdx(), 'greet', { index: 1, stage })} 무엇이든 물어봐. ${info.concern.label} 고민도 좋고, 오늘 운세도 좋아!` }];
+  const recall = followUp(loadMemory(), state.fortune.dateKey);
+  const lastDay = c.history.length && c.lastDate && c.lastDate !== state.fortune.dateKey;
+  const greet = { role: 'guardian', text: `${speak(zIdx(), 'greet', { index: 1, stage })} ${recall || `무엇이든 물어봐. ${info.concern.label} 고민도 좋고, 오늘 운세도 좋아!`}` };
+  const hist = c.history.length ? (lastDay && recall ? [...c.history, greet] : c.history) : [greet];
   panel.innerHTML = `
     <div class="card chat">
       <h3>💬 수호신과 대화 <span class="tag">${state.sample ? 'AI 수호신' : '수호신'} · 오늘 ${left}</span></h3>
@@ -974,11 +1023,13 @@ function renderChat() {
       <form id="chat-form" class="chat-form"><input name="q" type="text" maxlength="200" placeholder="${info.zodiac.name} 수호신에게 물어보기…" autocomplete="off"><button class="primary" type="submit">보내기</button></form>
       <p class="muted" style="font-size:0.74rem;margin:8px 0 0">무료 하루 ${FREE_CHATS}회 · 👑 수호 구독 무제한. 수호신의 답은 재미와 마음가짐을 위한 것이며, 의료·법률·투자 결정은 전문가와 상의하세요. 힘든 마음이 들면 ☎ 109 (24시간)</p>
       <button class="ghost" type="button" id="btn-chat-clear" style="margin-top:6px">대화 지우기</button>
-    </div>`;
+    </div>
+    ${memoryCard()}`;
   const log = $('#chat-log', panel); log.scrollTop = log.scrollHeight;
   $('#chat-form', panel).addEventListener('submit', (e) => { e.preventDefault(); const q = e.target.q.value.trim(); if (q) sendChat(q); });
   $$('[data-ask]', panel).forEach((b) => b.addEventListener('click', () => sendChat(b.dataset.ask)));
   $('#btn-chat-clear', panel).addEventListener('click', () => { save(CHAT_KEY, { ...loadChat(), history: [] }); renderChat(); });
+  bindMemoryCard();
 }
 
 async function sendChat(text) {
@@ -987,6 +1038,9 @@ async function sendChat(text) {
   const sub = isSubscribed(loadGacha(), state.fortune.dateKey);
   if (!sub && c.used >= FREE_CHATS && !isCrisis(text)) { toast('오늘 무료 대화를 모두 썼어요. 내일 또 만나거나 수호 구독으로 무제한 대화할 수 있어요'); openShop(); return; }
   const ctx = chatContext();
+  const memBefore = loadMemory();
+  ctx.recall = c.recalledOn === state.fortune.dateKey ? '' : followUp(memBefore, state.fortune.dateKey, detectTopic(text));
+  save(MEMORY_KEY, rememberTurn(memBefore, text, state.fortune.dateKey));
   const history = [...c.history, { role: 'user', text }];
   save(CHAT_KEY, { ...c, history });
   renderChat();
@@ -1016,9 +1070,11 @@ async function sendChat(text) {
   }
   state.chatBusy = false;
   const c2 = loadChat();
-  save(CHAT_KEY, { ...c2, used: c2.used + (isCrisis(text) ? 0 : 1), history: [...history, { role: 'guardian', text: answer }].slice(-30) });
+  const fullHistory = [...history, { role: 'guardian', text: answer }].slice(-30);
+  save(CHAT_KEY, { ...c2, used: c2.used + (isCrisis(text) ? 0 : 1), lastDate: state.fortune.dateKey, recalledOn: ctx.recall ? state.fortune.dateKey : c2.recalledOn, history: fullHistory });
   renderChat();
   grow((g) => complete(g, state.fortune.dateKey, 'chat', qBonus('chat')));
+  if (!isCrisis(text)) refreshMemorySummary(fullHistory);
 }
 
 // ---------- 단톡 궁합방 · 응원 · 부적 선물 ----------

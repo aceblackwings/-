@@ -36,7 +36,11 @@ ${ctx.stage === 1 ? '- 아기 단계라 문장 앞에 가끔 "뀨!"를 붙인다
 - 오늘 행운: 색 ${f.luck.color}, 숫자 ${f.luck.number}, 방향 ${f.luck.direction}, 음식 ${f.luck.food}
 - 지금 대운: ${ctx.daewoon || '정보 없음'} · 개운 지수 ${ctx.luckIndex}/100
 - 가장 큰 고민: ${ctx.concern} · 고민 해결 여정 오늘의 걸음: "${ctx.journeyStep}"
-
+${ctx.memory ? `
+[수호신의 기억 — 지난 대화에서 기억하는 것]
+${ctx.memory}
+- 기억은 자연스럽게 한 번만 꺼낸다("지난번에 말한 ~는 어때?"). 기억에 없는 일을 지어내지 않는다.
+` : ''}
 [대답 규칙]
 1. 한국어, 3~5문장, 띠 말투와 말버릇을 꼭 지킨다.
 2. 공감 한 문장 → 사주 근거 한 문장(위 정보 중 관련 있는 것) → 오늘 할 수 있는 아주 작은 행동 1개 → 응원 한 문장.
@@ -103,9 +107,146 @@ export function offlineReply(ctx, text) {
     today: `오늘의 고민 해결 걸음 "${ctx.journeyStep}" 하나만 해 보자`,
   };
   const empathy = intent.key === 'mood' ? `${ctx.userName}, 마음이 무거웠구나. 이야기해 줘서 고마워.` : `${ctx.userName}의 ${intent.label} 이야기구나.`;
-  return `${empathy} 오늘 ${intent.label}은 ${score}점, ${tone}. ${ctx.pers.me}가 보기엔 ${f.tenGod}의 날이라 "${f.info.title}"의 기운이 흐르고, 너한테 필요한 건 ${el} 기운이야. ${actions[intent.key]}. 언제나 ${ctx.pers.me}가 옆에 있어, ${t}`;
+  const recall = ctx.recall ? `${ctx.recall} ` : '';
+  return `${empathy} ${recall}오늘 ${intent.label}은 ${score}점, ${tone}. ${ctx.pers.me}가 보기엔 ${f.tenGod}의 날이라 "${f.info.title}"의 기운이 흐르고, 너한테 필요한 건 ${el} 기운이야. ${actions[intent.key]}. 언제나 ${ctx.pers.me}가 옆에 있어, ${t}`;
 }
 
 export const QUICK_ASKS = ['오늘 운세 자세히 알려 줘', '요즘 고민 상담해 줘', '오늘 뭐 입을까?', '연애운 어때?', '나한테 맞는 부적 추천해 줘'];
 
 export const FREE_CHATS = 3;
+
+// ---------- 수호신의 기억 (기기 안에만 저장) ----------
+// - 대화마다 주제 횟수와 짧은 메모를 남기고, 6턴마다 요약을 새로 만든다(온라인: AI 요약, 오프라인: 규칙 요약)
+// - 생년월일·전화번호·이메일 같은 개인정보는 지우고 저장, 위기 신호 대화는 기억하지 않는다
+// - 사용자가 언제든 "잊게 하기"로 전부 지울 수 있다
+
+export const MEMORY_MAX_NOTES = 6;
+export const MEMORY_SUMMARY_EVERY = 6;
+export const MEMORY_SUMMARY_MAX = 280;
+
+const TOPIC_LABEL = { love: '연애', money: '돈·재물', work: '일·공부', health: '건강', people: '사람 관계', mood: '마음' };
+const REMEMBER_TOPICS = ['love', 'money', 'work', 'health', 'people', 'mood'];
+
+export function emptyMemory() {
+  return { summary: '', summarySource: null, topics: {}, notes: [], turns: 0, summarizedAt: 0, updated: null };
+}
+
+/** 저장된 기억을 안전하게 정리 (예전 버전·손상 대비) */
+export function normalizeMemory(m) {
+  const e = emptyMemory();
+  if (!m || typeof m !== 'object') return e;
+  return {
+    ...e, ...m,
+    topics: m.topics && typeof m.topics === 'object' ? m.topics : {},
+    notes: Array.isArray(m.notes) ? m.notes.slice(-MEMORY_MAX_NOTES) : [],
+    summary: typeof m.summary === 'string' ? m.summary.slice(0, MEMORY_SUMMARY_MAX) : '',
+  };
+}
+
+/** 개인정보 지우기: 날짜·생년월일, 전화번호, 이메일, 주민번호, 긴 숫자 */
+export function redact(text) {
+  return String(text)
+    .replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, '(이메일)')
+    .replace(/\d{6}\s*-\s*\d{7}/g, '(주민번호)')
+    .replace(/0\d{1,2}[-.\s]?\d{3,4}[-.\s]?\d{4}/g, '(전화번호)')
+    .replace(/(19|20)\d{2}\s*[년.\-/]\s*\d{1,2}\s*[월.\-/]\s*\d{1,2}\s*일?/g, '(날짜)')
+    .replace(/\d{1,2}\s*월\s*\d{1,2}\s*일\s*(생|태어)/g, '(생일)')
+    .replace(/\d{5,}/g, '(숫자)');
+}
+
+export function detectTopic(text) {
+  const hit = INTENTS.find((x) => REMEMBER_TOPICS.includes(x.key) && x.words.some((w) => text.includes(w)));
+  return hit ? hit.key : null;
+}
+
+/** 사용자의 한 마디를 기억에 반영 (원본 객체는 바꾸지 않음) */
+export function rememberTurn(mem, text, dateKey) {
+  const m = normalizeMemory(mem);
+  if (isCrisis(text)) return m;
+  const topic = detectTopic(text);
+  const topics = { ...m.topics };
+  if (topic) topics[topic] = (topics[topic] || 0) + 1;
+  let notes = m.notes;
+  const clean = redact(text).replace(/\s+/g, ' ').trim();
+  if (topic && clean.length >= 4) {
+    notes = [...notes.filter((n) => n.text !== clean.slice(0, 60)), { date: dateKey, topic, text: clean.slice(0, 60) }].slice(-MEMORY_MAX_NOTES);
+  }
+  return { ...m, topics, notes, turns: m.turns + 1, updated: dateKey };
+}
+
+export function topTopics(mem, n = 2) {
+  return Object.entries(normalizeMemory(mem).topics).sort((a, b) => b[1] - a[1]).slice(0, n).map(([k, c]) => ({ key: k, label: TOPIC_LABEL[k] || k, count: c }));
+}
+
+/** 규칙 기반 요약 (오프라인·AI 실패 시) */
+export function memoryDigest(mem) {
+  const m = normalizeMemory(mem);
+  const tops = topTopics(m);
+  if (!tops.length && !m.notes.length) return '';
+  const parts = [];
+  if (tops.length) parts.push(`자주 꺼낸 이야기: ${tops.map((x) => `${x.label}(${x.count}번)`).join(', ')}`);
+  const last = m.notes[m.notes.length - 1];
+  if (last) parts.push(`최근에 한 말: "${last.text}"`);
+  return parts.join(' · ');
+}
+
+export function needsSummary(mem) {
+  const m = normalizeMemory(mem);
+  return m.turns - m.summarizedAt >= MEMORY_SUMMARY_EVERY;
+}
+
+/** AI 요약 요청 메시지 */
+export function buildSummaryMessages(mem, history, zodiacName) {
+  const m = normalizeMemory(mem);
+  const convo = history.slice(-12).map((x) => `${x.role === 'user' ? '사용자' : '수호신'}: ${redact(x.text).slice(0, 160)}`).join('\n');
+  return [{
+    role: 'user',
+    content: `너는 사주 앱 「12지신 강림」의 ${zodiacName} 수호신이 다음 대화에서 참고할 "기억 메모"를 쓰는 역할이다.
+
+[지금까지의 기억]
+${m.summary || '(없음)'}
+
+[최근 대화]
+${convo}
+
+[규칙]
+- 한국어, 3줄 이하, 전체 ${MEMORY_SUMMARY_MAX}자 이하. 각 줄은 "- "로 시작.
+- 사용자의 고민 주제, 진행 상황(예: 면접 준비 중), 좋아하는 것·힘을 주는 말만 남긴다.
+- 생년월일·전화번호·주소·실명(다른 사람 이름)·학교·회사 이름 같은 개인정보는 절대 쓰지 않는다.
+- 건강·마음 이야기는 진단처럼 쓰지 말고 "요즘 피곤하다고 함"처럼 가볍게 쓴다.
+- 메모만 출력하고 다른 말은 하지 않는다.`,
+  }];
+}
+
+/** AI(또는 규칙) 요약을 기억에 반영 */
+export function applySummary(mem, text, source = 'ai') {
+  const m = normalizeMemory(mem);
+  const lines = redact(String(text || '')).split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 3);
+  const summary = lines.join('\n').slice(0, MEMORY_SUMMARY_MAX);
+  if (!summary) return { ...m, summarizedAt: m.turns };
+  return { ...m, summary, summarySource: source, summarizedAt: m.turns };
+}
+
+/** 지시문에 넣을 기억 블록 */
+export function memoryForPrompt(mem) {
+  const m = normalizeMemory(mem);
+  const digest = memoryDigest(m);
+  if (!m.summary && !digest) return '';
+  return [m.summary, digest].filter(Boolean).join('\n');
+}
+
+function daysBetween(a, b) {
+  const p = (k) => { const [y, mo, d] = String(k).split('-').map(Number); return Date.UTC(y, mo - 1, d); };
+  const v = Math.round((p(b) - p(a)) / 86400000);
+  return Number.isFinite(v) ? v : 0;
+}
+
+/** 지난 대화를 기억해 먼저 안부 묻기 (오늘 이전 메모만, 최근 14일 이내) */
+export function followUp(mem, dateKey, topic = null) {
+  const m = normalizeMemory(mem);
+  const cand = [...m.notes].reverse().find((n) => (!topic || n.topic === topic) && n.date !== dateKey && daysBetween(n.date, dateKey) > 0 && daysBetween(n.date, dateKey) <= 14);
+  if (!cand) return '';
+  const ago = daysBetween(cand.date, dateKey);
+  const when = ago === 1 ? '어제' : `${ago}일 전에`;
+  return `${when} "${cand.text}"라고 했던 거 기억나. ${TOPIC_LABEL[cand.topic]} 이야기는 좀 어때?`;
+}

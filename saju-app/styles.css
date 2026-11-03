@@ -550,3 +550,11 @@ select option { background: #1d1742; color: #ffffff; }
 .inbox { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 4px; font-size: 0.85rem; }
 .inbox li { padding: 6px 10px; border-radius: 10px; background: rgba(255, 77, 141, 0.08); }
 .inbox .muted { font-size: 0.72rem; margin-left: 4px; }
+
+/* 수호신의 기억 */
+.card.mem summary { cursor: pointer; font-weight: 700; list-style: none; display: flex; align-items: center; gap: 8px; }
+.card.mem summary::-webkit-details-marker { display: none; }
+.card.mem[open] summary { margin-bottom: 8px; }
+.mem-sum { white-space: pre-wrap; background: rgba(138,125,255,0.12); border-left: 3px solid #8a7dff; border-radius: 8px; padding: 8px 10px; margin: 8px 0 4px; font-size: 0.9rem; line-height: 1.55; }
+.mem-notes { margin: 8px 0; padding-left: 18px; font-size: 0.85rem; line-height: 1.6; }
+.mem-notes b { color: #00e5ff; margin-right: 4px; }
