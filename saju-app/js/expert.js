@@ -46,7 +46,18 @@ export const SINSAL_NOTE = {
   도화살: '사람을 끄는 매력과 인기',
   화개살: '예술·종교·학문처럼 깊이 파고드는 기운',
   양인살: '강한 추진력과 결단, 다루기에 따라 칼이 되기도 함',
+  // v0.39 확장: 뜻은 「이렇게 쓰면 힘이 돼요」로
+  괴강살: '우두머리 기질과 강한 결단력 — 큰일을 맡을수록 빛나요',
+  백호살: '어떤 일도 밀어붙이는 강한 에너지 — 운동·현장 일로 풀면 큰 힘이 돼요',
+  귀문관살: '예민한 직감과 남다른 감수성 — 예술·상담·연구에 쓰면 재능이 돼요',
+  현침살: '바늘처럼 날카로운 집중력과 손재주 — 정밀한 기술·의료·글에 강해요',
+  홍염살: '은은하게 사람을 끄는 매력 — 표현하는 일에서 빛나요',
 };
+// v0.39 신살 확장 표
+const GOEGANG = ['庚辰', '庚戌', '壬辰', '壬戌', '戊戌'];
+const BAEKHO = ['甲辰', '乙未', '丙戌', '丁丑', '戊辰', '壬戌', '癸丑'];
+const GWIMUN = [[0, 9], [1, 6], [2, 7], [3, 8], [4, 11], [5, 10]]; // 子酉 丑午 寅未 卯申 辰亥 巳戌
+const HONGYEOM = [6, 6, 2, 7, 4, 4, 10, 9, 0, 8]; // 일간별 홍염 지지
 
 /**
  * 원국에 있는 신살
@@ -67,6 +78,17 @@ export function sinsalOf(saju) {
   for (const [name, table] of [['역마살', YEOKMA], ['도화살', DOHWA], ['화개살', HWAGAE]]) {
     add(name, [...new Set(['year', 'day'].map((base) => table[TRIAD(P[base].branch)]))]);
   }
+  // v0.39 확장
+  const pl = (k) => `${STEMS[P[k].stem]}${BRANCHES[P[k].branch]}`;
+  const LABEL = { year: '연주', month: '월주', day: '일주', hour: '시주' };
+  if (GOEGANG.includes(pl('day'))) found.push({ name: '괴강살', branch: pl('day'), where: ['일주'], note: SINSAL_NOTE.괴강살 });
+  const bh = ['year', 'month', 'day', 'hour'].filter((k) => P[k] && BAEKHO.includes(pl(k)));
+  if (bh.length) found.push({ name: '백호살', branch: bh.map(pl).join('·'), where: bh.map((k) => LABEL[k]), note: SINSAL_NOTE.백호살 });
+  const gw = spots.filter((x) => x.k !== 'day' && GWIMUN.some(([a, b]) => (a === P.day.branch && b === x.b) || (b === P.day.branch && a === x.b)));
+  if (gw.length) found.push({ name: '귀문관살', branch: `${BRANCHES[P.day.branch]}·${gw.map((x) => BRANCHES[x.b]).join('·')}`, where: ['일지', ...gw.map((x) => x.label)], note: SINSAL_NOTE.귀문관살 });
+  const needle = ['year', 'month', 'day', 'hour'].filter((k) => P[k]).reduce((n, k) => n + ([0, 7].includes(P[k].stem) ? 1 : 0) + ([3, 6, 8].includes(P[k].branch) ? 1 : 0), 0);
+  if (needle >= 3) found.push({ name: '현침살', branch: `${needle}글자`, where: ['원국'], note: SINSAL_NOTE.현침살 });
+  add('홍염살', [HONGYEOM[ds]]);
   return found;
 }
 

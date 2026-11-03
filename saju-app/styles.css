@@ -1097,3 +1097,14 @@ html.easy .main-tabs button i { font-size: 1.1rem; }
 .offer-list small { font-size: 0.7rem; color: var(--muted); }
 .nt-charm.sm { width: 64px; }
 .offer-sum { text-align: center; font-weight: 700; margin: 4px 0 10px; }
+/* v0.39 원국 깊이 보기 */
+.ilju-card h5, .pl-card h5 { margin: 14px 0 4px; color: var(--gold); font-size: 0.9rem; }
+.ilju-card p, .pl-card p, .tg-card p { margin: 0 0 6px; line-height: 1.75; word-break: keep-all; }
+.tg-list { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; }
+.tg-list li { display: grid; grid-template-columns: 5.5em 1fr 3em; align-items: center; gap: 8px; font-size: 0.86rem; }
+.tg-list li small { color: var(--muted); font-size: 0.72rem; }
+.tg-list li i { display: block; height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--gold) var(--w), rgba(255,255,255,0.06) var(--w)); }
+.tg-list li b { text-align: right; font-family: var(--mono); }
+.tg-list li.top span { color: var(--gold); font-weight: 700; }
+.pl-item { border-top: 1px solid var(--line); padding-top: 4px; }
+.pl-item:first-of-type { border-top: 0; }

@@ -33,6 +33,8 @@ import { buildReading, FIELD_LABEL, closingLine, GOD_READING } from './reading.j
 import { analyzeGyeok, GYEOK_PROFILE, strengthMission } from './gyeokguk.js';
 import { buildBooklet, todayLetter } from './booklet.js';
 import { natalRelations } from './relations.js';
+import { buildIlju } from './ilju.js';
+import { tenGodProfile, pillarReadings } from './natal.js';
 import { growEquipped, fillOf, replaceCharm, pairType, fiveDone, elementsOwned, setUnlocked, boostRarity, offerUnlocked, offerValue, offerable, removeOffered, equipLine, charmKey, GROW_FULL, RARITY_KO as CC_RARITY_KO, TYPE_KO, OFFER_UNLOCK } from './charmcare.js';
 import { buildNote, markNote, weekStamps, stampRarity, AREA_CHARM, RARITY_KO, MONTH_KEY_NEED, monthStamps, STORY_STEPS, newStoryIndex, storiesOpen, buildStories, weeklyLetter } from './note.js';
 import { ELEMENT_LUCK } from './fortune.js';
@@ -552,8 +554,12 @@ function renderSaju() {
       <p class="muted" style="margin-bottom:0">나의 수호 캐릭터: <b>${hero.title}</b> — <a href="#" data-go="hero" style="color:var(--neon)">캐릭터 탭에서 만나 보세요 →</a></p>
     </div>
 
+    ${iljuCardHTML()}
     ${gyeokCardHTML()}
+    ${tenGodCardHTML()}
+    ${pillarCardHTML()}
     ${relationsCardHTML()}
+    ${sinsalCardHTML()}
 
     <div class="card">
       <h3>오행 스탯 <span class="tag">ELEMENT STATS</span></h3>
@@ -575,6 +581,54 @@ function renderSaju() {
     ${expertCardHTML()}`;
   $('[data-panel="saju"]').insertAdjacentHTML('afterbegin', readingCardHTML());
   $$('[data-go]', $('[data-panel="saju"]')).forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); selectTab(b.dataset.go); }));
+}
+
+/** ③ 나의 일주(60일주론) + 공유(모습·한마디만, 생일·간지 없음) */
+function iljuCardHTML() {
+  const j = buildIlju(state.saju);
+  return `<div class="card ilju-card"><h3>나의 일주 <span class="tag">${j.name} · ${j.hanja}</span></h3>
+    <p class="gk-title"><b>「${esc(j.image)}」</b> <small>${esc(j.keyword)}</small></p>
+    <h5>성격</h5><p>${esc(j.paras.personality)}</p>
+    <h5>연애·배우자</h5><p>${esc(j.paras.love)}</p>
+    <h5>일·재물</h5><p>${esc(j.paras.work)}</p>
+    <p class="gk-mission">🌱 ${esc(j.step)}</p>
+    <button type="button" class="ghost" data-ilju-share style="width:100%">↗ 「나는 ${esc(j.image)} 같은 사람」 친구에게 보내기</button>
+    <small class="muted" style="display:block;margin-top:6px;font-size:0.74rem">보내는 글에는 일주의 모습과 한마디만 들어가고, 생년월일·간지는 들어가지 않아요.</small>
+  </div>`;
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('[data-ilju-share]')) return;
+  const j = buildIlju(state.saju); const z = characterInfo(state.saju, state.profile).zodiac.name;
+  const text = `나는 「${j.image}」 같은 사람 — ${j.keyword}. ${j.paras.personality.split('. ')[0]}. (${z}띠 수호신 · 12지신 강림)`;
+  if (navigator.share) navigator.share({ title: '나의 일주', text }).catch(() => {});
+  else navigator.clipboard?.writeText(text).then(() => toast('📋 글을 복사했어요. 친구에게 붙여 넣어 보내세요'), () => toast(text));
+});
+
+/** ④ 십성으로 본 성향 */
+function tenGodCardHTML() {
+  const t = tenGodProfile(state.saju);
+  return `<div class="card tg-card"><h3>십성으로 본 성향 <span class="tag">${esc(t.type)}</span></h3>
+    <ul class="tg-list">${t.groups.map((g) => `<li class="${g === t.top ? 'top' : ''}"><span title="${g.mean}">${g.icon} ${g.label}</span><i style="--w:${g.pct}%"></i><b>${g.pct}%</b></li>`).join('')}</ul>
+    <p class="muted" style="font-size:0.78rem;margin:0 0 8px">비겁 = 나를 세우는 힘 · 식상 = 재능을 펼치는 힘 · 재성 = 결실을 거두는 힘 · 관성 = 책임과 자리의 힘 · 인성 = 배우고 품는 힘</p>
+    <p>${esc(t.summary)}</p><p class="muted" style="margin:0">${esc(t.lowLine)}</p>
+  </div>`;
+}
+
+/** ⑥ 기둥 자리별 풀이 */
+function pillarCardHTML() {
+  return `<div class="card pl-card"><h3>기둥 자리별 풀이 <span class="tag">뿌리·줄기·꽃·열매</span></h3>
+    ${pillarReadings(state.saju).map((r) => `<div class="pl-item"><h5>${esc(r.head)}</h5><p>${esc(r.body)}</p></div>`).join('')}
+    ${state.saju.pillars.hour ? '' : '<p class="muted" style="margin:0">태어난 시간을 넣으면 시주(열매) 자리도 풀어 드려요.</p>'}
+  </div>`;
+}
+
+/** ⑤ 사주에 숨은 별(신살) — 뜻은 「이렇게 쓰면 힘이 돼요」 */
+function sinsalCardHTML() {
+  const list = sinsalOf(state.saju);
+  if (!list.length) return '';
+  return `<div class="card ss-card"><h3>사주에 숨은 별 <span class="tag">신살 ${list.length}개</span></h3>
+    <ul class="rel-list">${list.map((x) => `<li><p><b>${x.name}</b> <small class="muted">${x.where.join('·')} ${x.branch}</small></p><small>✨ ${esc(x.note)}</small></li>`).join('')}</ul>
+  </div>`;
 }
 
 /** 글자들의 관계(v0.37): 원국 안의 합·충·형·파·해·원진 + 천간합의 합화 */
