@@ -1,8 +1,10 @@
-// 오늘의 운세 엔진: 오늘 일진 × 내 사주 → 6개 카테고리 점수 + 문장 + 행운 키트 + 액땜 미션
+// 오늘의 운세 엔진: 운의 층(대운→올해→이달→오늘, period.js) × 내 사주 → 6개 카테고리 점수 + 문장 + 행운 키트
+// 점수에는 무작위 몫이 없고, 문장은 같은 점수 구간에서만 고른다(그래프와 설명이 어긋나지 않게).
 import {
   STEM_ELEMENT, BRANCH_ELEMENT, ELEMENT_KO, ELEMENT_HANJA,
   dayPillarIndex, pillarFromIndex, tenGod, seededRandom, todayKST, childOf,
 } from './saju.js';
+import { layersAt, categoryScores, dayRelations, monthPeriod, explainParts, branchRelation } from './period.js';
 
 export const CATEGORIES = [
   { key: 'total', label: '총운', icon: '✦' },
@@ -14,18 +16,6 @@ export const CATEGORIES = [
 ];
 
 // 십신별 카테고리 보정 [총운, 재물, 애정, 직장, 건강, 대인]
-const TEN_GOD_MOD = {
-  비견: [2, -6, 0, 4, 6, 8],
-  겁재: [-4, -14, -4, 0, 2, -6],
-  식신: [8, 6, 6, 4, 10, 6],
-  상관: [0, 4, 8, -8, -2, -10],
-  편재: [6, 15, 8, 0, -2, 4],
-  정재: [6, 14, 4, 6, 2, 4],
-  편관: [-6, -4, 0, -8, -6, -4],
-  정관: [6, 2, 6, 14, 2, 6],
-  편인: [-2, -4, -4, 6, -2, -6],
-  정인: [8, 0, 4, 12, 6, 4],
-};
 
 export const TEN_GOD_INFO = {
   비견: { title: '어깨를 나란히 하는 날', desc: '나와 같은 기운이 들어와 자신감이 오릅니다. 혼자 밀어붙이기보다 동료와 함께할 때 힘이 배가됩니다.', mission: '오늘 동료 한 명에게 먼저 도움을 제안하기', caution: '고집으로 부딪히기 쉬움', lucky: '함께 운동하거나 팀 작업 마무리하기' },
@@ -40,7 +30,7 @@ export const TEN_GOD_INFO = {
   정인: { title: '귀인이 돕는 날', desc: '윗사람과 주변의 도움이 자연스럽게 들어옵니다. 배우고 받아들이는 자세가 복을 부릅니다.', mission: '도움을 준 사람에게 감사 메시지 보내기', caution: '의존하는 마음', lucky: '자격증 공부, 멘토 만나기, 문서 작업' },
 };
 
-const TIER_TEXT = {
+export const TIER_TEXT = {
   total: ['기운이 가라앉는 날입니다. 큰 결정은 미루고 컨디션을 지키세요.', '평범하지만 안정적인 하루입니다. 작은 일부터 차근차근 처리하세요.', '흐름이 좋습니다. 미뤄 둔 일을 시작하기에 알맞습니다.', '오늘은 운의 파도가 높습니다. 과감하게 도전해도 좋습니다.'],
   wealth: ['지출이 새기 쉬운 날입니다. 결제 버튼 앞에서 한 번 더 생각하세요.', '수입과 지출이 균형을 이룹니다. 큰 거래보다 관리에 집중하세요.', '작은 이익이 들어오는 흐름입니다. 정산과 수금을 챙기세요.', '재물운이 강하게 들어옵니다. 기회가 오면 놓치지 마세요.'],
   love: ['오해가 생기기 쉬우니 말보다 행동으로 마음을 보여 주세요.', '잔잔한 하루입니다. 가벼운 안부 연락이 관계를 데워 줍니다.', '호감을 얻기 쉬운 날입니다. 먼저 다가가 보세요.', '매력이 빛나는 날입니다. 고백이나 데이트에 좋은 기운입니다.'],
@@ -70,15 +60,6 @@ export const ELEMENT_LUCK = [
   { color: '검정·남색', hex: '#00E5FF', numbers: [1, 6], direction: '북쪽', food: '해산물, 검은콩, 미역국', time: '오후 9시~새벽 1시 (亥子시)', item: '물병, 어항, 유리 소품' },
 ];
 
-const COMBINE = new Set(['0-1', '2-11', '3-10', '4-9', '5-8', '6-7']); // 육합
-
-function branchRelation(a, b) {
-  const key = a < b ? `${a}-${b}` : `${b}-${a}`;
-  if (COMBINE.has(key)) return 'combine';
-  if (Math.abs(a - b) === 6) return 'clash';
-  return null;
-}
-
 function tierOf(score) {
   if (score >= 80) return 3;
   if (score >= 60) return 2;
@@ -95,44 +76,15 @@ export function birthKey(saju) {
  * @param saju computeSaju() 결과
  * @param date {year, month, day} 기본값: 오늘(KST)
  */
-export function computeFortune(saju, date = todayKST()) {
-  const todayIdx = dayPillarIndex(date.year, date.month, date.day);
-  const today = pillarFromIndex(todayIdx);
-  const god = tenGod(saju.dayMaster, today.stem);
-  const mods = TEN_GOD_MOD[god];
+export function computeFortune(saju, date = todayKST(), opts = {}) {
+  const L = layersAt(saju, date, opts.gender);
+  const today = L.day.pillar;
+  const god = L.day.god;
   const todayEl = STEM_ELEMENT[today.stem];
-
-  const branches = Object.values(saju.pillars).filter(Boolean).map((p) => p.branch);
-  const relations = [];
-  let relTotal = 0; let relLove = 0; let relHealth = 0; let relSocial = 0;
-  for (const [key, p] of Object.entries(saju.pillars)) {
-    if (!p) continue;
-    const r = branchRelation(today.branch, p.branch);
-    if (!r) continue;
-    const weight = key === 'day' ? 1.5 : 1;
-    relations.push({ pillar: key, type: r });
-    if (r === 'combine') { relTotal += 4 * weight; relLove += 6 * weight; relSocial += 6 * weight; }
-    else { relTotal -= 6 * weight; relHealth -= 6 * weight; relSocial -= 3 * weight; }
-  }
-
-  let yongBonus = 0;
-  if (todayEl === saju.yongsin) yongBonus = 10;
-  else if (todayEl === saju.gisin) yongBonus = -8;
-  if (BRANCH_ELEMENT[today.branch] === saju.yongsin) yongBonus += 4;
-
+  const { relations, extra } = dayRelations(saju, today, branchRelation);
+  const scores = categoryScores(L.day.score, god, extra);
   const dateKey = `${date.year}-${date.month}-${date.day}`;
   const bk = birthKey(saju);
-  const extra = { total: relTotal, wealth: 0, love: relLove, career: 0, health: relHealth, social: relSocial };
-
-  const scores = {};
-  CATEGORIES.forEach((c, i) => {
-    const variation = (seededRandom(`${bk}|${dateKey}|${c.key}`) - 0.5) * 10;
-    const raw = 55 + mods[i] + extra[c.key] + yongBonus + variation;
-    scores[c.key] = Math.round(Math.min(98, Math.max(5, raw)));
-  });
-  // 총운은 전체 평균과 섞어 균형을 맞춘다
-  const avg = CATEGORIES.slice(1).reduce((s, c) => s + scores[c.key], 0) / 5;
-  scores.total = Math.round((scores.total + avg) / 2);
 
   const texts = {};
   CATEGORIES.forEach((c) => { texts[c.key] = TIER_TEXT[c.key][tierOf(scores[c.key])]; });
@@ -156,6 +108,10 @@ export function computeFortune(saju, date = todayKST()) {
     luck: { ...luck, number: luckyNumber, element: saju.yongsin },
     yongsinMatch: todayEl === saju.yongsin,
     summary: buildSummary(saju, god, todayEl),
+    // 운의 층: 오늘 점수가 어디서 왔는지 (오늘 = 일진 70% + 이달 30%)
+    layers: L,
+    period: monthPeriod(date),
+    why: explainParts(L.day.parts),
   };
 }
 

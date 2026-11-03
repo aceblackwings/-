@@ -61,19 +61,36 @@ const COMBINE = new Set(['0-1', '2-11', '3-10', '4-9', '5-8', '6-7']);
 const pairKey = (a, b) => (a < b ? `${a}-${b}` : `${b}-${a}`);
 
 /** 한 기둥(대운·세운)이 내 사주에 얼마나 도움이 되는지 0~100 */
-export function pillarScore(saju, p) {
-  const fit = (e) => {
-    if (e === saju.yongsin) return 14;
-    if (e === parentOf(saju.yongsin)) return 7;
-    if (e === saju.gisin) return -12;
-    if (e === childOf(saju.yongsin)) return 2;
-    return 0;
+/**
+ * 한 간지가 내 원국에 주는 영향 (점수 + 근거). 대운·세운·월운·일운 모두 이 함수 하나로 계산한다.
+ * 기본 SCORE_BASE + 천간 오행 적합도 + 지지 오행 적합도×0.8 + 일지와의 합(+6)·충(CLASH), 30~95로 제한
+ * 점수 눈금(v0.22): 평균 60점대, 50점 밑은 드물게 — 기본값을 올리고 부담 요인(기신·충)은 부드럽게 반영
+ */
+export const SCORE_BASE = 59;
+export const GISIN_DELTA = -7;
+export const CLASH_DELTA = -5;
+export function scoreParts(saju, p) {
+  const parts = [];
+  const fitOf = (e) => {
+    if (e === saju.yongsin) return [14, '필요한 기운(용신)'];
+    if (e === parentOf(saju.yongsin)) return [7, '용신을 돕는 기운'];
+    if (e === saju.gisin) return [GISIN_DELTA, '부담이 되는 기운(기신)'];
+    if (e === childOf(saju.yongsin)) return [2, '용신이 낳는 기운'];
+    return [0, null];
   };
-  let s = 52 + fit(STEM_ELEMENT[p.stem]) + fit(BRANCH_ELEMENT[p.branch]) * 0.8;
+  const [fs, ls] = fitOf(STEM_ELEMENT[p.stem]);
+  if (ls) parts.push({ kind: 'stem', element: STEM_ELEMENT[p.stem], delta: fs, label: `천간 ${ls}` });
+  const [fb, lb] = fitOf(BRANCH_ELEMENT[p.branch]);
+  if (lb) parts.push({ kind: 'branch', element: BRANCH_ELEMENT[p.branch], delta: Math.round(fb * 0.8 * 10) / 10, label: `지지 ${lb}` });
   const dayBranch = saju.pillars.day.branch;
-  if (COMBINE.has(pairKey(p.branch, dayBranch))) s += 6;
-  if (Math.abs(p.branch - dayBranch) === 6) s -= 7;
-  return Math.round(clamp(s, 18, 92));
+  if (COMBINE.has(pairKey(p.branch, dayBranch))) parts.push({ kind: 'combine', delta: 6, label: '내 일지와 합(合) — 손발이 맞음' });
+  if (Math.abs(p.branch - dayBranch) === 6) parts.push({ kind: 'clash', delta: CLASH_DELTA, label: '내 일지와 충(沖) — 변화·마찰' });
+  const raw = SCORE_BASE + parts.reduce((a, b) => a + b.delta, 0);
+  return { score: Math.round(clamp(raw, 30, 95)), parts };
+}
+
+export function pillarScore(saju, p) {
+  return scoreParts(saju, p).score;
 }
 
 const GOD_THEME = {
@@ -158,7 +175,8 @@ export function fiveYearForecast(saju, gender, now, idx, stage, extra = 0, yearB
     const age = year - birthYear;
     const yp = yearPillar(year);
     const d = daewoonAt(dw, age);
-    const base = Math.round(pillarScore(saju, yp) * 0.6 + (d ? d.score : 52) * 0.4);
+    // 오늘 운세·월별 리포트와 같은 규칙(period.js): 올해 = 세운 70% + 대운 30%
+    const base = d ? Math.round((7 * pillarScore(saju, yp) + 3 * d.score) / 10) : pillarScore(saju, yp);
     // 개운 누적 효과: 꾸준히 채운 기운이 해마다 조금씩 더 쌓이는 곡선
     const habit = (idx / 100) * 14 * (1 + n * 0.22);
     const improved = Math.round(clamp(base + habit + stageBonus * (n === 0 ? 1 : 0.6) + extra + (n === 0 ? yearBonus : 0), 0, 99));

@@ -1,6 +1,7 @@
 // 부적 생성 엔진: 오행 보완 + 등급 + 효과 수치 + SVG 렌더링 (전통 / 네온)
 import { ELEMENT_KO, ELEMENT_HANJA, STEM_ELEMENT, seededRandom, parentOf } from './saju.js';
 import { birthKey } from './fortune.js';
+import { charmImage } from './assets.js';
 
 export const TALISMAN_TYPES = [
   { key: 'protect', label: '액막이', hanja: '除災招福', reading: '제재초복', meaning: '재앙을 물리치고 복을 부른다', stat: '액운', sign: -1, sub: '액운 저항' },
@@ -198,6 +199,70 @@ function rarityFrame(t, id, W, H, inset, rx) {
   return '';
 }
 
+// ---------- 종류별 상징 그림 (등급이 오를수록 자란다) ----------
+// 일반: 글자만 · 희귀: 작은 상징 · 영웅: 상징 + 팔괘 고리 · 전설: 금빛 상징 + 구름 날개 · 신화: 무지개 상징 + 12지신 고리
+export const EMBLEM_NAME = { protect: '호랑이 방패', luck: '복주머니', wealth: '엽전', love: '동심결', exam: '붓', health: '불로초' };
+export const RARITY_TIER = { common: 0, rare: 1, epic: 2, legend: 3, myth: 4 };
+const TRIGRAMS = [7, 0, 1, 6, 4, 3, 2, 5]; // 팔괘 효(爻) 비트
+const BRANCH_HANJA = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+
+/** 반지름 30 기준 상징 모양 (F: 채움, S: 선, B: 바탕) */
+function emblemShape(type, F, S, B, legend) {
+  // 그림이 있으면 그림 상징(반지름 30 기준 62×62). 등급 효과(팔괘 고리·금빛 날개·12지신 고리)는 바깥에서 그대로 감싼다
+  const img = charmImage(`emblem_${type}`);
+  if (img) return `<image class="emblem-img" href="${img}" x="-31" y="-31" width="62" height="62"/>`;
+  const sw = 'stroke-width="3" stroke-linejoin="round" stroke-linecap="round"';
+  switch (type) {
+    case 'wealth': {
+      const coin = (x, y) => `<g transform="translate(${x} ${y})"><circle r="26" fill="${F}" stroke="${S}" ${sw}/><circle r="20" fill="none" stroke="${S}" stroke-width="1.2" opacity="0.7"/><rect x="-7" y="-7" width="14" height="14" fill="${B}" stroke="${S}" stroke-width="2.4"/><text y="-13" font-size="9" text-anchor="middle" dominant-baseline="central" fill="${S}" font-weight="800" font-family="'Song Myung', serif">通</text><text y="14" font-size="9" text-anchor="middle" dominant-baseline="central" fill="${S}" font-weight="800" font-family="'Song Myung', serif">寶</text></g>`;
+      return legend ? `${coin(-12, 10)}${coin(12, 10)}${coin(0, -4)}` : coin(0, 0);
+    }
+    case 'luck': return `<path d="M-20 -4 q-9 32 20 32 q29 0 20 -32 q-10 -8 -20 -8 q-10 0 -20 8 z" fill="${F}" ${sw} stroke="${S}"/>
+      <path d="M-15 -10 q15 10 30 0" fill="none" stroke="${S}" stroke-width="4" stroke-linecap="round"/><path d="M0 -12 l-8 -14 M0 -12 l8 -14" stroke="${S}" stroke-width="3" stroke-linecap="round"/>
+      <text y="12" font-size="17" text-anchor="middle" dominant-baseline="central" fill="${S}" font-weight="900" font-family="'Song Myung', serif">福</text>`;
+    case 'love': {
+      const heart = 'M0 12 C-24 -4 -16 -26 0 -13 C16 -26 24 -4 0 12 z';
+      return `<path d="M-5 13 q-6 12 -15 17 M5 13 q6 12 15 17" fill="none" stroke="${S}" stroke-width="3" stroke-linecap="round"/>
+        <path transform="translate(-7 -2)" d="${heart}" fill="${F}" stroke="${S}" ${sw}/><path transform="translate(8 2)" d="${heart}" fill="none" stroke="${S}" ${sw}/>`;
+    }
+    case 'exam': return `<g transform="rotate(-35)"><rect x="-4.5" y="-32" width="9" height="40" rx="3" fill="${F}" stroke="${S}" ${sw}/><rect x="-6" y="7" width="12" height="6" rx="1.5" fill="${S}"/>
+      <path d="M-6 13 q6 20 0 26 q-6 -6 0 -26 z M6 13 q-6 20 -6 26" fill="${S}" stroke="${S}" stroke-width="1.5"/></g>
+      <path d="M17 -22 l2.5 6 l6 2.5 l-6 2.5 l-2.5 6 l-2.5 -6 l-6 -2.5 l6 -2.5 z" fill="${S}"/>`;
+    case 'health': return `<path d="M-27 2 q0 -26 27 -26 q27 0 27 26 q-8 -6 -14 -2 q-6 -8 -13 -2 q-6 -8 -13 -2 q-6 -4 -14 6 z" fill="${F}" stroke="${S}" ${sw}/>
+      <path d="M-12 -10 q8 -8 16 0 q-6 4 -2 8" fill="none" stroke="${S}" stroke-width="2" stroke-linecap="round"/>
+      <path d="M-4 2 q-2 14 -7 26 h22 q-5 -12 -7 -26 z" fill="${F}" stroke="${S}" ${sw}/>`;
+    default: return `<path d="M0 -28 l25 8 v14 q0 22 -25 34 q-25 -12 -25 -34 v-14 z" fill="${F}" stroke="${S}" ${sw}/>
+      <path d="M-10 -8 h20 M-8 3 h16 M-10 14 h20 M0 -8 v22" stroke="${S}" stroke-width="3.2" stroke-linecap="round"/>`;
+  }
+}
+
+/**
+ * 상징 그림 한 덩어리
+ * @param tier 0~4 (일반~신화), pal {ink, fill, bg, gold, holo}
+ */
+export function typeEmblem(typeKey, cx, cy, r, tier, pal, id) {
+  if (tier <= 0) return '';
+  const k = r / 30;
+  const F = tier >= 4 ? `url(#${id}-holo)` : tier >= 3 ? `url(#${id}-gold)` : pal.fill;
+  const S = tier >= 3 ? pal.goldInk || pal.ink : pal.ink;
+  let back = ''; let ring = '';
+  if (tier >= 2) {
+    ring += `<g opacity="0.9">${TRIGRAMS.map((bits, i) => `<g transform="rotate(${i * 45}) translate(0 -42)">${[0, 1, 2].map((j) => ((bits >> j) & 1
+      ? `<path d="M-7 ${-4 + j * 4} h14" stroke="${S}" stroke-width="2.2" stroke-linecap="round"/>`
+      : `<path d="M-7 ${-4 + j * 4} h5 M2 ${-4 + j * 4} h5" stroke="${S}" stroke-width="2.2" stroke-linecap="round"/>`)).join('')}</g>`).join('')}</g>`;
+  }
+  if (tier >= 3) {
+    const wing = (sx) => `<g transform="scale(${sx} 1)"><path d="M30 -6 q16 -16 30 -4 q-12 0 -12 8 q14 -6 20 6 q-12 -2 -16 6 q8 2 8 10 q-14 -10 -30 -6" fill="${F}" stroke="${S}" stroke-width="2" stroke-linejoin="round"/></g>`;
+    back += `<circle r="36" fill="${pal.gold || '#ffd166'}" opacity="0.18"/>${wing(1)}${wing(-1)}`;
+  }
+  if (tier >= 4) {
+    ring += `<g>${BRANCH_HANJA.map((h, i) => { const a = (i * 30 - 90) * Math.PI / 180; return `<text x="${(Math.cos(a) * 48).toFixed(1)}" y="${(Math.sin(a) * 48).toFixed(1)}" font-size="9" text-anchor="middle" dominant-baseline="central" fill="${S}" font-weight="800" font-family="'Song Myung', serif">${h}</text>`; }).join('')}<animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="40s" repeatCount="indefinite"/></g>`;
+    back = `<circle r="58" fill="url(#${id}-holo)" opacity="0.14"/>${back}`;
+  }
+  const scale = [0, 0.62, 0.74, 0.86, 0.92][tier];
+  return `<g class="emblem" transform="translate(${cx} ${cy}) scale(${(k * scale).toFixed(3)})">${back}${ring}${emblemShape(typeKey, F, S, pal.bg, tier >= 3)}</g>`;
+}
+
 function rarityDefs(id) {
   return `<linearGradient id="${id}-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1a8"/><stop offset="0.3" stop-color="#d4a017"/><stop offset="0.55" stop-color="#fff6c8"/><stop offset="0.8" stop-color="#b8860b"/><stop offset="1" stop-color="#ffe680"/></linearGradient>
   <linearGradient id="${id}-holo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff4d6d"/><stop offset="0.2" stop-color="#ffc93c"/><stop offset="0.4" stop-color="#39ff88"/><stop offset="0.6" stop-color="#00e5ff"/><stop offset="0.8" stop-color="#7b5cff"/><stop offset="1" stop-color="#ff4d9d"/></linearGradient>
@@ -214,6 +279,8 @@ function renderClassic(t) {
   const mantraL = SIDE_MANTRA[(t.element + t.type.key.length) % SIDE_MANTRA.length];
   const mantraR = `${ELEMENT_HANJA[t.element]}德護身`;
   const seal = SEAL_TEXT[t.type.key] || '大吉';
+  const tier = RARITY_TIER[t.rarity.key] || 0;
+  const paper = charmImage('paper_classic'); // 그림 종이(한지·붉은 겹테두리·구름 모서리)가 있으면 코드 종이·테두리 대신
   const effects = t.effects.map((e, i) => {
     const y = 436 + i * 19;
     return `<text x="${W / 2}" y="${y}" font-size="13.5" text-anchor="middle" fill="${inkDark}" ${serif} font-weight="700">${esc(e.stat)} <tspan fill="${ink}" font-weight="800">${fmt(e.value)}</tspan></text>`;
@@ -228,14 +295,14 @@ function renderClassic(t) {
     <filter id="${id}-stamp"><feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="1" seed="2" result="t"/><feColorMatrix in="t" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 -1.6 1.25" result="m"/><feComposite in="SourceGraphic" in2="m" operator="in"/></filter>
     ${rarityDefs(id)}
   </defs>
-  <rect width="${W}" height="${H}" rx="4" fill="url(#${id}-paper)"/>
+  ${paper ? `<image href="${paper}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="none"/>` : `<rect width="${W}" height="${H}" rx="4" fill="url(#${id}-paper)"/>
   <rect width="${W}" height="${H}" rx="4" filter="url(#${id}-fiber)"/>
-  <rect width="${W}" height="${H}" rx="4" fill="url(#${id}-burn)"/>
+  <rect width="${W}" height="${H}" rx="4" fill="url(#${id}-burn)"/>`}
   ${rarityBack(t, id, W, H)}
   <g filter="url(#${id}-brush)">
-    <rect x="14" y="14" width="${W - 28}" height="${H - 28}" fill="none" stroke="${ink}" stroke-width="3.2"/>
+    ${paper ? '' : `<rect x="14" y="14" width="${W - 28}" height="${H - 28}" fill="none" stroke="${ink}" stroke-width="3.2"/>
     <rect x="22" y="22" width="${W - 44}" height="${H - 44}" fill="none" stroke="${ink}" stroke-width="1.2"/>
-    ${cloudCorner(26, 26, 1, 1, ink)}${cloudCorner(W - 26, 26, -1, 1, ink)}${cloudCorner(26, H - 26, 1, -1, ink)}${cloudCorner(W - 26, H - 26, -1, -1, ink)}
+    ${cloudCorner(26, 26, 1, 1, ink)}${cloudCorner(W - 26, 26, -1, 1, ink)}${cloudCorner(26, H - 26, 1, -1, ink)}${cloudCorner(W - 26, H - 26, -1, -1, ink)}`}
     <!-- 삼청(三淸) 부두 -->
     <g fill="none" stroke="${ink}" stroke-width="3" stroke-linecap="round">
       <circle cx="122" cy="44" r="7"/><circle cx="150" cy="38" r="8"/><circle cx="178" cy="44" r="7"/>
@@ -249,8 +316,9 @@ function renderClassic(t) {
     ${verticalText(mantraL, 62, 160, 17, `fill="${inkDark}" ${serif} opacity="0.85"`)}
     ${verticalText(mantraR, 238, 160, 17, `fill="${inkDark}" ${serif} opacity="0.85"`)}
     <path d="M84 150 q-10 110 2 246 M216 150 q10 110 -2 246" fill="none" stroke="${ink}" stroke-width="2" stroke-linecap="round"/>
-    <g transform="translate(150 342) scale(0.72) translate(-150 -342)">${talismanFoot(150, 342, ink, 3.4)}</g>
+    ${tier === 0 ? `<g transform="translate(150 342) scale(0.72) translate(-150 -342)">${talismanFoot(150, 342, ink, 3.4)}</g>` : ''}
   </g>
+  ${typeEmblem(t.type.key, 150, 370, tier >= 3 ? 38 : 48, tier, { ink, fill: '#fbe49a', bg: '#f3d06a', gold: '#ffd166', goldInk: inkDark }, id)}
   <line x1="60" y1="420" x2="240" y2="420" stroke="${ink}" stroke-width="1" stroke-dasharray="2 4"/>
   ${effects}
   ${rarityFrame(t, id, W, H, 6, 4)}
@@ -273,6 +341,8 @@ function renderNeon(t) {
   const c = NEON[t.element];
   const c2 = NEON[(t.element + 2) % 5];
   const rc = t.rarity.color;
+  const tier = RARITY_TIER[t.rarity.key] || 0;
+  const neonPaper = charmImage('paper_neon'); // 그림 바탕(회로 테두리·원근 바닥)이 있으면 코드 바탕·바닥·테두리 대신
   const mono = 'font-family="\'JetBrains Mono\',\'Fira Code\',monospace"';
   const serif = `font-family="'Song Myung','Nanum Myeongjo','Noto Serif KR',serif"`;
   // 원근 그리드 (바닥)
@@ -302,21 +372,21 @@ function renderNeon(t) {
     <linearGradient id="${id}-edge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c}"/><stop offset="0.5" stop-color="${rc}"/><stop offset="1" stop-color="${c2}"/></linearGradient>
     ${rarityDefs(id)}
   </defs>
-  <rect width="${W}" height="${H}" rx="16" fill="url(#${id}-bg)"/>
+  ${neonPaper ? `<rect width="${W}" height="${H}" rx="16" fill="#05040c"/><image href="${neonPaper}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="none"/>` : `<rect width="${W}" height="${H}" rx="16" fill="url(#${id}-bg)"/>`}
   <rect width="${W}" height="${H}" rx="16" fill="url(#${id}-core)"/>
   ${rarityBack(t, id, W, H)}
-  <g stroke="${c}" stroke-opacity="0.16" stroke-width="1">${floor}</g>
+  ${neonPaper ? '' : `<g stroke="${c}" stroke-opacity="0.16" stroke-width="1">${floor}</g>`}
   <g fill="#fff" opacity="0.025">${scan}</g>
-  <rect x="9" y="9" width="${W - 18}" height="${H - 18}" rx="12" fill="none" stroke="url(#${id}-edge)" stroke-width="2.5" filter="url(#${id}-glow)"/>
+  ${neonPaper ? '' : `<rect x="9" y="9" width="${W - 18}" height="${H - 18}" rx="12" fill="none" stroke="url(#${id}-edge)" stroke-width="2.5" filter="url(#${id}-glow)"/>`}
   ${bracket(18, 18, 1, 1)}${bracket(W - 18, 18, -1, 1)}${bracket(18, H - 18, 1, -1)}${bracket(W - 18, H - 18, -1, -1)}
   <text x="30" y="40" font-size="9.5" fill="${c}" ${mono} opacity="0.9">SYS://TALISMAN.v2099</text>
   <g transform="translate(${W - 30} 30)"><rect x="-58" y="-2" width="58" height="16" rx="8" fill="${rc}" fill-opacity="0.15" stroke="${rc}"/><text x="-29" y="10" font-size="9.5" fill="${rc}" ${mono} text-anchor="middle" font-weight="700">${esc(t.rarity.label)}</text></g>
   <!-- 오행 코어 -->
-  <g transform="translate(150 86)">
+  ${tier === 0 ? `<g transform="translate(150 86)">
     <circle r="30" fill="none" stroke="${c}" stroke-width="1" stroke-dasharray="2 5" opacity="0.8"><animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="18s" repeatCount="indefinite"/></circle>
     <circle r="21" fill="#05040c" stroke="${c}" stroke-width="2" filter="url(#${id}-glow)"/>
     <text y="1" font-size="22" text-anchor="middle" dominant-baseline="central" fill="${c}" ${serif} font-weight="800" filter="url(#${id}-glow)">${ELEMENT_HANJA[t.element]}</text>
-  </g>
+  </g>` : `<g filter="url(#${id}-glow)">${typeEmblem(t.type.key, 150, 84, 34, tier, { ink: tier >= 3 ? '#fff6c8' : c, fill: '#05040c', bg: '#05040c', gold: '#ffd166', goldInk: '#3a2a05' }, id)}</g>`}
   <g filter="url(#${id}-glow)">${motif(t.element, 60, 124, 180, c, 1.8)}</g>
   <!-- 주문 본체 (글리치 + 블룸) -->
   <g filter="url(#${id}-bloom)" opacity="0.8">${verticalText(t.type.hanja, W / 2, 156, 50, `fill="${c}" ${serif} font-weight="800"`)}</g>

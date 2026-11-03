@@ -24,7 +24,18 @@ t('점수 대사에 점수가 들어감', () => {
   assert.ok(speak(2, 'tier', { tier: 3, vars: { score: 91 } }).includes('91'));
 });
 t('진화 단계별 말투: 아기는 서툴고 신수는 위엄', () => {
-  assert.ok(speak(0, 'greet', { index: 0, stage: 1 }).startsWith('뀨'));
+  assert.ok(speak(0, 'greet', { index: 0, stage: 1 }).startsWith('🍼'));
   assert.ok(speak(0, 'greet', { index: 0, stage: 5 }).endsWith('✦'));
 });
 console.log(`\n${pass} passed`);
+import { pairDialogue } from '../js/pairtalk.js';
+t('말투 가이드: 유치한 말버릇(뀨·이 몸·본 용·문장 끝 의성어) 없음, 의성어는 쓰다듬기에서만', () => {
+  const banned = /뀨|이 몸|본 용|찍!|찍\.|어흥|크르릉|음머|깡총|히힝|메에|끼끼|꼬끼오|멍!|꿀꿀|스으/;
+  PERSONALITIES.forEach((p, i) => {
+    for (const sit of ['greet', 'tier', 'best', 'mission', 'missionDone', 'equip', 'evolve', 'back', 'compat']) {
+      const lines = Array.isArray(p[sit]) ? p[sit] : [p[sit]];
+      lines.forEach((l) => assert.ok(!banned.test(l), `${p.key}.${sit}: ${l}`));
+    }
+  });
+  for (let a = 0; a < 12; a++) for (let b = 0; b < 12; b++) pairDialogue(a, b).lines.forEach((l) => assert.ok(!banned.test(l.text), `${a}-${b}: ${l.text}`));
+});

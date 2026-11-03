@@ -2,11 +2,12 @@ import {
   computeSaju, tenGod, seededRandom, STEMS, STEMS_KO, BRANCHES, BRANCHES_KO, STEM_ELEMENT, BRANCH_ELEMENT,
   BRANCH_MAIN_STEM, ELEMENT_KO, ELEMENT_HANJA, pillarLabel, pillarLabelKo,
 } from './saju.js';
-import { computeFortune, CATEGORIES, DAY_MASTER_PROFILE } from './fortune.js';
+import { MOODS, LEVELS, pickUmbrella, missionById, habitDay, setMood, pickLevel, completeHabit, setAfter, weekDone, needsCare, habitStats } from './habit.js';
+import { computeFortune, CATEGORIES, DAY_MASTER_PROFILE, TEN_GOD_INFO } from './fortune.js';
 import {
-  createTalisman, renderTalismanSVG, downloadSVGAsPNG, TALISMAN_TYPES, THEMES, RARITIES,
+  createTalisman, renderTalismanSVG, downloadSVGAsPNG, TALISMAN_TYPES, THEMES, RARITIES, EMBLEM_NAME,
 } from './talisman.js';
-import { renderEmoticonSVG, EMOTES, todayEmote } from './emoticon.js';
+import { renderEmoticonSVG, EMOTES, todayEmote, MOOD_PROP } from './emoticon.js';
 import {
   CONCERNS, characterInfo, renderCharacterSVG, characterStats, STAGE_UNLOCKS, characterMarkup, ZODIAC,
 } from './character.js';
@@ -23,7 +24,26 @@ import { RATES, PITY, PRICES, EXTRA_PER_DAY, drawPack, emptyGacha, todayGacha, i
 import { ASCENSION, abilitiesAt, nextAscension, ascensionOf, trialProgress, growthBoost, TRIALS } from './ascension.js';
 import { journeyStep, emptyJourney, completeStep, JOURNEY_DAYS, JOURNEYS } from './journey.js';
 import { isCrisis, crisisReply, buildInstructions, buildMessages, offlineReply, QUICK_ASKS, FREE_CHATS } from './chat.js';
+import { SCENE_NAME } from './season.js';
+import { seasonStatus, SEASON_PACKS, SEASON_MISSIONS, FREE_TIERS, PACK_PRICE, emptySeason, recordSeason, missionProgress, tiersDone, buyPack, ownedItems, seasonLook, activeTitle, seasonsAround, itemName, titleName, withEul } from './season.js';
+import { dateToJdn } from './lunar.js';
+import { layersAt, monthPeriod, explainParts, TEN_GOD_MOD, weekOf, yearOf, monthDays, sajuYearOf, categoryScores } from './period.js';
+import { orderedMenu, buildAnswer, concernAsk, ASK_MENU } from './ask.js';
+import { buildReading, FIELD_LABEL, closingLine, GOD_READING } from './reading.js';
+import { preloadCharImages, itemImage } from './assets.js';
+/** 계절 한정 소품 그림 (없으면 빈칸) */
+const itemThumb = (key, cls = 'item-thumb') => { const u = itemImage(key); return u ? `<img class="${cls}" src="${u}" alt="" loading="lazy">` : ''; };
+import { GUIDE_STEPS, emptyGuide, showNextYear, nextStep, progress as guideProgress, isUnlocked, stepFor, completeStep as completeGuideStep, setAll as guideSetAll } from './guide.js';
+import { emptyMemory, extractMemories, mergeMemory, memoryLines, followUp, markAsked, recallFor, describe as describeMemory, forget, forgetAll, needsSummary, applySummary, summaryMessages, offlineSummary, SUMMARY_EVERY, MEMORY_LIMIT } from './memory.js';
 import { festivalStatus } from './festivals.js';
+import { yearCard, monthRange, savePledge, pledgeReviewDue, reviewPledge, PLEDGE_MAX } from './yearcard.js';
+import { buildMissions, markDone as dmMarkDone, allDone as dmAllDone, claimBonus as dmClaimBonus, DM_BONUS_EXP } from './daymission.js';
+import { ensureStart, inFirstWeek, plainTerms, hasGameTerms } from './firstweek.js';
+import { expertTable, sinsalOf, calcBasis, STAGE_NOTE, makeChart, addChart, removeChart, emptyCharts, RELATIONS } from './expert.js';
+import { CARD_AREAS, SPREADS, drawReading } from './cards.js';
+import { weekWealth, SAFETY_LINES } from './wealthweek.js';
+import { makeBackup, parseBackup, backupText, backupFileName, PREFIX as BACKUP_PREFIX } from './backup.js';
+import { emptyRecords, logDay, pendingFeedback, setFeedback, addItem, hasItem, setItemMemo, removeItem, dayList, stats as recordStats, streak as recordStreak, FEEDBACK, ITEM_KIND, MEMO_MAX } from './records.js';
 import { makeCode, normalizeCode, publicCard, cardToSaju, cleanCard, pendingCheers, joinTeamRoom, openMailbox, CHEER_MESSAGES, CHEER_DAILY_LIMIT, CHEER_CHARGE, cheerText, cheerId } from './realtime.js';
 import { dailySpots, distanceM, treasureRarity, bearingName, ARRIVE_RADIUS, DEMO_CENTER, PARTNER_SAMPLES } from './fengshui.js';
 import { renderStoryCanvas, shareStory, STORY_TEMPLATES } from './story.js';
@@ -37,6 +57,7 @@ import {
 const STORE_KEY = 'unmyeong2099.profile';
 const COLLECTION_KEY = 'unmyeong2099.collection';
 const MISSION_KEY = 'unmyeong2099.missions';
+const HABIT_KEY = 'unmyeong2099.habit'; // v0.30 마음 날씨 + 오늘의 우산
 const EQUIP_KEY = 'unmyeong2099.equip';
 const GROWTH_KEY = 'unmyeong2099.growth';
 const FRIENDS_KEY = 'unmyeong2099.friends';
@@ -50,7 +71,15 @@ const JOURNEY_KEY = 'unmyeong2099.journey';
 const FENG_KEY = 'unmyeong2099.feng';
 const SOC_KEY = 'unmyeong2099.social';
 const CHAT_KEY = 'unmyeong2099.chat';
+const MEM_KEY = 'unmyeong2099.memory';
+const SEASON_KEY = 'unmyeong2099.season';
 const RT_KEY = 'unmyeong2099.realtime';
+const GUIDE_KEY = 'unmyeong2099.guide';
+const RECORDS_KEY = 'unmyeong2099.records';
+const CHARTS_KEY = 'unmyeong2099.charts';
+const FW_KEY = 'unmyeong2099.firstweek';
+const DM_KEY = 'unmyeong2099.dmission';
+const PLEDGE_KEY = 'unmyeong2099.pledge';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
 const EL_COLORS = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
 
@@ -118,7 +147,7 @@ const validYear = (y) => Number.isInteger(y) && y >= 1900 && y <= 2100;
 function start(profile, mode = 'today') {
   state.profile = profile;
   state.saju = computeSaju(profileToInput(profile));
-  state.fortune = computeFortune(state.saju);
+  state.fortune = computeFortune(state.saju, undefined, { gender: state.profile.gender });
   state.fortune = applyAbilities(state.fortune);
   state.charm.element = state.saju.weakest;
   state.charm.reroll = 0;
@@ -128,7 +157,8 @@ function start(profile, mode = 'today') {
   $('#btn-edit').classList.remove('hidden');
   renderAll();
   selectTab(mode === 'summon' ? 'today' : (state.lastTab || 'today'));
-  if (mode === 'summon') setTimeout(showSummon, 200);
+  if (mode === 'summon') setTimeout(showSajuCard, 200);
+  preloadCharImages(characterInfo(state.saju, profile).zodiac.key).then((n) => { if (n && !$('[data-panel="hero"]').classList.contains('hidden')) renderHero(false); });
   const lastSeen = loadGrowth().streak.last;
   state.backLine = null;
   state.heroLine = null;
@@ -137,6 +167,8 @@ function start(profile, mode = 'today') {
     if (dn(state.fortune.dateKey) - dn(lastSeen) >= 2) state.backLine = say('back');
   }
   grow((g) => checkIn(g, state.fortune.dateKey));
+  save(FW_KEY, ensureStart(load(FW_KEY, null), state.fortune.dateKey, loadGrowth().exp));
+  setupPlainTerms();
   renderToday();
   setTimeout(() => { processDexRewards(); renderCompat(); }, 2600);
   setTimeout(initRealtime, 900);
@@ -266,15 +298,37 @@ function initForm() {
     $('#btn-edit').classList.add('hidden');
   });
 
-  if (saved && saved.gender && saved.concern && !solarDateOf(saved).error && new URLSearchParams(location.search).get('auto') !== '0') start(saved);
+  const qs = new URLSearchParams(location.search);
+  if (saved && saved.gender && saved.concern && !solarDateOf(saved).error && qs.get('auto') !== '0') start(saved);
+  else if (qs.has('gallery')) start({ name: '미리보기', calendar: 'solar', year: 1998, month: 5, day: 20, time: '09:30', timeUnknown: false, lonCorr: true, zasi: 'early', gender: 'female', concern: 'job' }); // 저장하지 않는 견본 프로필
+  if (qs.has('gallery') && state.saju) selectTab('gallery');
 }
 
 // ---------- 탭 ----------
 
+// 주 탭 5개 + 하위 화면 묶음
+const TAB_PARENT = { cards: 'ask', saju: 'ask', report: 'ask', feng: 'ask', charm: 'hero', emoji: 'hero', story: 'hero', gallery: 'hero', records: 'hero' };
+const SUBNAV = {
+  ask: [['ask', '🔮 질문 메뉴'], ['cards', '🃏 신수 카드'], ['saju', '📜 내 사주'], ['report', '📅 올해·5년'], ['feng', '🧭 풍수 지도']],
+  hero: [['hero', '🐉 캐릭터'], ['records', '📒 기록함'], ['charm', '📜 부적 만들기'], ['emoji', '😊 이모티콘'], ['story', '📸 스토리 카드'], ['gallery', '🧪 전체 미리보기']],
+};
+
 function selectTab(name) {
   state.lastTab = name;
-  $$('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+  const parent = TAB_PARENT[name] || name;
+  $$('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === parent)));
   $$('.panel').forEach((p) => p.classList.toggle('hidden', p.dataset.panel !== name));
+  const sub = $('#subnav');
+  const items = SUBNAV[parent];
+  const showSub = items && (parent === 'hero' || name !== 'ask' || state.askOpen);
+  sub.classList.toggle('hidden', !showSub);
+  if (showSub) {
+    sub.innerHTML = items.map(([k, label]) => `<button type="button" data-sub="${k}" aria-current="${k === name && !(k === 'ask' && state.askOpen) ? 'page' : 'false'}">${label}</button>`).join('');
+  }
+  if (name === 'ask') renderAsk();
+  if (name === 'gallery') renderGallery();
+  if (name === 'records') renderRecords();
+  if (name === 'cards') renderCards();
   if (name === 'story') renderStory();
   if (name === 'hero') renderHero(true);
   if (name === 'feng') renderFeng();
@@ -282,6 +336,113 @@ function selectTab(name) {
   if (name === 'today' && state.fortune) grow((g) => complete(g, state.fortune.dateKey, 'fortune', qBonus('fortune')));
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+$('#subnav').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-sub]'); if (!b) return;
+  if (b.dataset.sub === 'ask') state.askOpen = null;
+  selectTab(b.dataset.sub);
+});
+
+// ---------- 운세 보기 (질문형 메뉴판) ----------
+
+function weekFortunes() {
+  const key = `${state.fortune.dateKey}|${JSON.stringify(state.saju.input)}`;
+  if (state.week?.key === key) return state.week.list;
+  const d0 = state.fortune.date;
+  const list = Array.from({ length: 7 }, (_, i) => {
+    if (i === 0) return state.fortune;
+    const dt = new Date(Date.UTC(d0.year, d0.month - 1, d0.day + i));
+    return applyAbilities(computeFortune(state.saju, { year: dt.getUTCFullYear(), month: dt.getUTCMonth() + 1, day: dt.getUTCDate() }, { gender: state.profile.gender }));
+  });
+  state.week = { key, list };
+  return list;
+}
+
+function openAsk(key) {
+  const item = ASK_MENU.find((x) => x.key === key);
+  if (!item) return;
+  if (item.go) { state.askOpen = null; selectTab(item.go); return; }
+  state.askOpen = key;
+  selectTab('ask');
+}
+
+function renderAsk() {
+  const panel = $('[data-panel="ask"]');
+  if (!panel || !state.saju) return;
+  if (state.askOpen) { panel.innerHTML = askAnswerHTML(state.askOpen); return; }
+  const menu = orderedMenu(state.profile.concern);
+  panel.innerHTML = `
+    <div class="card ask-menu">
+      <h3>🔮 무엇이 궁금하세요?</h3>
+      <p class="muted" style="margin:-4px 0 12px;font-size:0.84rem">궁금한 것을 누르면 ${characterInfo(state.saju, state.profile).zodiac.name} 수호신이 내 사주로 바로 풀어 드려요.</p>
+      <button type="button" class="card-banner" data-sub-go="cards"><span>🃏</span><b>12지신 신수 카드 뽑기</b><small>궁금한 것을 정하고 카드 한 장 · 세 장</small></button>
+      <div class="ask-grid">${menu.map((m) => `<button type="button" class="ask-item ${m.mine ? 'mine' : ''}" data-ask-open="${m.key}">
+        <span class="ask-ic">${m.icon}</span><b>${m.q}</b><small>${m.sub}</small>${m.mine ? '<em>내 고민</em>' : ''}</button>`).join('')}</div>
+    </div>`;
+}
+
+function trendSVG(trend, color) {
+  const w = 300; const h = 70; const step = w / (trend.length - 1);
+  const pts = trend.map((t, i) => [i * step, h - 8 - ((t.score - 20) / 80) * (h - 20)]);
+  const line = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ');
+  return `<svg viewBox="-12 -6 ${w + 24} ${h + 30}" class="ask-trend" role="img" aria-label="7일 흐름">
+    <path d="${line}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/>
+    ${pts.map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="${i === 0 ? 5 : 3.5}" fill="${color}"/><text x="${x}" y="${y - 9}" font-size="10" text-anchor="middle" fill="#fff">${trend[i].score}</text><text x="${x}" y="${h + 18}" font-size="10" text-anchor="middle" fill="#a9a3d6">${trend[i].short}</text>`).join('')}
+  </svg>`;
+}
+
+function askAnswerHTML(key) {
+  const a = buildAnswer(key, state.saju, weekFortunes());
+  const color = scoreColor(a.score);
+  const tier = a.score >= 80 ? 3 : a.score >= 60 ? 2 : a.score >= 40 ? 1 : 0;
+  const line = speak(zIdx(), 'tier', { tier, stage: heroOptions().stage, vars: { score: a.score } });
+  const face = faceSVG(characterInfo(state.saju, state.profile), heroOptions().stage, a.score >= 60 ? 'smile' : 'fighting', 44);
+  return `
+    <div class="card ask-answer">
+      <button class="ghost ask-back" type="button" data-ask-back>← 다른 운세 보기</button>
+      <h3 style="margin:10px 0 4px">${a.icon} ${a.q}</h3>
+      <div class="ask-score">
+        <div class="num" style="color:${color};text-shadow:0 0 12px ${color}">${a.score}<small>점</small></div>
+        <div><b>${a.when} ${a.catLabel}, ${a.tone}</b><p>${a.text}</p></div>
+      </div>
+      <div class="ask-block"><h4>📜 사주로 보면</h4><p>${a.basis}</p></div>
+      <div class="ask-block"><h4>✨ 이렇게 해 보세요</h4><p>${a.tip}</p>${a.weak ? `<p class="muted" style="margin:6px 0 0;font-size:0.84rem">오늘 가장 약한 건 <b>${a.weak.label}(${a.weak.score}점)</b>이에요.</p>` : ''}</div>
+      <div class="ask-block"><h4>📈 앞으로 7일 ${a.catLabel}</h4>${trendSVG(a.trend, color)}
+        <p class="muted" style="margin:0;font-size:0.84rem">가장 좋은 날은 <b style="color:var(--wood)">${a.best.full} ${a.best.score}점</b>${a.low ? `, 조심할 날은 <b style="color:var(--fire)">${a.low.full}</b>` : ''}이에요.</p></div>
+      <div class="ask-guardian"><div class="av">${face}</div><p>${esc(line)}</p></div>
+      <button class="primary ask-cta" type="button" data-ask-cta="${key}">${a.cta.label} →</button>
+      ${saveBtnHTML('ask', key)}
+      <p class="muted" style="font-size:0.72rem;margin:8px 0 0;text-align:center">운세는 재미와 마음가짐을 위한 참고예요. 의료·법률·투자 결정은 전문가와 상의하세요.</p>
+    </div>`;
+}
+
+function runAskCta(key) {
+  const a = buildAnswer(key, state.saju, weekFortunes());
+  const c = a.cta;
+  state.askOpen = null;
+  if (c.action === 'charm') { state.charm.type = c.talisman; state.charm.element = state.saju.yongsin; selectTab('charm'); renderCharm(true); return; }
+  if (c.action === 'chat') { selectTab('chat'); setTimeout(() => { const i = $('#chat-form input'); if (i) { i.value = c.ask; i.focus(); } }, 50); return; }
+  if (c.action === 'journey') { selectTab('today'); ensureUnlocked('journey'); setTimeout(() => ($('#btn-journey') || $('.journey'))?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300); return; }
+  selectTab(c.action);
+}
+
+document.addEventListener('click', (e) => {
+  const open = e.target.closest('[data-ask-open]');
+  if (open) { openAsk(open.dataset.askOpen); return; }
+  if (e.target.closest('[data-ask-back]')) { state.askOpen = null; selectTab('ask'); return; }
+  const cta = e.target.closest('[data-ask-cta]');
+  if (cta) runAskCta(cta.dataset.askCta);
+});
+
+/** 홈: 무엇이 궁금하세요? (질문 칩 4개) */
+function askChipsHTML() {
+  const top = concernAsk(state.profile.concern);
+  const keys = [...new Set([top, 'tomorrow', 'love', 'saju'])].slice(0, 4);
+  return `<div class="card ask-home"><h3>🔮 무엇이 궁금하세요?</h3>
+    <div class="ask-chips">${keys.map((k) => { const m = ASK_MENU.find((x) => x.key === k); return `<button type="button" class="chip" data-ask-open="${k}">${m.icon} ${m.q}</button>`; }).join('')}
+    <button type="button" class="chip more" data-tab-go="ask">전체 메뉴 →</button></div></div>`;
+}
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-tab-go]'); if (b) { state.askOpen = null; selectTab(b.dataset.tabGo); } });
 
 function renderAll() {
   renderSaju();
@@ -292,6 +453,7 @@ function renderAll() {
   renderCompat();
   renderReport();
   renderFeng();
+  renderAsk();
 }
 
 // ---------- 사주 분석 ----------
@@ -374,7 +536,7 @@ function renderSaju() {
           <div class="bars">${bars}</div>
           <div class="stats">
             <div class="stat"><div class="k">신강/신약</div><div class="v">${s.strength}</div></div>
-            <div class="stat"><div class="k">용신 (필요한 기운)</div><div class="v el-${s.yongsin}">${ELEMENT_KO[s.yongsin]}(${ELEMENT_HANJA[s.yongsin]})</div></div>
+            <div class="stat"><div class="k">용신 (필요한 기운)</div><div class="v el-${s.yongsin}">${ELEMENT_KO[s.yongsin]}(${ELEMENT_HANJA[s.yongsin]})</div><small class="muted">${s.yongsinBasis || '억부'}</small></div>
             <div class="stat"><div class="k">가장 부족</div><div class="v el-${s.weakest}">${ELEMENT_KO[s.weakest]}(${ELEMENT_HANJA[s.weakest]})</div></div>
           </div>
         </div>
@@ -382,7 +544,9 @@ function renderSaju() {
       <p class="muted">${strengthText(s)}</p>
       <button class="primary" type="button" data-go="charm" style="width:100%">부족한 ${ELEMENT_KO[s.weakest]} 기운 부적 만들러 가기 →</button>
     </div>
-    ${daewoonCardHTML()}`;
+    ${daewoonCardHTML()}
+    ${expertCardHTML()}`;
+  $('[data-panel="saju"]').insertAdjacentHTML('afterbegin', readingCardHTML());
   $$('[data-go]', $('[data-panel="saju"]')).forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); selectTab(b.dataset.go); }));
 }
 
@@ -402,90 +566,1012 @@ function strengthText(s) {
     : s.strength === '신약'
       ? `${me} 기운과 이를 돕는 기운이 ${s.support}%로 약한 편(신약)입니다. 나를 북돋아 주는 기운이 힘이 됩니다.`
       : `${me} 기운과 이를 돕는 기운이 ${s.support}%로 균형 잡힌 편(중화)입니다. 가장 부족한 기운을 채우면 더 좋아집니다.`;
-  return `${base} 그래서 용신은 ${ELEMENT_KO[s.yongsin]}(${ELEMENT_HANJA[s.yongsin]})입니다. (프로토타입용 간이 판정)`;
+  const el = (e) => `${ELEMENT_KO[e]}(${ELEMENT_HANJA[e]})`;
+  const eul = (e) => ['을', '를', '를', '을', '를'][e]; // 목·금은 받침 있음
+  const i = (e) => ['이', '가', '가', '이', '가'][e];
+  const j = s.johu || { level: 'none', text: '' };
+  const tail = s.yongsinBasis === '조후 우선'
+    ? ` 강약으로만 보면 ${el(s.eokbuYongsin)}${i(s.eokbuYongsin)} 필요하지만, ${j.text} 그래서 계절을 맞추는 ${el(s.yongsin)}${eul(s.yongsin)} 용신으로, ${el(s.heesin)}${eul(s.heesin)} 희신(두 번째로 반가운 기운)으로 봅니다.`
+    : s.yongsinBasis === '억부 + 조후 보완'
+      ? ` 그래서 용신은 ${el(s.yongsin)}입니다. 또 ${j.text} 그래서 ${el(s.heesin)}${eul(s.heesin)} 희신으로 함께 챙기면 좋아요.`
+      : s.yongsinBasis === '억부·조후 일치'
+        ? ` 그래서 용신은 ${el(s.yongsin)}입니다. ${j.text} 강약과 계절 두 기준이 같은 기운을 가리켜 용신이 더 분명해요.`
+        : ` 그래서 용신은 ${el(s.yongsin)}입니다. ${j.text || ''}`;
+  return `${base}${tail} (억부·조후 간이 판정)`;
 }
 
 // ---------- 오늘의 운세 ----------
 
-function renderToday() {
-  const f = state.fortune; const s = state.saju;
-  const missions = load(MISSION_KEY, {});
-  const done = !!missions[f.dateKey];
-  const circumference = 2 * Math.PI * 46;
-  const offset = circumference * (1 - f.scores.total / 100);
-  const cats = CATEGORIES.slice(1).map((c) => `<div class="cat" style="border-color:${scoreColor(f.scores[c.key])}">
-      <div class="top"><span>${c.icon} ${c.label}</span><span class="num" style="color:${scoreColor(f.scores[c.key])}">${f.scores[c.key]}</span></div>
-      <p>${f.texts[c.key]}</p></div>`).join('');
-  const rel = f.relations.map((r) => `${{ hour: '시지', day: '일지', month: '월지', year: '연지' }[r.pillar]}와 ${r.type === 'combine' ? '합(合)' : '충(沖)'}`).join(', ');
+const md2 = (d) => `${d.month}/${d.day}`;
 
-  $('[data-panel="today"]').innerHTML = `
-    <div class="card">
-      <div class="today-head">
-        <div class="score-ring">
-          <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="7"/>
-          <circle cx="50" cy="50" r="46" fill="none" stroke="${scoreColor(f.scores.total)}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" style="filter:drop-shadow(0 0 4px ${scoreColor(f.scores.total)})"/></svg>
-          <div class="label"><div><b>${f.scores.total}</b><br><span>오늘 총운</span></div></div>
-        </div>
-        <div>
-          <p class="muted" style="margin:0">${f.date.year}.${f.date.month}.${f.date.day} · 일진 ${pillarLabel(f.pillar)}(${pillarLabelKo(f.pillar)}) · ${f.tenGod}</p>
-          <h3 style="margin:4px 0">${f.info.title}</h3>
-          <p style="margin:0">${f.info.desc}</p>
-        </div>
-      </div>
-      <p class="muted">${f.summary}${rel ? ` 오늘은 내 사주의 ${rel} 관계가 생깁니다.` : ''}</p>
-    </div>
+/** 오늘 점수가 어디서 왔는지: 대운 → 올해 → 이달 → 오늘 (모두 같은 엔진) */
+function whyTodayHTML(f) {
+  const L = f.layers; if (!L) return '';
+  const godMod = TEN_GOD_MOD[f.tenGod][0];
+  const relSum = f.scores.total - Math.round(L.day.score + godMod);
+  const pl = (p) => `${STEMS[p.stem]}${BRANCHES[p.branch]}`;
+  const row = (icon, label, val, note) => `<li><span>${icon} ${label}</span><b style="color:${scoreColor(val)}">${val}</b><small>${note}</small></li>`;
+  return `<details class="why"><summary>왜 ${f.scores.total}점인가요? <small>근거 보기</small></summary>
+    <ul class="why-layers">
+      ${L.daewoon ? row('🏔️', `대운 ${pl(L.daewoon.pillar)} (${L.daewoon.startAge}~${L.daewoon.endAge}세)`, L.daewoon.score, `${L.daewoon.god} · ${explainParts(L.daewoon.parts)}`) : ''}
+      ${row('📅', `올해 ${pl(L.year.pillar)}년`, L.year.score, `세운 ${L.year.base}${L.daewoon ? ` × 70% + 대운 × 30%` : ''} · ${L.year.god}`)}
+      ${row('🌙', `이달 ${pl(L.month.pillar)}월 (${f.period.term} ${md2(f.period.start)}~${md2(f.period.end)})`, L.month.score, `월운 ${L.month.base} × 60% + 올해 × 40% · ${L.month.god}`)}
+      ${row('☀️', `오늘 ${pl(L.day.pillar)}일`, L.day.score, `일진 ${L.day.base} × 70% + 이달 × 30%`)}
+    </ul>
+    <p class="why-calc">오늘 총운 <b>${f.scores.total}</b> = 오늘 층 ${L.day.score} ${godMod >= 0 ? '+' : '−'} 십신(${f.tenGod}) ${Math.abs(godMod)}${relSum ? ` ${relSum > 0 ? '+' : '−'} 원국과의 합·충 ${Math.abs(relSum)}` : ''}</p>
+    <p class="why-calc">일진 근거: ${f.why}</p>
+    <p class="muted" style="font-size:0.74rem;margin:6px 0 0">같은 생년월일·같은 날짜는 언제 봐도 같은 점수가 나와요. 무작위 요소는 쓰지 않습니다.</p>
+  </details>`;
+}
 
-    ${festivalCardHTML()}
+// ---------- 운세 풀이: 대운·올해·이달 (읽을거리) ----------
 
-    ${todaySayCard()}
-
-    ${todoCardHTML()}
-
-    ${journeyCardHTML()}
-
-    ${dailyCardHTML()}
-
-    ${concernCard()}
-
-    <div class="card">
-      <h3>분야별 운세</h3>
-      <div class="cats">${cats}</div>
-    </div>
-
-    <div class="card">
-      <h3>오늘의 행운 키트 <span class="tag">용신 ${ELEMENT_HANJA[s.yongsin]}</span></h3>
-      <div class="kit">
-        <div><div class="k">행운의 색</div><span class="swatch" style="background:${f.luck.hex};color:${f.luck.hex}"></span>${f.luck.color}</div>
-        <div><div class="k">행운의 숫자</div><b>${f.luck.number}</b></div>
-        <div><div class="k">행운의 방향</div>${f.luck.direction}</div>
-        <div><div class="k">행운의 음식</div>${f.luck.food}</div>
-        <div><div class="k">좋은 시간대</div>${f.luck.time}</div>
-        <div><div class="k">행운 아이템</div>${f.luck.item}</div>
-      </div>
-      <p class="muted" style="margin-bottom:0">✅ 추천 행동: ${f.info.lucky} &nbsp;·&nbsp; ⚠️ 주의: ${f.info.caution}</p>
-    </div>
-
-    <div class="card">
-      <h3>오늘의 액땜 미션</h3>
-      <div class="mission ${done ? 'done' : ''}">
-        <div style="flex:1"><b>${f.info.mission}</b><br><span class="muted">${done ? '정화 완료! 오늘의 액막이 부적이 한 단계 강해졌습니다.' : '완료하면 액막이 부적이 정화되어 효과가 강해집니다.'}</span></div>
-        <button class="${done ? 'ghost' : 'primary'}" type="button" id="btn-mission">${done ? '완료됨 ✓' : '미션 완료'}</button>
-      </div>
-    </div>
-    ${storyButton('fortune', '오늘의 운세를 스토리로 공유')}`;
-
-  $('#btn-mission').addEventListener('click', () => {
-    const m = load(MISSION_KEY, {});
-    m[f.dateKey] = !m[f.dateKey];
-    const missionLead = m[f.dateKey] ? `${say('missionDone')} (액막이 부적 등급 +1)` : '';
-    save(MISSION_KEY, m);
-    renderToday();
-    renderCharm(false);
-    if (m[f.dateKey]) {
-      grow((g) => complete(g, f.dateKey, 'mission', qBonus('mission')), missionLead);
-      setTimeout(() => charge(state.saju.yongsin, 4, 'mission', '🧧 액땜 완료'), 2400);
-    }
+function readingFor(kind) {
+  const s = state.saju; const f = state.fortune; const L = f.layers; const g = state.profile.gender;
+  const d = timelineData();
+  if (kind === 'daewoon') {
+    if (!L.daewoon) return null;
+    const age = f.date.year - s.input.year;
+    const left = L.daewoon.endAge - age + 1;
+    const next = d.dw.pillars.find((p) => p.startAge === L.daewoon.endAge + 1);
+    return buildReading('daewoon', L.daewoon, {
+      saju: s, concern: state.profile.concern, range: `${L.daewoon.startAge}~${L.daewoon.endAge}세 · ${s.input.year + L.daewoon.startAge}~${s.input.year + L.daewoon.endAge}년`,
+      highlights: [`지금 ${age}세, 이 대운이 ${left}년 남았어요.`, next ? `다음 대운은 ${next.startAge}세부터 ${STEMS[next.stem]}${BRANCHES[next.branch]}(${pillarTheme(s, next).theme}) — 점수 ${next.score}점이에요.` : ''].filter(Boolean),
+    });
+  }
+  if (kind === 'next') {
+    const y = d.next; if (!y) return null;
+    const diff = y.year.score - d.year.year.score;
+    return buildReading('year', { ...y.year, god: tenGod(s.dayMaster, y.year.pillar.stem) }, {
+      saju: s, concern: state.profile.concern, when: `${y.sajuYear}년은`, range: `${y.sajuYear}년 입춘(${y.months[0].start.month}/${y.months[0].start.day})부터 1년`,
+      highlights: [`올해(${d.year.sajuYear}년 ${d.year.year.score}점)보다 ${diff === 0 ? '비슷한 흐름이에요' : `${Math.abs(diff)}점 ${diff > 0 ? '올라가요' : '내려가요'}`}.`, `좋은 달: ${y.best.map((m) => `${m.solarMonth}월(${m.score})`).join(', ')}`, `조심할 달: ${y.caution.map((m) => `${m.solarMonth}월(${m.score})`).join(', ')}`].filter(Boolean),
+    });
+  }
+  if (kind === 'year') {
+    const y = d.year;
+    return buildReading('year', { ...L.year, god: tenGod(s.dayMaster, L.year.pillar.stem) }, {
+      saju: s, concern: state.profile.concern, range: `${y.sajuYear}년 입춘(${md2(y.months[0].start)})부터`,
+      highlights: [`좋은 달: ${y.best.map((m) => `${m.solarMonth}월(${m.score})`).join(', ')}`, `조심할 달: ${y.caution.map((m) => `${m.solarMonth}월(${m.score})`).join(', ')}`, L.daewoon ? `지금 대운(${STEMS[L.daewoon.pillar.stem]}${BRANCHES[L.daewoon.pillar.branch]})이 올해 점수의 30%를 함께 만들어요.` : ''].filter(Boolean),
+    });
+  }
+  const md = d.month; const per = md.period;
+  return buildReading('month', L.month, {
+    saju: s, concern: state.profile.concern, range: `${per.term} ${md2(per.start)} ~ ${md2(per.end)}`,
+    highlights: [`좋은 날: ${md.best.map((x) => `${md2(x.date)}(${dowOf(x.date)}) ${x.score}점`).join(', ')}`, `조심할 날: ${md.caution.map((x) => `${md2(x.date)}(${dowOf(x.date)})`).join(', ')}`, `70점 이상인 날이 ${md.good}일 있어요. 다음 달(${per.nextTerm})은 ${md2(per.nextStart)}부터예요.`],
   });
+}
+
+function readingCardHTML() {
+  const nx = timelineData().next;
+  const kind = state.readKind === 'next' && !nx ? 'year' : (state.readKind || 'year');
+  const kinds = [...(nx ? [['next', `🎁 ${nx.sajuYear}년`]] : []), ['daewoon', '🏔️ 대운'], ['year', '📅 올해'], ['month', '🌙 이달']];
+  const r = readingFor(kind);
+  const info = characterInfo(state.saju, state.profile);
+  const face = faceSVG(info, heroOptions().stage, r && r.score >= 55 ? 'smile' : 'fighting', 40);
+  const body = !r ? '<p class="muted">대운은 성별에 따라 순행·역행이 달라져요. 정보 수정에서 성별을 넣으면 풀이가 열려요.</p>' : `
+    <div class="rd-head">
+      <div class="rd-pillar"><b>${STEMS[r.pillar.stem]}</b><b>${BRANCHES[r.pillar.branch]}</b></div>
+      <div><h4>${r.god} · ${r.keyword}</h4><small>${r.range}</small></div>
+      <em class="tl-score" style="color:${scoreColor(r.score)};border-color:${scoreColor(r.score)}">${r.score}</em>
+    </div>
+    ${r.intro.map((t) => `<p class="rd-p">${t}</p>`).join('')}
+    <div class="rd-box why-box"><h5>🔍 왜 이런 흐름일까요</h5>${r.why.map((t) => `<p>${t}</p>`).join('')}</div>
+    <div class="rd-two">
+      <div class="rd-box good"><h5>🌟 살리면 좋은 점</h5><ul>${r.good.map((t) => `<li>${t}</li>`).join('')}</ul></div>
+      <div class="rd-box watch"><h5>🌧️ 미리 챙길 점</h5><ul>${r.watch.map((t) => `<li>${t}</li>`).join('')}</ul></div>
+    </div>
+    ${r.focusLine ? `<div class="rd-box focus"><h5>🎯 내 고민(${info.concern.label})에는</h5><p>${r.focusLine}</p></div>` : ''}
+    <div class="rd-fields">${Object.entries(r.fields).map(([k, t]) => `<div class="rd-field ${k === r.focus ? 'mine' : ''}"><b>${FIELD_LABEL[k]}</b><p>${t}</p></div>`).join('')}</div>
+    <div class="rd-box when"><h5>📌 실제 흐름</h5><ul>${r.highlights.map((t) => `<li>${t}</li>`).join('')}</ul></div>
+    ${monthsTableHTML(kind)}
+    <div class="rd-box tips"><h5>✅ 이렇게 해 보세요</h5><ol>${r.tips.map((t) => `<li>${t}</li>`).join('')}</ol></div>
+    <div class="ask-guardian"><div class="av">${face}</div><p>${esc(closingLine(r.kind, r.score, personalityOf(zIdx()).key === 'rooster'))}</p></div>
+    ${saveBtnHTML('reading', kind)}
+    <p class="muted" style="font-size:0.72rem;margin:6px 0 0">풀이는 정통 계산(십신·용신·합충)을 바탕으로 한 참고용 해석이에요. 중요한 결정은 여러 상황을 함께 살펴 주세요.</p>`;
+  return `<div class="card reading" id="reading-card">
+    <h3>📖 나의 운세 풀이</h3>
+    <div class="gal-tabs rd-tabs">${kinds.map(([k, l]) => `<button type="button" data-read="${k}" aria-pressed="${k === kind}">${l}</button>`).join('')}</div>
+    ${body}
+  </div>`;
+}
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-read]'); if (!b) return;
+  state.readKind = b.dataset.read;
+  const el = $('#reading-card'); if (!el) return;
+  const tmp = document.createElement('div'); tmp.innerHTML = readingCardHTML(); el.replaceWith(tmp.firstElementChild);
+});
+
+/** 타임라인 카드에서 풀이로 바로 가기 */
+function openReading(kind) {
+  state.readKind = kind; selectTab('saju');
+  const el = $('#reading-card');
+  if (el) { const tmp = document.createElement('div'); tmp.innerHTML = readingCardHTML(); el.replaceWith(tmp.firstElementChild); }
+  setTimeout(() => $('#reading-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+}
+
+// ---------- 운의 타임라인 (v0.20) ----------
+// 오늘 → 이번 주 → 이달 → 올해 → 대운 → 타고난 나. 모든 숫자는 period.js 한 엔진에서 나온다.
+const TL_ORDER = ['today', 'week', 'month', 'year', 'daewoon', 'natal'];
+const TL_META = {
+  today: { icon: '☀️', label: '오늘' }, week: { icon: '🗓️', label: '이번 주' }, month: { icon: '🌙', label: '이달' },
+  year: { icon: '📅', label: '올해' }, daewoon: { icon: '🏔️', label: '대운 (10년)' }, natal: { icon: '🌱', label: '타고난 나' },
+};
+const DOW_KO = ['월', '화', '수', '목', '금', '토', '일'];
+const dowOf = (d) => '일월화수목금토'[new Date(Date.UTC(d.year, d.month - 1, d.day)).getUTCDay()];
+const plKo = (p) => `${STEMS[p.stem]}${BRANCHES[p.branch]}(${STEMS_KO[p.stem]}${BRANCHES_KO[p.branch]})`;
+const toneWord = (v) => (v >= 80 ? '아주 좋은' : v >= 60 ? '좋은 편인' : v >= 40 ? '무난한' : '쉬어 가는');
+
+/** 타임라인에 필요한 값을 한 번에 계산 (날짜·사람이 같으면 재사용) */
+function timelineData() {
+  const f = state.fortune; const s = state.saju; const g = state.profile.gender;
+  const key = `${f.dateKey}|${JSON.stringify(s.input)}|${g}`;
+  if (state.tl?.key === key) return state.tl;
+  const week = weekOf(s, f.date, g);
+  const month = monthDays(s, f.date, g);
+  const sy = sajuYearOf(f.date);
+  const year = yearOf(s, sy, g);
+  const dw = g ? computeDaewoon(s, g) : null;
+  const next = showNextYear(f.date, sy) ? yearOf(s, sy + 1, g) : null;
+  state.tl = { key, week, month, year, dw, next };
+  return state.tl;
+}
+
+// ---------- 홈 길잡이 (v0.21): 처음엔 내년·오늘·올해만, 나머지는 퀘스트로 하나씩 ----------
+const loadGuide = () => ({ ...emptyGuide(), ...load(GUIDE_KEY, {}) });
+const guideCtx = () => ({ showNext: !!timelineData().next });
+const unlocked = (sec) => isUnlocked(loadGuide(), sec);
+
+/** 퀘스트 완료 → 저장·경험치. 새로 끝냈으면 true */
+function finishGuide(key) {
+  const r = completeGuideStep(loadGuide(), key);
+  if (!r.changed) return false;
+  save(GUIDE_KEY, r.guide);
+  const nx = nextStep(r.guide, guideCtx());
+  grow((g) => addExp(g, 3), `🧭 길잡이 완료!${nx ? ` 다음: ${nx.title(timelineData().next?.sajuYear)}` : ' 모든 기능이 열렸어요'}`);
+  return true;
+}
+
+/** 다른 화면에서 잠긴 구역을 부르면 그 자리에서 열어 준다 (막다른 길 없음) */
+function ensureUnlocked(sec) {
+  if (unlocked(sec)) return false;
+  const k = stepFor(sec); if (!k) return false;
+  finishGuide(k); renderToday();
+  return true;
+}
+
+/** 홈에 보이는 타임라인 순서 (잠긴 층은 뺌) */
+function tlVisible() {
+  const d = timelineData();
+  return [...(d.next ? ['next'] : []), ...TL_ORDER.filter((k) => k === 'today' || k === 'month' || k === 'year' || unlocked(k))];
+}
+
+function tlCard(k, summary, body) {
+  const open = (state.tlOpen || new Set(['today'])).has(k);
+  const m = TL_META[k];
+  const vis = tlVisible().filter((x) => x !== 'next');
+  const i = vis.indexOf(k);
+  const nav = i < 0 ? '' : `<div class="tl-nav">${i > 0 ? `<button type="button" class="ghost" data-tl-go="${vis[i - 1]}">▲ ${TL_META[vis[i - 1]].label}</button>` : '<span></span>'}${i < vis.length - 1 ? `<button type="button" class="ghost" data-tl-go="${vis[i + 1]}">더 넓게 보기: ${TL_META[vis[i + 1]].label} ▼</button>` : ''}</div>`;
+  return `<section class="tl-card ${k === 'next' ? 'tl-next' : k !== 'today' ? 'compact' : ''} ${open ? 'open' : ''}" data-tl="${k}">
+    <button type="button" class="tl-head" data-tl-toggle="${k}" aria-expanded="${open}">
+      <span class="tl-ic">${m.icon}</span><span class="tl-sum"><b>${m.label}</b>${summary}</span><span class="tl-caret">${open ? '▴' : '▾'}</span>
+    </button>
+    ${open ? `<div class="tl-body">${body}${nav}</div>` : ''}
+  </section>`;
+}
+
+const scoreChip = (v, label = '') => `<em class="tl-score" style="color:${scoreColor(v)};border-color:${scoreColor(v)}">${label}${v}</em>`;
+const stepBtn = (label, action) => `<button class="primary tl-step" type="button" data-tl-step="${action}">${label} →</button>`;
+
+function catBars(scores) {
+  return `<div class="bars tl-bars">${CATEGORIES.slice(1).map((c) => `<div class="bar"><span>${c.icon} ${c.label}</span><div class="track"><div class="fill" style="width:${scores[c.key]}%;background:${scoreColor(scores[c.key])};color:${scoreColor(scores[c.key])}"></div></div><span class="num">${scores[c.key]}</span></div>`).join('')}</div>`;
+}
+
+function tlToday() {
+  const f = state.fortune;
+  const weak = ['wealth', 'love', 'career', 'health', 'social'].reduce((a, b) => (f.scores[b] < f.scores[a] ? b : a));
+  const weakLabel = CATEGORIES.find((c) => c.key === weak).label;
+  const sum = `<small>${f.date.month}/${f.date.day}(${dowOf(f.date)}) · ${f.info.title}</small>${scoreChip(f.scores.total)}`;
+  const body = `
+    ${moodRowHTML()}
+    <p class="tl-lead"><b>${toneWord(f.scores.total)} 하루예요.</b> ${f.info.desc}</p>
+    ${catBars(f.scores)}
+    ${umbrellaHTML()}
+    <div class="tl-kit"><span>🎨 ${f.luck.color}</span><span>🔢 ${f.luck.number}</span><span>🧭 ${f.luck.direction}</span><span>⏰ ${f.luck.time.split(' (')[0]}</span></div>
+    <p class="tl-do">✅ ${f.info.lucky} &nbsp;·&nbsp; ⚠️ ${f.info.caution}</p>
+    ${whyTodayHTML(f)}
+    ${bonusLineHTML(f)}
+    ${stepBtn(`가장 약한 ${weakLabel}운을 채우는 부적 받기`, 'charm-today')}`;
+  return tlCard('today', sum, body);
+}
+
+function tlWeek(d) {
+  const w = d.week;
+  const sum = `<small>평균 ${w.avg}점 · 가장 좋은 날 ${dowOf(w.best.date)}요일</small>${scoreChip(w.avg)}`;
+  const max = 100;
+  const bars = w.days.map((x, i) => `<div class="wk-col ${x.isToday ? 'now' : ''}"><b style="color:${scoreColor(x.score)}">${x.score}</b><i style="height:${Math.max(8, (x.score / max) * 70)}px;background:${scoreColor(x.score)}"></i><span>${DOW_KO[i]}</span><small>${x.date.month}/${x.date.day}</small></div>`).join('');
+  const lines = w.days.map((x, i) => `<li class="${x.isToday ? 'now' : ''}"><span>${DOW_KO[i]} ${x.date.month}/${x.date.day}</span><b style="color:${scoreColor(x.score)}">${x.score}</b><small>${TEN_GOD_INFO[x.god].title}</small></li>`).join('');
+  const bestCat = (cat) => w.days.reduce((a, b) => (b.scores[cat] > a.scores[cat] ? b : a));
+  const body = `
+    <div class="wk-bars">${bars}</div>
+    <p class="tl-lead">🌟 <b>${w.best.date.month}/${w.best.date.day}(${dowOf(w.best.date)})</b>이 이번 주 가장 좋은 날 — ${TEN_GOD_INFO[w.best.god].title}. ⚠️ <b>${w.worst.date.month}/${w.worst.date.day}(${dowOf(w.worst.date)})</b>은 ${TEN_GOD_INFO[w.worst.god].caution}에 조심하세요.</p>
+    <div class="tl-kit">${['wealth', 'love', 'career'].map((c) => { const b = bestCat(c); return `<span>${CATEGORIES.find((x) => x.key === c).icon} ${CATEGORIES.find((x) => x.key === c).label} 최고: ${dowOf(b.date)}요일 ${b.scores[c]}</span>`; }).join('')}</div>
+    <details class="why"><summary>요일별 한 줄 보기</summary><ul class="wk-lines">${lines}</ul></details>
+    ${stepBtn(`${dowOf(w.best.date)}요일을 어떻게 쓸지 수호신과 계획하기`, 'chat-week')}
+    ${wealthWeekHTML(w)}`;
+  return tlCard('week', sum, body);
+}
+
+/** 이번 주 재물 흐름 (v0.23 작은 실험): 재물 점수 7일 · 가장 좋은 날 · 재미로 보는 행운 숫자(만 19세 이상) */
+function wealthWeekHTML(week) {
+  const i = state.saju.input;
+  const ww = weekWealth(week, { birth: { year: i.year, month: i.month, day: i.day }, today: state.fortune.date, yongsin: state.saju.yongsin, seed: `${i.year}-${i.month}-${i.day}-${i.timeKnown ? i.hour : 'x'}` });
+  const cols = ww.days.map((x, k) => `<div class="ww-col ${x.isToday ? 'now' : ''} ${x === ww.best ? 'best' : ''}"><i style="height:${Math.max(6, x.score * 0.5)}px;background:${scoreColor(x.score)}"></i><span>${DOW_KO[k]}</span></div>`).join('');
+  const b = ww.best.date;
+  return `<div class="ww">
+    <h5>💰 이번 주 재물 흐름 <small>평균 ${ww.avg}</small></h5>
+    <div class="ww-bars">${cols}</div>
+    <p>재물운이 가장 좋은 날은 <b>${b.month}/${b.day}(${dowOf(b)}) ${ww.best.score}점</b>이에요. ${ww.tip}</p>
+    ${ww.eligible ? `<details class="ww-num"><summary>🎲 재미로 보는 행운 숫자</summary>
+      <div class="ww-balls">${ww.numbers.map((n) => `<span>${n}</span>`).join('')}</div>
+      <p class="muted">${b.month}/${b.day} 일진과 필요한 기운(${ELEMENT_KO[state.saju.yongsin]})의 수로 만든 숫자예요. 다시 봐도 같은 숫자가 나와요.</p>
+      ${SAFETY_LINES.map((l) => `<p class="ww-safe">${l}</p>`).join('')}
+    </details>` : ''}
+    ${stepBtn('이번 주 재물운을 채우는 부적 받기', 'charm-wealth')}
+  </div>`;
+}
+
+function tlMonth(d) {
+  const f = state.fortune; const L = f.layers; const md = d.month; const per = md.period;
+  const th = pillarTheme(state.saju, L.month.pillar);
+  const cats = categoryScores(L.month.score, L.month.god);
+  const sum = `<small>${per.term} ${md2(per.start)}~${md2(per.end)} · ${th.theme}</small>${scoreChip(L.month.score)}`;
+  const body = `
+    <p class="tl-lead"><b>${plKo(L.month.pillar)}월 · ${th.god}</b> — ${th.theme}의 기운이 흐르는 달이에요. 다음 달(${per.nextTerm})은 ${md2(per.nextStart)}부터 시작돼요.</p>
+    ${catBars(cats)}
+    <div class="tl-kit"><span>🌟 좋은 날 ${md.best.map((x) => `${md2(x.date)}(${x.score})`).join(' · ')}</span><span>⚠️ 조심할 날 ${md.caution.map((x) => `${md2(x.date)}(${x.score})`).join(' · ')}</span><span>70점 이상 ${md.good}일 / ${md.days.length}일</span></div>
+    <p class="why-calc">이달 ${L.month.score} = 월운 ${L.month.base} × 60% + 올해 ${L.year.score} × 40% · 근거: ${explainParts(L.month.parts)}</p>
+    <button class="ghost tl-read" type="button" data-tl-step="read-month">📖 이달 운세 풀이 자세히 읽기</button>
+    ${stepBtn(`이달 부족한 ${ELEMENT_KO[state.saju.yongsin]} 기운 채우기`, 'charm-month')}`;
+  return tlCard('month', sum, body);
+}
+
+function tlYear(d) {
+  const y = d.year; const th = pillarTheme(state.saju, y.year.pillar);
+  const cur = state.fortune.period.solarMonth;
+  const h1 = Math.round(y.months.slice(0, 6).reduce((a, b) => a + b.score, 0) / 6);
+  const h2 = Math.round(y.months.slice(6).reduce((a, b) => a + b.score, 0) / 6);
+  const sum = `<small>${y.sajuYear} ${plKo(y.year.pillar)}년 · ${th.theme}</small>${scoreChip(y.year.score)}`;
+  const mbars = y.months.map((m) => `<div class="yr-col ${m.solarMonth === cur ? 'now' : ''}" title="${m.term} ${md2(m.start)}~"><i style="height:${Math.max(6, m.score * 0.6)}px;background:${scoreColor(m.score)}"></i><span>${m.solarMonth}</span></div>`).join('');
+  const body = `
+    <p class="tl-lead"><b>올해는 「${th.god} · ${th.theme}」의 해</b>예요. ${y.year.score >= 60 ? '흐름을 타고 넓혀 가기 좋은 해입니다.' : y.year.score >= 45 ? '무리하지 않고 다지는 만큼 쌓이는 해입니다.' : '속도를 줄이고 내실을 챙기면 다음 흐름이 단단해지는 해입니다.'}</p>
+    <div class="yr-bars">${mbars}</div>
+    <p class="muted" style="font-size:0.76rem;margin:2px 0 8px">입춘(${md2(y.months[0].start)})부터 12절기월 · 숫자는 양력 기준 달</p>
+    <div class="tl-kit"><span>상반기 ${h1} · 하반기 ${h2}</span><span>🌟 좋은 달 ${y.best.map((m) => `${m.solarMonth}월`).join(' · ')}</span><span>⚠️ 조심할 달 ${y.caution.map((m) => `${m.solarMonth}월`).join(' · ')}</span></div>
+    <p class="why-calc">올해 ${y.year.score} = 세운 ${y.year.base}${y.daewoon ? ` × 70% + 대운 ${y.daewoon.score} × 30%` : ''} · 근거: ${explainParts(y.year.parts)}</p>
+    <button class="ghost tl-read" type="button" data-tl-step="read-year">📖 올해 운세 풀이 자세히 읽기</button>
+    <div class="tl-two">${stepBtn('올해 고민, 30일 해결 여정으로 풀기', 'journey')}<button class="ghost" type="button" data-tl-step="report">월별 리포트 자세히</button></div>`;
+  return tlCard('year', sum, body);
+}
+
+function tlDaewoon(d) {
+  const s = state.saju;
+  if (!d.dw) return tlCard('daewoon', '<small>성별을 입력하면 대운을 계산해요</small>', '<p class="muted">대운은 성별에 따라 순행·역행이 달라져요. 정보 수정에서 성별을 넣어 주세요.</p>');
+  const age = state.fortune.date.year - s.input.year;
+  const cur = daewoonAt(d.dw, age);
+  const nextStart = cur ? cur.endAge + 1 : d.dw.startAge;
+  const sum = cur ? `<small>${plKo(cur)} · ${cur.startAge}~${cur.endAge}세 · 다음 대운까지 ${nextStart - age}년</small>${scoreChip(cur.score)}` : `<small>첫 대운은 ${d.dw.startAge}세부터</small>`;
+  const chips = d.dw.pillars.map((p) => `<span class="dw-chip ${cur && p.startAge === cur.startAge ? 'now' : ''}"><b>${p.startAge}세</b>${STEMS[p.stem]}${BRANCHES[p.branch]}<i style="color:${scoreColor(p.score)}">${p.score}</i></span>`).join('');
+  const th = cur ? pillarTheme(s, cur) : null;
+  const body = `
+    ${cur ? `<p class="tl-lead"><b>지금은 「${th.god} · ${th.theme}」의 10년</b>이에요. ${daewoonComment(s, cur, 0)}</p>` : '<p class="tl-lead">아직 첫 대운이 시작되기 전이에요. 타고난 원국의 흐름대로 자라는 시기입니다.</p>'}
+    <div class="dw-chips">${chips}</div>
+    <p class="why-calc">${d.dw.forward ? '순행' : '역행'} 대운 · ${d.dw.startAge}세 시작 (태어난 날부터 절기까지 ${d.dw.days}일 ÷ 3)${cur ? ` · 근거: ${explainParts(layersAt(s, state.fortune.date, state.profile.gender).daewoon.parts)}` : ''}</p>
+    <button class="ghost tl-read" type="button" data-tl-step="read-daewoon">📖 대운 풀이 자세히 읽기</button>
+    ${stepBtn('앞으로 5년 흐름 보기', 'five')}`;
+  return tlCard('daewoon', sum, body);
+}
+
+function tlNatal() {
+  const s = state.saju; const prof = DAY_MASTER_PROFILE[s.dayMaster];
+  const info = characterInfo(s, state.profile);
+  const sum = `<small>${prof.name} · ${prof.image} · ${s.strength}</small>`;
+  const els = s.elements.map((v, e) => `<div class="bar"><span>${ELEMENT_HANJA[e]} ${ELEMENT_KO[e]}</span><div class="track"><div class="fill" style="width:${v}%;background:${EL_COLORS[e]};color:${EL_COLORS[e]}"></div></div><span class="num">${v}</span></div>`).join('');
+  const body = `
+    <p class="tl-lead"><b>${prof.image} 같은 사람</b> — ${prof.text}</p>
+    <div class="bars tl-bars">${els}</div>
+    <p class="tl-do">💡 필요한 기운(용신): <b>${ELEMENT_HANJA[s.yongsin]} ${ELEMENT_KO[s.yongsin]}</b> · 가장 부족한 기운: ${ELEMENT_HANJA[s.weakest]} ${ELEMENT_KO[s.weakest]} · 띠: ${info.zodiac.name}띠</p>
+    <div class="tl-two">${stepBtn(`내 ${info.zodiac.name} 수호신 만나기`, 'hero')}<button class="ghost" type="button" data-tl-step="saju">사주 원국 자세히</button></div>`;
+  return tlCard('natal', sum, body);
+}
+
+/** 내년 운세 (9월 이후·입춘 전에만, v0.28 신년운세 구성): 총평·키워드 → 분야별 별 → 사계절 → 꼭 기억할 달 → 행운 키트 → 다짐 */
+function tlNext(d) {
+  const y = d.next; const c = yearCard(y, d.year, state.saju);
+  const diffTxt = Math.abs(c.diff) <= 2 ? '올해와 비슷' : `올해보다 ${c.diff > 0 ? '▲' : '▼'}${Math.abs(c.diff)}`;
+  const isOpen = (state.tlOpen || new Set(['today'])).has('next');
+  const sum = `<span class="ny-title">「${c.title}」</span><small>${plKo(y.year.pillar)}년 · ${diffTxt}<span class="ny-tags">${c.tags.map((t) => `#${t}`).join(' ')}</span>${isOpen ? '' : '<i class="tl-next-hint">👆 눌러서 분야별 운·좋은 달 보기</i>'}</small>${scoreChip(y.year.score)}`;
+  const pledge = load(PLEDGE_KEY, {})[c.year];
+  const st = '★★★★★';
+  const body = `
+    <p class="tl-lead">${c.summary}</p>
+    <div class="ny-sec"><h5>분야별 ${c.year}년</h5>
+      <ul class="ny-fields">${c.fields.map((f) => `<li><span>${f.icon} ${f.label}</span><b class="ny-stars" aria-label="별 ${f.stars}개">${st.slice(0, f.stars)}<i>${st.slice(f.stars)}</i></b><small>${f.line}</small></li>`).join('')}</ul></div>
+    <div class="ny-sec"><h5>계절별 흐름</h5>
+      <div class="ny-seasons">${c.seasons.map((x) => `<div class="ny-season ${x.tone}"><b>${x.icon} ${x.label}</b><small>${x.months.join('·')}월</small><em>${x.mark} ${x.word}</em><p>${x.advice}</p></div>`).join('')}</div></div>
+    <div class="ny-sec"><h5>꼭 기억할 달</h5>
+      <ul class="ny-months">${c.keyMonths.map((m) => `<li class="${m.kind}"><span>${m.kind === 'good' ? '🌟' : '⚠️'} <b>${m.month}월</b><small>${m.range}</small></span><p>${m.line}</p></li>`).join('')}</ul></div>
+    <div class="ny-sec"><h5>${c.year} 행운 키트</h5>
+      <div class="tl-kit"><span><i class="ny-dot" style="background:${c.luck.hex}"></i>${c.luck.color}</span><span>🔢 ${c.luck.numbers.join(' · ')}</span><span>🧭 ${c.luck.direction}</span><span>🤝 힘이 되는 띠 ${c.luck.zodiac.join(' · ')}</span><span>🎁 ${c.luck.item}</span></div></div>
+    <div class="ny-sec ny-pledge"><h5>✍️ ${c.year} 다짐 한 줄</h5>
+      ${pledge ? `<p class="ny-pledged">「${esc(pledge.text)}」 <button type="button" class="linkish" data-pledge-edit>고치기</button></p><small class="muted">${c.year}년 12월에 수호신이 얼마나 이뤘는지 물어볼게요.</small>`
+        : `<form data-pledge="${c.year}" class="ny-pledge-form"><input name="text" maxlength="${PLEDGE_MAX}" placeholder="예: 매일 30분 걷기 · 자격증 하나 따기" aria-label="${c.year} 다짐"><button class="primary" type="submit">저장</button></form><small class="muted">기록함에 저장되고, ${c.year}년 12월에 돌아보기 미션으로 다시 만나요.</small>`}</div>
+    <p class="why-calc">${c.year}년 ${y.year.score} = 세운 ${y.year.base}${y.daewoon ? ` × 70% + 대운 ${y.daewoon.score} × 30%` : ''} · 분야 별은 같은 점수의 구간(★5 75+ · ★4 65+ · ★3 55+) · 근거: ${explainParts(y.year.parts)}</p>
+    <button class="ghost tl-read" type="button" data-tl-step="read-next">📖 12달 자세히 보기 · ${c.year}년 운세 풀이</button>`;
+  TL_META.next = { icon: '🎁', label: `${y.sajuYear}년 운세` };
+  return tlCard('next', sum, body);
+}
+
+document.addEventListener('submit', (e) => {
+  const f = e.target.closest('[data-pledge]'); if (!f) return;
+  e.preventDefault();
+  const year = Number(f.dataset.pledge); const text = f.text.value;
+  const r = savePledge(load(PLEDGE_KEY, {}), year, text);
+  if (!r.ok) { toast('다짐을 한 줄 적어 주세요'); return; }
+  save(PLEDGE_KEY, r.store);
+  save(RECORDS_KEY, addItem(loadRecords(), { kind: 'pledge', key: String(year), dateKey: state.fortune.dateKey, title: `✍️ ${year}년 다짐`, summary: r.store[year].text, lines: [`${year}년 12월에 돌아보기 미션으로 다시 물어볼게요.`] }).rec);
+  state.tlOpen = new Set(['next']); refreshTimeline('next');
+  toast(`✍️ ${year}년 다짐을 기록함에 저장했어요`);
+});
+document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-pledge-edit]')) {
+    const y = timelineData().next?.sajuYear; const st = load(PLEDGE_KEY, {}); const old = st[y]?.text || '';
+    delete st[y]; save(PLEDGE_KEY, st); refreshTimeline('next');
+    setTimeout(() => { const i = $('[data-pledge] input'); if (i) { i.value = old; i.focus(); } }, 30);
+    return;
+  }
+  const rv = e.target.closest('[data-pledge-rv]');
+  if (rv) {
+    save(PLEDGE_KEY, reviewPledge(load(PLEDGE_KEY, {}), Number(rv.dataset.year), rv.dataset.pledgeRv));
+    dmDone('check');
+    grow((g) => addExp(g, 3), rv.dataset.pledgeRv === 'yes' ? '✍️ 다짐을 이뤘군요! 정말 멋져요' : '✍️ 돌아본 것만으로도 한 걸음이에요. 내년 다짐도 함께 세워요');
+    renderToday();
+  }
+});
+
+/** 운세 풀이(내년·올해)의 12달 표: 절기월 기간 · 점수 · 그달 기운 */
+function monthsTableHTML(kind) {
+  const d = timelineData(); const y = kind === 'next' ? d.next : kind === 'year' ? d.year : null;
+  if (!y) return '';
+  const km = yearCard(y, d.year, state.saju).keyMonths; // 카드의 「꼭 기억할 달」과 같은 표시
+  const top = new Set(km.filter((m) => m.kind === 'good').map((m) => m.month)); const low = new Set(km.filter((m) => m.kind === 'caution').map((m) => m.month));
+  return `<div class="rd-box months"><h5>🗓️ 12달 자세히 <small>입춘부터 절기월 · 기간은 양력</small></h5><ul class="rd-months">${y.months.map((m, i) => `<li class="${top.has(m.solarMonth) ? 'good' : low.has(m.solarMonth) ? 'caution' : ''}"><span>${m.solarMonth}월 <small>${monthRange(y.months, i)}</small></span><b style="color:${scoreColor(m.score)}">${m.score}</b><small>${GOD_READING[m.god].keyword}${top.has(m.solarMonth) ? ' 🌟' : low.has(m.solarMonth) ? ' ⚠️' : ''}</small></li>`).join('')}</ul></div>`;
+}
+
+function timelineHTML() {
+  const d = timelineData();
+  const R = { next: () => tlNext(d), today: tlToday, week: () => tlWeek(d), month: () => tlMonth(d), year: () => tlYear(d), daewoon: () => tlDaewoon(d), natal: tlNatal };
+  const vis = tlVisible();
+  return `<div class="timeline" id="timeline">
+    ${vis[0] === 'next' ? R.next() : ''}
+    ${vis.filter((k) => k !== 'next').map((k) => R[k]()).join('')}
+    <p class="tl-hint">카드를 누르면 펼쳐져요 · 모든 점수는 같은 계산으로 이어져요</p>
+  </div>
+  ${missionCardHTML()}`;
+}
+
+/** 「오늘의 미션 3가지」(v0.27): 이달 운세에서 이어지는 하루 퀘스트 — 이달의 실천 · 돌아보기 · 새 기능 열기 */
+function missionCardHTML() {
+  const f = state.fortune; const d = timelineData(); const per = d.month.period;
+  const g = loadGuide(); const gctx = guideCtx();
+  const ms = buildMissions({
+    dateKey: f.dateKey,
+    month: { term: per.term, start: per.start, end: per.end, theme: pillarTheme(state.saju, f.layers.month.pillar).theme, best: d.month.best },
+    today: { mission: todayUmbrella().pick.text, umbrella: todayUmbrella().u, score: f.scores.total },
+    pending: pendingFeedback(loadRecords(), f.date), pledgeReview: pledgeReviewDue(load(PLEDGE_KEY, {}), f.date),
+    discovery: g.all ? null : nextStep(g, gctx), steps: GUIDE_STEPS, nextYear: d.next?.sajuYear, progress: guideProgress(g, gctx),
+    actDone: !!load(MISSION_KEY, {})[f.dateKey] || !!todayUmbrella().h.done, state: load(DM_KEY, {})[f.dateKey],
+  });
+  const n = ms.filter((m) => m.done).length;
+  const row = (m, i) => {
+    let act = '';
+    if (!m.done) {
+      if (m.action.type === 'pledge') act = `<div class="yday-btns">${[['yes', '🎯 이뤘어요'], ['half', '🤔 절반쯤'], ['no', '🌱 다음 해에']].map(([k, l]) => `<button type="button" class="ghost" data-pledge-rv="${k}" data-year="${m.action.year}">${l}</button>`).join('')}</div>`;
+      else if (m.action.type === 'feedback') act = `<div class="yday-btns">${Object.entries(FEEDBACK).map(([k, v]) => `<button type="button" class="ghost" data-fb="${k}" data-fb-day="${m.action.dateKey}">${v.icon} ${v.label}</button>`).join('')}</div>
+        <input type="text" class="yday-memo" maxlength="${MEMO_MAX}" placeholder="한 줄 메모 (선택)" aria-label="어제 메모"><button type="button" class="linkish" data-fb-skip="${m.action.dateKey}">기억이 안 나요 · 건너뛰기</button>`;
+      else act = `<button type="button" class="${i === ms.findIndex((x) => !x.done) ? 'primary' : 'ghost'} dm-go" data-dm="${m.key}">${m.btn} →</button>`;
+    }
+    return `<li class="dm-item ${m.done ? 'done' : ''}" ${m.action.type === 'feedback' && !m.done ? 'id="yday"' : ''}>
+      <span class="dm-num">${m.done ? '✓' : i + 1}</span>
+      <div class="dm-body"><small>${m.icon} ${m.tag}</small><b>${esc(m.title)}</b>${m.done ? '' : `<p>${m.desc}</p>${act}`}</div>
+    </li>`;
+  };
+  let foot = '';
+  if (n === 3) {
+    const t = new Date(Date.UTC(f.date.year, f.date.month - 1, f.date.day + 1));
+    const tm = computeFortune(state.saju, { year: t.getUTCFullYear(), month: t.getUTCMonth() + 1, day: t.getUTCDate() }, { gender: state.profile.gender });
+    foot = `<div class="dm-done"><b>🎉 오늘의 미션 완료!</b><p>내일 미리보기 · ${tm.date.month}/${tm.date.day}(${dowOf(tm.date)}) <b style="color:${scoreColor(tm.scores.total)}">${tm.scores.total}점</b> — ${tm.info.title}. 내일도 세 가지가 기다리고 있어요.</p></div>`;
+  }
+  return `<div class="card dmission" id="dmission">
+    <div class="dm-top"><b>✅ 오늘의 미션</b><small>${n} / 3</small></div>
+    <div class="guide-track"><i style="width:${Math.round((n / 3) * 100)}%"></i></div>
+    <ol class="dm-list">${ms.map(row).join('')}</ol>
+    ${foot}
+    <div class="guide-foot"><small>${n === 3 ? '내일 새 미션이 열려요' : `세 가지를 모두 하면 +${DM_BONUS_EXP} EXP와 내일 미리보기가 열려요`}</small><button type="button" class="linkish" data-guide-all="${g.all ? 0 : 1}">${g.all ? '처음처럼 간단히 보기' : '모든 기능 한 번에 펼치기'}</button></div>
+  </div>`;
+}
+
+/** 미션 ②·③ 완료 저장 → 셋 다 했으면 보너스 */
+function dmDone(key, openKey) {
+  const dk = state.fortune.dateKey;
+  const r = dmMarkDone(load(DM_KEY, {}), dk, key, openKey);
+  if (r.changed) save(DM_KEY, r.store);
+  checkDayBonus();
+}
+function checkDayBonus() {
+  const dk = state.fortune.dateKey;
+  const st = load(DM_KEY, {})[dk] || {};
+  if (!(load(MISSION_KEY, {})[dk] && st.check && st.open)) return;
+  const b = dmClaimBonus(load(DM_KEY, {}), dk);
+  if (b.changed) { save(DM_KEY, b.store); setTimeout(() => grow((gg) => addExp(gg, DM_BONUS_EXP), '🎉 오늘의 미션 3가지 완료! 내일 미리보기가 열렸어요'), 900); }
+}
+
+/** 미션 ① 이달의 실천 = 오늘의 액땜 미션 (완료하면 액막이 부적 정화 + 용신 충전) */
+function completeActMission() {
+  const f = state.fortune; const m = load(MISSION_KEY, {});
+  // v0.30: 미션 ① = 오늘의 우산. 어디서 완료하든 우산 기록도 함께 남긴다
+  const { pick, h } = todayUmbrella();
+  if (!h.done) { const r = completeHabit(load(HABIT_KEY, {}), f.dateKey, pick); if (r.changed) save(HABIT_KEY, r.store); }
+  if (m[f.dateKey]) return;
+  m[f.dateKey] = true; save(MISSION_KEY, m);
+  grow((g) => complete(g, f.dateKey, 'mission', qBonus('mission')), `${say('missionDone')} (액막이 부적 등급 +1)`);
+  setTimeout(() => charge(state.saju.yongsin, 4, 'mission', '🧧 실천 완료'), 2400);
+  renderCharm(false);
+  checkDayBonus();
+}
+
+// ---------- 마음 날씨 + 오늘의 우산 (v0.30, habit.js): 날씨(운세) → 우산(5분 안에 할 행동 하나) → 확인·보상 ----------
+
+/** 오늘의 우산과 저장 상태. pick = 지금 고른(또는 이미 한) 미션 */
+function todayUmbrella() {
+  const f = state.fortune; const s = state.saju;
+  const h = habitDay(load(HABIT_KEY, {}), f.dateKey);
+  const u = pickUmbrella({ dateKey: f.dateKey, scores: f.scores, yongsin: s.yongsin, heesin: s.heesin, mood: h.before ?? null });
+  const pick = (h.done && missionById(h.id)) || u.options[(h.level || 1) - 1];
+  return { u, h, pick };
+}
+
+function moodRowHTML() {
+  const f = state.fortune; const st = load(HABIT_KEY, {}); const h = habitDay(st, f.dateKey);
+  const care = needsCare(st, f.dateKey)
+    ? '<p class="mood-care">요즘 마음에 천둥이 자주 치네요. 혼자 견디지 않아도 괜찮아요. 이야기 나눌 곳이 있어요: ☎ <b>109</b>(24시간 상담) · ☎ <b>1577-0199</b>(정신건강 상담)</p>' : '';
+  if (h.before) {
+    const m = MOODS.find((x) => x.v === h.before);
+    return `<div class="mood-row set"><span>오늘 마음 날씨 <b>${m.icon} ${m.label}</b></span>${h.done ? '' : '<button type="button" class="linkish" data-mood-edit>바꾸기</button>'}</div>${care}`;
+  }
+  return `<div class="mood-row"><b>지금 마음 날씨는?</b>
+    <div class="mood-btns">${MOODS.map((m) => `<button type="button" data-mood="${m.v}" title="${m.label}" aria-label="${m.label}">${m.icon}</button>`).join('')}</div>
+    <small>한 번만 눌러 주세요. 마음에 맞춰 오늘의 우산을 골라 드려요.</small></div>${care}`;
+}
+
+function umbrellaHTML() {
+  const f = state.fortune; const st = load(HABIT_KEY, {}); const { u, h, pick } = todayUmbrella();
+  const wk = weekDone(st, f.dateKey);
+  const week = `<small class="umb-week">이번 주 우산 ${wk}번${wk >= 3 ? ' · 🔥 이번 주 지켰어요' : ` · ${3 - wk}번 더 하면 이번 주 연속 유지`}</small>`;
+  if (h.done) {
+    const L = LEVELS[pick.level - 1];
+    const after = h.after
+      ? `<p class="umb-after-msg">${h.after === 'lighter' ? '🌤️ 마음이 가벼워졌다니 다행이에요.' : '☁️ 괜찮아요. 해낸 것만으로도 어제보다 한 걸음 나아갔어요.'}</p>`
+      : `<div class="umb-after"><b>해 보니 마음이 조금 가벼워졌나요?</b><div class="yday-btns"><button type="button" class="ghost" data-umb-after="lighter">🌤️ 가벼워졌어요</button><button type="button" class="ghost" data-umb-after="same">☁️ 그대로예요</button></div></div>`;
+    return `<div class="umb done"><h5>☂️ 오늘의 우산 <small>완료</small></h5><p class="umb-doneline">✓ ${L.icon} ${esc(pick.text)}</p>${after}${week}</div>`;
+  }
+  const sel = h.level || 1;
+  return `<div class="umb"><h5>☂️ 오늘의 우산 <small>${u.byMood ? `${u.areaIcon} 마음 돌보기` : `${u.areaIcon} ${u.areaLabel} ${u.score}점`} · 필요한 기운 ${ELEMENT_KO[u.el]}(${ELEMENT_HANJA[u.el]})</small></h5>
+    <p class="umb-frame">${u.frame}</p>
+    <div class="umb-opts">${u.options.map((o) => { const L = LEVELS[o.level - 1]; return `<button type="button" class="umb-opt ${o.level === sel ? 'on' : ''}" data-umb-pick="${o.level}" aria-pressed="${o.level === sel}"><span>${L.icon} ${L.label}${L.exp ? ` <i>+${L.exp} EXP</i>` : ''}</span>${esc(o.text)}</button>`; }).join('')}</div>
+    <button type="button" class="primary umb-do" data-umb-done>☂️ 했어요</button>
+    ${week}</div>`;
+}
+
+document.addEventListener('click', (e) => {
+  const mood = e.target.closest('[data-mood]');
+  if (mood) {
+    const v = Number(mood.dataset.mood); const r = setMood(load(HABIT_KEY, {}), state.fortune.dateKey, v);
+    if (r.changed) save(HABIT_KEY, r.store);
+    const m = MOODS.find((x) => x.v === v);
+    toast(v <= 2 ? `${m.icon} 알려 줘서 고마워요. 오늘은 마음을 돌보는 우산부터 챙겨요` : `${m.icon} 기록했어요. 오늘의 우산을 확인해 보세요`);
+    renderToday(); return;
+  }
+  if (e.target.closest('[data-mood-edit]')) {
+    const st = load(HABIT_KEY, {}); const dk = state.fortune.dateKey;
+    if (st[dk] && !st[dk].done) { delete st[dk].before; save(HABIT_KEY, st); }
+    renderToday(); return;
+  }
+  const pk = e.target.closest('[data-umb-pick]');
+  if (pk) { const r = pickLevel(load(HABIT_KEY, {}), state.fortune.dateKey, Number(pk.dataset.umbPick)); if (r.changed) save(HABIT_KEY, r.store); renderToday(); return; }
+  if (e.target.closest('[data-umb-done]')) { completeUmbrella(); return; }
+  const af = e.target.closest('[data-umb-after]');
+  if (af) {
+    const r = setAfter(load(HABIT_KEY, {}), state.fortune.dateKey, af.dataset.umbAfter);
+    if (r.changed) { save(HABIT_KEY, r.store); grow((g) => addExp(g, 1), af.dataset.umbAfter === 'lighter' ? '🌤️ 오늘도 나를 잘 돌봤어요' : '☁️ 솔직하게 알려 줘서 고마워요'); }
+    renderToday();
+  }
+});
+
+/** 우산 완료: 미션 ①과 같은 보상(액막이 정화·용신 충전) + 난이도 보너스 */
+function completeUmbrella() {
+  const { pick, h } = todayUmbrella(); if (h.done) return;
+  const L = LEVELS[pick.level - 1];
+  completeActMission();
+  if (L.exp) setTimeout(() => grow((g) => addExp(g, L.exp), `${L.icon} ${L.label} 우산 보너스`), 1600);
+  renderToday();
+}
+
+/** 홈 안의 구역으로 가기 ('home:next' · 'home:week' · 'home:.css선택자') */
+function goHomeTarget(t) {
+  const k = t.slice(5);
+  if (/^[a-z]+$/.test(k)) state.tlOpen = new Set([k, ...(k === 'next' ? ['today'] : [])]);
+  renderToday();
+  setTimeout(() => {
+    const el = /^[a-z]+$/.test(k) ? $(`[data-tl="${k}"]`) : $(k);
+    (el?.closest('.card, .tl-card') || el)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 40);
+}
+
+document.addEventListener('click', (e) => {
+  const all = e.target.closest('[data-guide-all]');
+  if (all) { save(GUIDE_KEY, guideSetAll(loadGuide(), all.dataset.guideAll === '1')); renderToday(); return; }
+  const b = e.target.closest('[data-dm]'); if (!b) return;
+  const key = b.dataset.dm;
+  if (key === 'act') { completeUmbrella(); return; }
+  // ②·③은 그 화면으로 이동하면 완료
+  const f = state.fortune; const g = loadGuide(); const gctx = guideCtx(); const d = timelineData(); const per = d.month.period;
+  const ms = buildMissions({ dateKey: f.dateKey, month: { term: per.term, start: per.start, end: per.end, theme: '', best: d.month.best }, today: { mission: '', score: f.scores.total }, pending: pendingFeedback(loadRecords(), f.date), discovery: g.all ? null : nextStep(g, gctx), nextYear: d.next?.sajuYear, progress: guideProgress(g, gctx), state: {} });
+  const m = ms.find((x) => x.key === key); if (!m) return;
+  const a = m.action;
+  dmDone(key, a.type === 'guide' ? a.key : a.type === 'tab' ? a.tab : undefined);
+  if (a.type === 'open-month') { goHomeTarget('home:month'); return; }
+  if (a.type === 'why') { renderToday(); setTimeout(() => { const w = $('[data-tl="today"] details.why'); if (w) { w.open = true; w.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }, 40); return; }
+  if (a.type === 'guide') finishGuide(a.key);
+  const go = a.type === 'guide' ? a.go : a.tab;
+  if (go.startsWith('home:')) { goHomeTarget(go); return; }
+  if (go === 'ask') state.askOpen = null;
+  renderToday();
+  selectTab(go);
+});
+
+// ---------- 기록함 (v0.22): 날마다 본 운세 저장 + "어제 운세 맞았나요?" + 결과 저장·메모 ----------
+const loadRecords = () => ({ ...emptyRecords(), ...load(RECORDS_KEY, {}) });
+
+/** 오늘 운세를 기록함에 남김 (홈을 볼 때마다, 같은 날은 덮어씀) */
+function logToday() {
+  const f = state.fortune; if (!f) return;
+  save(RECORDS_KEY, logDay(loadRecords(), { dateKey: f.dateKey, title: f.info.title, score: f.scores.total, best: catLabel(f.best), worst: catLabel(f.worst), mission: todayUmbrella().pick.text }));
+}
+
+/** 결과 저장 버튼 (질문 답·운세 풀이·신수 카드) */
+function saveBtnHTML(kind, key) {
+  const saved = state.fortune && hasItem(loadRecords(), kind, state.fortune.dateKey, key);
+  return `<button type="button" class="ghost rec-save ${saved ? 'saved' : ''}" data-rec-save="${kind}" data-rec-key="${key}">${saved ? '📌 기록함에 저장됨 · 보러 가기' : '📌 기록함에 저장'}</button>`;
+}
+
+/** 저장할 내용 만들기 (그때 본 문장을 그대로 보관) */
+function recordItemFor(kind, key) {
+  const dk = state.fortune.dateKey;
+  if (kind === 'ask') {
+    const a = buildAnswer(key, state.saju, weekFortunes());
+    return { kind, key, dateKey: dk, title: `${a.icon} ${a.q}`, score: a.score, summary: `${a.when} ${a.catLabel}, ${a.tone}`, lines: [a.text, a.basis, a.tip, `가장 좋은 날: ${a.best.full} ${a.best.score}점`] };
+  }
+  if (kind === 'reading') {
+    const r = readingFor(key); if (!r) return null;
+    const label = { next: `${timelineData().next?.sajuYear}년`, daewoon: '대운', year: '올해', month: '이달' }[key] || '';
+    return { kind, key, dateKey: dk, title: `📖 ${label} 운세 풀이 · ${r.god}`, score: r.score, summary: `${r.keyword} · ${r.range}`, lines: [r.intro[0], ...r.highlights.slice(0, 2), ...r.tips.slice(0, 2)] };
+  }
+  return null;
+}
+
+function renderRecords() {
+  const panel = $('[data-panel="records"]'); if (!panel || !state.fortune) return;
+  const rec = loadRecords(); const st = recordStats(rec); const days = dayList(rec, 30);
+  const md = (k) => { const [, m, d] = k.split('-'); return `${m}/${d}`; };
+  const filter = state.recFilter || 'all';
+  const items = rec.items.filter((x) => filter === 'all' || x.kind === filter);
+  panel.innerHTML = `
+    <div class="card rec-head">
+      <h3>📒 나의 기록함</h3>
+      <p class="muted" style="margin:-4px 0 12px;font-size:0.84rem">날마다 본 운세가 자동으로 남고, 다음 날 맞았는지 체크할 수 있어요. 기록은 이 기기에만 저장돼요.</p>
+      <div class="rec-stats">
+        <div><b>${st.logged}</b><small>기록한 날</small></div>
+        <div><b>${recordStreak(rec, state.fortune.date)}</b><small>연속으로 본 날</small></div>
+        <div><b>${st.hitRate === null ? '-' : `${st.hitRate}%`}</b><small>맞았어요 비율</small></div>
+        <div><b>${st.items}</b><small>저장한 결과</small></div>
+      </div>
+      ${st.answered >= 5 && st.highHit !== null && st.lowHit !== null ? `<p class="rec-insight">🔎 점수가 높았던 날은 ${st.highHit}%, 낮았던 날은 ${st.lowHit}% "맞았다"고 답했어요.</p>` : st.answered ? `<p class="rec-insight">🔎 ${5 - st.answered > 0 ? `${5 - st.answered}번 더 답하면 점수와 실제 하루가 얼마나 맞는지 분석해 드려요.` : ''}</p>` : ''}
+      ${(() => { const hs = habitStats(load(HABIT_KEY, {})); if (!hs.doneDays && !hs.moodDays) return ''; const mood = hs.avgMood == null ? null : MOODS.reduce((x, y) => (Math.abs(y.v - hs.avgMood) < Math.abs(x.v - hs.avgMood) ? y : x));
+        return `<div class="rec-stats rec-habit">
+        <div><b>${hs.doneDays}</b><small>☂️ 우산 챙긴 날</small></div>
+        <div><b>${hs.lighterRate === null ? '-' : `${hs.lighterRate}%`}</b><small>마음이 가벼워진 비율</small></div>
+        <div><b>${mood ? mood.icon : '-'}</b><small>평균 마음 날씨</small></div>
+        <div><b>${hs.byLevel[2]}</b><small>🌳 30분 도전</small></div>
+      </div>`; })()}
+    </div>
+    <div class="card">
+      <h3>🗓️ 날마다 운세 <small class="muted">최근 30일</small></h3>
+      ${days.length ? `<ul class="rec-days">${days.map((d) => `<li>
+        <span class="rec-date">${md(d.dateKey)}</span>
+        <span class="rec-title"><b>${esc(d.title)}</b>${d.memo ? `<small>“${esc(d.memo)}”</small>` : ''}</span>
+        <em style="color:${scoreColor(d.score)}">${d.score}</em>
+        <span class="rec-fb">${d.feedback ? `${FEEDBACK[d.feedback].icon}` : d.dateKey === state.fortune.dateKey ? '<small>오늘</small>' : `<button type="button" class="linkish" data-rec-ask="${d.dateKey}">체크</button>`}</span>
+      </li>`).join('')}</ul>` : '<p class="muted">아직 기록이 없어요. 오늘 탭을 열면 오늘 운세가 자동으로 남아요.</p>'}
+    </div>
+    <div class="card">
+      <h3>📌 저장한 결과</h3>
+      <div class="gal-tabs">${[['all', '전체'], ...Object.entries(ITEM_KIND).map(([k, v]) => [k, `${v.icon} ${v.label}`])].map(([k, l]) => `<button type="button" data-rec-filter="${k}" aria-pressed="${k === filter}">${l}</button>`).join('')}</div>
+      ${items.length ? items.map((x) => `<details class="rec-item">
+        <summary><span class="rec-date">${md(x.dateKey)}</span><span class="rec-title"><b>${esc(x.title)}</b><small>${esc(x.summary)}</small></span>${x.score !== null ? `<em style="color:${scoreColor(x.score)}">${x.score}</em>` : ''}</summary>
+        ${x.lines.map((l) => `<p>${esc(l)}</p>`).join('')}
+        <div class="rec-memo-row"><input type="text" maxlength="${MEMO_MAX}" value="${esc(x.memo || '')}" placeholder="메모 남기기" data-rec-memo="${esc(x.id)}" aria-label="메모"><button type="button" class="ghost" data-rec-del="${esc(x.id)}">삭제</button></div>
+      </details>`).join('') : `<p class="muted">${filter === 'all' ? '운세 보기의 질문 답이나 운세 풀이 아래 「📌 기록함에 저장」을 누르면 여기에 모여요.' : '이 종류로 저장한 결과가 아직 없어요.'}</p>`}
+    </div>
+    ${backupCardHTML()}`;
+}
+
+// ---------- 백업 (v0.23): 이 기기의 기록을 파일·글자로 내보내고 가져오기 ----------
+function backupCardHTML() {
+  return `<div class="card backup" id="backup">
+    <h3>💾 백업</h3>
+    <p class="muted" style="margin:-4px 0 10px;font-size:0.84rem">기록·수호신·부적·사주 정보는 이 기기에만 저장돼요. 기기를 바꾸거나 브라우저 기록을 지우기 전에 백업해 두세요.</p>
+    <div class="bk-row"><button type="button" class="primary" data-bk="file">📥 파일로 저장</button><button type="button" class="ghost" data-bk="copy">📋 글자로 복사</button></div>
+    <details class="bk-in"><summary>📤 백업 가져오기</summary>
+      <label class="bk-file">백업 파일 고르기<input type="file" accept=".json,application/json" data-bk-file></label>
+      <textarea rows="3" placeholder="또는 복사해 둔 백업 글자를 붙여 넣기" data-bk-text></textarea>
+      <button type="button" class="ghost" data-bk="import" style="width:100%">가져오기</button>
+    </details>
+    <p class="bk-warn">⚠️ 백업에는 생년월일이 들어 있어요. 다른 사람에게 보내거나 공개된 곳에 올리지 마세요.</p>
+  </div>`;
+}
+
+function currentBackup() {
+  const entries = {};
+  try { for (let k = 0; k < localStorage.length; k++) { const key = localStorage.key(k); if (key.startsWith(BACKUP_PREFIX)) entries[key] = localStorage.getItem(key); } } catch { /* 저장소 없음 */ }
+  return makeBackup(entries);
+}
+
+function restoreBackup(text) {
+  const r = parseBackup(text);
+  if (!r.ok) { toast(`⚠️ ${r.error}`); return; }
+  const when = r.savedAt ? r.savedAt.slice(0, 10) : '알 수 없는 날';
+  if (!confirm(`${when}에 만든 백업(${r.count}가지 기록)으로 바꿀까요?\n지금 이 기기의 기록은 백업 내용으로 덮어써져요.`)) return;
+  try {
+    Object.keys(localStorage).filter((k) => k.startsWith(BACKUP_PREFIX)).forEach((k) => localStorage.removeItem(k));
+    Object.entries(r.entries).forEach(([k, v]) => localStorage.setItem(k, v));
+  } catch { toast('⚠️ 이 브라우저에서는 저장할 수 없어요'); return; }
+  toast('💾 백업을 가져왔어요. 다시 불러올게요');
+  setTimeout(() => location.reload(), 700);
+}
+
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-bk]'); if (!b) return;
+  const act = b.dataset.bk;
+  if (act === 'file') {
+    const bk = currentBackup();
+    const url = URL.createObjectURL(new Blob([backupText(bk)], { type: 'application/json' }));
+    const a = document.createElement('a'); a.href = url; a.download = backupFileName(bk); document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    toast(`📥 ${bk.count}가지 기록을 파일로 저장했어요`);
+  }
+  if (act === 'copy') {
+    const txt = backupText(currentBackup());
+    try { await navigator.clipboard.writeText(txt); toast('📋 백업 글자를 복사했어요. 메모장 등 안전한 곳에 붙여 두세요'); } catch {
+      const ta = $('[data-bk-text]'); if (ta) { $('.bk-in').open = true; ta.value = txt; ta.select(); } toast('복사가 막혀 있어요. 아래 칸의 글자를 직접 복사해 주세요');
+    }
+  }
+  if (act === 'import') restoreBackup($('[data-bk-text]')?.value || '');
+});
+document.addEventListener('change', (e) => {
+  const inp = e.target.closest('[data-bk-file]'); if (!inp || !inp.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = () => restoreBackup(String(reader.result || ''));
+  reader.readAsText(inp.files[0]);
+  inp.value = '';
+});
+
+// ---------- 12지신 신수 카드 (v0.24): 60장(12지신 × 오행) 뽑기, 결과는 기록함에 자동 저장 ----------
+const cardPerson = () => { const i = state.saju.input; return `${i.year}-${i.month}-${i.day}-${i.timeKnown ? `${i.hour}:${i.minute}` : 'x'}`; };
+
+function cardFaceHTML(r, i) {
+  const info = characterInfo(galSaju(r.zodiac, r.element), state.profile);
+  const art = renderCharacterSVG(info, { stage: 3, width: 120, backdrop: false, mood: r.fit === 'slow' ? 'calm' : 'smile' });
+  return `<div class="sc-card el-${r.element}" style="--el:${EL_COLORS[r.element]};animation-delay:${i * 0.18}s">
+    <small class="sc-pos">${r.position}</small>
+    <div class="sc-art">${art}</div>
+    <b>${r.name}</b>
+    <span>${ZODIAC[r.zodiac].hanja} · ${['木', '火', '土', '金', '水'][r.element]} · ${r.keyword}</span>
+  </div>`;
+}
+
+function renderCards() {
+  const panel = $('[data-panel="cards"]'); if (!panel || !state.fortune) return;
+  const c = state.cards = state.cards || { area: 'today', spread: 'one', shown: false };
+  const dk = state.fortune.dateKey;
+  const res = c.shown ? drawReading({ person: cardPerson(), dateKey: dk, area: c.area, spread: c.spread, saju: state.saju }) : null;
+  const A = CARD_AREAS.find((a) => a.key === c.area);
+  panel.innerHTML = `
+    <div class="card sc-pick">
+      <h3>🃏 12지신 신수 카드</h3>
+      <p class="muted" style="margin:-4px 0 12px;font-size:0.84rem">궁금한 것을 마음속으로 떠올리고 카드를 뽑아 보세요. 12지신 × 오행 60장이 모두 같은 확률(1/60)로 나오고, 같은 날 같은 질문에는 같은 카드가 나와요.</p>
+      <div class="sc-areas">${CARD_AREAS.map((a) => `<button type="button" data-card-area="${a.key}" aria-pressed="${a.key === c.area}">${a.icon} ${a.label}</button>`).join('')}</div>
+      <div class="gal-tabs sc-spread">${Object.entries(SPREADS).map(([k, v]) => `<button type="button" data-card-spread="${k}" aria-pressed="${k === c.spread}">${v.label}</button>`).join('')}</div>
+      ${res ? '' : `<button type="button" class="primary sc-draw" data-card-draw>${A.icon} ${A.label} 카드 ${c.spread === 'one' ? '한 장' : '세 장'} 뽑기</button>`}
+    </div>
+    ${res ? `<div class="card sc-result">
+      <div class="sc-cards n${res.readings.length}">${res.readings.map(cardFaceHTML).join('')}</div>
+      <p class="sc-summary">${A.icon} <b>${A.label}</b> · ${esc(res.summary)}</p>
+      ${res.readings.map((r) => `<div class="sc-read">
+        <h4>${res.readings.length > 1 ? `<em>${r.position}</em> ` : ''}${r.name}</h4>
+        <p>${r.message}</p>
+        <p class="sc-area">${A.icon} ${r.areaLine}</p>
+        <p class="sc-fit">${r.fitLine}</p>
+        <ul><li>✅ ${r.action}</li><li>🌧️ ${r.caution}</li></ul>
+      </div>`).join('')}
+      <p class="muted" style="font-size:0.78rem;margin:8px 0">📒 이 결과는 기록함에 저장됐어요. 다른 질문을 고르면 새 카드를 뽑을 수 있어요.</p>
+      <div class="bk-row"><button type="button" class="ghost" data-card-again>다른 질문 뽑기</button><button type="button" class="ghost" data-sub-go="records">기록함 보기</button></div>
+      <p class="muted" style="font-size:0.72rem;margin:8px 0 0;text-align:center">카드는 마음을 정리하는 재미 요소예요. 의료·법률·투자 결정은 전문가와 상의하세요.</p>
+    </div>` : ''}`;
+  if (res) {
+    const item = { kind: 'card', key: `${c.area}|${c.spread}`, dateKey: dk, title: `🃏 ${A.label} · ${res.readings.map((r) => r.name).join(' / ')}`, score: null, summary: res.summary,
+      lines: res.readings.flatMap((r) => [`${res.readings.length > 1 ? `[${r.position}] ` : ''}${r.name}: ${r.message}`, `${r.areaLine} ${r.action}`]) };
+    const added = addItem(loadRecords(), item);
+    save(RECORDS_KEY, added.rec);
+    if (added.isNew && state.cards.justDrew) grow((g) => addExp(g, 2), '🃏 신수 카드가 기록함에 저장됐어요');
+    state.cards.justDrew = false;
+  }
+}
+
+document.addEventListener('click', (e) => {
+  const go = e.target.closest('[data-sub-go]');
+  if (go) { if (go.dataset.subGo === 'records') state.recFilter = 'card'; selectTab(go.dataset.subGo); return; }
+  if (!state.cards) return;
+  const ar = e.target.closest('[data-card-area]');
+  if (ar) { state.cards.area = ar.dataset.cardArea; state.cards.shown = hasItem(loadRecords(), 'card', state.fortune.dateKey, `${state.cards.area}|${state.cards.spread}`); renderCards(); return; }
+  const sp = e.target.closest('[data-card-spread]');
+  if (sp) { state.cards.spread = sp.dataset.cardSpread; state.cards.shown = hasItem(loadRecords(), 'card', state.fortune.dateKey, `${state.cards.area}|${state.cards.spread}`); renderCards(); return; }
+  if (e.target.closest('[data-card-draw]')) { state.cards.shown = true; state.cards.justDrew = true; renderCards(); $('.sc-result')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  if (e.target.closest('[data-card-again]')) { state.cards.shown = false; renderCards(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+});
+
+// ---------- 전문가 보기 (v0.25): 지장간·12운성·신살·공망·대운표·계산 기준 + 가족·지인 명식 ----------
+const loadCharts = () => ({ ...emptyCharts(), ...load(CHARTS_KEY, {}) });
+
+/** 선택한 명식의 {label, profile, saju} */
+function chartSubject(cs) {
+  const c = cs.list.find((x) => x.id === cs.sel);
+  if (!c) return { id: 'me', label: state.profile.name ? `${state.profile.name}(나)` : '나', profile: state.profile, saju: state.saju };
+  const solar = solarDateOf(c);
+  if (!solar || solar.error) return { id: c.id, label: c.name, profile: c, saju: null, error: '날짜를 변환할 수 없어요.' };
+  return { id: c.id, label: c.name, profile: c, saju: computeSaju(profileToInput(c)) };
+}
+
+function expertCardHTML() {
+  const cs = loadCharts();
+  const head = `<div class="ex-head"><h3>🔬 전문가 보기</h3><button type="button" class="ex-switch ${cs.on ? 'on' : ''}" data-ex-toggle aria-pressed="${cs.on}"><i></i>${cs.on ? '켜짐' : '꺼짐'}</button></div>`;
+  if (!cs.on) return `<div class="card expert" id="expert">${head}<p class="muted" style="margin:0;font-size:0.84rem">지장간·12운성·신살·공망·대운표와 계산 기준을 한 번에 봐요. 가족·지인 명식도 여러 개 저장할 수 있어요(이 기기에만 보관).</p></div>`;
+  const sub = chartSubject(cs);
+  const people = [{ id: 'me', name: state.profile.name || '나' }, ...cs.list];
+  const chips = `<div class="ex-people">${people.map((p) => `<button type="button" data-ex-sel="${p.id}" aria-pressed="${p.id === sub.id}">${p.id === 'me' ? '🙋 ' : ''}${esc(p.name)}${p.relation ? `<small>${esc(p.relation)}</small>` : ''}</button>`).join('')}<button type="button" data-ex-add>➕ 명식 추가</button></div>`;
+  const form = state.exAdd ? `<form class="ex-form" data-ex-form autocomplete="off">
+    <div class="ex-grid"><label>이름·별명<input name="name" maxlength="12" required placeholder="예: 엄마"></label>
+      <label>관계<select name="relation">${RELATIONS.map((r) => `<option>${r}</option>`).join('')}</select></label></div>
+    <div class="ex-grid three"><label>년<input name="year" type="number" inputmode="numeric" min="1900" max="2100" required placeholder="1965"></label>
+      <label>월<input name="month" type="number" inputmode="numeric" min="1" max="12" required></label>
+      <label>일<input name="day" type="number" inputmode="numeric" min="1" max="31" required></label></div>
+    <div class="ex-grid"><label>달력<select name="calendar"><option value="solar">양력</option><option value="lunar">음력</option></select></label>
+      <label>태어난 시간 (모르면 비움)<input name="time" type="time"></label></div>
+    <div class="ex-grid"><label>성별 (대운용)<select name="gender"><option value="">모름</option><option value="female">여성</option><option value="male">남성</option></select></label>
+      <label class="check" style="align-self:end"><input type="checkbox" name="leap"> 음력 윤달</label></div>
+    <div class="bk-row"><button type="button" class="ghost" data-ex-cancel>취소</button><button type="submit" class="primary">저장</button></div>
+    <p class="muted" style="font-size:0.74rem;margin:6px 0 0">명식은 이 기기에만 저장되고 친구·서버로 보내지 않아요. 본인 동의를 받고 저장해 주세요.</p>
+  </form>` : '';
+  if (!sub.saju) return `<div class="card expert" id="expert">${head}${chips}${form}<p class="muted">${sub.error}</p></div>`;
+  const s = sub.saju; const tb = expertTable(s);
+  const cell = (r, f) => (r.empty ? '<td class="ex-empty">-</td>' : `<td>${f(r)}</td>`);
+  const table = `<div class="ex-table-wrap"><table class="ex-table">
+    <tr><th></th>${tb.map((r) => `<th>${r.label}</th>`).join('')}</tr>
+    <tr><th>십신</th>${tb.map((r) => cell(r, (x) => x.stemGod)).join('')}</tr>
+    <tr class="ex-big"><th>천간</th>${tb.map((r) => cell(r, (x) => x.stem)).join('')}</tr>
+    <tr class="ex-big"><th>지지</th>${tb.map((r) => cell(r, (x) => `${x.branch}${x.gongmang ? '<sup title="공망">空</sup>' : ''}`)).join('')}</tr>
+    <tr><th>십신</th>${tb.map((r) => cell(r, (x) => x.branchGod)).join('')}</tr>
+    <tr><th>지장간</th>${tb.map((r) => cell(r, (x) => x.hidden.map((h) => `${h.stem}<small>${h.god}</small>`).join('<br>'))).join('')}</tr>
+    <tr><th>12운성</th>${tb.map((r) => cell(r, (x) => `<span title="${STAGE_NOTE[x.stage]}">${x.stage}</span>`)).join('')}</tr>
+  </table></div>`;
+  const ss = sinsalOf(s);
+  const gm = tb.find((r) => r.key === 'day');
+  const sinsal = `<div class="ex-block"><h5>⭐ 신살 · 공망</h5>${ss.length ? `<ul>${ss.map((x) => `<li><b>${x.name}</b> ${x.branch} <small>(${x.where.join('·')})</small> — ${x.note}</li>`).join('')}</ul>` : '<p class="muted">대표 신살(천을귀인·문창·역마·도화·화개·양인)이 원국에 없어요.</p>'}
+    <p class="muted" style="margin:4px 0 0;font-size:0.8rem">공망(空): 일주 ${gm.stem}${gm.branch} 기준 ${(() => { const i = [...Array(60).keys()].find((n) => n % 10 === s.pillars.day.stem && n % 12 === s.pillars.day.branch); const b = (i - (i % 10)) % 12; return `${BRANCHES[(b + 10) % 12]}${BRANCHES[(b + 11) % 12]}`; })()} — 원국에 있으면 표에 空 표시. 신살은 성향을 보는 참고 자료예요.</p></div>`;
+  const g = sub.profile.gender;
+  const dw = g ? computeDaewoon(s, g) : null;
+  const dwHTML = `<div class="ex-block"><h5>🏔️ 대운표 ${dw ? `<small>${dw.forward ? '순행' : '역행'} · ${dw.startAge}세 시작</small>` : ''}</h5>${dw ? `<div class="ex-dw">${dw.pillars.map((p) => `<span><small>${p.startAge}세</small><b>${STEMS[p.stem]}${BRANCHES[p.branch]}</b><i style="color:${scoreColor(p.score)}">${p.score}</i><small>${tenGod(s.dayMaster, p.stem)}</small></span>`).join('')}</div>` : '<p class="muted">성별을 넣으면 대운표가 나와요.</p>'}</div>`;
+  const p = sub.profile;
+  const basis = `<div class="ex-block"><h5>⚙️ 계산 기준</h5><ul class="ex-basis">${calcBasis(s).map((x) => `<li><b>${x.k}</b><span>${x.v}</span></li>`).join('')}</ul>
+    <div class="ex-grid"><label class="check"><input type="checkbox" data-ex-lon ${p.lonCorr !== false ? 'checked' : ''} ${p.timeUnknown ? 'disabled' : ''}> 경도 보정(-30분)</label>
+      <label>자시 처리<select data-ex-zasi><option value="early" ${p.zasi !== 'late' ? 'selected' : ''}>23시에 날짜 변경</option><option value="late" ${p.zasi === 'late' ? 'selected' : ''}>야자시(0시)</option></select></label></div>
+    <p class="muted" style="font-size:0.76rem;margin:4px 0 0">바꾸면 ${sub.id === 'me' ? '오늘 운세·대운까지 모든 화면이' : '이 명식이'} 바로 다시 계산돼요.</p></div>`;
+  const i = s.input;
+  return `<div class="card expert" id="expert">${head}${chips}${form}
+    <p class="ex-who"><b>${esc(sub.label)}</b> · 양력 ${i.year}.${i.month}.${i.day}${i.timeKnown ? ` ${String(i.hour).padStart(2, '0')}:${String(i.minute).padStart(2, '0')}` : ' (시간 모름)'} · ${s.animal}띠 · 일간 ${STEMS[s.dayMaster]}(${ELEMENT_KO[STEM_ELEMENT[s.dayMaster]]}) · ${s.strength} · 용신 ${ELEMENT_KO[s.yongsin]} (${s.yongsinBasis || '억부'}) · 희신 ${ELEMENT_KO[s.heesin]}${s.johu && s.johu.season ? ` · 조후 ${s.johu.season}${s.johu.level === 'none' ? ' 충족' : s.johu.level === 'urgent' ? ' 급함' : ' 보완'}` : ''}</p>
+    ${table}${sinsal}${dwHTML}${basis}
+    ${sub.id !== 'me' ? `<button type="button" class="ghost" data-ex-del="${sub.id}" style="width:100%;margin-top:8px">이 명식 삭제</button>` : ''}
+  </div>`;
+}
+
+function refreshExpert() {
+  const el = $('#expert'); if (!el) return;
+  const tmp = document.createElement('div'); tmp.innerHTML = expertCardHTML(); el.replaceWith(tmp.firstElementChild);
+}
+
+/** 내 계산 기준을 바꾸면 모든 화면을 다시 계산 */
+function applyMyBasis(patch) {
+  const profile = { ...state.profile, ...patch };
+  save(STORE_KEY, profile);
+  state.profile = profile;
+  state.saju = computeSaju(profileToInput(profile));
+  state.fortune = applyAbilities(computeFortune(state.saju, undefined, { gender: profile.gender }));
+  state.tl = null; state.week = null;
+  renderAll();
+  toast('⚙️ 계산 기준을 바꿔 모든 화면을 다시 계산했어요');
+  setTimeout(() => $('#expert')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#expert')) return;
+  if (e.target.closest('[data-ex-toggle]')) { const cs = loadCharts(); save(CHARTS_KEY, { ...cs, on: !cs.on }); refreshExpert(); return; }
+  const sel = e.target.closest('[data-ex-sel]');
+  if (sel) { save(CHARTS_KEY, { ...loadCharts(), sel: sel.dataset.exSel }); state.exAdd = false; refreshExpert(); return; }
+  if (e.target.closest('[data-ex-add]')) { state.exAdd = true; refreshExpert(); $('#expert input[name=name]')?.focus(); return; }
+  if (e.target.closest('[data-ex-cancel]')) { state.exAdd = false; refreshExpert(); return; }
+  const del = e.target.closest('[data-ex-del]');
+  if (del && confirm('이 명식을 삭제할까요?')) { save(CHARTS_KEY, removeChart(loadCharts(), del.dataset.exDel)); refreshExpert(); toast('명식을 삭제했어요'); }
+});
+document.addEventListener('submit', (e) => {
+  const f = e.target.closest('[data-ex-form]'); if (!f) return;
+  e.preventDefault();
+  const d = Object.fromEntries(new FormData(f).entries());
+  const m = makeChart({ ...d, leap: !!d.leap });
+  if (!m.ok) { toast(`⚠️ ${m.error}`); return; }
+  const r = addChart(loadCharts(), m.chart);
+  if (!r.ok) { toast(`⚠️ ${r.error}`); return; }
+  save(CHARTS_KEY, r.store); state.exAdd = false; refreshExpert(); toast(`🔬 ${m.chart.name}님의 명식을 저장했어요`);
+});
+document.addEventListener('change', (e) => {
+  if (!e.target.closest('#expert')) return;
+  const lon = e.target.closest('[data-ex-lon]'); const zasi = e.target.closest('[data-ex-zasi]');
+  if (!lon && !zasi) return;
+  const patch = lon ? { lonCorr: lon.checked } : { zasi: zasi.value };
+  const cs = loadCharts();
+  if (cs.sel === 'me' || !cs.list.some((c) => c.id === cs.sel)) { applyMyBasis(patch); return; }
+  save(CHARTS_KEY, { ...cs, list: cs.list.map((c) => (c.id === cs.sel ? { ...c, ...patch } : c)) });
+  refreshExpert();
+});
+
+// ---------- 첫 7일 (v0.26): 첫 주에는 EXP·Lv. 대신 쉬운 말 (기능 소개는 v0.27부터 「오늘의 미션」 ③이 맡음) ----------
+const firstWeek = () => load(FW_KEY, null);
+
+/** 첫 주에는 화면에 나오는 게임 용어를 쉬운 말로 바꿔 보여 준다 (한 곳에서 처리) */
+let plainObserver = null;
+function setupPlainTerms() {
+  const on = state.fortune && inFirstWeek(firstWeek(), state.fortune.dateKey);
+  if (!on) { plainObserver?.disconnect(); plainObserver = null; return; }
+  if (plainObserver) return;
+  const fix = (root) => {
+    if (root.nodeType === 3) { if (hasGameTerms(root.nodeValue)) root.nodeValue = plainTerms(root.nodeValue); return; }
+    if (root.nodeType !== 1) return;
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode()) if (hasGameTerms(n.nodeValue)) n.nodeValue = plainTerms(n.nodeValue);
+  };
+  fix(document.body);
+  plainObserver = new MutationObserver((muts) => muts.forEach((m) => m.addedNodes.forEach(fix)));
+  plainObserver.observe(document.body, { childList: true, subtree: true });
+}
+
+function answerFeedback(dateKey, value, memo) {
+  const r = setFeedback(loadRecords(), dateKey, value, memo);
+  save(RECORDS_KEY, r.rec);
+  if (r.changed) grow((g) => addExp(g, 2), value === 'yes' ? '🎯 기록 완료! 수호신이 기뻐해요' : '📒 기록 완료! 솔직한 답이 다음 풀이에 도움이 돼요');
+  else if (value === 'skip') toast('오늘은 건너뛸게요');
+}
+
+document.addEventListener('click', (e) => {
+  const fb = e.target.closest('[data-fb]');
+  if (fb) { const memo = $('#yday .yday-memo')?.value; answerFeedback(fb.dataset.fbDay, fb.dataset.fb, memo); dmDone('check'); renderToday(); return; }
+  const sk = e.target.closest('[data-fb-skip]');
+  if (sk) { answerFeedback(sk.dataset.fbSkip, 'skip'); dmDone('check'); renderToday(); return; }
+  const sv = e.target.closest('[data-rec-save]');
+  if (sv) {
+    const { recSave: kind, recKey: key } = sv.dataset;
+    if (sv.classList.contains('saved')) { state.recFilter = kind; selectTab('records'); return; }
+    const item = recordItemFor(kind, key); if (!item) return;
+    save(RECORDS_KEY, addItem(loadRecords(), item).rec);
+    sv.classList.add('saved'); sv.textContent = '📌 기록함에 저장됨 · 보러 가기';
+    toast('📒 기록함에 저장했어요 (내 수호신 > 기록함)');
+    return;
+  }
+  const flt = e.target.closest('[data-rec-filter]');
+  if (flt) { state.recFilter = flt.dataset.recFilter; renderRecords(); return; }
+  const del = e.target.closest('[data-rec-del]');
+  if (del) { save(RECORDS_KEY, removeItem(loadRecords(), del.dataset.recDel)); renderRecords(); toast('삭제했어요'); return; }
+  const ask = e.target.closest('[data-rec-ask]');
+  if (ask) {
+    const k = ask.dataset.recAsk; const d = loadRecords().days[k];
+    const box = document.createElement('div'); box.className = 'evo-modal';
+    box.innerHTML = `<div class="evo-box"><h3 style="margin:0 0 6px">📒 ${k.split('-').slice(1).join('/')} 운세, 맞았나요?</h3>
+      <p class="muted" style="margin:0 0 12px">${esc(d.title)} · ${d.score}점</p>
+      <div class="yday-btns">${Object.entries(FEEDBACK).map(([v, x]) => `<button type="button" class="ghost" data-fb-modal="${v}">${x.icon} ${x.label}</button>`).join('')}</div>
+      <input type="text" class="yday-memo" maxlength="${MEMO_MAX}" placeholder="한 줄 메모 (선택)" value="${esc(d.memo || '')}">
+      <button type="button" class="ghost" data-fb-close style="width:100%;margin-top:8px">닫기</button></div>`;
+    document.body.appendChild(box);
+    box.addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-fb-modal]');
+      if (b) { answerFeedback(k, b.dataset.fbModal, box.querySelector('.yday-memo').value); box.remove(); renderRecords(); return; }
+      if (ev.target.closest('[data-fb-close]') || ev.target === box) box.remove();
+    });
+  }
+});
+document.addEventListener('change', (e) => {
+  const m = e.target.closest('[data-rec-memo]');
+  if (m) { save(RECORDS_KEY, setItemMemo(loadRecords(), m.dataset.recMemo, m.value)); toast('메모를 저장했어요'); }
+});
+
+function refreshTimeline(scrollTo) {
+  const el = $('#timeline'); if (!el) return;
+  const tmp = document.createElement('div'); tmp.innerHTML = timelineHTML();
+  el.replaceWith(tmp.firstElementChild);
+  if (scrollTo) setTimeout(() => $(`[data-tl="${scrollTo}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30);
+}
+
+document.addEventListener('click', (e) => {
+  const tg = e.target.closest('[data-tl-toggle]');
+  if (tg) {
+    const k = tg.dataset.tlToggle; const set = new Set(state.tlOpen || ['today']);
+    if (set.has(k)) set.delete(k); else set.add(k);
+    state.tlOpen = set;
+    if (k === 'next' && set.has(k) && finishGuide('next')) { renderToday(); return; }
+    refreshTimeline(); return;
+  }
+  const go = e.target.closest('[data-tl-go]');
+  if (go) { const k = go.dataset.tlGo; state.tlOpen = new Set([k]); refreshTimeline(k); return; }
+  const st = e.target.closest('[data-tl-step]');
+  if (!st) return;
+  const a = st.dataset.tlStep; const d = timelineData();
+  if (a.startsWith('read-')) { openReading(a.slice(5)); return; }
+  if (a === 'charm-today') { runAskCta('today'); return; }
+  if (a === 'charm-wealth') { state.charm.type = 'wealth'; state.charm.element = state.saju.yongsin; selectTab('charm'); renderCharm(true); return; }
+  if (a === 'charm-month') { state.charm.type = 'luck'; state.charm.element = state.saju.yongsin; selectTab('charm'); renderCharm(true); return; }
+  if (a === 'chat-week') { const b = d.week.best.date; selectTab('chat'); setTimeout(() => { const i = $('#chat-form input'); if (i) { i.value = `이번 주 ${b.month}/${b.day}(${dowOf(b)})이 좋은 날이래. 그날 뭘 하면 좋을까?`; i.focus(); } }, 50); return; }
+  if (a === 'journey') { ensureUnlocked('journey'); setTimeout(() => ($('#btn-journey') || $('.journey'))?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); return; }
+  if (a === 'five') { selectTab('report'); setTimeout(() => $('.dw-row')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 200); return; }
+  selectTab(a);
+});
+
+/** 게임 보너스는 정통 점수와 따로 표시 (설계 원칙 2) */
+function bonusLineHTML(f) {
+  const b = Object.entries(f.abilityBonus || {}).filter(([, v]) => v);
+  if (!b.length) return '';
+  const label = Object.fromEntries(CATEGORIES.map((c) => [c.key, c.label]));
+  return `<p class="bonus-line">🐉 수호신 능력 보너스(게임): ${b.map(([k, v]) => `${label[k]} +${v}`).join(' · ')} <small>— 캐릭터 능력치에만 쓰이고, 위 정통 점수에는 더하지 않았어요</small></p>`;
+}
+
+function renderToday() {
+  logToday();
+  // 길잡이로 연 구역만 보인다. 모두 열리면 예전과 같은 전체 홈
+  const sections = [
+    ['ask', askChipsHTML], ['season', seasonCardHTML], ['festival', festivalCardHTML], ['say', todaySayCard],
+    ['todo', todoCardHTML], ['journey', journeyCardHTML], ['daily', dailyCardHTML], ['concern', concernCard],
+    ['story', () => storyButton('fortune', '오늘의 운세를 스토리로 공유')],
+  ];
+  $('[data-panel="today"]').innerHTML = `
+    ${timelineHTML()}
+    ${sections.filter(([k]) => unlocked(k)).map(([, fn]) => fn()).join('\n')}`;
+
   $('#btn-daily')?.addEventListener('click', claimDaily);
   $('#btn-journey')?.addEventListener('click', doJourneyStep);
   $$('[data-todo]').forEach((b) => b.addEventListener('click', () => {
@@ -664,17 +1750,17 @@ function heroOptions() {
   const unlock = STAGE_UNLOCKS[stage - 1];
   const charms = eq.charms.map((r, i) => (i < unlock.charmSlots ? charmFromRecord(r) : null));
   const emote = unlock.emote ? eq.emote : null;
-  return { eq, charms, mood: emote || todayEmote(state.fortune), emote, stage, unlock };
+  return { eq, charms, mood: emote || todayEmote(state.fortune), emote, stage, unlock, season: seasonLook(loadSeason()) };
 }
 
 function renderHero(animate) {
   const s = state.saju; const f = state.fortune; const p = state.profile;
   const info = characterInfo(s, p);
-  const { eq, charms, mood, emote, stage, unlock } = heroOptions();
+  const { eq, charms, mood, emote, stage, unlock, season } = heroOptions();
   info.stage = stage;
   const stats = characterStats(s, f, info, charms);
-  const svg = renderCharacterSVG(info, { mood, charms, emote, stage, width: 300, backdrop: true, animate: true });
-  const svgStatic = renderCharacterSVG(info, { mood, charms, emote, stage, width: 300, backdrop: true });
+  const svg = renderCharacterSVG(info, { mood, charms, emote, stage, season, width: 300, backdrop: true, animate: true });
+  const svgStatic = renderCharacterSVG(info, { mood, charms, emote, stage, season, width: 300, backdrop: true });
   const gs = summary(loadGrowth(), f.dateKey);
 
   // 장착 후보: 지금 공방의 부적 + 도감
@@ -709,7 +1795,7 @@ function renderHero(animate) {
         <div>
           <p class="muted" style="margin:0">${info.zodiac.name}띠(${info.zodiac.hanja}) · 일간 ${STEMS[s.dayMaster]}(${ELEMENT_KO[info.element]}) · ${info.female ? '여성' : '남성'} · 고민 ${info.concern.label}</p>
           <h3 class="hero-title">${info.title}</h3>
-          <p style="margin:0 0 6px"><span class="rarity-badge" style="color:var(--gold)">Lv.${gs.level} · ${stageName(gs.stage, info.female)}</span>${currentDex().title ? ` <span class="rarity-badge" style="color:#ff8fb3">📖 ${currentDex().title}</span>` : ''}</p>
+          <p style="margin:0 0 6px"><span class="rarity-badge" style="color:var(--gold)">Lv.${gs.level} · ${stageName(gs.stage, info.female)}</span>${currentDex().title ? ` <span class="rarity-badge" style="color:#ff8fb3">📖 ${currentDex().title}</span>` : ''}${seasonTitle() ? ` <span class="rarity-badge season-title">🏮 ${esc(seasonTitle())}</span>` : ''}</p>
           ${personalityCard()}
           <p class="muted" style="margin-top:8px;font-size:0.82rem">띠는 동물과 성격, 타고난 기운은 한복 색, 성별은 한복 모양, 고민은 손에 든 소품으로 정해졌습니다.</p>
           <div class="slots">${slot(0)}${slot(1)}${emoteSlot}</div>
@@ -735,6 +1821,8 @@ function renderHero(animate) {
       : '<p class="muted" style="margin:0">부적 공방에서 부적을 만들고 도감에 저장하면 여기서 장착할 수 있습니다.</p>'}
     </div>
 
+    ${seasonWardrobeHTML()}
+
     <div class="card">
       <h3>이모티콘 장착 <span class="tag">표정 + 말풍선</span></h3>
       <div class="emote-chips">${EMOTES.map((e) => { const own = ownedEmotes().has(e.key); return `<button type="button" data-emote="${e.key}" aria-pressed="${emote === e.key}" class="${own ? '' : 'locked'}">${own ? renderEmoticonSVG(s, f, { stage: heroOptions().stage, profile: p, mood: e.key, style: 'sticker', tag: '', caption: e.label, rarity: emoteRarity(e.key) }) : `<div class="emo-lock">🔒<br>${e.label}</div>`}</button>`; }).join('')}</div>
@@ -742,6 +1830,7 @@ function renderHero(animate) {
     </div>`;
 
   const panel = $('[data-panel="hero"]');
+  bindSeasonWardrobe(panel);
   const saveEquip = (next, lead = '') => { save(EQUIP_KEY, next); renderHero(false); grow((g) => complete(g, f.dateKey, 'equip', qBonus('equip')), lead); };
   $$('[data-equip]', panel).forEach((b) => b.addEventListener('click', () => {
     const r = candidates[Number(b.dataset.equip)];
@@ -923,9 +2012,167 @@ function festivalCardHTML() {
     const f = fs.active;
     return `<div class="card fest on"><div class="fest-ic">${f.icon}</div><div><b>🏮 ${f.name} 축제 진행 중!</b><p>${f.desc}</p><small>축제 기간 무료 뽑기 +1 · ${ELEMENT_HANJA[f.element]} 기운 충전 보너스</small></div></div>`;
   }
-  if (!fs.next) return '';
+  if (!fs.next || seasonNow().active || seasonNow().next?.key === fs.next.key) return '';
   return `<div class="card fest"><div class="fest-ic">${fs.next.icon}</div><div><b>다음 축제: ${fs.next.name} · D-${fs.daysToNext}</b><p>${fs.next.desc}</p><small>${fs.next.date.month}월 ${fs.next.date.day}일 전후 무료 뽑기 +1</small></div></div>`;
 }
+
+// ---------- 계절 한정 패키지 ----------
+
+const EFFECT_LABEL = { snow: '눈 내림', petal: '꽃잎 흩날림', leaf: '낙엽 흩날림', star: '은하수 별빛', firefly: '반딧불', moon: '보름달빛', lantern: '청사초롱' };
+const md = (d) => `${d.month}/${d.day}`;
+
+function loadSeason() {
+  return { ...emptySeason(), ...load(SEASON_KEY, {}) };
+}
+
+function seasonNow() {
+  return seasonStatus(state.fortune.date);
+}
+
+function seasonTitle() {
+  return activeTitle(loadSeason(), seasonsAround(state.fortune.date.year));
+}
+
+/** 퀘스트 완료 → 진행 중 시즌 무료 트랙 기록. 토스트 메시지 목록 반환 */
+function seasonTick(questKeys) {
+  const ss = seasonNow().active;
+  if (!ss || !questKeys.length) return [];
+  let st = loadSeason();
+  const got = [];
+  for (const k of questKeys) {
+    const r = recordSeason(st, ss.id, k, state.fortune.dateKey);
+    st = r.state; got.push(...r.unlocked);
+  }
+  save(SEASON_KEY, st);
+  if (questKeys.some((k) => SEASON_MISSIONS.some((m) => m.key === k))) setTimeout(refreshSeasonCard, 0);
+  return got.map((t) => t.reward === 'item' ? `🏮 ${itemName(ss)} 무료 획득! 캐릭터 탭에서 장착해 보세요` : t.reward === 'title' ? `🏮 한정 칭호 「${titleName(ss)}」 획득!` : `🏮 한정 스티커 「${ss.sticker}」 획득!`);
+}
+
+function refreshSeasonCard() {
+  const old = $('[data-panel="today"] .card.season');
+  if (!old) return;
+  const tmp = document.createElement('div'); tmp.innerHTML = seasonCardHTML();
+  if (tmp.firstElementChild) old.replaceWith(tmp.firstElementChild);
+}
+
+/** mode: 'set'(소품+효과) · 'item'(소품만) · 'none' */
+function seasonPreviewSVG(key, width, mode) {
+  const info = characterInfo(state.saju, state.profile);
+  const { charms, emote, stage } = heroOptions();
+  const season = mode === 'none' ? null : { key, effect: mode === 'set' };
+  return renderCharacterSVG(info, { stage, charms, emote, mood: 'excited', width, backdrop: true, animate: true, season });
+}
+
+function seasonCardHTML() {
+  if (!state.saju) return '';
+  const { active: ss, next } = seasonNow();
+  if (!ss) {
+    if (!next) return '';
+    return `<div class="card season soon" style="--sc:${next.color}"><div class="season-head"><span class="season-ic">${next.icon}</span><div><b>다음 한정 패키지: ${next.year} ${next.name} · ${next.theme}</b><small>${md(next.start)}~${md(next.end)} · D-${next.daysToStart}</small></div></div><p class="muted" style="margin:6px 0 0;font-size:0.84rem">시즌이 열리면 미션만 해도 「${next.item}」${withEul(next.item).slice(-1)} 무료로 받을 수 있어요.</p></div>`;
+  }
+  const st = loadSeason();
+  const owned = st.owned[ss.id] || {};
+  const prog = missionProgress(st.progress[ss.id]);
+  const doneN = prog.filter((m) => m.done).length;
+  const tiers = FREE_TIERS.map((t) => {
+    const got = !!owned[t.reward];
+    const what = t.reward === 'sticker' ? ss.sticker : t.reward === 'title' ? ss.title : ss.item;
+    return `<li class="${got ? 'got' : ''}"><i>${got ? '✓' : `${t.need}`}</i><span><b>${t.label}</b><small>${t.reward === 'item' ? itemThumb(ss.key) : ''}${esc(what)}</small></span></li>`;
+  }).join('');
+  const missions = prog.map((m) => `<li class="${m.done ? 'done' : ''}"><span>${m.icon} ${m.label}</span><div class="track"><div class="fill" style="width:${(m.n / m.goal) * 100}%"></div></div><b>${m.n}/${m.goal}일</b></li>`).join('');
+  const trying = state.seasonTry;
+  const mode = trying || owned.set ? 'set' : owned.item ? 'item' : 'none';
+  return `<div class="card season" style="--sc:${ss.color}">
+    <div class="season-head"><span class="season-ic">${itemThumb(ss.key, 'season-ic-img') || ss.icon}</span><div><b>${ss.year} ${ss.name} 한정 · ${ss.theme} 패키지</b><small>${md(ss.start)}~${md(ss.end)} · ${ss.toFest > 0 ? `축제까지 D-${ss.toFest}` : ss.toFest === 0 ? '오늘이 축제!' : '축제 여운 기간'} · 판매 종료까지 ${ss.daysLeft}일</small></div></div>
+    <div class="season-body">
+      <div class="season-preview">${seasonPreviewSVG(ss.key, 150, mode)}
+        <button class="ghost" type="button" data-season="try">${trying ? '원래대로' : '👘 입어 보기'}</button></div>
+      <div class="season-free">
+        <h4>🎁 무료 트랙 <small>미션 ${doneN}/4</small></h4>
+        <ul class="season-missions">${missions}</ul>
+        <ul class="season-tiers">${tiers}</ul>
+      </div>
+    </div>
+    <div class="shop-item season-set">${itemThumb(ss.key, 'item-thumb lg')}<div><b>👘 ${ss.theme} 꾸미기 세트</b><small>${ss.item} 바로 받기 · 계절 장면(${SCENE_NAME[ss.key]}) · 배경 효과(${EFFECT_LABEL[ss.effect]}) · 금빛 칭호</small></div>
+      <button class="primary" type="button" data-season="buy" ${owned.set ? 'disabled' : ''}>${owned.set ? '보유 중' : `${PACK_PRICE.toLocaleString()}원`}</button></div>
+    <p class="muted" style="font-size:0.74rem;margin:6px 0 0">꾸미기 전용이라 운세·오행 수치는 변하지 않아요. 무료 트랙 미션 4개를 모두 하면 ${withEul(ss.item)} 무료로 받아요. 모든 아이템에 「${ss.year} ${ss.name}」이 새겨지고, 시즌이 끝나면 같은 디자인은 다시 판매하지 않아요.</p>
+  </div>`;
+}
+
+function openSeasonShop() {
+  const ss = seasonNow().active; if (!ss) return;
+  const el = document.createElement('div');
+  el.className = 'evo-modal';
+  el.innerHTML = `<div class="evo-box shop season-modal" style="--sc:${ss.color}">
+    <h3 style="margin-top:0">${ss.icon} ${ss.year} ${ss.name} · ${ss.theme} 꾸미기 세트</h3>
+    <div class="season-modal-art">${seasonPreviewSVG(ss.key, 220, 'set')}</div>
+    <ul class="season-contents">
+      <li>👘 <b>${esc(itemName(ss))}</b> — 바로 장착</li>
+      <li>🏞️ 계절 장면 — ${SCENE_NAME[ss.key]}</li>
+      <li>✨ 계절 배경 효과 — ${EFFECT_LABEL[ss.effect]} (켜고 끌 수 있어요)</li>
+      <li>🏅 금빛 칭호 — ${esc(titleName(ss, true))}</li>
+      <li>🏷️ 한정 스티커 — ${esc(ss.sticker)}</li>
+    </ul>
+    <p class="muted" style="font-size:0.76rem">운세·오행 충전·뽑기 확률에는 영향이 없는 꾸미기 전용 상품입니다. 판매 기간 ${md(ss.start)}~${md(ss.end)} (남은 ${ss.daysLeft}일). ※ 프로토타입이라 실제 결제는 일어나지 않습니다.</p>
+    <button class="primary" type="button" data-sbuy="ok" style="width:100%">${PACK_PRICE.toLocaleString()}원 구매하기</button>
+    <button class="ghost" type="button" data-sbuy="close" style="width:100%;margin-top:6px">닫기</button></div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-sbuy]');
+    if (!b && e.target !== el) return;
+    if (b?.dataset.sbuy === 'ok') {
+      const today = dateToJdn(state.fortune.date.year, state.fortune.date.month, state.fortune.date.day);
+      const r = buyPack(loadSeason(), ss, today);
+      if (r.ok) { save(SEASON_KEY, r.state); state.seasonTry = false; toast(`${ss.icon} ${ss.theme} 꾸미기 세트를 받았어요! 캐릭터가 ${withEul(ss.item)} 장착했어요 (프로토타입: 결제 없음)`); }
+      else toast(r.reason);
+    }
+    el.remove();
+    refreshSeasonCard();
+    if (!$('[data-panel="hero"]').classList.contains('hidden')) renderHero(false);
+  });
+}
+
+function seasonWardrobeHTML() {
+  const st = loadSeason();
+  const items = ownedItems(st);
+  const ss = seasonNow().active;
+  const titles = Object.entries(st.owned).filter(([, o]) => o.title).map(([id, o]) => ({ id, gold: !!o.set, label: `${id.split('-')[1]} ${SEASON_PACKS[id.split('-')[0]].title}` }));
+  if (!items.length && !titles.length) {
+    return ss ? `<div class="card"><h3>🏮 한정 꾸미기 <span class="tag">${ss.year} ${ss.name}</span></h3><p class="muted" style="margin:0">홈의 ${ss.name} 패키지 무료 미션을 해내면 「${ss.item}」${withEul(ss.item).slice(-1)} 받아 여기서 장착할 수 있어요.</p></div>` : '';
+  }
+  const curSet = st.equipped && st.owned[st.equipped]?.set;
+  return `<div class="card wardrobe">
+    <h3>🏮 한정 꾸미기 <span class="tag">${items.length}개 보유</span></h3>
+    ${items.length ? `<div class="chips">${items.map((it) => `<button type="button" class="chip ${st.equipped === it.id ? 'on' : ''}" data-wear="${it.id}" aria-pressed="${st.equipped === it.id}">${it.year} ${esc(it.item)}${it.set ? ' ✨' : ''}</button>`).join('')}</div>` : ''}
+    ${curSet ? `<label class="row" style="gap:6px;margin-top:8px;font-size:0.86rem"><input type="checkbox" id="season-fx" ${st.effect !== false ? 'checked' : ''}> 계절 배경 효과 보기</label>` : ''}
+    ${titles.length ? `<p class="muted" style="margin:10px 0 4px;font-size:0.8rem">칭호</p><div class="chips">${titles.map((t) => `<button type="button" class="chip ${st.title === t.id ? 'on' : ''}" data-stitle="${t.id}">${t.gold ? '✨ ' : ''}${esc(t.label)}</button>`).join('')}</div>` : ''}
+    <p class="muted" style="font-size:0.74rem;margin:8px 0 0">한정 꾸미기는 능력치에 영향이 없어요. 장착한 소품은 스토리 카드에도 함께 나와요.</p>
+  </div>`;
+}
+
+function bindSeasonWardrobe(panel) {
+  $$('[data-wear]', panel).forEach((b) => b.addEventListener('click', () => {
+    const st = loadSeason();
+    const on = st.equipped === b.dataset.wear;
+    save(SEASON_KEY, { ...st, equipped: on ? null : b.dataset.wear });
+    toast(on ? '한정 소품을 벗었어요' : '한정 소품을 장착했어요!');
+    renderHero(false);
+  }));
+  $$('[data-stitle]', panel).forEach((b) => b.addEventListener('click', () => {
+    const st = loadSeason();
+    save(SEASON_KEY, { ...st, title: st.title === b.dataset.stitle ? null : b.dataset.stitle });
+    renderHero(false);
+  }));
+  const fx = $('#season-fx', panel);
+  if (fx) fx.addEventListener('change', () => { save(SEASON_KEY, { ...loadSeason(), effect: fx.checked }); renderHero(false); });
+}
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-season]');
+  if (!b) return;
+  if (b.dataset.season === 'try') { state.seasonTry = !state.seasonTry; refreshSeasonCard(); }
+  if (b.dataset.season === 'buy') openSeasonShop();
+});
 
 // ---------- AI 수호신 대화 ----------
 
@@ -941,7 +2188,55 @@ function chatContext() {
     yongsin: s.yongsin, weakest: s.weakest, strength: s.strength, fortune: state.fortune,
     concern: info.concern.label, journeyStep: journeyStep(info.concern.key, Math.min(j.done, JOURNEY_DAYS - 1), s.yongsin).title,
     daewoon: d ? `${pillarLabelFull(d)} (${d.startAge}~${d.endAge}세)` : null, luckIndex: luckNow().index,
+    memory: memoryLines(loadMemory(), state.fortune.dateKey),
   };
+}
+
+function loadMemory() {
+  return { ...emptyMemory(), ...load(MEM_KEY, {}) };
+}
+
+/** 대화 한 번이 끝난 뒤: 기억 추출·합치기, 필요하면 지난 대화 요약 */
+async function rememberTurn(text, history, fuMark) {
+  const today = state.fortune.dateKey;
+  let mem = loadMemory();
+  if (fuMark) mem = markAsked(mem, fuMark);
+  if (mem.on === false || isCrisis(text)) { save(MEM_KEY, mem); return; }
+  mem = mergeMemory(mem, extractMemories(text, today), today);
+  mem.pending = (mem.pending || 0) + 2;
+  save(MEM_KEY, mem);
+  if (!needsSummary(mem)) return;
+  const turns = history.slice(-mem.pending);
+  let summary = null;
+  try {
+    const sample = await getSample();
+    if (sample) summary = (await sample(summaryMessages(mem.summary, turns), { modelTier: 'quick', cache: false })).text;
+  } catch { summary = null; }
+  if (!summary || !summary.trim()) summary = offlineSummary(mem, turns, today);
+  save(MEM_KEY, applySummary(loadMemory(), summary.trim()));
+  if (!$('[data-panel="chat"]').classList.contains('hidden')) renderChat();
+}
+
+function memoryCard() {
+  const mem = loadMemory();
+  const today = state.fortune.dateKey;
+  const icon = { event: '📅', like: '💖', person: '👥', topic: '💭' };
+  const items = mem.items || [];
+  const list = mem.on === false
+    ? '<p class="muted">기억 끄기 상태예요. 수호신이 새로운 이야기를 기억하지 않아요.</p>'
+    : !items.length && !mem.summary
+      ? '<p class="muted">아직 기억한 이야기가 없어요. "내일 면접 있어"처럼 말해 주면 다음에 먼저 안부를 물어요.</p>'
+      : `${mem.summary ? `<div class="mem-sum">📝 ${esc(mem.summary)}</div>` : ''}<ul class="mem-list">${items.map((x) => `<li><span>${icon[x.kind]} ${esc(describeMemory(x, today))}${x.count > 1 ? ` <small>×${x.count}</small>` : ''}</span><button type="button" class="mem-x" data-forget="${esc(x.id)}" aria-label="이 기억 지우기">✕</button></li>`).join('')}</ul>`;
+  return `
+    <div class="card memory">
+      <h3>🧠 수호신의 기억 <span class="tag">${items.length}/${MEMORY_LIMIT}</span></h3>
+      ${list}
+      <div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap">
+        <button class="ghost" type="button" id="btn-mem-toggle">${mem.on === false ? '기억 켜기' : '기억 끄기'}</button>
+        <button class="ghost" type="button" id="btn-mem-clear">모두 잊기</button>
+      </div>
+      <p class="muted" style="font-size:0.74rem;margin:8px 0 0">기억은 이 기기에만 저장돼요. 전화번호·생년월일·주소처럼 민감한 내용은 기억하지 않고, 대화 ${SUMMARY_EVERY}마디마다 짧게 요약해요. 친구와 공유되지 않아요.</p>
+    </div>`;
 }
 
 function loadChat() {
@@ -965,7 +2260,9 @@ function renderChat() {
   const sub = isSubscribed(loadGacha(), state.fortune.dateKey);
   const left = sub ? '무제한' : `${Math.max(0, FREE_CHATS - c.used)}/${FREE_CHATS}`;
   const face = faceSVG(info, stage, 'smile', 40);
-  const hist = c.history.length ? c.history : [{ role: 'guardian', text: `${speak(zIdx(), 'greet', { index: 1, stage })} 무엇이든 물어봐. ${info.concern.label} 고민도 좋고, 오늘 운세도 좋아!` }];
+  const baseHist = c.history.length ? c.history : [{ role: 'guardian', text: `${speak(zIdx(), 'greet', { index: 1, stage })} 무엇이든 물어봐. ${info.concern.label} 고민도 좋고, 오늘 운세도 좋아!` }];
+  const fu = followUp(loadMemory(), state.fortune.dateKey);
+  const hist = fu ? [...baseHist, { role: 'guardian', text: `💭 ${fu.text}`, recall: true }] : baseHist;
   panel.innerHTML = `
     <div class="card chat">
       <h3>💬 수호신과 대화 <span class="tag">${state.sample ? 'AI 수호신' : '수호신'} · 오늘 ${left}</span></h3>
@@ -974,11 +2271,15 @@ function renderChat() {
       <form id="chat-form" class="chat-form"><input name="q" type="text" maxlength="200" placeholder="${info.zodiac.name} 수호신에게 물어보기…" autocomplete="off"><button class="primary" type="submit">보내기</button></form>
       <p class="muted" style="font-size:0.74rem;margin:8px 0 0">무료 하루 ${FREE_CHATS}회 · 👑 수호 구독 무제한. 수호신의 답은 재미와 마음가짐을 위한 것이며, 의료·법률·투자 결정은 전문가와 상의하세요. 힘든 마음이 들면 ☎ 109 (24시간)</p>
       <button class="ghost" type="button" id="btn-chat-clear" style="margin-top:6px">대화 지우기</button>
-    </div>`;
+    </div>
+    ${memoryCard()}`;
   const log = $('#chat-log', panel); log.scrollTop = log.scrollHeight;
   $('#chat-form', panel).addEventListener('submit', (e) => { e.preventDefault(); const q = e.target.q.value.trim(); if (q) sendChat(q); });
   $$('[data-ask]', panel).forEach((b) => b.addEventListener('click', () => sendChat(b.dataset.ask)));
   $('#btn-chat-clear', panel).addEventListener('click', () => { save(CHAT_KEY, { ...loadChat(), history: [] }); renderChat(); });
+  $$('[data-forget]', panel).forEach((b) => b.addEventListener('click', () => { save(MEM_KEY, forget(loadMemory(), b.dataset.forget)); renderChat(); toast('그 기억은 지웠어요'); }));
+  $('#btn-mem-toggle', panel).addEventListener('click', () => { const m = loadMemory(); save(MEM_KEY, { ...m, on: m.on === false }); renderChat(); toast(m.on === false ? '수호신이 다시 이야기를 기억해요' : '이제 새 이야기를 기억하지 않아요'); });
+  $('#btn-mem-clear', panel).addEventListener('click', () => { if (confirm('수호신의 기억을 모두 지울까요?')) { save(MEM_KEY, forgetAll(loadMemory())); renderChat(); toast('모든 기억을 지웠어요'); } });
 }
 
 async function sendChat(text) {
@@ -987,13 +2288,16 @@ async function sendChat(text) {
   const sub = isSubscribed(loadGacha(), state.fortune.dateKey);
   if (!sub && c.used >= FREE_CHATS && !isCrisis(text)) { toast('오늘 무료 대화를 모두 썼어요. 내일 또 만나거나 수호 구독으로 무제한 대화할 수 있어요'); openShop(); return; }
   const ctx = chatContext();
+  const mem = loadMemory();
+  const fu = followUp(mem, state.fortune.dateKey);
+  if (fu) ctx.followUp = fu.text; else ctx.recall = recallFor(mem, text, state.fortune.dateKey);
   const history = [...c.history, { role: 'user', text }];
   save(CHAT_KEY, { ...c, history });
   renderChat();
   const log = $('#chat-log');
   const face = faceSVG(characterInfo(state.saju, state.profile), ctx.stage, 'smile', 40);
   const bubble = document.createElement('div');
-  bubble.className = 'msg bot'; bubble.innerHTML = `<div class="av">${face}</div><p class="typing">${ctx.pers.me}가 생각하는 중…</p>`;
+  bubble.className = 'msg bot'; bubble.innerHTML = `<div class="av">${face}</div><p class="typing">${ctx.zodiacName} 수호신이 생각하는 중…</p>`;
   log.appendChild(bubble); log.scrollTop = log.scrollHeight;
   const p = bubble.querySelector('p');
   let answer;
@@ -1016,7 +2320,9 @@ async function sendChat(text) {
   }
   state.chatBusy = false;
   const c2 = loadChat();
-  save(CHAT_KEY, { ...c2, used: c2.used + (isCrisis(text) ? 0 : 1), history: [...history, { role: 'guardian', text: answer }].slice(-30) });
+  const fullHistory = [...history, { role: 'guardian', text: answer }];
+  save(CHAT_KEY, { ...c2, used: c2.used + (isCrisis(text) ? 0 : 1), history: fullHistory.slice(-30) });
+  rememberTurn(text, fullHistory, fu?.mark);
   renderChat();
   grow((g) => complete(g, state.fortune.dateKey, 'chat', qBonus('chat')));
 }
@@ -1422,6 +2728,36 @@ function todoCardHTML() {
   </div>`;
 }
 
+/** 첫 가입 직후: 나의 사주 한 장 요약 → 수호신 소환 (사주앱을 연 이유부터 먼저 해소) */
+function showSajuCard() {
+  const s = state.saju; const f = state.fortune; const L = f.layers;
+  const prof = DAY_MASTER_PROFILE[s.dayMaster];
+  const th = (p) => pillarTheme(s, p);
+  const order = [['hour', '시'], ['day', '일'], ['month', '월'], ['year', '년']];
+  const pillars = order.map(([k, cap]) => { const p = s.pillars[k]; return `<div class="sc-p"><small>${cap}</small>${p ? `<b>${STEMS[p.stem]}</b><b>${BRANCHES[p.branch]}</b>` : '<b>?</b><b>?</b>'}</div>`; }).join('');
+  const els = s.elements.map((v, e) => `<i style="flex:${Math.max(v, 3)};background:${EL_COLORS[e]}" title="${ELEMENT_KO[e]} ${v}%"></i>`).join('');
+  const el = document.createElement('div');
+  el.className = 'evo-modal';
+  el.innerHTML = `<div class="evo-box saju-card">
+    <p class="muted" style="margin:0">${state.profile.name ? `${esc(state.profile.name)}님의` : '나의'} 사주 한 장 요약</p>
+    <div class="sc-pillars">${pillars}</div>
+    <h3 style="margin:8px 0 4px">${prof.image} 같은 사람 · ${prof.name}</h3>
+    <p style="margin:0 0 8px;font-size:0.88rem;line-height:1.55">${prof.text}</p>
+    <div class="sc-els">${els}</div>
+    <p class="muted" style="font-size:0.76rem;margin:4px 0 10px">${s.elements.map((v, e) => `${ELEMENT_HANJA[e]}${v}`).join(' · ')} · 필요한 기운 ${ELEMENT_HANJA[s.yongsin]} ${ELEMENT_KO[s.yongsin]}</p>
+    <ul class="sc-list">
+      ${L.daewoon ? `<li><span>🏔️ 지금 대운</span><b>${L.daewoon.startAge}~${L.daewoon.endAge}세 · ${th(L.daewoon.pillar).theme}의 10년</b></li>` : ''}
+      ${(() => { const nx = timelineData().next; return nx ? `<li><span>🎁 ${nx.sajuYear}년</span><b>${th(nx.year.pillar).god} · ${th(nx.year.pillar).theme} (${nx.year.score}점)</b></li>` : ''; })()}
+      <li><span>📅 올해</span><b>${th(L.year.pillar).god} · ${th(L.year.pillar).theme} (${L.year.score}점)</b></li>
+      <li><span>🌙 이달</span><b>${f.period.term}부터 · ${th(L.month.pillar).theme} (${L.month.score}점)</b></li>
+      <li><span>☀️ 오늘</span><b>${f.info.title} (${f.scores.total}점)</b></li>
+    </ul>
+    <button class="primary" type="button" style="width:100%">🐉 이 사주를 지키는 수호신 만나기</button>
+    <p class="muted" style="font-size:0.72rem;margin:8px 0 0">생년월일과 사주 원본은 이 기기에만 저장돼요.</p></div>`;
+  document.body.appendChild(el);
+  el.querySelector('button').addEventListener('click', () => { el.remove(); showSummon(); });
+}
+
 function showSummon() {
   const info = characterInfo(state.saju, state.profile);
   const c = info.concern;
@@ -1440,6 +2776,80 @@ function showSummon() {
   document.body.appendChild(el);
   el.querySelector('button').addEventListener('click', () => { el.remove(); selectTab('today'); });
 }
+
+// ---------- 🧪 전체 미리보기 갤러리 (테스트용) ----------
+// 12지신 캐릭터(띠 12 × 진화 14단계 × 성별 × 오행), 부적(종류 6 × 등급 5 × 테마 2), 이모티콘(표정 8 × 스타일 × 등급), 한정 소품 11종을 한 화면에서 확인
+function galState() {
+  state.gal = state.gal || { img: true, set: true, tab: 'char', stage: 2, gender: state.profile.gender || 'female', el: STEM_ELEMENT[state.saju.dayMaster], theme: 'neon', style: 'neon', rarity: 'epic', zodiac: state.saju.pillars.year.branch };
+  return state.gal;
+}
+
+/** 견본용 사주: 띠(연지)와 오행(일간)만 바꾼 복사본 */
+function galSaju(branch, el) {
+  const s = state.saju;
+  return { ...s, dayMaster: el * 2, pillars: { ...s.pillars, year: { ...s.pillars.year, branch } } };
+}
+
+function renderGallery() {
+  const panel = $('[data-panel="gallery"]');
+  if (!panel || !state.saju) return;
+  const g = galState(); const f = state.fortune;
+  const chip = (group, val, label, on) => `<button type="button" class="chip" data-gal-${group}="${val}" aria-pressed="${on}">${label}</button>`;
+  const profile = { gender: g.gender, concern: state.profile.concern };
+  const tabs = [['char', '🐉 12지신'], ['charm', '📜 부적'], ['emote', '😊 이모티콘'], ['season', '🏮 한정소품']];
+  const stageChips = `<div class="gal-row"><span>진화</span><div class="chips">${STAGES.map((st) => chip('stage', st.stage, `${st.stage}`, g.stage === st.stage)).join('')}</div></div>`;
+  const elChips = `<div class="gal-row"><span>오행</span><div class="chips">${[0, 1, 2, 3, 4].map((e) => chip('el', e, `${ELEMENT_HANJA[e]} ${ELEMENT_KO[e]}`, g.el === e)).join('')}</div></div>`;
+  const genderChips = `<div class="gal-row"><span>성별</span><div class="chips">${chip('gender', 'female', '여성', g.gender === 'female')}${chip('gender', 'male', '남성', g.gender === 'male')}</div></div>`;
+  const zChips = `<div class="gal-row"><span>띠</span><div class="chips">${ZODIAC.map((z, b) => chip('zodiac', b, z.name, g.zodiac === b)).join('')}</div></div>`;
+  let controls = ''; let grid = '';
+  if (g.tab === 'char') {
+    controls = `<div class="gal-row"><span>그림</span><div class="chips">${chip('img', 'on', '이미지 우선', g.img)}${chip('img', 'off', '코드 그림만', !g.img)}</div></div>${stageChips}${elChips}${genderChips}`;
+    grid = ZODIAC.map((z, b) => {
+      const info = characterInfo(galSaju(b, g.el), profile);
+      return `<figure class="gal-item">${renderCharacterSVG(info, { stage: g.stage, width: 150, backdrop: true, mood: 'smile', noImage: !g.img })}<figcaption><b>${z.name}(${z.hanja})</b><small>${stageName(g.stage, info.female)} · ${info.name}</small></figcaption></figure>`;
+    }).join('');
+  } else if (g.tab === 'charm') {
+    controls = `<div class="gal-row"><span>테마</span><div class="chips">${chip('theme', 'classic', '전통 주사', g.theme === 'classic')}${chip('theme', 'neon', '네온 2099', g.theme === 'neon')}</div></div>${elChips}`;
+    grid = TALISMAN_TYPES.map((t) => RARITIES.map((r) => {
+      const tl = createTalisman(state.saju, f, { type: t.key, rarity: r.key, theme: g.theme, element: g.el });
+      return `<figure class="gal-item charm">${renderTalismanSVG(tl)}<figcaption><b style="color:${r.color}">${r.label}</b><small>${t.label}부 · ${r.key === 'common' ? '글자만' : EMBLEM_NAME[t.key]}${r.key === 'epic' ? '+팔괘' : r.key === 'legend' ? '+금빛 날개' : r.key === 'myth' ? '+12지신 고리' : ''}</small></figcaption></figure>`;
+    }).join('')).join('');
+  } else if (g.tab === 'emote') {
+    controls = `<div class="gal-row"><span>스타일</span><div class="chips">${chip('style', 'neon', '네온', g.style === 'neon')}${chip('style', 'sticker', '스티커', g.style === 'sticker')}</div></div><div class="gal-row"><span>등급</span><div class="chips">${RARITIES.map((r) => chip('rarity', r.key, r.label, g.rarity === r.key)).join('')}</div></div>${zChips}${stageChips}`;
+    grid = EMOTES.map((e) => `<figure class="gal-item">${renderEmoticonSVG(galSaju(g.zodiac, g.el), f, { mood: e.key, style: g.style, rarity: g.rarity, stage: g.stage, profile, caption: e.label })}<figcaption><b>${e.label}</b><small>${MOOD_PROP[e.key]}</small></figcaption></figure>`).join('');
+  } else {
+    controls = `<div class="gal-row"><span>구성</span><div class="chips">${chip('set', 'item', '무료 소품만', !g.set)}${chip('set', 'set', '꾸미기 세트(장면+효과)', g.set)}</div></div>${zChips}${stageChips}${genderChips}`;
+    grid = Object.entries(SEASON_PACKS).map(([k, pk]) => {
+      const info = characterInfo(galSaju(g.zodiac, g.el), profile);
+      return `<figure class="gal-item">${renderCharacterSVG(info, { stage: g.stage, width: 150, backdrop: true, mood: 'excited', season: { key: k, effect: g.set } })}<figcaption><b>${itemThumb(k)}${pk.item}</b><small>${g.set ? `${SCENE_NAME[k]} · ` : ''}${pk.theme}</small></figcaption></figure>`;
+    }).join('');
+  }
+  panel.innerHTML = `
+    <div class="card gallery">
+      <h3>🧪 전체 미리보기 <span class="tag">테스트용</span></h3>
+      <p class="muted" style="margin:-4px 0 10px;font-size:0.82rem">보유 여부와 상관없이 모든 디자인을 확인하는 화면이에요. 여기서 고른 값은 내 캐릭터·저장 데이터에 영향을 주지 않아요. 주소 끝에 <code>?gallery=1</code>을 붙이면 바로 열려요.</p>
+      <div class="gal-tabs">${tabs.map(([k, l]) => `<button type="button" data-gal-tab="${k}" aria-pressed="${g.tab === k}">${l}</button>`).join('')}</div>
+      <div class="gal-controls">${controls}</div>
+      <div class="gal-grid ${g.tab}">${grid}</div>
+    </div>`;
+}
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-gal-img],[data-gal-set],[data-gal-tab],[data-gal-stage],[data-gal-el],[data-gal-gender],[data-gal-theme],[data-gal-style],[data-gal-rarity],[data-gal-zodiac]');
+  if (!b) return;
+  const g = galState(); const d = b.dataset;
+  if (d.galImg) g.img = d.galImg === 'on';
+  if (d.galSet) g.set = d.galSet === 'set';
+  if (d.galTab) g.tab = d.galTab;
+  if (d.galStage) g.stage = Number(d.galStage);
+  if (d.galEl) g.el = Number(d.galEl);
+  if (d.galGender) g.gender = d.galGender;
+  if (d.galTheme) g.theme = d.galTheme;
+  if (d.galStyle) g.style = d.galStyle;
+  if (d.galRarity) g.rarity = d.galRarity;
+  if (d.galZodiac) g.zodiac = Number(d.galZodiac);
+  renderGallery();
+});
 
 // ---------- 풍수 기운 스팟 ----------
 
@@ -1676,26 +3086,28 @@ function monthlyReport() {
   const stage = heroOptions().stage;
   const ab = abilitiesAt(stage);
   const yp = yearPillar(y);
-  const yScore = pillarScore(s, yp);
-  const dw = state.profile.gender ? computeDaewoon(s, state.profile.gender) : null;
-  const d = dw ? daewoonAt(dw, y - s.input.year) : null;
   const abAvg = Math.round((ab.cat.total + ab.cat.wealth + ab.cat.love + ab.cat.career + ab.cat.health) / 5);
+  // 정통 기본값은 오늘 운세와 같은 층 엔진(period.js)에서: 이달 = 월운 60% + 올해(세운 70% + 대운 30%) 40%
+  const midYear = layersAt(s, { year: y, month: 7, day: 1 }, state.profile.gender);
+  const yScore = midYear.year.score;
   const months = Array.from({ length: 12 }, (_, i) => {
     const m = i + 1;
-    const mp = computeSaju({ year: y, month: m, day: 15, timeKnown: false }).pillars.month;
-    const base = Math.round(pillarScore(s, mp) * 0.55 + yScore * 0.25 + (d ? d.score : 52) * 0.2);
+    const L = layersAt(s, { year: y, month: m, day: 15 }, state.profile.gender);
+    const mp = L.month.pillar;
+    const per = monthPeriod({ year: y, month: m, day: 15 });
+    const base = L.month.score;
     const habit = (index / 100) * 12 * (1 + i * 0.03);
     const improved = Math.min(99, Math.round(base + habit + abAvg + (stage >= 5 ? 6 : 0)));
     const god = tenGod(s.dayMaster, mp.stem);
-    const cats = MONTH_GOD_MOD[god].map((v) => Math.max(10, Math.min(99, improved + v)));
+    const cats = MONTH_GOD_MOD[god].map((v) => Math.max(10, Math.min(99, base + v))); // 분야별도 정통값 기준
     const el = STEM_ELEMENT[mp.stem];
     const mission = el === s.yongsin ? `용신 ${ELEMENT_HANJA[el]}의 달! 이달엔 ${ELEMENT_KO[el]} 기운 부적을 장착해 흐름을 타세요.`
       : el === s.gisin ? `${ELEMENT_HANJA[el]} 기운이 강한 달입니다. 용신 ${ELEMENT_HANJA[s.yongsin]} 부적으로 균형을 잡으세요.`
         : `이달의 개운 포인트는 ${ELEMENT_HANJA[s.weakest]} ${ELEMENT_KO[s.weakest]} 기운 채우기입니다.`;
-    return { m, pillar: mp, base, improved, god, theme: pillarTheme(s, mp).theme, cats, mission };
+    return { m, pillar: mp, base, improved, god, theme: pillarTheme(s, mp).theme, cats, mission, start: per.start, end: per.end, term: per.term, why: explainParts(L.month.parts) };
   });
-  const sorted = [...months].sort((a, b) => b.improved - a.improved);
-  return { year: y, yp, yScore, months, best: sorted.slice(0, 3), caution: sorted.slice(-2), avgBase: Math.round(months.reduce((a, b) => a + b.base, 0) / 12), avgImp: Math.round(months.reduce((a, b) => a + b.improved, 0) / 12), index };
+  const sorted = [...months].sort((a, b) => b.base - a.base);
+  return { year: y, yp, yScore, yLayer: midYear.year, dwLayer: midYear.daewoon, months, best: sorted.slice(0, 3), caution: sorted.slice(-2), avgBase: Math.round(months.reduce((a, b) => a + b.base, 0) / 12), avgImp: Math.round(months.reduce((a, b) => a + b.improved, 0) / 12), index };
 }
 
 function monthChartSVG(r, cur) {
@@ -1708,7 +3120,7 @@ function monthChartSVG(r, cur) {
       const x = L + i * bw + 3; const now = mo.m === cur; const past = mo.m < cur;
       return `<rect x="${x}" y="${y(mo.base)}" width="${bw - 6}" height="${H - B - y(mo.base)}" rx="3" fill="rgba(154,148,196,${past ? 0.25 : 0.45})"/>
         <rect x="${x}" y="${y(mo.improved)}" width="${bw - 6}" height="${Math.max(0, y(mo.base) - y(mo.improved))}" rx="3" fill="${now ? '#ff8fb3' : '#ffc93c'}" opacity="${past ? 0.5 : 0.95}"/>
-        <text x="${x + (bw - 6) / 2}" y="${y(mo.improved) - 3}" font-size="8.5" fill="#fff" text-anchor="middle">${mo.improved}</text>
+        <text x="${x + (bw - 6) / 2}" y="${y(mo.improved) - 3}" font-size="8.5" fill="#fff" text-anchor="middle">${mo.base}</text>
         <text x="${x + (bw - 6) / 2}" y="${H - 10}" font-size="9" fill="${now ? '#ff8fb3' : '#cfcaf2'}" text-anchor="middle" font-weight="${now ? 800 : 400}">${mo.m}월</text>`;
     }).join('')}
   </svg>`;
@@ -1718,7 +3130,8 @@ function renderReport() {
   const panel = $('[data-panel="report"]');
   if (!panel || !state.saju) return;
   const r = monthlyReport();
-  const cur = state.fortune.date.month;
+  // 지금 진행 중인 달 = 절기월 (예: 11/2는 아직 입동 전이라 10월·한로월)
+  const cur = state.fortune.period?.solarMonth || state.fortune.date.month;
   const sub = isSubscribed(loadGacha(), state.fortune.dateKey);
   const sel = state.reportMonth || cur;
   const mo = r.months[sel - 1];
@@ -1728,22 +3141,25 @@ function renderReport() {
     <div class="card">
       <h3>📅 ${r.year}년 운세 리포트 <span class="tag">${pillarLabelFull(r.yp)}년</span></h3>
       <div class="report-head">
-        <div class="luck-ring" style="--p:${r.avgImp}"><b>${r.avgImp}</b><span>올해 평균</span></div>
+        <div class="luck-ring" style="--p:${r.yScore}"><b>${r.yScore}</b><span>올해 운(정통)</span></div>
         <div>
           <p style="margin:0"><b>올해의 테마: ${th.god} · ${th.theme}</b></p>
-          <p class="muted" style="margin:4px 0 0;font-size:0.84rem">정통 기본 평균 <b>${r.avgBase}</b> → 개운 반영 <b style="color:var(--gold)">${r.avgImp}</b> (개운 지수 ${r.index})</p>
+          <p class="muted" style="margin:4px 0 0;font-size:0.84rem">올해 = 세운 ${r.yLayer.base}${r.dwLayer ? ` × 70% + 대운 ${r.dwLayer.score} × 30%` : ''} · 달 평균 <b>${r.avgBase}</b></p>
+          <p class="muted" style="margin:2px 0 0;font-size:0.8rem">🎮 개운 반영(게임) 평균 <b style="color:var(--gold)">${r.avgImp}</b> · 개운 지수 ${r.index}</p>
           <p style="margin:6px 0 0;font-size:0.85rem">🌟 좋은 달: ${r.best.map((b) => `<b>${b.m}월</b>`).join(' · ')} &nbsp; ⚠️ 조심할 달: ${r.caution.map((b) => `${b.m}월`).join(' · ')}</p>
         </div>
       </div>
       ${monthChartSVG(r, cur)}
-      <div class="fc-legend"><span><i style="background:#9a94c4"></i>정통 기본</span><span><i style="background:#ffc93c"></i>개운으로 더해진 몫</span><span><i style="background:#ff8fb3"></i>이번 달</span></div>
+      <div class="fc-legend"><span><i style="background:#9a94c4"></i>정통 기본 (숫자)</span><span><i style="background:#ffc93c"></i>개운으로 더해진 몫(게임)</span><span><i style="background:#ff8fb3"></i>이번 달</span></div>
     </div>
     <div class="card">
-      <div class="month-grid">${r.months.map((x) => `<button type="button" class="mcell ${x.m === sel ? 'sel' : ''} ${x.m === cur ? 'now' : ''} ${x.m < cur ? 'past' : ''}" data-month="${x.m}" style="--h:${x.improved}"><b>${x.m}월</b><span>${x.improved}</span><small>${STEMS[x.pillar.stem]}${BRANCHES[x.pillar.branch]}</small></button>`).join('')}</div>
+      <div class="month-grid">${r.months.map((x) => `<button type="button" class="mcell ${x.m === sel ? 'sel' : ''} ${x.m === cur ? 'now' : ''} ${x.m < cur ? 'past' : ''}" data-month="${x.m}" style="--h:${x.base}"><b>${x.m}월</b><span>${x.base}</span><small>${STEMS[x.pillar.stem]}${BRANCHES[x.pillar.branch]} · ${x.start.month}/${x.start.day}~</small></button>`).join('')}</div>
     </div>
     <div class="card">
       <h3>${sel}월 상세 <span class="tag">${pillarLabelFull(mo.pillar)}월 · ${mo.god}</span></h3>
-      <p style="margin-top:0">${mo.theme}의 기운이 흐르는 달입니다. 기본 <b>${mo.base}</b> → 개운 반영 <b style="color:var(--gold)">${mo.improved}</b>${mo.m < cur ? ' (지난 달)' : mo.m === cur ? ' · 지금 진행 중' : ''}</p>
+      <p class="muted" style="margin:-4px 0 6px;font-size:0.82rem">📆 ${mo.term} ${mo.start.month}/${mo.start.day} ~ ${mo.end.month}/${mo.end.day} (월운은 절입일부터 바뀌어요)</p>
+      <p style="margin-top:0">${mo.theme}의 기운이 흐르는 달입니다. 정통 <b>${mo.base}</b>${mo.improved > mo.base ? ` · 🎮 개운 반영 <b style="color:var(--gold)">${mo.improved}</b>` : ''}${mo.m < cur ? ' (지난 달)' : mo.m === cur ? ' · 지금 진행 중' : ''}</p>
+      <p class="why-calc" style="margin:0 0 8px">근거: ${mo.why}</p>
       ${free ? `<div class="bars">${mo.cats.map((v, i) => `<div class="bar"><span>${MONTH_CATS[i]}</span><div class="track"><div class="fill" style="width:${v}%;background:${scoreColor(v)};color:${scoreColor(v)}"></div></div><span class="num">${v}</span></div>`).join('')}</div>
         <p class="concern-card" style="margin:10px 0 0">🧧 이달의 개운 미션: ${mo.mission}</p>`
       : `<div class="locked-detail"><p>👑 분야별 점수와 이달의 개운 미션은 <b>이번 달·다음 달</b>은 무료, 나머지 달은 수호 구독에서 볼 수 있어요.</p><button class="primary" type="button" id="btn-report-sub">수호 구독 알아보기</button></div>`}
@@ -1757,9 +3173,10 @@ function renderReport() {
 /** 단계 능력이 반영된 오늘 운세 점수 */
 function applyAbilities(fortune) {
   const ab = abilitiesAt(loadGrowth().evolved);
-  const f = { ...fortune, scores: { ...fortune.scores }, abilityBonus: ab.cat };
-  Object.entries(ab.cat).forEach(([k, v]) => { if (v && f.scores[k] !== undefined) f.scores[k] = Math.min(98, f.scores[k] + v); });
-  return f;
+  // 정통 점수(scores)는 그대로 두고, 게임용 점수(gameScores)에만 능력 보너스를 더한다
+  const gameScores = { ...fortune.scores };
+  Object.entries(ab.cat).forEach(([k, v]) => { if (v && gameScores[k] !== undefined) gameScores[k] = Math.min(98, gameScores[k] + v); });
+  return { ...fortune, gameScores, abilityBonus: ab.cat };
 }
 
 /** 진화 가능한 최고 단계 (레벨 + 개운 지수 + 누적 기운) */
@@ -1796,9 +3213,15 @@ function loadGrowth() {
 
 /** 성장 상태를 바꾸고, 생긴 일(레벨업·진화 가능·스트릭 등)을 알려 준다 */
 function grow(fn, lead = '') {
-  const res = fn(loadGrowth());
+  const prev = loadGrowth();
+  const res = fn(prev);
   save(GROWTH_KEY, res.growth);
   const msgs = [];
+  if (state.fortune) {
+    const dk = state.fortune.dateKey;
+    const fresh = Object.keys(res.growth.quests?.[dk] || {}).filter((k) => !prev.quests?.[dk]?.[k]);
+    msgs.push(...seasonTick(fresh));
+  }
   for (const e of res.events || []) {
     if (e.type === 'level-up') msgs.push(`레벨 업! Lv.${e.level} 🎉`);
     if (e.type === 'can-evolve') msgs.push('진화할 수 있어요! 캐릭터 탭에서 진화하기 ✦');
@@ -1819,7 +3242,7 @@ function personalityCard() {
     <div><b>${pers.type}</b></div>
     <div class="perks" style="margin-top:4px">${pers.traits.map((t) => `<em>#${t}</em>`).join('')}</div>
     <p style="margin:6px 0 0;font-size:0.88rem">${pers.intro}</p>
-    <p class="muted" style="margin:4px 0 0;font-size:0.8rem">말투: ${pers.voice} · 자기 호칭: "${pers.me}"${heroOptions().stage === 1 ? ' · 아기 단계라 아직 "뀨!"가 먼저 나와요' : heroOptions().stage >= 5 ? ' · 신수가 되어 말에 위엄(✦)이 생겼어요' : ''}</p>
+    <p class="muted" style="margin:4px 0 0;font-size:0.8rem">말투: ${pers.voice} · 자기 호칭: "${pers.me}"${heroOptions().stage === 1 ? ' · 아기 단계라 말 앞에 🍼가 붙어요' : heroOptions().stage >= 5 ? ' · 신수가 되어 말에 위엄(✦)이 생겼어요' : ''}</p>
   </div>`;
 }
 
@@ -1865,7 +3288,7 @@ function bindGrowth(panel, info) {
     const to = evolvableStage(summary(g, state.fortune.dateKey));
     if (to <= before) return;
     save(GROWTH_KEY, { ...g, evolved: to });
-    state.fortune = applyAbilities(computeFortune(state.saju));
+    state.fortune = applyAbilities(computeFortune(state.saju, undefined, { gender: state.profile.gender }));
     showEvolution(info, before, to);
   });
   $$('[data-claim]', panel).forEach((b) => b.addEventListener('click', () => {
@@ -1887,9 +3310,9 @@ function bindGrowth(panel, info) {
 }
 
 function showEvolution(info, from, to) {
-  const { charms, emote } = heroOptions();
+  const { charms, emote, season } = heroOptions();
   const before = renderCharacterSVG(info, { stage: from, width: 260, mood: 'wow', backdrop: true });
-  const after = renderCharacterSVG(info, { stage: to, width: 260, mood: 'excited', charms, emote, backdrop: true, animate: true });
+  const after = renderCharacterSVG(info, { stage: to, width: 260, mood: 'excited', charms, emote, season, backdrop: true, animate: true });
   const el = document.createElement('div');
   el.className = 'evo-modal';
   el.innerHTML = `<div class="evo-box">

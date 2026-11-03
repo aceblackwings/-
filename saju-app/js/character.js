@@ -1,6 +1,8 @@
 // 12지신 수호 캐릭터 생성기 (SVG)
 // 띠(연지) → 동물 / 일간 오행 → 한복 색 / 성별 → 한복 스타일 / 고민 → 소품
 // 장착: 부적 2칸(허리·머리 옆), 이모티콘 1칸(표정 + 말풍선)
+import { charImage, sceneImage } from './assets.js';
+import { seasonAccessorySVG, seasonEffectSVG, seasonSceneSVG, SEASON_PACKS } from './season.js';
 
 export const CONCERNS = [
   { key: 'exam', label: '시험·합격', title: '합격을 부르는', category: 'career', talisman: 'exam', stat: '합격운' },
@@ -525,11 +527,21 @@ export function characterMarkup(info, opts = {}) {
     ${stage >= 4 ? '' : `<text x="160" y="58" font-size="20" text-anchor="middle" fill="${trim}" opacity="0.5" font-family="'Song Myung', serif">${z.hanja}</text>`}` : '';
 
   const oc = outfitIndex(stage, el);
+  // 이미지 그림이 있으면 몸 전체를 그림으로 (단계 장식은 그림에 포함), 부적·소품·말풍선은 그 위에 겹친다
+  const img = opts.noImage ? null : charImage(z.key, stage, el);
   const blinkEyes = opts.animate
     ? `<g transform="translate(0 180)"><g><animateTransform attributeName="transform" type="scale" values="1 1;1 1;1 0.1;1 1" keyTimes="0;0.9;0.95;1" dur="4.2s" repeatCount="indefinite"/><g transform="translate(0 -180)">${eyes(mood, female)}</g></g></g>`
     : eyes(mood, female);
 
-  const figure = `
+  const figure = img ? `
+    <ellipse cx="160" cy="384" rx="76" ry="10" fill="#000" opacity="0.28"/>
+    <image href="${img}" x="-15" y="63" width="350" height="350" preserveAspectRatio="xMidYMid meet"/>
+    ${elementBadge(el, 252, 364)}
+    ${miniCharm(charms[0], 112, 352, -10)}
+    ${stage >= 2 ? prop(concern.key) : ''}
+    ${opts.season ? seasonAccessorySVG(opts.season.key) : ''}
+    ${miniCharm(charms[1], 48, 96, -14, 0.9)}
+    ${emoteBubble(emote)}` : `
     ${stage >= 5 ? wings(oc, id) : ''}
     ${stage >= 5 ? spiritTails(oc, id) : ''}
     ${stage >= 3 ? cape(oc, id) : ''}
@@ -556,6 +568,7 @@ export function characterMarkup(info, opts = {}) {
     ${noseMouth(z, mood)}
     ${stage >= 5 ? foreheadGem() : ''}
     ${stage === 1 ? eggCap() : stage >= 5 ? crown() : headAccessory(concern.key, female, el, z)}
+    ${opts.season ? seasonAccessorySVG(opts.season.key) : ''}
     ${miniCharm(charms[1], 48, 96, -14, 0.9)}
     ${emoteBubble(emote)}
     ${mood === 'sleepy' ? `<text x="236" y="120" font-size="26" font-weight="800" fill="${z.dark}" font-family="sans-serif">z</text><text x="252" y="96" font-size="20" font-weight="800" fill="${z.dark}" font-family="sans-serif">z</text>` : ''}
@@ -568,8 +581,19 @@ export function characterMarkup(info, opts = {}) {
   const backdrop = opts.backdrop ? stageBackdrop(stage, el, id) : '';
   const asc = stage >= 11 ? godAura(stage, id) : stage >= 6 ? spiritBeast(stage, id) : '';
   const tint = opts.backdrop && stage >= 6 ? `<rect width="320" height="400" fill="${ASC_COLOR[stage]}" opacity="0.12"/>` : '';
-  const body = `${backdrop}${tint}${asc}${auraMarkup}${scaled}${ascensionFront(stage)}${stage >= 3 ? orbs(stage, el, id) : ''}${stage >= 5 ? particles(id) : ''}${miniCharm(charms[2], 276, 300, 12, 0.9)}`;
+  // 계절 장면: 그림이 있으면 화면 전체 배경(가장자리 장식 + 가운데 빈 공간)으로 깔고, 없으면 기존 SVG 장면
+  const sceneImg = opts.season?.effect ? sceneImage(opts.season.key) : null;
+  const scene = !opts.season?.effect ? '' : sceneImg
+    ? `<image class="season-scene" href="${sceneImg}" x="0" y="0" width="320" height="400" preserveAspectRatio="xMidYMid slice"/>`
+    : seasonSceneSVG(opts.season.key);
+  const body = `${sceneImg ? '' : backdrop}${scene}${tint}${asc}${auraMarkup}${scaled}${ascensionFront(stage)}${stage >= 3 && !img ? orbs(stage, el, id) : ''}${stage >= 5 ? particles(id) : ''}${miniCharm(charms[2], 276, 300, 12, 0.9)}${opts.season?.effect ? seasonEffectSVG(SEASON_PACKS[opts.season.key].effect, opts.animate, stage, !!sceneImg) : ''}`;
   return { id, defs, body };
+}
+
+/** 그림 캐릭터용 오행 배지: 한복은 띠 대표색이라, 내 오행은 배지·오라 빛으로 보여 준다 */
+function elementBadge(el, x, y) {
+  const c = OUTFIT[el][2];
+  return `<g class="el-badge" transform="translate(${x} ${y})"><circle r="15" fill="#140f2e" stroke="${c}" stroke-width="3"/><text y="1" font-size="15" text-anchor="middle" dominant-baseline="central" fill="${c}" font-weight="800" font-family="'Song Myung', serif">${['木', '火', '土', '金', '水'][el]}</text></g>`;
 }
 
 /** 진화 단계별 해금: 부적 슬롯 수, 이모티콘 슬롯 */
@@ -615,7 +639,8 @@ export function characterStats(saju, fortune, info, charms = []) {
     const target = base[t.element];
     target.value += t.effects[2].value;
   });
-  const concernScore = fortune.scores[info.concern.category] ?? fortune.scores.total;
+  const sc = fortune.gameScores || fortune.scores; // 게임 능력치는 보너스가 더해진 점수 사용
+  const concernScore = sc[info.concern.category] ?? sc.total;
   return {
     base: base.map((b) => ({ ...b, value: Math.min(120, b.value) })),
     concern: { label: info.concern.stat, value: Math.min(99, concernScore + Math.round(bonus / 2)), baseValue: concernScore },

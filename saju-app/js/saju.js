@@ -143,7 +143,7 @@ export function computeSaju(input) {
   };
 
   const elements = elementScores(pillars);
-  const strength = analyzeStrength(dayPillar.stem, elements);
+  const strength = analyzeStrength(dayPillar.stem, elements, monthBranch);
 
   return {
     input: { year, month, day, hour, minute, timeKnown, longitudeCorrection, zasiMode },
@@ -178,7 +178,42 @@ export const parentOf = (el) => mod(el - 1, 5);   // 나를 생해 주는 오행
 export const childOf = (el) => mod(el + 1, 5);    // 내가 생하는 오행
 export const controllerOf = (el) => mod(el - 2, 5); // 나를 극하는 오행
 
-export function analyzeStrength(dayStem, scores) {
+/**
+ * 조후(調候): 태어난 달의 계절 기온·습도를 맞추는 기운.
+ * 궁통보감의 핵심만 간추림 — 한여름(午·未)은 물(水)로 식히고, 한겨울(子·丑)은 불(火)로 데운다.
+ * 巳·亥(초여름·초겨울)와 寅(이른 봄 추위)·戌(건조한 늦가을)은 약하게 필요.
+ * level: 'urgent'(조후가 억부보다 먼저) · 'mild'(억부가 먼저, 조후는 희신으로 보완) · 'none'
+ */
+const JOHU_RULES = {
+  6: { season: '한여름', need: 4, urgent: 15, mild: 25, why: '불볕더위 달에 태어나 뜨겁고 메마른 기운을 식혀 줄 물(水)이 필요해요' },
+  7: { season: '늦여름', need: 4, urgent: 15, mild: 25, why: '무덥고 습한 늦여름 달에 태어나 열기를 식혀 줄 물(水)이 필요해요' },
+  5: { season: '초여름', need: 4, urgent: 0, mild: 15, why: '더위가 시작되는 달에 태어나 물(水)이 있으면 균형이 좋아져요' },
+  0: { season: '한겨울', need: 1, urgent: 15, mild: 25, why: '얼어붙는 한겨울 달에 태어나 따뜻하게 데워 줄 불(火)이 필요해요' },
+  1: { season: '늦겨울', need: 1, urgent: 15, mild: 25, why: '차고 축축한 늦겨울 달에 태어나 언 땅을 녹여 줄 불(火)이 필요해요' },
+  11: { season: '초겨울', need: 1, urgent: 0, mild: 15, why: '추위가 시작되는 달에 태어나 불(火)이 있으면 균형이 좋아져요' },
+  2: { season: '이른 봄', need: 1, urgent: 0, mild: 10, why: '아직 쌀쌀한 이른 봄 달에 태어나 햇볕 같은 불(火)이 있으면 새싹이 잘 자라요' },
+  10: { season: '늦가을', need: 4, urgent: 0, mild: 10, why: '건조한 늦가을 달에 태어나 물(水)이 있으면 메마름이 풀려요' },
+};
+
+export function analyzeJohu(monthBranch, scores) {
+  const r = JOHU_RULES[monthBranch];
+  if (!r) return { level: 'none', need: null, season: null, text: '태어난 달의 기후가 온화해 따로 맞출 기온·습도가 없어요.' };
+  const have = scores[r.need];
+  const level = have < r.urgent ? 'urgent' : have < r.mild ? 'mild' : 'none';
+  const text = level === 'none'
+    ? `${r.season}에 태어났지만 사주에 이미 ${r.need === 4 ? '물(水)' : '불(火)'} 기운이 ${have}% 있어 기후가 맞춰져 있어요.`
+    : `${r.why}. 지금 사주에는 ${r.need === 4 ? '물(水)' : '불(火)'} 기운이 ${have}%뿐이에요.`;
+  return { level, need: level === 'none' ? null : r.need, season: r.season, have, text };
+}
+
+/**
+ * 신강/신약(억부) + 조후를 함께 본 용신.
+ * - 억부: 나를 돕는 기운 비율로 강약을 나누고, 강하면 빼 주는 기운·약하면 돕는 기운 중 가장 적은 것
+ * - 조후가 급하면(urgent) 조후 기운이 용신, 억부 용신은 희신
+ * - 조후가 약하게 필요하면(mild) 억부 용신 그대로, 조후 기운은 희신
+ * - 그 밖에는 억부 용신, 희신은 용신을 생해 주는 기운
+ */
+export function analyzeStrength(dayStem, scores, monthBranch = null) {
   const me = STEM_ELEMENT[dayStem];
   const support = scores[me] + scores[parentOf(me)];
   let strength;
@@ -187,14 +222,20 @@ export function analyzeStrength(dayStem, scores) {
   else strength = '중화';
 
   const pickLowest = (cands) => cands.reduce((a, b) => (scores[b] < scores[a] ? b : a));
-  let yongsin;
-  if (strength === '신강') yongsin = pickLowest([childOf(me), mod(me + 2, 5), mod(me + 3, 5)]);
-  else if (strength === '신약') yongsin = pickLowest([parentOf(me), me]);
-  else yongsin = pickLowest([0, 1, 2, 3, 4]);
+  let eokbu;
+  if (strength === '신강') eokbu = pickLowest([childOf(me), mod(me + 2, 5), mod(me + 3, 5)]);
+  else if (strength === '신약') eokbu = pickLowest([parentOf(me), me]);
+  else eokbu = pickLowest([0, 1, 2, 3, 4]);
+
+  const johu = monthBranch == null ? analyzeJohu(-1, scores) : analyzeJohu(monthBranch, scores);
+  let yongsin = eokbu; let heesin = parentOf(eokbu); let basis = '억부';
+  if (johu.need != null && johu.need === eokbu) basis = '억부·조후 일치';
+  else if (johu.level === 'urgent') { yongsin = johu.need; heesin = eokbu; basis = '조후 우선'; }
+  else if (johu.level === 'mild') { heesin = johu.need; basis = '억부 + 조후 보완'; }
 
   const weakest = pickLowest([0, 1, 2, 3, 4]);
   const strongest = [0, 1, 2, 3, 4].reduce((a, b) => (scores[b] > scores[a] ? b : a));
-  return { strength, support, yongsin, gisin: controllerOf(yongsin), weakest, strongest };
+  return { strength, support, yongsin, gisin: controllerOf(yongsin), heesin, eokbuYongsin: eokbu, yongsinBasis: basis, johu, weakest, strongest };
 }
 
 const TEN_GOD_NAMES = [
