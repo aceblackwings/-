@@ -6,9 +6,9 @@ import { GOD_READING, partsStory, stageLine, crossLine, turnLine } from './readi
 import { YEAR_HEADLINE, seasonsOf, keyMonths, monthRange, friendlyZodiac } from './yearcard.js';
 import { categoryScores } from './period.js';
 import { ELEMENT_LUCK } from './fortune.js';
-import { STEMS, BRANCHES, ANIMALS, ELEMENT_KO, ELEMENT_HANJA, STEM_ELEMENT, BRANCH_MAIN_STEM, tenGod } from './saju.js';
+import { STEMS_KO, BRANCHES_KO, STEMS, BRANCHES, ANIMALS, ELEMENT_KO, ELEMENT_HANJA, STEM_ELEMENT, BRANCH_MAIN_STEM, tenGod } from './saju.js';
 import { GYEOK_PROFILE } from './gyeokguk.js';
-import { incomingRelations } from './relations.js';
+import { incomingRelations, POS, POS_MEAN } from './relations.js';
 import { STEM_IMAGE, stemLabel } from './johu.js';
 
 const COLOR = ['푸른', '붉은', '노란', '흰', '검은'];
@@ -101,6 +101,18 @@ function meetLines(y, saju) {
   return out;
 }
 
+/** A3 원국 글자 인용: 그해 글자가 내 사주의 어느 자리 글자와 같은지 → 그 자리의 일이 다시 화제가 됨 */
+export function quoteLine(y, saju) {
+  const p = y.year.pillar; const out = [];
+  for (const k of ['year', 'month', 'day', 'hour']) {
+    const P = saju.pillars[k]; if (!P) continue;
+    if (k !== 'day' && P.stem === p.stem) out.push(`그해 천간 ${STEMS[p.stem]}${hasBatchim(STEMS_KO[p.stem]) ? '은' : '는'} 내 ${POS[k]}에도 있는 글자라, ${POS_MEAN[k]}에 관한 일이 다시 화제가 되기 쉬워요.`);
+    if (P.branch === p.branch) out.push(`그해 지지 ${BRANCHES[p.branch]}${hasBatchim(BRANCHES_KO[p.branch]) ? '은' : '는'} 내 ${POS[k]}의 지지와 같아(복음), ${POS_MEAN[k]}의 자리가 한 해 내내 두드러져요.`);
+  }
+  if (!out.length) return `그해의 ${STEMS[p.stem]}${BRANCHES[p.branch]}${hasBatchim(BRANCHES_KO[p.branch]) ? '은' : '는'} 내 사주 여덟 글자에 없는 새 글자들이라, 지금까지와는 다른 새로운 장면이 열리기 쉬운 해예요.`;
+  return out.slice(0, 2).join(' ');
+}
+
 /** 신강·신약과 그해 십신: 힘을 받는 해인지, 힘을 쓰는 해인지 */
 function strengthMeet(saju, god) {
   const g = GROUP[god]; const support = g === 0 || g === 4;
@@ -166,6 +178,7 @@ export function buildBooklet({ y, thisYear, saju, gyeok, name = '', concern = nu
           ? `바탕에 깔린 지지 ${BRANCHES[p.branch]}도 같은 ${god} 기운이라, 겉과 속이 한 방향을 가리켜요. 올해의 성격이 그만큼 또렷하게 드러나요.`
           : `바탕에 깔린 지지 ${BRANCHES[p.branch]}에는 ${inner}, 「${I.keyword}」의 기운이 흘러요. ${sentence(I.core.split('. ')[0])} 겉으로는 ${R.keyword}, 속으로는 ${I.keyword}${hasBatchim(I.keyword) ? '이' : '가'} 함께 움직이는 해예요.`,
         stageLine(me, p.branch, god, '그해에는').text,
+        quoteLine(y, saju),
         `한 해를 한마디로 하면 「${H.title}」, ${toneOf(y.year.score)} 해예요. ${diff > 2 ? `올해(${thisYear.sajuYear}년)보다 흐름이 한결 나아져요.` : diff < -2 ? `올해(${thisYear.sajuYear}년)보다 속도를 조금 늦추면 더 단단해져요.` : `올해(${thisYear?.sajuYear ?? ''}년)와 비슷한 흐름을 차분히 이어 가요.`}`,
       ],
     },
@@ -191,6 +204,7 @@ export function buildBooklet({ y, thisYear, saju, gyeok, name = '', concern = nu
       paras: [
         `${who}에게 가장 필요한 기운은 ${el(saju.yongsin)}이에요. ${L.color} 계열의 물건, ${L.direction} 방향이 한 해 내내 힘이 되고, 행운의 숫자는 ${L.numbers.join('·')}예요. 힘이 되는 띠는 ${friendlyZodiac(saju.pillars.year.branch).join('·')}띠예요.`,
         `올해의 실천: ${R.tips.map((t) => sentence(t)).join(' ')}`,
+        ageAction(y.sajuYear - saju.input.year, god),
       ],
     },
   ];
@@ -208,6 +222,7 @@ export function buildBooklet({ y, thisYear, saju, gyeok, name = '', concern = nu
       title: `${toneOf(v)} 흐름`,
       paras: [
         `${sentence(R.fields[k])} ${inner !== god ? sentence(I.fields[k].split('. ')[0]) : ''}`.trim(),
+        ageLine(y.sajuYear - saju.input.year, k, god),
         `${label.replace('운', '')}에 가장 힘이 실리는 달은 ${bm.month}월(${bm.range})이에요. ${FIELD_ACT[k]}`,
       ],
     };
@@ -268,3 +283,59 @@ export function todayLetter(f, { name = '', animal = '', polite = false } = {}) 
     why: `왜 그런지: 오늘 일진 ${f.pillar ? `${STEMS[f.pillar.stem]}${BRANCHES[f.pillar.branch]} · ` : ''}${f.tenGod}의 날 · ${toneOf(f.scores.total)} 하루`,
   };
 }
+
+// ---------- A2 나이·처지에 맞춘 문장(v0.41): 같은 기운도 나이에 따라 다르게 나타남 ----------
+export const AGE_STAGES = [
+  { key: 'teen', max: 19, label: '학생' },
+  { key: 'young', max: 29, label: '20대' },
+  { key: 'mid', max: 49, label: '30~40대' },
+  { key: 'senior', max: 200, label: '50대 이후' },
+];
+export const ageStage = (age) => AGE_STAGES.find((a) => age <= a.max);
+const G_WORD = ['경쟁과 독립', '표현과 재능', '결실과 관리', '규칙과 평가', '배움과 도움'];
+// 분야별로 그 나이에 그 기운이 나타나는 모습
+const AGE_FIELD = {
+  teen: {
+    wealth: '학생이라면 이 해의 재물 흐름은 용돈 관리와 갖고 싶은 것을 위해 모으는 습관으로 나타나기 쉬워요.',
+    career: '학생이라면 「{g}」의 기운은 시험·성적·진로 고민으로 나타나기 쉬워요.',
+    love: '학생이라면 애정운은 설레는 감정보다 친구 사이의 믿음과 마음 나누기로 먼저 나타나요.',
+    health: '학생이라면 잠과 자세, 공부하는 자리의 습관이 건강을 가장 크게 좌우해요.',
+    social: '학생이라면 반·동아리·학원에서의 관계가 한 해의 분위기를 만들어요.',
+  },
+  young: {
+    wealth: '20대라면 첫 월급·아르바이트·자취처럼 내 돈을 처음 굴리는 경험이 이 해의 재물 흐름이에요.',
+    career: '20대라면 「{g}」의 기운은 취업·진로 선택·첫 직장 적응으로 나타나기 쉬워요.',
+    love: '20대라면 새로운 만남과 관계의 모양을 정하는 일이 애정운의 중심이에요.',
+    health: '20대라면 밤샘·불규칙한 식사를 줄이는 것만으로 체력이 크게 달라져요.',
+    social: '20대라면 앞으로 오래 갈 인맥이 이 해에 만들어지기 쉬워요.',
+  },
+  mid: {
+    wealth: '30~40대라면 저축·대출·집처럼 가정의 큰 살림이 이 해 재물 흐름의 중심이에요.',
+    career: '30~40대라면 「{g}」의 기운은 승진·이직·책임이 커지는 일로 나타나기 쉬워요.',
+    love: '30~40대라면 배우자·연인과의 생활 리듬, 함께 정하는 큰 결정이 애정운이에요.',
+    health: '30~40대라면 쌓인 피로와 스트레스를 그때그때 푸는 습관이 건강의 열쇠예요.',
+    social: '30~40대라면 일터와 집안 사이에서 사람 관계의 균형을 잡는 해예요.',
+  },
+  senior: {
+    wealth: '50대 이후라면 모아 둔 것을 지키고 노후를 준비하는 것이 이 해 재물 흐름의 중심이에요.',
+    career: '50대 이후라면 「{g}」의 기운은 경험을 나누는 역할, 새로 배우는 일, 명예로 나타나기 쉬워요.',
+    love: '50대 이후라면 오래 함께한 사람과의 대화와 서로를 챙기는 마음이 애정운이에요.',
+    health: '50대 이후라면 정기 검진과 꾸준한 걷기가 한 해의 운을 받쳐 줘요.',
+    social: '50대 이후라면 자녀·친구·이웃과 주고받는 정이 큰 복이 돼요.',
+  },
+};
+// 나이 × 십신 무리 → 그해 할 일 하나
+const AGE_ACT = {
+  teen: ['친구와 함께하는 스터디나 운동 모임 하나', '좋아하는 과목·취미로 작품 하나 만들기', '용돈 기입장 쓰기', '시간표대로 공부하는 습관 하나', '모르는 것을 선생님께 묻는 습관'],
+  young: ['내 이름으로 해 보는 작은 프로젝트', '포트폴리오나 SNS에 내 작업 올리기', '월급의 일부를 자동 저축으로', '자격증이나 공식 시험 하나 도전', '배우고 싶던 강의 하나 끝까지 듣기'],
+  mid: ['믿을 만한 동료와 역할 나누기', '내 전문성을 보여 줄 발표·글 하나', '가계 예산과 고정비 점검', '맡은 자리에서 원칙 하나 세우기', '배움에 투자할 시간 따로 떼어 두기'],
+  senior: ['오랜 친구와 함께하는 모임', '경험을 글이나 이야기로 남기기', '자산 정리와 노후 계획 점검', '지역·모임에서 맡을 역할 하나', '새로운 취미나 배움 하나 시작'],
+};
+const GROUP_OF = { 비견: 0, 겁재: 0, 식신: 1, 상관: 1, 편재: 2, 정재: 2, 편관: 3, 정관: 3, 편인: 4, 정인: 4 };
+/** 분야 문단에 붙일 나이 문장 */
+export function ageLine(age, field, god) {
+  const st = ageStage(age); const t = AGE_FIELD[st.key][field]; if (!t) return '';
+  return t.replace('{g}', G_WORD[GROUP_OF[god]]);
+}
+/** 총운 「한 해의 열쇠」에 붙일 나이별 할 일 */
+export const ageAction = (age, god) => `${ageStage(age).label}인 지금 이 해에 맞는 한 걸음: ${AGE_ACT[ageStage(age).key][GROUP_OF[god]]}.`;

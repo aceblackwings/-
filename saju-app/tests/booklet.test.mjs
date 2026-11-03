@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { computeSaju } from '../js/saju.js';
 import { yearOf } from '../js/period.js';
 import { analyzeGyeok } from '../js/gyeokguk.js';
-import { buildBooklet, yearName, FIELD_ORDER, todayLetter } from '../js/booklet.js';
+import { buildBooklet, yearName, FIELD_ORDER, todayLetter, ageLine, ageAction, ageStage, quoteLine } from '../js/booklet.js';
 import { computeFortune } from '../js/fortune.js';
 import { toneProblems } from '../js/habit.js';
 
@@ -53,6 +53,17 @@ t('오늘의 편지 + 세 가지 질문: 반말·존댓말, 금지어 없음, �
     assert.ok(/^은하 님, .*(이에요|예요)\.$/.test(p.lines[0]), p.lines[0]);
     assert.ok(!/에요\.$/.test(c.lines[0]) && !/[^이]에요/.test(p.lines[0].replace('예요', '')), p.lines[0]);
   }
+});
+
+t('A2 나이 문장·A3 원국 글자 인용', () => {
+  assert.equal(ageStage(17).key, 'teen'); assert.equal(ageStage(25).key, 'young'); assert.equal(ageStage(41).key, 'mid'); assert.equal(ageStage(63).key, 'senior');
+  assert.ok(ageLine(17, 'career', '정관').includes('학생') && ageLine(17, 'career', '정관').includes('규칙과 평가'));
+  assert.ok(ageLine(45, 'wealth', '정재').includes('30~40대'));
+  assert.ok(ageAction(63, '편인').startsWith('50대 이후'));
+  // 그해 丁未, 원국 월주 丁卯 → 월주 천간 같음
+  const sj = { pillars: { year: { stem: 0, branch: 0 }, month: { stem: 3, branch: 3 }, day: { stem: 6, branch: 6 }, hour: null } };
+  assert.ok(quoteLine({ year: { pillar: { stem: 3, branch: 7 } } }, sj).includes('월주'));
+  assert.ok(quoteLine({ year: { pillar: { stem: 9, branch: 11 } } }, sj).includes('새 글자'));
 });
 
 console.log(`\nbooklet: ${pass} passed`);
