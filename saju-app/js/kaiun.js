@@ -28,7 +28,7 @@ export function kaiunPower(equipped, stage = 1, yongsin = null, opts = {}) {
     sources.push({ label: `${TYPE_KO[r.type] || ''}부`, amount: p, field: target });
   }
   if (opts.pair) { FIELDS.forEach((k) => { fields[k] += k === CHARM_FIELD[opts.pair] ? 1 : 0; }); sources.push({ label: '쌍부적', amount: 1, field: CHARM_FIELD[opts.pair] }); }
-  const st = Math.max(0, (stage || 1) - 1) * 0.3; // 지신이 자랄수록 전체에
+  const st = Math.max(0, (stage || 1) - 1) * 0.5; // 지신이 자랄수록 전체에(진화 한 번 = 0.5, v0.41에서 0.3 → 0.5)
   if (st) { FIELDS.forEach((k) => { fields[k] += st; }); sources.push({ label: `지신 ${stage}단계`, amount: st, field: 'all' }); }
   if (opts.five) { FIELDS.forEach((k) => { fields[k] += 0.5; }); sources.push({ label: '오행 완성', amount: 0.5, field: 'all' }); }
   // B6 지난해에서 이월된 기운(전체에)

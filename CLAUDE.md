@@ -2,7 +2,7 @@
 
 새 대화에서 이어서 작업할 때 이 파일부터 읽으세요.
 
-> **✅ v0.41 완료(2026-11-03, 사용자 지시 「추천 순서대로 전부」 12항목 모두 끝)** — 새 모듈 `retro.js`(지난 일 맞히기)·`hourguess.js`(시간 모름 시주 추정), `natal.js personSummary`, `booklet.js ageLine·ageAction·quoteLine·monthLines`, `kaiun.js logKaiun·kaiunTrend·capState`(+ 오행 충전도·이월 합산), chat 성장 상태. 저장 키 추가: `unmyeong2099.retro`·`kaiunlog`·`carry`. 화면 용어: 옛 「개운 지수」 → 「오행 충전도」. 다음: 사용자와 방향 상의. 항목마다 테스트 추가 → `npm test` 통과 → 커밋·푸시 → 이 표를 ☑로 고치기. 다 끝나면 아티팩트 게시(바뀐 js·styles·index) + 최종 보고.
+> **✅ v0.41 완료(2026-11-03, 사용자 지시 「추천 순서대로 전부」 12항목 모두 끝)** — 새 모듈 `retro.js`(지난 일 맞히기)·`hourguess.js`(시간 모름 시주 추정), `natal.js personSummary`, `booklet.js ageLine·ageAction·quoteLine·monthLines`, `kaiun.js logKaiun·kaiunTrend·capState`(+ 오행 충전도·이월 합산), chat 성장 상태. 저장 키 추가: `unmyeong2099.retro`·`kaiunlog`·`carry`. 화면 확인(2026-11-03 추가 작업): A3·A5·B5·B4 브라우저 확인 완료. B4는 진화해도 「+1 → +1」로 보여 지신 단계 몫을 0.3 → 0.5로 올리고, 올해 전체가 같으면 이달 분야 중 가장 많이 오른 곳을 보여 주게 고침. 화면 용어: 옛 「개운 지수」 → 「오행 충전도」. 다음: 사용자와 방향 상의. 항목마다 테스트 추가 → `npm test` 통과 → 커밋·푸시 → 이 표를 ☑로 고치기. 다 끝나면 아티팩트 게시(바뀐 js·styles·index) + 최종 보고.
 > | 순서 | 항목 | 상태 |
 > |---|---|---|
 > | 1 | A1 지난 일 맞히기: 가입 직후·내 사주에서 지나간 교운기·일지 충 있던 해 2~3개를 「그해쯤 변화가 있었나요?」로 묻고 답 저장(`retro.js`), 맞으면 신뢰 문장 | ☑ |

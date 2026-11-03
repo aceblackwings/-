@@ -3951,8 +3951,16 @@ function showEvolution(info, from, to) {
     ${(() => { // B4 진화로 오른 개운
       const { eq, unlock } = heroOptions(); const eqd = eq.charms.slice(0, unlock.charmSlots).filter(Boolean);
       const op = { pair: pairType(eqd), five: fiveDone(load(COLLECTION_KEY, [])), charge: luckNow().index };
-      const a = kaiunFor(kaiunPower(eqd, from, state.saju.yongsin, op), 'year').total; const b = kaiunFor(kaiunPower(eqd, to, state.saju.yongsin, op), 'year').total;
-      return `<p class="eq-pair">🧧 이번 진화로 올해 개운 +${a} → <b>+${b}</b>${b > a ? ' 상승!' : ''} <small class="muted">(게임 요소)</small></p>`;
+      const pa = kaiunPower(eqd, from, state.saju.yongsin, op); const pb = kaiunPower(eqd, to, state.saju.yongsin, op);
+      const a = kaiunFor(pa, 'year').total; const b = kaiunFor(pb, 'year').total;
+      if (b > a) return `<p class="eq-pair">🧧 이번 진화로 올해 개운 +${a} → <b>+${b}</b> 상승! <small class="muted">(게임 요소)</small></p>`;
+      // 올해 전체가 같으면 이달 분야 중 가장 많이 오른 곳을 보여 줌
+      const ma = kaiunFor(pa, 'month').fields; const mb = kaiunFor(pb, 'month').fields;
+      const FK = { wealth: '재물', love: '애정', career: '직장·학업', health: '건강', social: '대인' };
+      const up = Object.keys(mb).map((k) => [k, mb[k] - ma[k]]).reduce((x, y) => (y[1] > x[1] ? y : x));
+      return up[1] > 0
+        ? `<p class="eq-pair">🧧 이번 진화로 이달 ${FK[up[0]]} 개운 +${ma[up[0]]} → <b>+${mb[up[0]]}</b> 상승! 올해 개운 +${b}에도 기운이 쌓이고 있어요. <small class="muted">(게임 요소)</small></p>`
+        : `<p class="eq-pair">🧧 이번 진화로 지신의 기운이 한 칸 더 쌓였어요. 다음 진화 때 올해 개운이 오를 거예요. <small class="muted">(게임 요소)</small></p>`;
     })()}
     <div class="actions" style="justify-content:center"><button class="primary" type="button" data-evo="ok">확인</button><button class="ghost" type="button" data-evo="share">📸 진화 공유 카드</button></div></div>`;
   document.body.appendChild(el);
