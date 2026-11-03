@@ -1,6 +1,7 @@
 // 사주 엔진: 만세력(절기 기준) → 사주 8글자 → 오행 분포 → 신강/신약 → 용신
 // 외부 라이브러리 없이 동작한다. 절기는 태양 황경을 계산해서 판정한다 (오차 약 ±15분).
 
+import { analyzeHwa } from './relations.js';
 import { johuStems, stemForElement, johuSentence, stemLabel, presentIn, MONTH_SEASON } from './johu.js';
 
 export const STEMS = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
@@ -183,13 +184,15 @@ export function computeSaju(input, opts = {}) {
     year: { stem: yearStem, branch: yearBranch },
   };
 
-  const elements = elementScores(pillars);
+  const hwa = analyzeHwa(pillars); // v0.37 합화: 바뀐 천간은 그 오행으로 셈
+  const elements = elementScores(pillars, { stemEl: hwa.stemEl });
   const chartStems = [pillars.year.stem, pillars.month.stem, ...(hourPillar ? [hourPillar.stem] : [])];
   const strength = analyzeStrength(dayPillar.stem, elements, monthBranch, chartStems, { ...opts, pillars });
 
   return {
     input: { year: input.year, month: input.month, day: input.day, hour: input.hour ?? 12, minute: input.minute ?? 0, timeKnown, longitudeCorrection, zasiMode, birthLon, dst },
     dstApplied,
+    hwa: hwa.list,
     lonMinutes: timeKnown && longitudeCorrection ? Math.round((utcOffset * 15 - birthLon) * 4) : 0,
     utcOffset,
     sajuYear,

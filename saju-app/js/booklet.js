@@ -4,10 +4,11 @@
 // 순수 로직만(테스트: tests/booklet.test.mjs)
 import { GOD_READING, partsStory } from './reading.js';
 import { YEAR_HEADLINE, seasonsOf, keyMonths, monthRange, friendlyZodiac } from './yearcard.js';
-import { categoryScores, branchRelation } from './period.js';
+import { categoryScores } from './period.js';
 import { ELEMENT_LUCK } from './fortune.js';
 import { STEMS, BRANCHES, ANIMALS, ELEMENT_KO, ELEMENT_HANJA, STEM_ELEMENT, BRANCH_MAIN_STEM, tenGod } from './saju.js';
 import { GYEOK_PROFILE } from './gyeokguk.js';
+import { incomingRelations } from './relations.js';
 import { STEM_IMAGE, stemLabel } from './johu.js';
 
 const COLOR = ['푸른', '붉은', '노란', '흰', '검은'];
@@ -86,9 +87,12 @@ function daewoonLine(y, name) {
 function meetLines(y, saju) {
   const out = [strengthMeet(saju, y.year.god), ...partsStory(y.year.parts || [], saju)];
   const p = y.year.pillar;
-  const rel = branchRelation ? branchRelation(saju.pillars.day.branch, p.branch) : null;
-  if (rel === 'combine' && !out.some((t) => t.includes('합'))) out.push(`그해의 ${BRANCHES[p.branch]}가 내 일지 ${BRANCHES[saju.pillars.day.branch]}와 합을 이뤄, 손발이 맞는 사람과 일이 찾아오기 쉬워요.`);
-  if (rel === 'clash' && !out.some((t) => t.includes('충'))) out.push(`그해의 ${BRANCHES[p.branch]}가 내 일지 ${BRANCHES[saju.pillars.day.branch]}와 마주 보며 부딪혀(충), 이사·이직·관계처럼 움직임이 생기기 쉬워요. 미리 계획해 두면 좋은 변화로 바뀌어요.`);
+  // v0.37 그해 글자와 원국의 관계(합·충·형·파·해·원진): 뜻 + 이렇게 쓰면 좋아요. 점수 근거에 이미 나온 일지 합·충은 겹치지 않게
+  const scored = new Set((y.year.parts || []).map((x) => x.kind));
+  const rels = incomingRelations(saju.pillars, p, '그해')
+    .filter((r) => !(r.at === 'day' && ((r.kind === 'sixCombine' && scored.has('combine')) || (r.kind === 'clash' && scored.has('clash')))))
+    .slice(0, 2);
+  rels.forEach((r) => out.push(`${r.text} ${r.act}`));
   const js = saju.johu?.stems || [];
   if (js.includes(p.stem)) out.push(`게다가 그해 천간 ${stemLabel(p.stem)}(${STEM_IMAGE[p.stem]})${hasBatchim(stemLabel(p.stem)) ? '은' : '는'} 내 사주의 계절 균형을 맞춰 주는 글자(조후)라, 몸과 마음이 한결 편안해져요.`);
   return out;

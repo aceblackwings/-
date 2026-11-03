@@ -32,6 +32,7 @@ import { orderedMenu, buildAnswer, concernAsk, ASK_MENU } from './ask.js';
 import { buildReading, FIELD_LABEL, closingLine, GOD_READING } from './reading.js';
 import { analyzeGyeok, GYEOK_PROFILE, strengthMission } from './gyeokguk.js';
 import { buildBooklet, todayLetter } from './booklet.js';
+import { natalRelations } from './relations.js';
 import { buildNote, markNote, weekStamps, stampRarity, AREA_CHARM, RARITY_KO, MONTH_KEY_NEED, monthStamps, STORY_STEPS, newStoryIndex, storiesOpen, buildStories, weeklyLetter } from './note.js';
 import { ELEMENT_LUCK } from './fortune.js';
 import { preloadCharImages, itemImage } from './assets.js';
@@ -549,6 +550,7 @@ function renderSaju() {
     </div>
 
     ${gyeokCardHTML()}
+    ${relationsCardHTML()}
 
     <div class="card">
       <h3>오행 스탯 <span class="tag">ELEMENT STATS</span></h3>
@@ -570,6 +572,17 @@ function renderSaju() {
     ${expertCardHTML()}`;
   $('[data-panel="saju"]').insertAdjacentHTML('afterbegin', readingCardHTML());
   $$('[data-go]', $('[data-panel="saju"]')).forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); selectTab(b.dataset.go); }));
+}
+
+/** 글자들의 관계(v0.37): 원국 안의 합·충·형·파·해·원진 + 천간합의 합화 */
+function relationsCardHTML() {
+  const s = state.saju; const rels = natalRelations(s.pillars); const hwa = s.hwa || [];
+  if (!rels.length && !hwa.length) return `<div class="card rel-card"><h3>글자들의 관계 <span class="tag">합·충·형·파·해</span></h3><p>원국 글자끼리 크게 묶이거나 부딪히는 관계가 없어요. 흐름이 고르고 담백한 사주예요.</p></div>`;
+  return `<div class="card rel-card"><h3>글자들의 관계 <span class="tag">합·충·형·파·해</span></h3>
+    <p class="muted" style="margin-top:0">사주 여덟 글자가 서로 어떻게 끌어당기고 부딪히는지 보여 드려요. 자리마다 뜻이 달라요(연주 = 어린 시절, 월주 = 일터, 일주 = 나·배우자, 시주 = 자녀·노후).</p>
+    <ul class="rel-list">${rels.slice(0, 6).map((r) => `<li><p>${esc(r.text)}</p><small>💡 ${esc(r.act)}</small></li>`).join('')}</ul>
+    ${hwa.length ? `<h5>천간합과 합화</h5>${hwa.map((h) => `<p class="rel-hwa">${esc(h.text)}</p>`).join('')}` : ''}
+  </div>`;
 }
 
 /** 타고난 그릇(격국, v0.36): 근거 → 강점 → 일하는 방식 → 다듬을 점 → 강점 미션 하나 */

@@ -1066,3 +1066,11 @@ html.easy .main-tabs button i { font-size: 1.1rem; }
 .st-item summary { cursor: pointer; font-weight: 700; }
 .st-item p { margin: 8px 0 0; line-height: 1.8; color: #d9d4f5; }
 .st-item.locked { color: var(--muted); font-size: 0.88rem; }
+/* 글자들의 관계 (v0.37) */
+.rel-list { list-style: none; margin: 0; padding: 0; }
+.rel-list li { padding: 10px 0; border-top: 1px solid var(--line); }
+.rel-list li:first-child { border-top: 0; }
+.rel-list p { margin: 0 0 4px; line-height: 1.75; word-break: keep-all; }
+.rel-list small { color: var(--wood); font-size: 0.84rem; line-height: 1.6; display: block; }
+.rel-card h5 { margin: 14px 0 4px; color: var(--gold); font-size: 0.9rem; }
+.rel-hwa { margin: 0 0 6px; line-height: 1.75; font-size: 0.92rem; color: #d9d4f5; }
