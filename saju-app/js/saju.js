@@ -1,6 +1,8 @@
 // 사주 엔진: 만세력(절기 기준) → 사주 8글자 → 오행 분포 → 신강/신약 → 용신
 // 외부 라이브러리 없이 동작한다. 절기는 태양 황경을 계산해서 판정한다 (오차 약 ±15분).
 
+import { johuStems, stemForElement, johuSentence, stemLabel, presentIn, MONTH_SEASON } from './johu.js';
+
 export const STEMS = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
 export const STEMS_KO = ['갑', '을', '병', '정', '무', '기', '경', '신', '임', '계'];
 export const BRANCHES = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
@@ -85,7 +87,7 @@ export function pillarFromIndex(idx60) {
  * @param {boolean} [input.longitudeCorrection=true]     한국 경도 보정 (-30분, 진태양시 근사)
  * @param {'early'|'late'} [input.zasiMode='early']       early: 23시에 날짜 변경 / late: 야자시 (0시에 날짜 변경)
  */
-export function computeSaju(input) {
+export function computeSaju(input, opts = {}) {
   const {
     year, month, day,
     hour = 12, minute = 0,
@@ -143,7 +145,8 @@ export function computeSaju(input) {
   };
 
   const elements = elementScores(pillars);
-  const strength = analyzeStrength(dayPillar.stem, elements, monthBranch);
+  const chartStems = [pillars.year.stem, pillars.month.stem, ...(hourPillar ? [hourPillar.stem] : [])];
+  const strength = analyzeStrength(dayPillar.stem, elements, monthBranch, chartStems, opts);
 
   return {
     input: { year, month, day, hour, minute, timeKnown, longitudeCorrection, zasiMode },
@@ -195,15 +198,42 @@ const JOHU_RULES = {
   10: { season: '늦가을', need: 4, urgent: 0, mild: 10, why: '건조한 늦가을 달에 태어나 물(水)이 있으면 메마름이 풀려요' },
 };
 
-export function analyzeJohu(monthBranch, scores) {
+/** 조후표 처방이 이보다 적으면(%) 봄·가을에도 희신으로 보완 (v0.35, 검증 세트로 조정할 값) */
+export const TABLE_MILD = 10;
+const EL_NAME = ['나무(木)', '불(火)', '흙(土)', '쇠(金)', '물(水)'];
+
+/**
+ * 조후. dayStem을 주면(v0.35) 120 조후표로 천간 단위 처방까지:
+ * - 한여름·한겨울 등 기온 규칙(JOHU_RULES)이 걸리면 그 오행(물·불)을 쓰되, 글자는 표에서 그 오행 천간(예: 癸수·壬수)
+ * - 기온 규칙이 없거나 이미 맞춰진 달(봄·가을 포함)은 표의 첫 글자. 그 오행이 TABLE_MILD% 미만이면 희신으로 보완
+ * chartStems = 사주 천간(연·월·일·시)으로, 처방 글자가 이미 드러나 있는지 문장에 씀
+ */
+export function analyzeJohu(monthBranch, scores, dayStem = null, chartStems = [], opts = {}) {
   const r = JOHU_RULES[monthBranch];
-  if (!r) return { level: 'none', need: null, season: null, text: '태어난 달의 기후가 온화해 따로 맞출 기온·습도가 없어요.' };
-  const have = scores[r.need];
-  const level = have < r.urgent ? 'urgent' : have < r.mild ? 'mild' : 'none';
-  const text = level === 'none'
-    ? `${r.season}에 태어났지만 사주에 이미 ${r.need === 4 ? '물(水)' : '불(火)'} 기운이 ${have}% 있어 기후가 맞춰져 있어요.`
-    : `${r.why}. 지금 사주에는 ${r.need === 4 ? '물(水)' : '불(火)'} 기운이 ${have}%뿐이에요.`;
-  return { level, need: level === 'none' ? null : r.need, season: r.season, have, text };
+  const tableMild = opts.tableMild ?? TABLE_MILD;
+  const useTable = dayStem != null && monthBranch >= 0 && monthBranch < 12;
+  const stems = useTable ? johuStems(dayStem, monthBranch) : [];
+  const extra = (stem) => {
+    if (!useTable || stem == null) return {};
+    const here = presentIn(chartStems, [stem]).length > 0;
+    return { stem, stems, present: here, table: johuSentence(dayStem, monthBranch, stem) + (here ? ` 사주 천간에 ${stemLabel(stem)}${'이가'[[0, 3].includes(Math.floor(stem / 2)) ? 0 : 1]} 이미 드러나 있어 든든해요.` : '') };
+  };
+  if (r) {
+    const have = scores[r.need];
+    const level = have < r.urgent ? 'urgent' : have < r.mild ? 'mild' : 'none';
+    if (level !== 'none') {
+      const stem = useTable ? stemForElement(dayStem, monthBranch, r.need) : null;
+      return { level, need: r.need, season: r.season, have, text: `${r.why}. 지금 사주에는 ${r.need === 4 ? '물(水)' : '불(火)'} 기운이 ${have}%뿐이에요.`, source: 'season', ...extra(stem) };
+    }
+    if (!useTable) return { level, need: null, season: r.season, have, text: `${r.season}에 태어났지만 사주에 이미 ${r.need === 4 ? '물(水)' : '불(火)'} 기운이 ${have}% 있어 기후가 맞춰져 있어요.` };
+  }
+  if (!useTable) return { level: 'none', need: null, season: null, text: '태어난 달의 기후가 온화해 따로 맞출 기온·습도가 없어요.' };
+  const key = stems[0]; const el = Math.floor(key / 2); const have = scores[el];
+  const season = MONTH_SEASON[monthBranch];
+  if (have < tableMild) {
+    return { level: 'mild', need: el, season, have, text: `조후표로 보면 ${johuSentence(dayStem, monthBranch, key)} 지금 사주에는 ${EL_NAME[el]} 기운이 ${have}%뿐이라 보태 주면 좋아요.`, source: 'table', ...extra(key), table: johuSentence(dayStem, monthBranch, key) };
+  }
+  return { level: 'none', need: null, season, have, text: `${season}에 태어났고, 조후표가 꼽는 ${EL_NAME[el]} 기운이 사주에 ${have}% 있어 계절 균형이 맞춰져 있어요.`, source: 'table', ...extra(key) };
 }
 
 /**
@@ -213,7 +243,7 @@ export function analyzeJohu(monthBranch, scores) {
  * - 조후가 약하게 필요하면(mild) 억부 용신 그대로, 조후 기운은 희신
  * - 그 밖에는 억부 용신, 희신은 용신을 생해 주는 기운
  */
-export function analyzeStrength(dayStem, scores, monthBranch = null) {
+export function analyzeStrength(dayStem, scores, monthBranch = null, chartStems = [], opts = {}) {
   const me = STEM_ELEMENT[dayStem];
   const support = scores[me] + scores[parentOf(me)];
   let strength;
@@ -227,7 +257,7 @@ export function analyzeStrength(dayStem, scores, monthBranch = null) {
   else if (strength === '신약') eokbu = pickLowest([parentOf(me), me]);
   else eokbu = pickLowest([0, 1, 2, 3, 4]);
 
-  const johu = monthBranch == null ? analyzeJohu(-1, scores) : analyzeJohu(monthBranch, scores);
+  const johu = monthBranch == null ? analyzeJohu(-1, scores) : analyzeJohu(monthBranch, scores, chartStems.length ? dayStem : null, chartStems, opts);
   let yongsin = eokbu; let heesin = parentOf(eokbu); let basis = '억부';
   if (johu.need != null && johu.need === eokbu) basis = '억부·조후 일치';
   else if (johu.level === 'urgent') { yongsin = johu.need; heesin = eokbu; basis = '조후 우선'; }
