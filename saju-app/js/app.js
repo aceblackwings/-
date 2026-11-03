@@ -36,7 +36,7 @@ import { natalRelations } from './relations.js';
 import { buildIlju } from './ilju.js';
 import { retroQuestions, retroSummary, RETRO_ANSWERS } from './retro.js';
 import { HOUR_QUESTIONS, guessHours } from './hourguess.js';
-import { kaiunPower, kaiunFor, kaiunLine, fieldKaiunSentence, withKaiun, logKaiun, kaiunTrend } from './kaiun.js';
+import { kaiunPower, kaiunFor, kaiunLine, fieldKaiunSentence, withKaiun, logKaiun, kaiunTrend, capState } from './kaiun.js';
 import { tenGodProfile, pillarReadings, personSummary } from './natal.js';
 import { growEquipped, fillOf, replaceCharm, pairType, fiveDone, elementsOwned, setUnlocked, boostRarity, offerUnlocked, offerValue, offerable, removeOffered, equipLine, charmKey, GROW_FULL, RARITY_KO as CC_RARITY_KO, TYPE_KO, OFFER_UNLOCK } from './charmcare.js';
 import { buildNote, markNote, weekStamps, stampRarity, AREA_CHARM, RARITY_KO, MONTH_KEY_NEED, monthStamps, STORY_STEPS, newStoryIndex, storiesOpen, buildStories, weeklyLetter } from './note.js';
@@ -92,6 +92,7 @@ const CHARTS_KEY = 'unmyeong2099.charts';
 const FW_KEY = 'unmyeong2099.firstweek';
 const EASY_KEY = 'unmyeong2099.easy'; // v0.31 쉬운 모드
 const NOTE_KEY = 'unmyeong2099.note'; // 수호신의 쪽지
+const CARRY_KEY = 'unmyeong2099.carry'; // v0.41 개운 이월 { 사주연도: 다음 해로 넘길 값 }
 const KAIUNLOG_KEY = 'unmyeong2099.kaiunlog'; // v0.41 개운 그래프 { 날짜: {base, plus} }
 const RETRO_KEY = 'unmyeong2099.retro'; // v0.41 지난 일 맞히기 답 { 연도: yes|some|no }
 const NOTESTAT_KEY = 'unmyeong2099.notestat'; // 쪽지 누적 도장 { total }
@@ -1747,18 +1748,23 @@ function bonusLineHTML(f) {
 function kaiunNow() {
   const { eq, unlock } = heroOptions();
   const equipped = eq.charms.slice(0, unlock.charmSlots).filter(Boolean);
-  return kaiunPower(equipped, loadGrowth().evolved, state.saju.yongsin, { pair: pairType(equipped), five: fiveDone(load(COLLECTION_KEY, [])), charge: luckNow().index });
+  return kaiunPower(equipped, loadGrowth().evolved, state.saju.yongsin, { pair: pairType(equipped), five: fiveDone(load(COLLECTION_KEY, [])), charge: luckNow().index, carry: load(CARRY_KEY, {})[timelineData().year.sajuYear - 1] || 0 });
 }
 function kaiunBoxHTML(period, base) {
   const L = kaiunLine(kaiunNow(), period);
   const score = base != null && !L.empty ? `<b>정통 ${base}점 → 개운 반영 ${withKaiun(base, L.k.total)}점</b> ` : '';
-  return `<div class="kaiun-box ${L.empty ? 'empty' : ''}"><p>🧧 ${score}${esc(L.text)}</p>
+  const cs = period === 'year' ? capState(kaiunNow(), 'year') : { capped: false };
+  const hasLegend = load(COLLECTION_KEY, []).some((r) => r.rarity === 'legend');
+  const capLine = cs.capped ? `<p class="kaiun-cap">🏆 올해 개운이 가득 찼어요. 넘친 기운은 <b>다음 해 개운 +${cs.carry}</b>로 이월돼요.${hasLegend ? ' 다음 목표: 전설 부적을 7칸 키워 신화 부적 만들기!' : ' 다음 목표: 전설 부적 모으기!'}</p>` : '';
+  return `<div class="kaiun-box ${L.empty ? 'empty' : ''}"><p>🧧 ${score}${esc(L.text)}</p>${capLine}
     <button type="button" class="linkish" data-go-equip>${L.empty ? '부적 달아 주러 가기 →' : '부적·지신 돌보러 가기 →'}</button> <button type="button" class="linkish" data-kaiun-graph>📈 나의 개운 그래프</button>
     <small>개운은 게임 요소예요. 타고난 사주와 정통 점수는 바뀌지 않아요.</small></div>`;
 }
 /** B1 오늘의 개운 반영 올해 점수를 기록(하루 한 번 갱신) */
 function recordKaiun() {
-  const y = timelineData().year; const plus = kaiunFor(kaiunNow(), 'year').total;
+  const y = timelineData().year; const kp = kaiunNow(); const plus = kaiunFor(kp, 'year').total;
+  const cs = capState(kp, 'year'); const carry = load(CARRY_KEY, {});
+  if (cs.carry > (carry[y.sajuYear] || 0)) save(CARRY_KEY, { ...carry, [y.sajuYear]: cs.carry }); // B6 넘친 기운은 다음 해로
   save(KAIUNLOG_KEY, logKaiun(load(KAIUNLOG_KEY, {}), state.fortune.dateKey, { base: y.year.score, plus }));
 }
 function kaiunGraphHTML() {

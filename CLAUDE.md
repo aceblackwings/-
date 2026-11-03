@@ -2,7 +2,7 @@
 
 새 대화에서 이어서 작업할 때 이 파일부터 읽으세요.
 
-> **⏩ 진행 중인 작업(2026-11-03, 사용자 지시: 「추천 순서대로 전부, 한도에 막히면 풀릴 때 이어서 마무리」)** — 새 세션은 아래 표에서 ☐인 첫 항목부터 이어서 할 것. 항목마다 테스트 추가 → `npm test` 통과 → 커밋·푸시 → 이 표를 ☑로 고치기. 다 끝나면 아티팩트 게시(바뀐 js·styles·index) + 최종 보고.
+> **✅ v0.41 완료(2026-11-03, 사용자 지시 「추천 순서대로 전부」 12항목 모두 끝)** — 새 모듈 `retro.js`(지난 일 맞히기)·`hourguess.js`(시간 모름 시주 추정), `natal.js personSummary`, `booklet.js ageLine·ageAction·quoteLine·monthLines`, `kaiun.js logKaiun·kaiunTrend·capState`(+ 오행 충전도·이월 합산), chat 성장 상태. 저장 키 추가: `unmyeong2099.retro`·`kaiunlog`·`carry`. 화면 용어: 옛 「개운 지수」 → 「오행 충전도」. 다음: 사용자와 방향 상의. 항목마다 테스트 추가 → `npm test` 통과 → 커밋·푸시 → 이 표를 ☑로 고치기. 다 끝나면 아티팩트 게시(바뀐 js·styles·index) + 최종 보고.
 > | 순서 | 항목 | 상태 |
 > |---|---|---|
 > | 1 | A1 지난 일 맞히기: 가입 직후·내 사주에서 지나간 교운기·일지 충 있던 해 2~3개를 「그해쯤 변화가 있었나요?」로 묻고 답 저장(`retro.js`), 맞으면 신뢰 문장 | ☑ |
@@ -16,7 +16,7 @@
 > | 9 | A5 책자 달마다 두 줄 풀이(12달) | ☑ |
 > | 10 | A6 시간 모름: 성향 질문 3개로 시주 후보 좁히기(선택) | ☑ |
 > | 11 | B5 수호신 상담이 장착 부적·개운·쪽지 기록을 앎(chat.js 지시문·오프라인 답변) | ☑ |
-> | 12 | B6 개운 한도 도달 후 목표(다음 해 이월 예고·신화 부적) | ☐ |
+> | 12 | B6 개운 한도 도달 후 목표(다음 해 이월 예고·신화 부적) | ☑ |
 
 > **브랜치 규칙(2026-11-03 PR #2로 정리)**: 저장소 기본 브랜치 `claude/zhuge-liang-advice-window-e8ghwy`에 v0.30까지 모든 작업이 들어 있다. 새 세션은 **기본 브랜치(또는 세션이 지정한 브랜치)에서 그대로 시작**하고, 버전 하나가 끝나면 **PR을 만들어 기본 브랜치에 병합**(사용자는 「병합 커밋 만들기」로 합침)한다. 기본 브랜치가 다시 뒤처지면 새 세션이 옛 CLAUDE.md를 읽게 되니, 버전이 끝날 때마다 병합을 잊지 말 것.
 
@@ -32,7 +32,7 @@
 
 ## 실행·테스트
 - 로컬: `cd saju-app && python3 -m http.server 8000` → http://localhost:8000
-- 테스트: `cd saju-app && npm test` (node 테스트 파일 36개(갤러리 테스트에 이미지 연결 검사 포함), 모두 통과 상태 유지)
+- 테스트: `cd saju-app && npm test` (node 테스트 파일 38개(갤러리 테스트에 이미지 연결 검사 포함), 모두 통과 상태 유지)
 - 화면 확인: Playwright(`require('playwright')`, 크로미움 내장)로 스크린샷
 - 디자인 확인: `http://localhost:8000/?gallery=1` (12지신 띠×14단계×성별×오행, 부적 6종×5등급×2테마, 이모티콘 8표정×스타일×등급, 한정 소품 11종)
 
@@ -64,6 +64,7 @@
 | relations.js | **v0.37**: 합·충·형·파·해·원진, 합화 `analyzeHwa`, `natalRelations`·`incomingRelations`·`REL_INFO` |
 | charmcare.js | **부적 돌보기(v0.38)**: 성장 `growEquipped`·세트 `pairType`·`fiveDone`·바치기 `offerable`·`offerValue`·장착 대사 `equipLine` |
 | kaiun.js | **개운 반영(v0.40)**: `kaiunPower`·`kaiunFor`·`kaiunLine`·`fieldKaiunSentence`·`withKaiun` |
+| retro.js / hourguess.js | **v0.41**: 지난 일 맞히기 `retroQuestions`·`retroSummary` / 시간 모름 시주 추정 `guessHours`·`HOUR_QUESTIONS` |
 | ilju.js / natal.js | **v0.39**: 60일주론 `buildIlju` / 십성 성향 `tenGodProfile`·기둥 자리별 `pillarReadings` |
 | johu.js / verify.js | **v0.35**: 120 조후표·처방 문장 / 전문가 검증 세트(질문지·비교·기준값 맞추기, 도구 `tools/verify.mjs`) |
 | note.js | **수호신의 쪽지(첫 화면)**: `buildNote`·`markNote`·`weekStamps`·`stampRarity`·`AREA_CHARM`, 주간 편지 `weeklyLetter`, 이야기 `buildStories`·`STORY_STEPS`, 다음 달 열쇠 `monthStamps` |

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { kaiunPower, kaiunFor, kaiunLine, fieldKaiunSentence, withKaiun, PERIOD_CAP, logKaiun, kaiunTrend } from '../js/kaiun.js';
+import { kaiunPower, kaiunFor, kaiunLine, fieldKaiunSentence, withKaiun, PERIOD_CAP, logKaiun, kaiunTrend, capState, CARRY_MAX } from '../js/kaiun.js';
 import { toneProblems } from '../js/habit.js';
 
 let pass = 0;
@@ -45,6 +45,15 @@ t('B2 오행 충전도도 개운에 조금, B1 기록·추이', () => {
   assert.equal(tr.pts.length, 2); assert.equal(tr.first.value, 60); assert.equal(tr.last.value, 63); assert.equal(tr.gain, 3);
   for (let i = 0; i < 400; i++) { const d = new Date(Date.UTC(2025, 0, 1 + i)); st = logKaiun(st, `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`, { base: 60, plus: 1 }); }
   assert.equal(Object.keys(st).length, 365);
+});
+
+t('B6 한도: 가득 차면 capped, 넘친 만큼 다음 해 이월(최대 2), 이월은 다음 해 개운에 더해짐', () => {
+  const R2 = (type, rarity) => ({ type, rarity, element: 2, theme: 'c', dateKey: 'x' });
+  const small = kaiunPower([R2('wealth', 'common')], 1, 0); assert.equal(capState(small).capped, false); assert.equal(capState(small).carry, 0);
+  const big = kaiunPower([R2('luck', 'myth'), R2('luck', 'myth')], 14, 2, { pair: 'luck', five: true, charge: 100 });
+  const cs = capState(big); assert.ok(cs.capped && cs.carry >= 1 && cs.carry <= CARRY_MAX);
+  const withCarry = kaiunPower([], 1, 0, { carry: 2 }); assert.equal(kaiunFor(withCarry, 'year').total, 2);
+  assert.ok(withCarry.sources[0].label.includes('이월'));
 });
 
 console.log(`\nkaiun: ${pass} passed`);

@@ -31,6 +31,8 @@ export function kaiunPower(equipped, stage = 1, yongsin = null, opts = {}) {
   const st = Math.max(0, (stage || 1) - 1) * 0.3; // 지신이 자랄수록 전체에
   if (st) { FIELDS.forEach((k) => { fields[k] += st; }); sources.push({ label: `지신 ${stage}단계`, amount: st, field: 'all' }); }
   if (opts.five) { FIELDS.forEach((k) => { fields[k] += 0.5; }); sources.push({ label: '오행 완성', amount: 0.5, field: 'all' }); }
+  // B6 지난해에서 이월된 기운(전체에)
+  if (opts.carry) { FIELDS.forEach((k) => { fields[k] += opts.carry / PERIOD_RATE.year; }); sources.push({ label: `지난해 이월 +${opts.carry}`, amount: opts.carry, field: 'all' }); }
   // B2 오행 충전도(쪽지·미션·응원으로 채우는 예전 개운 지수 0~100)도 전체에 조금
   if (opts.charge) { const c = Math.round((opts.charge / 100) * 2 * 10) / 10; if (c) { FIELDS.forEach((k) => { fields[k] += c; }); sources.push({ label: `오행 충전 ${opts.charge}%`, amount: c, field: 'all' }); } }
   const total = FIELDS.reduce((a, k) => a + fields[k], 0) / FIELDS.length;
@@ -83,4 +85,13 @@ export function kaiunTrend(store) {
   if (!pts.length) return { pts, first: null, last: null, gain: 0 };
   const first = pts[0]; const last = pts[pts.length - 1];
   return { pts, first, last, gain: last.plus - first.plus, best: pts.reduce((a, b) => (b.plus > a.plus ? b : a)) };
+}
+
+// ---------- B6 한도에 닿은 뒤의 목표(v0.41): 가득 참 표시 + 넘친 기운은 다음 해로 이월(최대 +2) ----------
+export const CARRY_MAX = 2;
+/** 한도 상태: 넘친 양(기간 비율 적용 뒤)과 다음 해 이월값(넘친 3마다 +1, 최대 2) */
+export function capState(power, period = 'year') {
+  const raw = power.total * PERIOD_RATE[period]; const cap = PERIOD_CAP[period];
+  const over = Math.max(0, raw - cap);
+  return { capped: raw >= cap, over: Math.round(over * 10) / 10, carry: Math.min(CARRY_MAX, Math.floor(over / 3) + (raw >= cap ? 1 : 0)) };
 }
