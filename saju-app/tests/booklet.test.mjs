@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { computeSaju } from '../js/saju.js';
 import { yearOf } from '../js/period.js';
 import { analyzeGyeok } from '../js/gyeokguk.js';
-import { buildBooklet, yearName, FIELD_ORDER, todayLetter, ageLine, ageAction, ageStage, quoteLine } from '../js/booklet.js';
+import { buildBooklet, yearName, FIELD_ORDER, todayLetter, ageLine, ageAction, ageStage, quoteLine, monthLines } from '../js/booklet.js';
 import { computeFortune } from '../js/fortune.js';
 import { toneProblems } from '../js/habit.js';
 
@@ -64,6 +64,13 @@ t('A2 나이 문장·A3 원국 글자 인용', () => {
   const sj = { pillars: { year: { stem: 0, branch: 0 }, month: { stem: 3, branch: 3 }, day: { stem: 6, branch: 6 }, hour: null } };
   assert.ok(quoteLine({ year: { pillar: { stem: 3, branch: 7 } } }, sj).includes('월주'));
   assert.ok(quoteLine({ year: { pillar: { stem: 9, branch: 11 } } }, sj).includes('새 글자'));
+});
+
+t('A5 달마다 두 줄: 12달, 좋은 달 3·다지는 달 2 표시, 금지어 없음', () => {
+  const s2 = computeSaju({ year: 1990, month: 8, day: 3, hour: 14, minute: 0 });
+  const ml = monthLines(yearOf(s2, 2027, 'female'));
+  assert.equal(ml.length, 12); assert.equal(ml.filter((m) => m.mark === '🌟').length, 3); assert.equal(ml.filter((m) => m.mark === '🍵').length, 2);
+  assert.deepEqual(toneProblems(JSON.stringify(ml)), []); ml.forEach((m) => assert.ok(m.flow.endsWith('.') && m.act.startsWith('할 일:')));
 });
 
 console.log(`\nbooklet: ${pass} passed`);

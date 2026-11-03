@@ -1125,3 +1125,9 @@ html.easy .main-tabs button i { font-size: 1.1rem; }
 .person-card p { margin: 0 0 6px; line-height: 1.75; word-break: keep-all; }
 .kaiun-graph { width: 100%; height: auto; display: block; margin: 4px 0; } .evo-box .kaiun-graph + p { font-size: 0.88rem; line-height: 1.6; }
 .td-kaiun { color: var(--gold); font-size: 0.9rem; } .td-kaiun small { color: var(--muted); font-size: 0.72rem; }
+.bk-months summary { cursor: pointer; list-style: none; }
+.bk-months summary h3 { display: inline; }
+.bk-months summary small { color: var(--muted); font-size: 0.76rem; margin-left: 6px; }
+.bk-month { border-top: 1px solid var(--line); padding-top: 6px; }
+.bk-month h4 small { color: var(--muted); font-weight: 400; font-size: 0.76rem; }
+.bk-act { color: var(--wood) !important; font-size: 0.88rem !important; }

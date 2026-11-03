@@ -339,3 +339,18 @@ export function ageLine(age, field, god) {
 }
 /** 총운 「한 해의 열쇠」에 붙일 나이별 할 일 */
 export const ageAction = (age, god) => `${ageStage(age).label}인 지금 이 해에 맞는 한 걸음: ${AGE_ACT[ageStage(age).key][GROUP_OF[god]]}.`;
+
+// ---------- A5 달마다 두 줄(v0.41): 그해 12절기월마다 흐름 한 줄 + 할 일 한 줄 ----------
+export function monthLines(y) {
+  const sorted = [...y.months].sort((a, b) => b.score - a.score);
+  const top = new Set(sorted.slice(0, 3).map((m) => m.solarMonth)); const low = new Set(sorted.slice(-2).map((m) => m.solarMonth));
+  return y.months.map((m, i) => {
+    const R = GOD_READING[m.god];
+    const tone = top.has(m.solarMonth) ? '흐름이 가장 좋은 달 중 하나라' : low.has(m.solarMonth) ? '속도를 늦추고 다지기 좋은 달이라' : '고르게 흘러가는 달이라';
+    return {
+      month: m.solarMonth, range: monthRange(y.months, i), keyword: R.keyword, mark: top.has(m.solarMonth) ? '🌟' : low.has(m.solarMonth) ? '🍵' : '',
+      flow: `「${R.keyword}」의 기운이 들어오는 ${tone} ${sentence(R.good[0])}`,
+      act: `할 일: ${sentence(R.tips[i % R.tips.length])}`,
+    };
+  });
+}

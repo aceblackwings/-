@@ -31,7 +31,7 @@ import { layersAt, monthPeriod, explainParts, TEN_GOD_MOD, weekOf, yearOf, month
 import { orderedMenu, buildAnswer, concernAsk, ASK_MENU } from './ask.js';
 import { buildReading, FIELD_LABEL, closingLine, GOD_READING, crossLine, turnLine } from './reading.js';
 import { analyzeGyeok, GYEOK_PROFILE, strengthMission } from './gyeokguk.js';
-import { buildBooklet, todayLetter } from './booklet.js';
+import { buildBooklet, todayLetter, monthLines } from './booklet.js';
 import { natalRelations } from './relations.js';
 import { buildIlju } from './ilju.js';
 import { retroQuestions, retroSummary, RETRO_ANSWERS } from './retro.js';
@@ -1793,6 +1793,9 @@ function bookletHTML() {
       ${b.general.map((x) => `<h4>${x.h}</h4>${x.paras.map(P).join('')}`).join('')}
     </section>
     ${b.fields.map((f) => { const kx = f.key === 'family' ? '' : fieldKaiunSentence(kp, f.key, 'year'); return `<section class="bk-part"><h3>${f.label}${f.focus ? ' <small>내 고민</small>' : ''}</h3><h4>${esc(f.title)}</h4>${f.paras.map(P).join('')}${kx ? `<p class="bk-kaiun">${esc(kx)}</p>` : ''}</section>`; }).join('')}
+    <details class="bk-part bk-months"><summary><h3>달마다 두 줄</h3><small>입춘부터 절기월 · 눌러서 펼치기</small></summary>
+      ${monthLines(y).map((m) => `<div class="bk-month"><h4>${m.mark} ${m.month}월 <small>${m.range}</small></h4><p>${esc(m.flow)}</p><p class="bk-act">${esc(m.act)}</p></div>`).join('')}
+    </details>
     <div class="bk-next"><button class="primary" type="button" data-go-today>☀️ 오늘의 운세 보기 ↓</button><button class="ghost" type="button" data-tl-step="read-${d.next ? 'next' : 'year'}">📖 12달 자세히</button></div>
   </article>`;
 }
