@@ -31,6 +31,7 @@ import { layersAt, monthPeriod, explainParts, TEN_GOD_MOD, weekOf, yearOf, month
 import { orderedMenu, buildAnswer, concernAsk, ASK_MENU } from './ask.js';
 import { buildReading, FIELD_LABEL, closingLine, GOD_READING } from './reading.js';
 import { analyzeGyeok, GYEOK_PROFILE, strengthMission } from './gyeokguk.js';
+import { buildBooklet } from './booklet.js';
 import { preloadCharImages, itemImage } from './assets.js';
 /** 계절 한정 소품 그림 (없으면 빈칸) */
 const itemThumb = (key, cls = 'item-thumb') => { const u = itemImage(key); return u ? `<img class="${cls}" src="${u}" alt="" loading="lazy">` : ''; };
@@ -980,7 +981,6 @@ function timelineHTML() {
   const R = { next: () => tlNext(d), today: tlToday, week: () => tlWeek(d), month: () => tlMonth(d), year: () => tlYear(d), daewoon: () => tlDaewoon(d), natal: tlNatal };
   const vis = tlVisible();
   return `<div class="timeline" id="timeline">
-    ${vis[0] === 'next' ? R.next() : ''}
     ${vis.filter((k) => k !== 'next').map((k) => R[k]()).join('')}
     <p class="tl-hint">카드를 누르면 펼쳐져요 · 모든 점수는 같은 계산으로 이어져요</p>
   </div>
@@ -1592,6 +1592,26 @@ function bonusLineHTML(f) {
   return `<p class="bonus-line">🐉 수호신 능력 보너스(게임): ${b.map(([k, v]) => `${label[k]} +${v}`).join(' · ')} <small>— 캐릭터 능력치에만 쓰이고, 위 정통 점수에는 더하지 않았어요</small></p>`;
 }
 
+// ---------- 신년운세 책자 (첫 화면 개편 1단계): 게이지·별 없이 글로 읽는 한 해 ----------
+function bookletHTML() {
+  const d = timelineData(); const y = d.next || d.year; const prev = d.next ? d.year : null;
+  const b = buildBooklet({ y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, concern: state.profile.concern });
+  const P = (t) => `<p>${esc(t)}</p>`;
+  return `<article class="card booklet" id="booklet">
+    <header class="bk-head">
+      <small>${b.year} 신년운세</small>
+      <h2>「${esc(b.title)}」</h2>
+      <p class="bk-sub">${b.name}${state.profile.name ? ` · ${esc(state.profile.name)} 님` : ''}</p>
+    </header>
+    <p class="bk-lead">${esc(b.lead)}</p>
+    <section class="bk-part"><h3>총운</h3>
+      ${b.general.map((x) => `<h4>${x.h}</h4>${x.paras.map(P).join('')}`).join('')}
+    </section>
+    ${b.fields.map((f) => `<section class="bk-part"><h3>${f.label}${f.focus ? ' <small>내 고민</small>' : ''}</h3><h4>${esc(f.title)}</h4>${f.paras.map(P).join('')}</section>`).join('')}
+    <button class="ghost bk-more" type="button" data-tl-step="read-${d.next ? 'next' : 'year'}">📖 12달 자세히 보기</button>
+  </article>`;
+}
+
 // ---------- 쉬운 모드 (v0.31, easymode.js): 큰 글씨 · 쉬운 말 · 카드 3장 홈 ----------
 const loadEasy = () => ({ ...emptyEasy(), ...load(EASY_KEY, {}) });
 const easyOn = () => !!loadEasy().on;
@@ -1728,6 +1748,7 @@ function renderToday() {
   ];
   $('[data-panel="today"]').innerHTML = `
     ${easyOn() ? '<button type="button" class="ghost easy-back" data-easy-more="0">← 쉬운 홈으로</button>' : easySuggestHTML()}
+    ${bookletHTML()}
     ${timelineHTML()}
     ${sections.filter(([k]) => unlocked(k)).map(([, fn]) => fn()).join('\n')}`;
 

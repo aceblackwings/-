@@ -1006,3 +1006,17 @@ html.easy .main-tabs button i { font-size: 1.1rem; }
 .gk-list { margin: 0; padding-left: 20px; line-height: 1.8; }
 .gk-care { padding: 10px 12px; border-radius: 12px; background: rgba(255, 201, 60, 0.07); border: 1px solid rgba(255, 201, 60, 0.25); font-size: 0.9rem; }
 .gk-mission { font-size: 0.9rem; margin-top: 10px !important; }
+
+/* ---------- 신년운세 책자 (첫 화면 개편) ---------- */
+.booklet { padding: 22px 20px; background: rgba(18, 15, 38, 0.92); }
+.bk-head { text-align: center; padding-bottom: 14px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+.bk-head small { color: var(--gold); letter-spacing: 0.12em; font-weight: 700; }
+.bk-head h2 { font-family: var(--serif); font-size: 1.6rem; font-weight: 400; margin: 6px 0 4px; line-height: 1.35; }
+.bk-sub { margin: 0; color: var(--muted); font-size: 0.86rem; }
+.bk-lead { font-size: 1rem; line-height: 1.8; margin: 0 0 6px; }
+.bk-part { margin-top: 22px; }
+.bk-part h3 { font-family: var(--serif); font-weight: 400; font-size: 1.25rem; margin: 0 0 6px; padding-bottom: 6px; border-bottom: 1px solid rgba(255, 201, 60, 0.3); color: var(--gold); }
+.bk-part h3 small { font-family: var(--sans); font-size: 0.7rem; color: var(--text); border: 1px solid var(--gold); border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: middle; }
+.bk-part h4 { margin: 14px 0 4px; font-size: 0.95rem; color: #e6e1ff; }
+.bk-part p { margin: 0 0 8px; line-height: 1.85; font-size: 0.95rem; color: #d9d4f5; word-break: keep-all; }
+.bk-more { width: 100%; margin-top: 12px; }
