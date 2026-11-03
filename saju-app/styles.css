@@ -947,3 +947,7 @@ select option { background: #1d1742; color: #ffffff; }
 .umb-after .yday-btns { display: flex; gap: 6px; }
 .umb-after .yday-btns button { flex: 1; white-space: nowrap; }
 .rec-habit { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
+/* 계절 한정 소품 그림 (공용 그림) */
+.item-thumb { width: 22px; height: 22px; object-fit: contain; vertical-align: -6px; margin-right: 4px; }
+.item-thumb.lg { width: 48px; height: 48px; flex: none; margin: 0 4px 0 0; }
+.season-ic-img { width: 34px; height: 34px; object-fit: contain; display: block; }

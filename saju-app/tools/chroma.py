@@ -20,6 +20,12 @@ def _border_hue(hue, sat, val, fallback=300.0):
     # 0/360 경계를 넘는 색상도 맞게 평균 내려고 원형 평균
     ang = np.deg2rad(hs); return float(np.rad2deg(np.arctan2(np.sin(ang).mean(), np.cos(ang).mean())) % 360)
 
+def _border_sv(sat, val):
+    """테두리 띠에서 잰 배경의 채도·명도 중앙값"""
+    H, W = sat.shape; k = max(2, int(min(H, W) * 0.03))
+    m = np.zeros_like(sat, bool); m[:k] = m[-k:] = True; m[:, :k] = m[:, -k:] = True
+    return float(np.median(sat[m])), float(np.median(val[m]))
+
 def remove(src, dst, key='green', size=None):
     im = Image.open(src).convert('RGB')
     a = np.asarray(im).astype(np.float32) / 255.0
@@ -30,8 +36,11 @@ def remove(src, dst, key='green', size=None):
     h0 = _border_hue(hue, sat, val, 134.0 if key == 'green' else 300.0)
     dh = np.abs((hue - h0 + 180) % 360 - 180)
     a_h = np.clip((dh - 8) / (16 - 8), 0, 1)          # 색상이 배경과 8° 이내 → 투명, 16° 이상 → 불투명 (배경 편차는 보통 4° 이내)
-    a_s = np.clip((0.62 - sat) / (0.62 - 0.45), 0, 1)  # 채도가 낮은 흰색·회색·연한 털은 불투명 (배경 채도 0.7 이상)
-    a_v = np.clip((0.75 - val) / (0.75 - 0.55), 0, 1)  # 어두운 외곽선·눈동자는 불투명 (배경 명도 0.8 이상)
+    # 배경이 탁하거나 어두우면(예: 명도 0.7대 초록) 그 배경 밝기에 맞춰 기준을 낮춘다. 밝은 배경은 기존 기준 그대로
+    s_bg, v_bg = _border_sv(sat, val)
+    s_hi = min(0.62, s_bg - 0.1); v_hi = min(0.75, v_bg - 0.16)
+    a_s = np.clip((s_hi - sat) / 0.17, 0, 1)  # 채도가 낮은 흰색·회색·연한 털은 불투명 (기본: 0.45 이하 불투명, 0.62 이상 투명)
+    a_v = np.clip((v_hi - val) / 0.2, 0, 1)   # 어두운 외곽선·눈동자는 불투명 (기본: 0.55 이하 불투명, 0.75 이상 투명)
     alpha = np.maximum(a_h, np.maximum(a_s, a_v))
     # 밝은 빛(후광·구슬 빛)과 배경이 섞인 픽셀은 색상이 배경과 달라 남으므로, 밝은 곳에서는 배경색 우세도로 한 번 더 지운다
     # (클로버처럼 명도가 낮은 소품은 해당 없음). 마젠타는 보라 한복·분홍 하트가 밝아서 이 규칙을 쓰지 않는다

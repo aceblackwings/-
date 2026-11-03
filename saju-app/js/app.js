@@ -30,7 +30,9 @@ import { dateToJdn } from './lunar.js';
 import { layersAt, monthPeriod, explainParts, TEN_GOD_MOD, weekOf, yearOf, monthDays, sajuYearOf, categoryScores } from './period.js';
 import { orderedMenu, buildAnswer, concernAsk, ASK_MENU } from './ask.js';
 import { buildReading, FIELD_LABEL, closingLine, GOD_READING } from './reading.js';
-import { preloadCharImages } from './assets.js';
+import { preloadCharImages, itemImage } from './assets.js';
+/** 계절 한정 소품 그림 (없으면 빈칸) */
+const itemThumb = (key, cls = 'item-thumb') => { const u = itemImage(key); return u ? `<img class="${cls}" src="${u}" alt="" loading="lazy">` : ''; };
 import { GUIDE_STEPS, emptyGuide, showNextYear, nextStep, progress as guideProgress, isUnlocked, stepFor, completeStep as completeGuideStep, setAll as guideSetAll } from './guide.js';
 import { emptyMemory, extractMemories, mergeMemory, memoryLines, followUp, markAsked, recallFor, describe as describeMemory, forget, forgetAll, needsSummary, applySummary, summaryMessages, offlineSummary, SUMMARY_EVERY, MEMORY_LIMIT } from './memory.js';
 import { festivalStatus } from './festivals.js';
@@ -2075,13 +2077,13 @@ function seasonCardHTML() {
   const tiers = FREE_TIERS.map((t) => {
     const got = !!owned[t.reward];
     const what = t.reward === 'sticker' ? ss.sticker : t.reward === 'title' ? ss.title : ss.item;
-    return `<li class="${got ? 'got' : ''}"><i>${got ? '✓' : `${t.need}`}</i><span><b>${t.label}</b><small>${esc(what)}</small></span></li>`;
+    return `<li class="${got ? 'got' : ''}"><i>${got ? '✓' : `${t.need}`}</i><span><b>${t.label}</b><small>${t.reward === 'item' ? itemThumb(ss.key) : ''}${esc(what)}</small></span></li>`;
   }).join('');
   const missions = prog.map((m) => `<li class="${m.done ? 'done' : ''}"><span>${m.icon} ${m.label}</span><div class="track"><div class="fill" style="width:${(m.n / m.goal) * 100}%"></div></div><b>${m.n}/${m.goal}일</b></li>`).join('');
   const trying = state.seasonTry;
   const mode = trying || owned.set ? 'set' : owned.item ? 'item' : 'none';
   return `<div class="card season" style="--sc:${ss.color}">
-    <div class="season-head"><span class="season-ic">${ss.icon}</span><div><b>${ss.year} ${ss.name} 한정 · ${ss.theme} 패키지</b><small>${md(ss.start)}~${md(ss.end)} · ${ss.toFest > 0 ? `축제까지 D-${ss.toFest}` : ss.toFest === 0 ? '오늘이 축제!' : '축제 여운 기간'} · 판매 종료까지 ${ss.daysLeft}일</small></div></div>
+    <div class="season-head"><span class="season-ic">${itemThumb(ss.key, 'season-ic-img') || ss.icon}</span><div><b>${ss.year} ${ss.name} 한정 · ${ss.theme} 패키지</b><small>${md(ss.start)}~${md(ss.end)} · ${ss.toFest > 0 ? `축제까지 D-${ss.toFest}` : ss.toFest === 0 ? '오늘이 축제!' : '축제 여운 기간'} · 판매 종료까지 ${ss.daysLeft}일</small></div></div>
     <div class="season-body">
       <div class="season-preview">${seasonPreviewSVG(ss.key, 150, mode)}
         <button class="ghost" type="button" data-season="try">${trying ? '원래대로' : '👘 입어 보기'}</button></div>
@@ -2091,7 +2093,7 @@ function seasonCardHTML() {
         <ul class="season-tiers">${tiers}</ul>
       </div>
     </div>
-    <div class="shop-item season-set"><div><b>👘 ${ss.theme} 꾸미기 세트</b><small>${ss.item} 바로 받기 · 계절 장면(${SCENE_NAME[ss.key]}) · 배경 효과(${EFFECT_LABEL[ss.effect]}) · 금빛 칭호</small></div>
+    <div class="shop-item season-set">${itemThumb(ss.key, 'item-thumb lg')}<div><b>👘 ${ss.theme} 꾸미기 세트</b><small>${ss.item} 바로 받기 · 계절 장면(${SCENE_NAME[ss.key]}) · 배경 효과(${EFFECT_LABEL[ss.effect]}) · 금빛 칭호</small></div>
       <button class="primary" type="button" data-season="buy" ${owned.set ? 'disabled' : ''}>${owned.set ? '보유 중' : `${PACK_PRICE.toLocaleString()}원`}</button></div>
     <p class="muted" style="font-size:0.74rem;margin:6px 0 0">꾸미기 전용이라 운세·오행 수치는 변하지 않아요. 무료 트랙 미션 4개를 모두 하면 ${withEul(ss.item)} 무료로 받아요. 모든 아이템에 「${ss.year} ${ss.name}」이 새겨지고, 시즌이 끝나면 같은 디자인은 다시 판매하지 않아요.</p>
   </div>`;
@@ -2819,7 +2821,7 @@ function renderGallery() {
     controls = `<div class="gal-row"><span>구성</span><div class="chips">${chip('set', 'item', '무료 소품만', !g.set)}${chip('set', 'set', '꾸미기 세트(장면+효과)', g.set)}</div></div>${zChips}${stageChips}${genderChips}`;
     grid = Object.entries(SEASON_PACKS).map(([k, pk]) => {
       const info = characterInfo(galSaju(g.zodiac, g.el), profile);
-      return `<figure class="gal-item">${renderCharacterSVG(info, { stage: g.stage, width: 150, backdrop: true, mood: 'excited', season: { key: k, effect: g.set } })}<figcaption><b>${pk.item}</b><small>${g.set ? `${SCENE_NAME[k]} · ` : ''}${pk.theme}</small></figcaption></figure>`;
+      return `<figure class="gal-item">${renderCharacterSVG(info, { stage: g.stage, width: 150, backdrop: true, mood: 'excited', season: { key: k, effect: g.set } })}<figcaption><b>${itemThumb(k)}${pk.item}</b><small>${g.set ? `${SCENE_NAME[k]} · ` : ''}${pk.theme}</small></figcaption></figure>`;
     }).join('');
   }
   panel.innerHTML = `

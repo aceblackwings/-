@@ -42,7 +42,7 @@ t('등급이 오를수록 그림이 달라짐: 부적 상징·팔괘·날개·12
   for (const theme of ['classic', 'neon']) {
     const svg = (r) => renderTalismanSVG(createTalisman(s0, f, { type: 'wealth', rarity: r, theme, element: 2 }));
     assert.ok(!svg('common').includes('class="emblem"'));
-    assert.ok(svg('rare').includes('class="emblem"') && svg('rare').includes('通'));
+    assert.ok(svg('rare').includes('class="emblem"') && svg('rare').includes('assets/charm/emblem_wealth.webp')); // 그림 상징 (v0.30 공용 그림)
     assert.ok(svg('epic').match(/stroke-width="2.2"/g).length >= 16); // 팔괘 효
     assert.ok(svg('legend').includes('-gold)') && svg('myth').includes('亥'));
   }
@@ -63,7 +63,7 @@ t('한정 소품: 꾸미기 세트는 계절 장면까지, 무료 소품은 소�
     assert.ok(set.length > item.length + 500, k);
   }
 });
-import { CHAR_ASSETS, charImage, EMO_ASSETS, SCENE_ASSETS, sceneImage } from '../js/assets.js';
+import { CHAR_ASSETS, charImage, EMO_ASSETS, SCENE_ASSETS, sceneImage, CHARM_ASSETS, ITEM_ASSETS, charmImage, itemImage } from '../js/assets.js';
 import fs from 'node:fs';
 t('이미지 그림: 띠별 그림은 모든 오행에 쓰고(오행 배지), 없는 띠는 코드 그림 · 파일이 실제로 있음', () => {
   for (const k of CHAR_ASSETS) assert.ok(fs.statSync(new URL(`../assets/char/${k}.webp`, import.meta.url)).size > 1000, k);
@@ -90,5 +90,17 @@ t('계절 장면 그림 11장: 꾸미기 세트는 그림 장면(전체 배경),
     assert.ok(!renderCharacterSVG(info, { stage: 3, season: { key: k, effect: false } }).includes('assets/scene/'), k);
   }
   assert.equal(sceneImage('nope'), null);
+});
+t('공용 그림: 부적 상징 6·종이 2·계절 소품 11이 실제로 있고, 부적 바탕이 그림 종이로 바뀜', () => {
+  assert.equal(CHARM_ASSETS.size, 8); assert.equal(ITEM_ASSETS.size, 11);
+  for (const k of CHARM_ASSETS) assert.ok(fs.statSync(new URL(`../assets/charm/${k}.webp`, import.meta.url)).size > 3000, k);
+  for (const k of ITEM_ASSETS) assert.ok(fs.statSync(new URL(`../assets/item/${k}.webp`, import.meta.url)).size > 3000, k);
+  for (const k of Object.keys(SEASON_PACKS)) assert.equal(itemImage(k), `assets/item/${k}.webp`, k);
+  for (const ty of TALISMAN_TYPES) assert.equal(charmImage(`emblem_${ty.key}`), `assets/charm/emblem_${ty.key}.webp`, ty.key);
+  const classic = renderTalismanSVG(createTalisman(s0, f, { type: 'luck', rarity: 'epic', theme: 'classic', element: 1 }));
+  const neon = renderTalismanSVG(createTalisman(s0, f, { type: 'luck', rarity: 'epic', theme: 'neon', element: 1 }));
+  assert.ok(classic.includes('assets/charm/paper_classic.webp') && classic.includes('emblem_luck.webp') && classic.includes('勅令'), '글자·주문은 그대로');
+  assert.ok(neon.includes('assets/charm/paper_neon.webp') && neon.includes('SYS://TALISMAN'));
+  assert.equal(itemImage('nope'), null); assert.equal(charmImage('nope'), null);
 });
 console.log(`\n${pass} passed`);

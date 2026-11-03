@@ -4,12 +4,14 @@
 //   나중에 `${띠}_s${단계}_${오행}` 파일을 추가하면 그 오행 사용자에게는 그 그림을 먼저 쓴다
 // - 목록에 없으면 기존 SVG 그림. 승천 6~14단계는 5단계 그림 + 코드 효과
 // - 스토리 카드·PNG 저장은 외부 파일 참조가 안 되므로 미리 data URL로 불러 둔다
-import { CHAR_FILES, EMO_FILES, SCENE_FILES } from './asset-manifest.js';
+import { CHAR_FILES, EMO_FILES, SCENE_FILES, CHARM_FILES, ITEM_FILES } from './asset-manifest.js';
 
 export const EL_NAME = ['wood', 'fire', 'earth', 'metal', 'water'];
 export const CHAR_ASSETS = new Set(CHAR_FILES);
 export const EMO_ASSETS = new Set(EMO_FILES);
 export const SCENE_ASSETS = new Set(SCENE_FILES || []);
+export const CHARM_ASSETS = new Set(CHARM_FILES || []); // 부적 상징 emblem_{종류} · 부적 종이 paper_{classic|neon}
+export const ITEM_ASSETS = new Set(ITEM_FILES || []);   // 계절 한정 소품 {시즌키}
 
 const dataCache = new Map();
 const url = (kind, key) => dataCache.get(`${kind}/${key}`) || `assets/${kind}/${key}.webp`;
@@ -26,6 +28,11 @@ export function emoImage(zodiacKey, mood, el) {
   for (const key of [`${zodiacKey}_${mood}_${EL_NAME[el]}`, `${zodiacKey}_${mood}`]) if (EMO_ASSETS.has(key)) return url('emo', key);
   return null;
 }
+
+/** 부적 그림 주소: 'emblem_wealth' · 'paper_classic' (없으면 null → SVG) */
+export function charmImage(name) { return CHARM_ASSETS.has(name) ? url('charm', name) : null; }
+/** 계절 한정 소품 그림 주소 (없으면 null) */
+export function itemImage(seasonKey) { return ITEM_ASSETS.has(seasonKey) ? url('item', seasonKey) : null; }
 
 /** 계절 장면 그림 주소 (꾸미기 세트의 배경, 없으면 null → SVG 장면) */
 export function sceneImage(seasonKey) {
@@ -47,7 +54,8 @@ export async function preloadScene(seasonKey) {
 export async function preloadCharImages(zodiacKey) {
   if (typeof fetch !== 'function' || typeof FileReader === 'undefined') return 0;
   const pick = (set, kind) => [...set].filter((k) => !zodiacKey || k.startsWith(`${zodiacKey}_`)).map((k) => `${kind}/${k}`);
-  const keys = [...pick(CHAR_ASSETS, 'char'), ...pick(EMO_ASSETS, 'emo')];
+  // 부적·소품 그림은 작아서(합계 약 300KB) 모두 함께 불러 둔다 → 부적 PNG 저장·스토리 카드에도 그림이 들어감
+  const keys = [...pick(CHAR_ASSETS, 'char'), ...pick(EMO_ASSETS, 'emo'), ...[...CHARM_ASSETS].map((k) => `charm/${k}`), ...[...ITEM_ASSETS].map((k) => `item/${k}`)];
   let n = 0;
   await Promise.all(keys.map(async (key) => {
     if (dataCache.has(key)) return;

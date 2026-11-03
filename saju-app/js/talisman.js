@@ -1,6 +1,7 @@
 // 부적 생성 엔진: 오행 보완 + 등급 + 효과 수치 + SVG 렌더링 (전통 / 네온)
 import { ELEMENT_KO, ELEMENT_HANJA, STEM_ELEMENT, seededRandom, parentOf } from './saju.js';
 import { birthKey } from './fortune.js';
+import { charmImage } from './assets.js';
 
 export const TALISMAN_TYPES = [
   { key: 'protect', label: '액막이', hanja: '除災招福', reading: '제재초복', meaning: '재앙을 물리치고 복을 부른다', stat: '액운', sign: -1, sub: '액운 저항' },
@@ -207,6 +208,9 @@ const BRANCH_HANJA = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '�
 
 /** 반지름 30 기준 상징 모양 (F: 채움, S: 선, B: 바탕) */
 function emblemShape(type, F, S, B, legend) {
+  // 그림이 있으면 그림 상징(반지름 30 기준 62×62). 등급 효과(팔괘 고리·금빛 날개·12지신 고리)는 바깥에서 그대로 감싼다
+  const img = charmImage(`emblem_${type}`);
+  if (img) return `<image class="emblem-img" href="${img}" x="-31" y="-31" width="62" height="62"/>`;
   const sw = 'stroke-width="3" stroke-linejoin="round" stroke-linecap="round"';
   switch (type) {
     case 'wealth': {
@@ -276,6 +280,7 @@ function renderClassic(t) {
   const mantraR = `${ELEMENT_HANJA[t.element]}德護身`;
   const seal = SEAL_TEXT[t.type.key] || '大吉';
   const tier = RARITY_TIER[t.rarity.key] || 0;
+  const paper = charmImage('paper_classic'); // 그림 종이(한지·붉은 겹테두리·구름 모서리)가 있으면 코드 종이·테두리 대신
   const effects = t.effects.map((e, i) => {
     const y = 436 + i * 19;
     return `<text x="${W / 2}" y="${y}" font-size="13.5" text-anchor="middle" fill="${inkDark}" ${serif} font-weight="700">${esc(e.stat)} <tspan fill="${ink}" font-weight="800">${fmt(e.value)}</tspan></text>`;
@@ -290,14 +295,14 @@ function renderClassic(t) {
     <filter id="${id}-stamp"><feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="1" seed="2" result="t"/><feColorMatrix in="t" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 -1.6 1.25" result="m"/><feComposite in="SourceGraphic" in2="m" operator="in"/></filter>
     ${rarityDefs(id)}
   </defs>
-  <rect width="${W}" height="${H}" rx="4" fill="url(#${id}-paper)"/>
+  ${paper ? `<image href="${paper}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="none"/>` : `<rect width="${W}" height="${H}" rx="4" fill="url(#${id}-paper)"/>
   <rect width="${W}" height="${H}" rx="4" filter="url(#${id}-fiber)"/>
-  <rect width="${W}" height="${H}" rx="4" fill="url(#${id}-burn)"/>
+  <rect width="${W}" height="${H}" rx="4" fill="url(#${id}-burn)"/>`}
   ${rarityBack(t, id, W, H)}
   <g filter="url(#${id}-brush)">
-    <rect x="14" y="14" width="${W - 28}" height="${H - 28}" fill="none" stroke="${ink}" stroke-width="3.2"/>
+    ${paper ? '' : `<rect x="14" y="14" width="${W - 28}" height="${H - 28}" fill="none" stroke="${ink}" stroke-width="3.2"/>
     <rect x="22" y="22" width="${W - 44}" height="${H - 44}" fill="none" stroke="${ink}" stroke-width="1.2"/>
-    ${cloudCorner(26, 26, 1, 1, ink)}${cloudCorner(W - 26, 26, -1, 1, ink)}${cloudCorner(26, H - 26, 1, -1, ink)}${cloudCorner(W - 26, H - 26, -1, -1, ink)}
+    ${cloudCorner(26, 26, 1, 1, ink)}${cloudCorner(W - 26, 26, -1, 1, ink)}${cloudCorner(26, H - 26, 1, -1, ink)}${cloudCorner(W - 26, H - 26, -1, -1, ink)}`}
     <!-- 삼청(三淸) 부두 -->
     <g fill="none" stroke="${ink}" stroke-width="3" stroke-linecap="round">
       <circle cx="122" cy="44" r="7"/><circle cx="150" cy="38" r="8"/><circle cx="178" cy="44" r="7"/>
@@ -337,6 +342,7 @@ function renderNeon(t) {
   const c2 = NEON[(t.element + 2) % 5];
   const rc = t.rarity.color;
   const tier = RARITY_TIER[t.rarity.key] || 0;
+  const neonPaper = charmImage('paper_neon'); // 그림 바탕(회로 테두리·원근 바닥)이 있으면 코드 바탕·바닥·테두리 대신
   const mono = 'font-family="\'JetBrains Mono\',\'Fira Code\',monospace"';
   const serif = `font-family="'Song Myung','Nanum Myeongjo','Noto Serif KR',serif"`;
   // 원근 그리드 (바닥)
@@ -366,12 +372,12 @@ function renderNeon(t) {
     <linearGradient id="${id}-edge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c}"/><stop offset="0.5" stop-color="${rc}"/><stop offset="1" stop-color="${c2}"/></linearGradient>
     ${rarityDefs(id)}
   </defs>
-  <rect width="${W}" height="${H}" rx="16" fill="url(#${id}-bg)"/>
+  ${neonPaper ? `<rect width="${W}" height="${H}" rx="16" fill="#05040c"/><image href="${neonPaper}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="none"/>` : `<rect width="${W}" height="${H}" rx="16" fill="url(#${id}-bg)"/>`}
   <rect width="${W}" height="${H}" rx="16" fill="url(#${id}-core)"/>
   ${rarityBack(t, id, W, H)}
-  <g stroke="${c}" stroke-opacity="0.16" stroke-width="1">${floor}</g>
+  ${neonPaper ? '' : `<g stroke="${c}" stroke-opacity="0.16" stroke-width="1">${floor}</g>`}
   <g fill="#fff" opacity="0.025">${scan}</g>
-  <rect x="9" y="9" width="${W - 18}" height="${H - 18}" rx="12" fill="none" stroke="url(#${id}-edge)" stroke-width="2.5" filter="url(#${id}-glow)"/>
+  ${neonPaper ? '' : `<rect x="9" y="9" width="${W - 18}" height="${H - 18}" rx="12" fill="none" stroke="url(#${id}-edge)" stroke-width="2.5" filter="url(#${id}-glow)"/>`}
   ${bracket(18, 18, 1, 1)}${bracket(W - 18, 18, -1, 1)}${bracket(18, H - 18, 1, -1)}${bracket(W - 18, H - 18, -1, -1)}
   <text x="30" y="40" font-size="9.5" fill="${c}" ${mono} opacity="0.9">SYS://TALISMAN.v2099</text>
   <g transform="translate(${W - 30} 30)"><rect x="-58" y="-2" width="58" height="16" rx="8" fill="${rc}" fill-opacity="0.15" stroke="${rc}"/><text x="-29" y="10" font-size="9.5" fill="${rc}" ${mono} text-anchor="middle" font-weight="700">${esc(t.rarity.label)}</text></g>
