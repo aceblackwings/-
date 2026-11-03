@@ -1054,3 +1054,15 @@ html.easy .main-tabs button i { font-size: 1.1rem; }
 .nt-do { width: 100%; margin-top: 4px; }
 .td-note.done { transform: none; border-style: solid; }
 .nt-charm { width: 160px; margin: 0 auto; } .nt-charm svg { width: 100%; height: auto; display: block; }
+.nt-month { font-size: 0.8rem; color: var(--muted); margin-top: 4px !important; }
+.nt-key { width: 100%; margin-top: 6px; border-color: var(--gold); color: var(--gold); }
+.nt-story { text-align: left; margin: 10px 0 14px; padding: 12px 14px; border-radius: 12px; background: rgba(255, 201, 60, 0.08); border: 1px solid rgba(255, 201, 60, 0.3); }
+.nt-story p { margin: 6px 0; line-height: 1.75; font-size: 0.9rem; }
+.nt-story small { color: var(--muted); font-size: 0.75rem; }
+.weekly-letter { background: rgba(255, 248, 230, 0.05); border-color: rgba(255, 201, 60, 0.3); }
+.weekly-letter h3 { font-family: var(--serif); font-weight: 400; color: var(--gold); margin: 0 0 10px; }
+.weekly-letter p { margin: 0 0 8px; line-height: 1.85; word-break: keep-all; }
+.st-item { padding: 10px 0; border-top: 1px solid var(--line); }
+.st-item summary { cursor: pointer; font-weight: 700; }
+.st-item p { margin: 8px 0 0; line-height: 1.8; color: #d9d4f5; }
+.st-item.locked { color: var(--muted); font-size: 0.88rem; }

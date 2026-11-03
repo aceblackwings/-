@@ -32,7 +32,8 @@ import { orderedMenu, buildAnswer, concernAsk, ASK_MENU } from './ask.js';
 import { buildReading, FIELD_LABEL, closingLine, GOD_READING } from './reading.js';
 import { analyzeGyeok, GYEOK_PROFILE, strengthMission } from './gyeokguk.js';
 import { buildBooklet, todayLetter } from './booklet.js';
-import { buildNote, markNote, weekStamps, stampRarity, AREA_CHARM, RARITY_KO } from './note.js';
+import { buildNote, markNote, weekStamps, stampRarity, AREA_CHARM, RARITY_KO, MONTH_KEY_NEED, monthStamps, STORY_STEPS, newStoryIndex, storiesOpen, buildStories, weeklyLetter } from './note.js';
+import { ELEMENT_LUCK } from './fortune.js';
 import { preloadCharImages, itemImage } from './assets.js';
 /** 계절 한정 소품 그림 (없으면 빈칸) */
 const itemThumb = (key, cls = 'item-thumb') => { const u = itemImage(key); return u ? `<img class="${cls}" src="${u}" alt="" loading="lazy">` : ''; };
@@ -43,7 +44,7 @@ import { yearCard, monthRange, savePledge, pledgeReviewDue, reviewPledge, PLEDGE
 import { buildMissions, markDone as dmMarkDone, allDone as dmAllDone, claimBonus as dmClaimBonus, DM_BONUS_EXP } from './daymission.js';
 import { ensureStart, inFirstWeek, plainTerms, hasGameTerms } from './firstweek.js';
 import { emptyEasy, setEasy, dismissEasy, suggestEasy, easyTerms, hasEasyTerms, parseEasyLink, acceptLink, linkAskText, easyLinkQuery, FROM_MAX } from './easymode.js';
-import { expertTable, sinsalOf, calcBasis, STAGE_NOTE, makeChart, addChart, removeChart, emptyCharts, RELATIONS } from './expert.js';
+import { expertTable, sinsalOf, calcBasis, STAGE_NOTE, twelveStage, makeChart, addChart, removeChart, emptyCharts, RELATIONS } from './expert.js';
 import { CARD_AREAS, SPREADS, drawReading } from './cards.js';
 import { weekWealth, SAFETY_LINES } from './wealthweek.js';
 import { makeBackup, parseBackup, backupText, backupFileName, PREFIX as BACKUP_PREFIX } from './backup.js';
@@ -84,6 +85,7 @@ const CHARTS_KEY = 'unmyeong2099.charts';
 const FW_KEY = 'unmyeong2099.firstweek';
 const EASY_KEY = 'unmyeong2099.easy'; // v0.31 쉬운 모드
 const NOTE_KEY = 'unmyeong2099.note'; // 수호신의 쪽지
+const NOTESTAT_KEY = 'unmyeong2099.notestat'; // 쪽지 누적 도장 { total }
 const DM_KEY = 'unmyeong2099.dmission';
 const PLEDGE_KEY = 'unmyeong2099.pledge';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
@@ -665,6 +667,14 @@ function readingFor(kind) {
       highlights: [`좋은 달: ${y.best.map((m) => `${m.solarMonth}월(${m.score})`).join(', ')}`, `조심할 달: ${y.caution.map((m) => `${m.solarMonth}월(${m.score})`).join(', ')}`, L.daewoon ? `지금 대운(${STEMS[L.daewoon.pillar.stem]}${BRANCHES[L.daewoon.pillar.branch]})이 올해 점수의 30%를 함께 만들어요.` : ''].filter(Boolean),
     });
   }
+  if (kind === 'nextmonth') { // 🔑 쪽지 도장 20개로 여는 다음 달 미리보기
+    const per0 = d.month.period; const nd = per0.nextStart;
+    const nm = monthDays(s, nd, g); const lay = layersAt(s, nd, g).month;
+    return buildReading('month', lay, {
+      saju: s, concern: state.profile.concern, when: '다음 달은', range: `${nm.period.term} ${md2(nm.period.start)} ~ ${md2(nm.period.end)} (미리보기)`,
+      highlights: [`좋은 날: ${nm.best.map((x) => `${md2(x.date)}(${dowOf(x.date)}) ${x.score}점`).join(', ')}`, `조심할 날: ${nm.caution.map((x) => `${md2(x.date)}(${dowOf(x.date)})`).join(', ')}`, '쪽지 도장 20개로 연 미리보기예요. 좋은 날을 달력에 적어 두세요.'],
+    });
+  }
   const md = d.month; const per = md.period;
   return buildReading('month', L.month, {
     saju: s, concern: state.profile.concern, range: `${per.term} ${md2(per.start)} ~ ${md2(per.end)}`,
@@ -675,7 +685,7 @@ function readingFor(kind) {
 function readingCardHTML() {
   const nx = timelineData().next;
   const kind = state.readKind === 'next' && !nx ? 'year' : (state.readKind || 'year');
-  const kinds = [...(nx ? [['next', `🎁 ${nx.sajuYear}년`]] : []), ['daewoon', '🏔️ 대운'], ['year', '📅 올해'], ['month', '🌙 이달']];
+  const kinds = [...(nx ? [['next', `🎁 ${nx.sajuYear}년`]] : []), ['daewoon', '🏔️ 대운'], ['year', '📅 올해'], ['month', '🌙 이달'], ...(kind === 'nextmonth' ? [['nextmonth', '🔑 다음 달']] : [])];
   const r = readingFor(kind);
   const info = characterInfo(state.saju, state.profile);
   const face = faceSVG(info, heroOptions().stage, r && r.score >= 55 ? 'smile' : 'fighting', 40);
@@ -1742,8 +1752,56 @@ function noteHTML(polite) {
     <p>${esc(n.weekLine)}</p>
     <div class="nt-stamps" aria-label="이번 주 도장 ${n.stamps}개">${n.days.map((x) => `<span class="${x.done ? 'on' : ''} ${x.today ? 'now' : ''}" title="${x.dow}요일${x.best ? ' · 가장 좋은 날' : ''}">${x.done ? '🧧' : x.best ? '🌟' : ''}<i>${x.dow}</i></span>`).join('')}</div>
     <p class="nt-reward">${esc(n.reward)}</p>
+    ${monthKeyHTML()}
     ${n.done ? '' : '<button type="button" class="primary nt-do" data-note-done>✓ 오늘 했어요</button>'}
   </div>`;
+}
+
+/** ③ 다음 달 미리보기 열쇠: 이달 도장 20개 */
+function monthKeyHTML() {
+  const f = state.fortune; const n = monthStamps(load(NOTE_KEY, {}), f.date.year, f.date.month);
+  const per = timelineData().month.period;
+  if (n >= MONTH_KEY_NEED) return `<button type="button" class="ghost nt-key" data-next-month>🔑 다음 달(${per.nextTerm}부터) 운세 미리 보기</button>`;
+  return `<p class="nt-month">🔑 이달 도장 ${n}/${MONTH_KEY_NEED} · ${MONTH_KEY_NEED}개를 모으면 다음 달 운세를 미리 열어 ${characterInfo(state.saju, state.profile).zodiac.key === 'rooster' ? '드릴게요' : '줄게'}.</p>`;
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-next-month]')) openReading('nextmonth'); });
+
+/** ② 수호신의 이야기에 넣을 사주 사실들 */
+function storyFacts() {
+  const s = state.saju; const p = DAY_MASTER_PROFILE[s.dayMaster]; const g = analyzeGyeok(s); const P = GYEOK_PROFILE[g.name];
+  const L = ELEMENT_LUCK[s.yongsin]; const st = twelveStage(s.dayMaster, s.pillars.day.branch);
+  const d = timelineData(); const age = state.fortune.date.year - s.input.year;
+  const nd = d.dw?.pillars.find((x) => x.startAge > age);
+  return {
+    name: state.profile.name, animal: characterInfo(s, state.profile).zodiac.name,
+    dayName: p.name, dayImage: p.image, dayText: p.text, gyeokName: g.name, gyeokTitle: P.title, strengths: P.strengths.slice(0, 2),
+    johu: s.johu?.table || s.johu?.text || '', luck: { color: L.color, direction: L.direction, item: L.item },
+    sinsal: sinsalOf(s).slice(0, 3).map((x) => ({ name: x.name, note: x.note })), stage: st, stageNote: STAGE_NOTE[st],
+    nextDaewoon: nd ? `${nd.startAge}세부터 ${STEMS[nd.stem]}${BRANCHES[nd.branch]} 대운 — 「${GOD_READING[tenGod(s.dayMaster, nd.stem)].keyword}」의 10년이 시작되는 문.` : null,
+  };
+}
+const storyList = () => buildStories(storyFacts(), characterInfo(state.saju, state.profile).zodiac.key === 'rooster');
+
+/** 내 수호신 > 수호신의 이야기 */
+function storiesCardHTML() {
+  const total = load(NOTESTAT_KEY, {}).total || 0; const list = storyList();
+  return `<div class="card stories-card" id="stories"><h3>📖 수호신의 이야기 <span class="tag">${storiesOpen(total)} / ${list.length}</span></h3>
+    <p class="muted" style="margin-top:0">쪽지 도장이 쌓일 때마다 수호신이 나만 아는 이야기를 하나씩 들려줘요. (지금까지 도장 ${total}개)</p>
+    ${list.map((x) => total >= x.need ? `<details class="st-item"><summary>📜 ${esc(x.title)}</summary><p>${esc(x.text)}</p></details>` : `<div class="st-item locked">🔒 도장 ${x.need}개 · ${esc(x.title)}</div>`).join('')}
+  </div>`;
+}
+
+/** ① 일요일 주간 편지 */
+function weeklyLetterHTML() {
+  const f = state.fortune;
+  if (new Date(Date.UTC(f.date.year, f.date.month - 1, f.date.day)).getUTCDay() !== 0) return '';
+  const z = characterInfo(state.saju, state.profile).zodiac; const d = timelineData();
+  const nx = new Date(Date.UTC(f.date.year, f.date.month - 1, f.date.day + 1));
+  const nw = weekOf(state.saju, { year: nx.getUTCFullYear(), month: nx.getUTCMonth() + 1, day: nx.getUTCDate() }, state.profile.gender);
+  const days = loadRecords().days || {}; const keys = new Set(d.week.days.map((x) => `${x.date.year}-${x.date.month}-${x.date.day}`));
+  const fbs = Object.entries(days).filter(([k, v]) => keys.has(k) && v.feedback && v.feedback !== 'skip');
+  const w = weeklyLetter({ week: d.week, store: load(NOTE_KEY, {}), name: state.profile.name, animal: z.name, polite: z.key === 'rooster', nextBest: { date: nw.best.date, keyword: GOD_READING[nw.best.god].keyword }, fb: { total: fbs.length, yes: fbs.filter(([, v]) => v.feedback === 'yes').length } });
+  return `<article class="card weekly-letter"><h3>${w.title}</h3>${w.lines.map((l) => `<p>${esc(l)}</p>`).join('')}<p class="td-sign">${esc(w.sign)}</p></article>`;
 }
 
 /** 쪽지 완료 → 부적 보상(이번 주 도장이 많을수록 등급 상승) + 우산 미션 완료(성장 점수·용신 충전) */
@@ -1756,6 +1814,8 @@ function completeNote() {
   const label = `${t.rarity.label} ${t.type.label}부`;
   const list = load(COLLECTION_KEY, []); list.unshift({ ...recordOf(t), label: `쪽지 보상 ${label}` }); save(COLLECTION_KEY, list.slice(0, 80));
   save(NOTE_KEY, markNote(store, f.dateKey, label).store);
+  const before = load(NOTESTAT_KEY, {}).total || 0; save(NOTESTAT_KEY, { total: before + 1 });
+  const si = newStoryIndex(before, before + 1); const story = si >= 0 ? storyList()[si] : null;
   completeActMission();
   renderToday(); renderHero(false);
   const box = document.createElement('div'); box.className = 'evo-modal';
@@ -1763,6 +1823,7 @@ function completeNote() {
     <div class="nt-charm">${renderTalismanSVG(t)}</div>
     <p style="margin:10px 0 4px"><b>${label}</b>를 받았어요</p>
     <p class="muted" style="margin:0 0 14px;font-size:0.86rem">내 수호신 > 부적 장착에서 수호신에게 달아 줄 수 있어요. 이번 주 도장을 더 모으면 더 높은 등급의 부적을 드려요.</p>
+    ${story ? `<div class="nt-story"><b>📖 새 이야기가 열렸어요 · ${esc(story.title)}</b><p>${esc(story.text)}</p><small>내 수호신 > 수호신의 이야기에서 다시 볼 수 있어요</small></div>` : ''}
     <button type="button" class="primary" data-close-reward style="width:100%">고마워요</button></div>`;
   document.body.appendChild(box);
   box.addEventListener('click', (e) => { if (e.target.closest('[data-close-reward]') || e.target === box) box.remove(); });
@@ -1810,6 +1871,7 @@ function renderToday() {
   $('[data-panel="today"]').innerHTML = `
     ${easySuggestHTML()}
     ${bookletHTML()}
+    ${weeklyLetterHTML()}
     ${todayCardHTML()}
     ${familiar() ? `${missionCardHTML()}${sections.filter(([k]) => unlocked(k)).map(([, fn]) => fn()).join('\n')}` : ''}`;
 
@@ -2069,6 +2131,7 @@ function renderHero(animate) {
       <div class="emote-chips">${EMOTES.map((e) => { const own = ownedEmotes().has(e.key); return `<button type="button" data-emote="${e.key}" aria-pressed="${emote === e.key}" class="${own ? '' : 'locked'}">${own ? renderEmoticonSVG(s, f, { stage: heroOptions().stage, profile: p, mood: e.key, style: 'sticker', tag: '', caption: e.label, rarity: emoteRarity(e.key) }) : `<div class="emo-lock">🔒<br>${e.label}</div>`}</button>`; }).join('')}</div>
       <p class="muted" style="font-size:0.78rem;margin:6px 0 0">이모티콘은 운명 뽑기에서 모을 수 있어요. (${EMOTES.filter((e) => ownedEmotes().has(e.key)).length}/8)</p>
     </div>
+    ${storiesCardHTML()}
     ${easySettingsHTML()}`;
 
   const panel = $('[data-panel="hero"]');

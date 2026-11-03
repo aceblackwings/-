@@ -101,3 +101,58 @@ export function buildNote({ today, task, week, nextWeek = null, store = {}, poli
 
 /** 부적 이름 조사: 「희귀 재물부를」 */
 export const withEul = (w) => `${w}${hasBatchim(w) ? '을' : '를'}`;
+
+// ---------- ③ 다음 달 미리보기 열쇠: 이달(양력) 도장 20개 ----------
+export const MONTH_KEY_NEED = 20;
+export const monthStamps = (store, year, month) => Object.entries(store || {}).filter(([k, v]) => v?.done && k.startsWith(`${year}-${month}-`)).length;
+
+// ---------- ② 수호신의 이야기: 쌓인 도장(전체) 수로 하나씩 열림 ----------
+export const STORY_STEPS = [1, 3, 5, 7, 10, 14, 20, 30];
+/** 도장 수가 before → after로 늘 때 새로 열린 이야기 번호(0부터), 없으면 -1 */
+export function newStoryIndex(before, after) {
+  return STORY_STEPS.findIndex((n) => before < n && after >= n);
+}
+export const storiesOpen = (total) => STORY_STEPS.filter((n) => total >= n).length;
+
+/**
+ * 이야기 8편. facts는 앱이 사주에서 뽑아 넘김(이 모듈은 문장만 만듦)
+ * facts = { name, animal, dayName, dayImage, dayText, gyeokName, gyeokTitle, strengths[], johu, luck{color,direction,item}, sinsal[{name,note}], stage, stageNote, nextDaewoon }
+ */
+export function buildStories(f, polite = false) {
+  const y = (c, p) => (polite ? p : c);
+  const J = (w, a, b) => `${w}${hasBatchim(w) ? a : b}`; // 받침 조사
+  const cop = (w) => (polite ? J(w, '이에요', '예요') : J(w, '이야', '야')); // ~이야/~예요
+  const who = f.name ? (polite ? `${f.name} 님` : f.name) : y('너', '당신');
+  const str = f.strengths.join(', ');
+  return [
+    { need: 1, title: `${f.animal} 수호신이 찾아온 이유`, text: `${J(who, '의', '의')} 일간은 ${f.dayName}, ${cop(f.dayImage)}. ${f.dayText} ${y(`그래서 내가 ${who} 곁에 왔어.`, '그래서 제가 곁에 왔어요.')}` },
+    { need: 3, title: '타고난 그릇', text: `${J(who, '은', '는')} ${f.gyeokName}, 「${f.gyeokTitle}」${y('이야', '이에요')}. ${y('특히', '특히')} ${J(str, '이', '가')} ${y('내가 제일 자랑하고 싶은 점이야.', '제가 가장 자랑하고 싶은 점이에요.')}` },
+    { need: 5, title: '계절이 건네는 처방', text: `${y(`이건 옛 책 『궁통보감』이 ${who}에게 남긴 처방이야.`, '옛 책 『궁통보감』이 남긴 처방이에요.')} ${f.johu}` },
+    { need: 7, title: '나만의 행운 주머니', text: `${y('힘이 되는 색은', '힘이 되는 색은')} ${f.luck.color}, ${y('방향은', '방향은')} ${f.luck.direction}, ${y('곁에 두면 좋은 물건은', '곁에 두면 좋은 물건은')} ${cop(f.luck.item)}. ${y('일주일 동안 쪽지를 챙긴 선물이야.', '일주일 동안 쪽지를 챙기신 선물이에요.')}` },
+    { need: 10, title: '사주에 숨은 별', text: f.sinsal.length ? `${y('사주에 숨은 별이 있어.', '사주에 숨은 별이 있어요.')} ${f.sinsal.map((x) => `「${x.name}」 — ${x.note}`).join(' / ')}. ${y('잘 쓰면 큰 힘이 되는 별들이야.', '잘 쓰면 큰 힘이 되는 별들이에요.')}` : y('사주에 한쪽으로 치우친 별이 없어. 그만큼 어떤 길로든 고르게 뻗을 수 있다는 뜻이야.', '사주에 한쪽으로 치우친 별이 없어요. 그만큼 어떤 길로든 고르게 뻗을 수 있다는 뜻이에요.') },
+    { need: 14, title: '태어난 날의 힘', text: `${y('태어난 날은 12운성으로', '태어난 날은 12운성으로')} 「${f.stage}」 ${y('자리야.', '자리예요.')} 「${f.stageNote}」, ${y('그 힘이 늘 바탕에 흐르고 있어.', '그 힘이 늘 바탕에 흐르고 있어요.')}` },
+    { need: 20, title: '다음 10년의 문', text: f.nextDaewoon ? `${y('비밀 하나 알려 줄게.', '비밀 하나 알려 드릴게요.')} ${f.nextDaewoon} ${y('미리 알고 준비하면 그 문이 훨씬 가볍게 열려.', '미리 알고 준비하면 그 문이 훨씬 가볍게 열려요.')}` : y('성별을 알려 주면 다음 10년의 문을 함께 열어 볼 수 있어.', '성별을 알려 주시면 다음 10년의 문을 함께 열어 볼 수 있어요.') },
+    { need: 30, title: '수호신의 고백', text: y('서른 번이나 쪽지를 함께했네. 사실 운은 정해진 게 아니라 이렇게 매일 한 걸음씩 바뀌는 거야. 그걸 보여 줘서 고마워.', '서른 번이나 쪽지를 함께하셨네요. 사실 운은 정해진 게 아니라 이렇게 매일 한 걸음씩 바뀌는 거예요. 그걸 보여 주셔서 고마워요.') },
+  ];
+}
+
+// ---------- ① 주간 편지 (일요일) ----------
+/** week = weekOf(이번 주), store 쪽지, nextBest = { date, keyword } 다음 주 가장 좋은 날, fb = { yes, total } 이번 주 「어제 운세 맞았나요?」 */
+export function weeklyLetter({ week, store = {}, name = '', animal = '', polite = false, nextBest = null, fb = null }) {
+  const y = (c, p) => (polite ? p : c);
+  const call = name ? y(`${name}${hasBatchim(name) ? '아' : '야'}, `, `${name} 님, `) : '';
+  const done = week.days.filter((d) => store[keyOf(d.date)]?.done);
+  const n = done.length;
+  const lines = [];
+  lines.push(`${call}${y(`이번 주 쪽지를 ${n}번 해냈어.`, `이번 주 쪽지를 ${n}번 해내셨어요.`)} ${n >= 7 ? y('일주일을 꽉 채웠어. 정말 대단해.', '일주일을 꽉 채우셨어요. 정말 대단해요.') : n >= 5 ? y('거의 매일 함께했네. 든든했어.', '거의 매일 함께해 주셔서 든든했어요.') : n >= 3 ? y('절반 가까이 해냈어. 습관이 자라고 있어.', '절반 가까이 해내셨어요. 습관이 자라고 있어요.') : n >= 1 ? y('바쁜 한 주였지? 그래도 해낸 날은 분명히 남아.', '바쁜 한 주였죠? 그래도 해낸 날은 분명히 남아요.') : y('이번 주는 쉬어 가는 주였네. 괜찮아, 다음 주에 하나부터 다시 해 보자.', '이번 주는 쉬어 가는 주였네요. 괜찮아요, 다음 주에 하나부터 다시 해 봐요.')}`);
+  const b = week.best;
+  lines.push(store[keyOf(b.date)]?.done
+    ? y(`이번 주 가장 좋은 날이었던 ${dowOf(b.date)}요일(${md(b.date)})에도 쪽지를 해냈더라. 좋은 날을 잘 쓴 거야.`, `이번 주 가장 좋은 날이었던 ${dowOf(b.date)}요일(${md(b.date)})에도 해내셨어요. 좋은 날을 잘 쓰셨어요.`)
+    : y(`${dowOf(b.date)}요일(${md(b.date)})이 이번 주 가장 좋은 날이었어. 다음엔 그날 같이 챙겨 보자.`, `${dowOf(b.date)}요일(${md(b.date)})이 이번 주 가장 좋은 날이었어요. 다음엔 그날 함께 챙겨 봐요.`));
+  const charms = done.map((d) => store[keyOf(d.date)].charm).filter(Boolean);
+  if (charms.length) lines.push(y(`이번 주에 모은 부적: ${charms.join(', ')}.`, `이번 주에 모으신 부적: ${charms.join(', ')}.`));
+  if (fb && fb.total) lines.push(y(`운세가 맞았는지 ${fb.total}번 알려 줬지. 그중 ${fb.yes}번은 맞았다고 했어. 덕분에 내 풀이도 더 정확해지고 있어.`, `운세가 맞았는지 ${fb.total}번 알려 주셨죠. 그중 ${fb.yes}번은 맞았다고 하셨어요. 덕분에 풀이가 더 정확해지고 있어요.`));
+  if (nextBest) lines.push(y(`다음 주는 ${dowOf(nextBest.date)}요일(${md(nextBest.date)})이 가장 좋은 날이야. 「${nextBest.keyword}」의 기운이 모이니까 그날 할 일을 하나 정해 둬.`, `다음 주는 ${dowOf(nextBest.date)}요일(${md(nextBest.date)})이 가장 좋은 날이에요. 「${nextBest.keyword}」의 기운이 모이니까 그날 할 일을 하나 정해 두세요.`));
+  lines.push(y('다음 주도 내가 매일 쪽지 남길게.', '다음 주도 제가 매일 쪽지를 남길게요.'));
+  return { title: '💌 이번 주 편지', lines, sign: `— ${y('네 편인', '곁에 있는')} ${animal ? `${animal} ` : ''}수호신`, count: n };
+}
