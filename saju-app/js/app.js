@@ -34,6 +34,7 @@ import { analyzeGyeok, GYEOK_PROFILE, strengthMission } from './gyeokguk.js';
 import { buildBooklet, todayLetter } from './booklet.js';
 import { natalRelations } from './relations.js';
 import { buildIlju } from './ilju.js';
+import { kaiunPower, kaiunFor, kaiunLine, fieldKaiunSentence, withKaiun } from './kaiun.js';
 import { tenGodProfile, pillarReadings } from './natal.js';
 import { growEquipped, fillOf, replaceCharm, pairType, fiveDone, elementsOwned, setUnlocked, boostRarity, offerUnlocked, offerValue, offerable, removeOffered, equipLine, charmKey, GROW_FULL, RARITY_KO as CC_RARITY_KO, TYPE_KO, OFFER_UNLOCK } from './charmcare.js';
 import { buildNote, markNote, weekStamps, stampRarity, AREA_CHARM, RARITY_KO, MONTH_KEY_NEED, monthStamps, STORY_STEPS, newStoryIndex, storiesOpen, buildStories, weeklyLetter } from './note.js';
@@ -946,10 +947,11 @@ function tlMonth(d) {
   const f = state.fortune; const L = f.layers; const md = d.month; const per = md.period;
   const th = pillarTheme(state.saju, L.month.pillar);
   const cats = categoryScores(L.month.score, L.month.god);
-  const sum = `<small>${per.term} ${md2(per.start)}~${md2(per.end)} · ${th.theme}</small>${scoreChip(L.month.score)}`;
+  const sum = `<small>${per.term} ${md2(per.start)}~${md2(per.end)} · ${th.theme}</small>${scoreChip(L.month.score)}${kaiunChip('month')}`;
   const body = `
     <p class="tl-lead"><b>${plKo(L.month.pillar)}월 · ${th.god}</b> — ${th.theme}의 기운이 흐르는 달이에요. 다음 달(${per.nextTerm})은 ${md2(per.nextStart)}부터 시작돼요.</p>
     ${catBars(cats)}
+    ${kaiunBoxHTML('month', L.month.score)}
     <div class="tl-kit"><span>🌟 좋은 날 ${md.best.map((x) => `${md2(x.date)}(${x.score})`).join(' · ')}</span><span>⚠️ 조심할 날 ${md.caution.map((x) => `${md2(x.date)}(${x.score})`).join(' · ')}</span><span>70점 이상 ${md.good}일 / ${md.days.length}일</span></div>
     <p class="why-calc">이달 ${L.month.score} = 월운 ${L.month.base} × 60% + 올해 ${L.year.score} × 40% · 근거: ${explainParts(L.month.parts)}</p>
     <button class="ghost tl-read" type="button" data-tl-step="read-month">📖 이달 운세 풀이 자세히 읽기</button>
@@ -962,9 +964,10 @@ function tlYear(d) {
   const cur = state.fortune.period.solarMonth;
   const h1 = Math.round(y.months.slice(0, 6).reduce((a, b) => a + b.score, 0) / 6);
   const h2 = Math.round(y.months.slice(6).reduce((a, b) => a + b.score, 0) / 6);
-  const sum = `<small>${y.sajuYear} ${plKo(y.year.pillar)}년 · ${th.theme}</small>${scoreChip(y.year.score)}`;
+  const sum = `<small>${y.sajuYear} ${plKo(y.year.pillar)}년 · ${th.theme}</small>${scoreChip(y.year.score)}${kaiunChip('year')}`;
   const mbars = y.months.map((m) => `<div class="yr-col ${m.solarMonth === cur ? 'now' : ''}" title="${m.term} ${md2(m.start)}~"><i style="height:${Math.max(6, m.score * 0.6)}px;background:${scoreColor(m.score)}"></i><span>${m.solarMonth}</span></div>`).join('');
   const body = `
+    ${kaiunBoxHTML('year', y.year.score)}
     <p class="tl-lead"><b>올해는 「${th.god} · ${th.theme}」의 해</b>예요. ${y.year.score >= 60 ? '흐름을 타고 넓혀 가기 좋은 해입니다.' : y.year.score >= 45 ? '무리하지 않고 다지는 만큼 쌓이는 해입니다.' : '속도를 줄이고 내실을 챙기면 다음 흐름이 단단해지는 해입니다.'}</p>
     <div class="yr-bars">${mbars}</div>
     <p class="muted" style="font-size:0.76rem;margin:2px 0 8px">입춘(${md2(y.months[0].start)})부터 12절기월 · 숫자는 양력 기준 달</p>
@@ -1688,12 +1691,38 @@ function bonusLineHTML(f) {
   return `<p class="bonus-line">🐉 수호신 능력 보너스(게임): ${b.map(([k, v]) => `${label[k]} +${v}`).join(' · ')} <small>— 캐릭터 능력치에만 쓰이고, 위 정통 점수에는 더하지 않았어요</small></p>`;
 }
 
+// ---------- 개운 반영 (v0.40): 장착 부적·지신 성장이 올해·이달 운에 게임 요소로 조금씩 ----------
+function kaiunNow() {
+  const { eq, unlock } = heroOptions();
+  const equipped = eq.charms.slice(0, unlock.charmSlots).filter(Boolean);
+  return kaiunPower(equipped, loadGrowth().evolved, state.saju.yongsin, { pair: pairType(equipped), five: fiveDone(load(COLLECTION_KEY, [])) });
+}
+function kaiunBoxHTML(period, base) {
+  const L = kaiunLine(kaiunNow(), period);
+  const score = base != null && !L.empty ? `<b>정통 ${base}점 → 개운 반영 ${withKaiun(base, L.k.total)}점</b> ` : '';
+  return `<div class="kaiun-box ${L.empty ? 'empty' : ''}"><p>🧧 ${score}${esc(L.text)}</p>
+    <button type="button" class="linkish" data-go-equip>${L.empty ? '부적 달아 주러 가기 →' : '부적·지신 돌보러 가기 →'}</button>
+    <small>개운은 게임 요소예요. 타고난 사주와 정통 점수는 바뀌지 않아요.</small></div>`;
+}
+const kaiunChip = (period) => { const k = kaiunFor(kaiunNow(), period); return k.total ? `<em class="kaiun-chip">🧧+${k.total}</em>` : ''; };
+document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-go-equip]')) {
+    document.querySelectorAll('.evo-modal').forEach((x) => x.remove());
+    selectTab('hero'); setTimeout(() => ($('.equip-list') || $('.slots'))?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 120);
+  }
+  if (e.target.closest('[data-go-booklet]')) {
+    document.querySelectorAll('.evo-modal').forEach((x) => x.remove());
+    renderToday(); selectTab('today'); setTimeout(() => $('.kaiun-box')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 120);
+  }
+  if (e.target.closest('[data-go-today]')) $('#today-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
 // ---------- 신년운세 책자 (첫 화면 개편 1단계): 게이지·별 없이 글로 읽는 한 해 ----------
 function bookletHTML() {
   const d = timelineData(); const y = d.next || d.year; const prev = d.next ? d.year : null;
   const ageY = y.sajuYear - state.saju.input.year; const nextDw = d.dw?.pillars.find((p) => p.startAge > ageY) || null;
   const b = buildBooklet({ y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, concern: state.profile.concern, gender: state.profile.gender, nextDaewoon: nextDw });
-  const P = (t) => `<p>${esc(t)}</p>`;
+  const P = (t) => `<p>${esc(t)}</p>`; const kp = kaiunNow();
   return `<article class="card booklet" id="booklet">
     <header class="bk-head">
       <small>${b.year} 신년운세</small>
@@ -1701,11 +1730,12 @@ function bookletHTML() {
       <p class="bk-sub">${b.name}${state.profile.name ? ` · ${esc(state.profile.name)} 님` : ''}</p>
     </header>
     <p class="bk-lead">${esc(b.lead)}</p>
+    ${kaiunBoxHTML('year', b.score)}
     <section class="bk-part"><h3>총운</h3>
       ${b.general.map((x) => `<h4>${x.h}</h4>${x.paras.map(P).join('')}`).join('')}
     </section>
-    ${b.fields.map((f) => `<section class="bk-part"><h3>${f.label}${f.focus ? ' <small>내 고민</small>' : ''}</h3><h4>${esc(f.title)}</h4>${f.paras.map(P).join('')}</section>`).join('')}
-    <button class="ghost bk-more" type="button" data-tl-step="read-${d.next ? 'next' : 'year'}">📖 12달 자세히 보기</button>
+    ${b.fields.map((f) => { const kx = f.key === 'family' ? '' : fieldKaiunSentence(kp, f.key, 'year'); return `<section class="bk-part"><h3>${f.label}${f.focus ? ' <small>내 고민</small>' : ''}</h3><h4>${esc(f.title)}</h4>${f.paras.map(P).join('')}${kx ? `<p class="bk-kaiun">${esc(kx)}</p>` : ''}</section>`; }).join('')}
+    <div class="bk-next"><button class="primary" type="button" data-go-today>☀️ 오늘의 운세 보기 ↓</button><button class="ghost" type="button" data-tl-step="read-${d.next ? 'next' : 'year'}">📖 12달 자세히</button></div>
   </article>`;
 }
 
@@ -1859,7 +1889,8 @@ function showEquipMoment(r) {
     <div class="speech"><p>${esc(equipLine(r.type, isRooster()))}</p></div>
     <p class="muted" style="font-size:0.86rem;margin:8px 0">🌱 이 부적은 쪽지를 해낼 때마다 기운이 한 칸씩 차요. 지금 ${n}/${GROW_FULL}칸 · 다 차면 ${r.rarity === 'myth' ? '이미 가장 높은 등급이에요' : '한 등급 올라가요'}.</p>
     ${pair ? `<p class="eq-pair">🎎 쌍부적 완성! ${TYPE_KO[pair]}부 두 장 — 쪽지 보상 부적이 한 등급 높아져요.</p>` : ''}
-    <button type="button" class="primary" data-close-reward style="width:100%">좋아요</button></div>`;
+    <p class="eq-pair">🧧 ${esc(kaiunLine(kaiunNow(), 'year').text)} · 이달 개운 +${kaiunFor(kaiunNow(), 'month').total}</p>
+    <div class="yday-btns" style="grid-template-columns:1fr 1fr"><button type="button" class="ghost" data-close-reward>좋아요</button><button type="button" class="primary" data-go-booklet>📜 올해 운세에서 보기 →</button></div></div>`;
   document.body.appendChild(box);
   box.addEventListener('click', (e) => { if (e.target.closest('[data-close-reward]') || e.target === box) box.remove(); });
   void info;
@@ -2004,7 +2035,7 @@ function completeNote() {
     ${slotOpened ? '<p class="eq-pair">🎎 같은 종류 부적이 두 장 모여 <b>두 번째 부적 슬롯</b>이 열렸어요. 함께 달면 쌍부적!</p>' : ''}
     ${[...grownLines, ...fedLines].map((x) => `<p class="cg-line">${esc(x)}</p>`).join('')}
     ${story ? `<div class="nt-story"><b>📖 새 이야기가 열렸어요 · ${esc(story.title)}</b><p>${esc(story.text)}</p><small>내 수호신 > 수호신의 이야기에서 다시 볼 수 있어요</small></div>` : ''}
-    <button type="button" class="primary" data-close-reward style="width:100%">고마워요</button></div>`;
+    <div class="yday-btns" style="grid-template-columns:1fr 1fr"><button type="button" class="ghost" data-close-reward>고마워요</button><button type="button" class="primary" data-go-equip>🧧 부적 달아 주기 →</button></div></div>`;
   document.body.appendChild(box);
   box.addEventListener('click', (e) => { if (e.target.closest('[data-close-reward]') || e.target === box) box.remove(); });
 }
@@ -2320,7 +2351,8 @@ function renderHero(animate) {
 
   const panel = $('[data-panel="hero"]');
   bindSeasonWardrobe(panel);
-  const saveEquip = (next, lead = '') => { save(EQUIP_KEY, next); renderHero(false); grow((g) => complete(g, f.dateKey, 'equip', qBonus('equip')), lead); };
+  // 장착하면 개운 반영이 홈 책자에도 바로 보이게 renderToday
+  const saveEquip = (next, lead = '') => { save(EQUIP_KEY, next); renderHero(false); renderToday(); grow((g) => complete(g, f.dateKey, 'equip', qBonus('equip')), lead); };
   $$('[data-equip]', panel).forEach((b) => b.addEventListener('click', () => {
     const r = candidates[Number(b.dataset.equip)];
     const next = loadEquip();
