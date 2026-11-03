@@ -64,7 +64,7 @@
 
 ## 그림 제작 (이미지 생성 도구)
 - **방식(2026-11-02 확정): 띠마다 대표 한복 1벌, 오행은 코드로 표현**(배경 빛 + 오른쪽 아래 오행 배지 `elementBadge`). 띠당 13장(진화 5 + 표정 8) × 12띠 + 공용(부적 상징 6·부적 종이 2·한정 소품 11·계절 장면 11) ≈ 186장. 나중에 `${띠}_s${단계}_${오행}` 파일을 추가하면 그 오행 사용자에게 우선 사용
-- **다시 뽑기·추가 시트(2026-11-03)**: `docs/prompts/redo-2026-11-03.md` — A 진화 3장(토끼·원숭이 s5 한복 색 바뀜, 닭 s3 그림자), B 표정 5장(가장자리 잘림: rabbit_excited·rabbit_thanks·rat_love·rooster_love·dog_excited), C 계절 장면 4장(6.3MB 초과분 1K 재생성), D 공용 R01~R15. 다시 뽑은 그림은 띠 폴더 14번째 파일로 오므로 ingest 대신 `chroma.py`로 해당 칸만 교체
+- **다시 뽑기·추가 시트(2026-11-03)**: `docs/prompts/redo-2026-11-03.md` — **A1~A3·B1~B5 반영 완료(2026-11-03)**, 남은 것 C 계절 장면 4장·D 공용 R01~R15. A 진화 3장(토끼·원숭이 s5 한복 색 바뀜, 닭 s3 그림자), B 표정 5장(가장자리 잘림: rabbit_excited·rabbit_thanks·rat_love·rooster_love·dog_excited), C 계절 장면 4장(6.3MB 초과분 1K 재생성), D 공용 R01~R15. 다시 뽑은 그림은 띠 폴더 14번째 파일로 오므로 ingest 대신 `chroma.py`로 해당 칸만 교체
 - 프롬프트: 띠별 시트 `docs/prompts/zodiac/NN-{띠}.md`(목록 `README.md`, 대표 한복·배경색은 `saju-app/tools/zodiac_specs.json`), 공용 물건 수정본 `docs/prompts/tiger-pilot-redo.md`(사람 금지 강화). 사용자는 **1K(1024px)**로 생성
 - 드라이브: 「12지신 강림 그림」 아래 띠별 폴더(id는 `saju-app/tools/drive_folders.json`, 호랑이 = 「호랑이 시범 세트」). 사용자가 시트 순서대로 생성해 올림(파일 이름은 힉스필드 기본 `hf_YYYYMMDD_HHMMSS_…`)
 - **처리 순서**: ① `search_files`(parentId=띠 폴더, 한 쪽에 5·8장씩 나오니 pageToken으로 다음 쪽까지) ② `download_file_content`를 **한 장씩**(동시 호출 시 연결 끊김, 결과는 tool-results 파일로 저장됨 → base64 디코드) ③ `python3 -I saju-app/tools/ingest.py zodiac {띠} {원본폴더} [swap=calm:sleepy]`(배경색은 그림마다 자동 판별) → 생성 시각순으로 시트 01~13에 매칭(01=s2, 02~05=s1,s3,s4,s5, 06~13=표정), 배경 제거, `assets/char/{띠}_s{n}.webp`(768)·`assets/emo/{띠}_{표정}.webp`(512), `js/asset-manifest.js` 자동 갱신, 원본폴더에 `contact.jpg` ④ contact.jpg를 눈으로 확인(사람·글자 섞임, 순서) ⑤ `npm test` → 커밋 → 아티팩트에 새 webp·manifest 게시
