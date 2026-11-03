@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { computeSaju, dayPillarIndex, sunLongitude, julianDay, pillarLabel, tenGod, elementScores, analyzeStrength, analyzeJohu, HIDDEN_DAYS, strengthScore, levelOf, STRENGTH_LEVELS, inKoreaDst, KOREA_DST, BIRTH_CITIES, cityLon } from '../js/saju.js';
+import { computeSaju, dayPillarIndex, sunLongitude, julianDay, pillarLabel, tenGod, elementScores, analyzeStrength, analyzeJohu, HIDDEN_DAYS, strengthScore, levelOf, STRENGTH_LEVELS, inKoreaDst, KOREA_DST, BIRTH_CITIES, cityLon, deltaT } from '../js/saju.js';
 
 let pass = 0;
 const t = (name, fn) => { fn(); pass++; console.log('ok -', name); };
@@ -150,6 +150,18 @@ t('출생 지역: 기본 127.5°는 예전과 같은 -30분, 부산은 -24분, �
   const se = computeSaju({ year: 2000, month: 1, day: 1, hour: 11, minute: 28, birthLon: cityLon('seoul') });
   assert.equal(bu.pillars.hour.branch, 6); assert.equal(se.pillars.hour.branch, 5);
   assert.ok(BIRTH_CITIES.every(([, , lon]) => lon > 124 && lon < 131));
+});
+// ---- 절기 정밀도 (v0.39) ----
+t('절기 시각: 실제 천문 시각과 1분 안쪽 (입춘·춘분·하지·추분·동지 9건), ΔT 범위', () => {
+  const cases = [[2024, 2, 4, 8, 27, 315], [2025, 2, 3, 14, 10, 315], [2023, 2, 4, 2, 42, 315], [2024, 3, 20, 3, 6, 0], [2024, 6, 20, 20, 51, 90], [2022, 12, 21, 21, 48, 270], [2000, 3, 20, 7, 35, 0], [2010, 6, 21, 11, 28, 90], [1990, 9, 23, 6, 56, 180]];
+  for (const [y, m, d, hh, mm, tg] of cases) {
+    let lo = julianDay(y, m, d, 0) - 2; let hi = lo + 4;
+    const g = (jd) => ((sunLongitude(jd) - tg + 540) % 360) - 180;
+    for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; if (g(mid) < 0) lo = mid; else hi = mid; }
+    const err = Math.abs(lo - julianDay(y, m, d, hh + mm / 60)) * 1440;
+    assert.ok(err < 1.2, `${y}-${m}-${d} 오차 ${err.toFixed(2)}분`);
+  }
+  assert.ok(deltaT(1950) > 25 && deltaT(1950) < 32 && deltaT(2020) > 65 && deltaT(2020) < 75);
 });
 function BRANCHES_OF(s) { return s.pillars.month.branch; }
 console.log(`\n${pass} passed`);
