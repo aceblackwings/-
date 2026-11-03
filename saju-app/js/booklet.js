@@ -2,7 +2,7 @@
 // 총운을 여러 문단으로 자세히(한 해의 기운 → 내 사주와 만나는 방식 → 10년 큰 흐름 속 → 타고난 그릇과 올해 → 한 해의 모양 → 잘 풀리는 점·챙길 점 → 한 해의 열쇠)
 // 그 아래 분야별 풀이(재물·직장·애정·건강·대인). 모든 값은 period.js yearOf·saju·격국에서 나온다(같은 날짜면 같은 글)
 // 순수 로직만(테스트: tests/booklet.test.mjs)
-import { GOD_READING, partsStory, stageLine } from './reading.js';
+import { GOD_READING, partsStory, stageLine, crossLine, turnLine } from './reading.js';
 import { YEAR_HEADLINE, seasonsOf, keyMonths, monthRange, friendlyZodiac } from './yearcard.js';
 import { categoryScores } from './period.js';
 import { ELEMENT_LUCK } from './fortune.js';
@@ -76,11 +76,13 @@ function gyeokMeet(gyeok, god) {
 }
 
 /** 대운(10년 큰 흐름) 속 그해 */
-function daewoonLine(y, name) {
+function daewoonLine(y, name, saju, nextDw) {
   const d = y.daewoon; if (!d) return null;
+  const age = y.sajuYear - saju.input.year;
+  const extra = [crossLine(d.god, y.year.god), turnLine(age, d, nextDw)].filter(Boolean).join(' ');
   const R = GOD_READING[d.god];
   const gap = y.year.score - d.score;
-  return `${name}의 지금 10년 큰 흐름(대운, ${d.startAge}~${d.endAge}세)은 「${R.keyword}」의 시기예요. ${sentence(R.core.split('. ')[0])} ${gap >= 5 ? '그 10년 안에서 이 해는 흐름이 한결 밝게 열리는 해라, 미뤄 둔 일을 꺼내기 좋아요.' : gap <= -5 ? '그 10년 안에서 이 해는 잠시 속도를 늦추고 안을 다지는 해라, 서두르지 않을수록 다음 해가 편해져요.' : '그 10년의 흐름을 고르게 이어 가는 해라, 하던 일을 꾸준히 밀고 나가면 돼요.'}`;
+  return `${name}의 지금 10년 큰 흐름(대운, ${d.startAge}~${d.endAge}세)은 「${R.keyword}」의 시기예요. ${sentence(R.core.split('. ')[0])} ${gap >= 5 ? '그 10년 안에서 이 해는 흐름이 한결 밝게 열리는 해라, 미뤄 둔 일을 꺼내기 좋아요.' : gap <= -5 ? '그 10년 안에서 이 해는 잠시 속도를 늦추고 안을 다지는 해라, 서두르지 않을수록 다음 해가 편해져요.' : '그 10년의 흐름을 고르게 이어 가는 해라, 하던 일을 꾸준히 밀고 나가면 돼요.'} ${extra}`.trim();
 }
 
 /** 내 사주와 만나는 방식: 용신·기신, 일지와의 합·충, 조후 글자 */
@@ -144,7 +146,7 @@ function bestMonthFor(y, key, used = new Set()) {
  * 책자 전체
  * @param y yearOf(그해) · thisYear yearOf(올해) · saju · gyeok(analyzeGyeok) · name 부를 이름 · concern 고민 키
  */
-export function buildBooklet({ y, thisYear, saju, gyeok, name = '', concern = null, gender = 'female' }) {
+export function buildBooklet({ y, thisYear, saju, gyeok, name = '', concern = null, gender = 'female', nextDaewoon = null }) {
   const who = name ? `${name} 님` : '당신';
   const god = y.year.god; const R = GOD_READING[god]; const H = YEAR_HEADLINE[god];
   const p = y.year.pillar;
@@ -168,7 +170,7 @@ export function buildBooklet({ y, thisYear, saju, gyeok, name = '', concern = nu
       ],
     },
     { h: '내 사주와 만나는 방식', paras: meetLines(y, saju) },
-    ...(y.daewoon ? [{ h: '10년 큰 흐름 속의 한 해', paras: [daewoonLine(y, who)] }] : []),
+    ...(y.daewoon ? [{ h: '10년 큰 흐름 속의 한 해', paras: [daewoonLine(y, who, saju, nextDaewoon)] }] : []),
     ...(gyeok ? [{ h: '타고난 그릇과 올해', paras: [gyeokMeet(gyeok, god)] }] : []),
     {
       h: '한 해의 모양',

@@ -179,6 +179,28 @@ export const GOD_READING = {
 export const FIELD_LABEL = { wealth: '💰 재물', love: '💕 애정', career: '💼 직장·학업', health: '🌿 건강', social: '🤝 대인' };
 const CONCERN_FIELD = { exam: 'career', job: 'career', business: 'career', change: 'career', wealth: 'wealth', love: 'love', marriage: 'love', health: 'health', people: 'social' };
 
+/**
+ * ⑩ 올해(세운) × 대운 교차(v0.39): 10년 큰 흐름의 십신 무리와 그해 십신 무리의 관계
+ * 같음 → 크게 드러남 / 대운이 그해를 낳음 → 결실 / 그해가 대운을 낳음 → 거름 / 극 → 균형 잡기
+ */
+const G5 = { 비견: 0, 겁재: 0, 식신: 1, 상관: 1, 편재: 2, 정재: 2, 편관: 3, 정관: 3, 편인: 4, 정인: 4 };
+export function crossLine(daewoonGod, yearGod) {
+  const d = G5[daewoonGod]; const y = G5[yearGod]; const m = (n) => ((n % 5) + 5) % 5;
+  const dk = GOD_READING[daewoonGod].keyword; const yk = GOD_READING[yearGod].keyword;
+  if (d === y) return `10년 큰 흐름(「${dk}」)과 그해(「${yk}」)가 같은 방향이라, 그 성격이 한 해 내내 크게 드러나요. 잘하는 것을 밀고 나가기 좋아요.`;
+  if (m(y - d) === 1) return `10년 큰 흐름(「${dk}」)의 힘이 그해(「${yk}」)로 흘러들어, 그동안 쌓은 것이 결실로 이어지기 좋은 해예요.`;
+  if (m(d - y) === 1) return `그해(「${yk}」)의 경험이 10년 큰 흐름(「${dk}」)을 키우는 거름이 돼요. 당장의 결과보다 쌓이는 것에 의미가 있는 해예요.`;
+  return `10년 큰 흐름(「${dk}」)과 그해(「${yk}」)가 서로 다른 방향을 가리켜요. 둘 사이 균형을 잡는 게 한 해의 숙제라, 큰 결정은 한 박자 쉬어 가면 좋아요.`;
+}
+
+/** ⑨ 교운기: 대운이 바뀌는 해(그해 나이 = 새 대운 시작 나이)·바뀌기 전 해 */
+export function turnLine(age, daewoon, nextDaewoon) {
+  if (!daewoon) return '';
+  if (age === daewoon.startAge) return `이 해는 10년 큰 흐름이 새로 바뀌는 해(교운기)예요. 환경·관계·마음가짐이 바뀌기 쉬우니, 새 흐름에 맞춰 계획을 다시 세우면 좋아요.`;
+  if (nextDaewoon && nextDaewoon.startAge - age === 1) return `다음 해에 10년 큰 흐름이 바뀌어요(교운기). 이 해에 정리할 것은 정리하고, 다음 10년의 준비를 시작해 보세요.`;
+  return '';
+}
+
 /** 점수 → 전체 흐름 한 문장 */
 export function toneLine(score) {
   if (score >= 65) return '흐름이 좋은 편이라 이 기운의 장점이 잘 살아나요.';

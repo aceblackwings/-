@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { computeSaju } from '../js/saju.js';
 import { layersAt } from '../js/period.js';
-import { GOD_READING, buildReading, partsStory, toneLine, STAGE_PERIOD, stageLine } from '../js/reading.js';
+import { GOD_READING, buildReading, partsStory, toneLine, STAGE_PERIOD, stageLine, crossLine, turnLine } from '../js/reading.js';
 let pass = 0;
 const t = (name, fn) => { fn(); pass++; console.log('ok -', name); };
 t('십신 10가지 모두 풀이 재료를 갖춤 (핵심·좋은 점·조심할 점·5분야·팁)', () => {
@@ -57,6 +57,16 @@ t('12운성 × 십신 문장(v0.37): 12자리 모두, 받침 조사, 금지어 �
     const x = stageLine(d, b, g, '이달은').text;
     assert.ok(!/(나쁜 날|최악|불길)/.test(x), x);
   }
+});
+
+t('⑨⑩ 교운기·대운×올해 교차(v0.39)', () => {
+  assert.ok(crossLine('정재', '편재').includes('같은 방향'));
+  assert.ok(crossLine('식신', '정재').includes('결실'));
+  assert.ok(crossLine('정재', '식신').includes('거름'));
+  assert.ok(crossLine('편인', '정재').includes('다른 방향'));
+  assert.ok(turnLine(32, { startAge: 32 }, null).includes('교운기'));
+  assert.ok(turnLine(31, { startAge: 22 }, { startAge: 32 }).includes('다음 해'));
+  assert.equal(turnLine(25, { startAge: 22 }, { startAge: 32 }), '');
 });
 
 console.log(`${pass} passed (with merge)`);

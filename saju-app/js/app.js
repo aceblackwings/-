@@ -29,7 +29,7 @@ import { seasonStatus, SEASON_PACKS, SEASON_MISSIONS, FREE_TIERS, PACK_PRICE, em
 import { dateToJdn } from './lunar.js';
 import { layersAt, monthPeriod, explainParts, TEN_GOD_MOD, weekOf, yearOf, monthDays, sajuYearOf, categoryScores } from './period.js';
 import { orderedMenu, buildAnswer, concernAsk, ASK_MENU } from './ask.js';
-import { buildReading, FIELD_LABEL, closingLine, GOD_READING } from './reading.js';
+import { buildReading, FIELD_LABEL, closingLine, GOD_READING, crossLine, turnLine } from './reading.js';
 import { analyzeGyeok, GYEOK_PROFILE, strengthMission } from './gyeokguk.js';
 import { buildBooklet, todayLetter } from './booklet.js';
 import { natalRelations } from './relations.js';
@@ -745,7 +745,7 @@ function readingFor(kind) {
     const y = d.year;
     return buildReading('year', { ...L.year, god: tenGod(s.dayMaster, L.year.pillar.stem) }, {
       saju: s, concern: state.profile.concern, range: `${y.sajuYear}년 입춘(${md2(y.months[0].start)})부터`,
-      highlights: [`좋은 달: ${y.best.map((m) => `${m.solarMonth}월(${m.score})`).join(', ')}`, `조심할 달: ${y.caution.map((m) => `${m.solarMonth}월(${m.score})`).join(', ')}`, L.daewoon ? `지금 대운(${STEMS[L.daewoon.pillar.stem]}${BRANCHES[L.daewoon.pillar.branch]})이 올해 점수의 30%를 함께 만들어요.` : ''].filter(Boolean),
+      highlights: [`좋은 달: ${y.best.map((m) => `${m.solarMonth}월(${m.score})`).join(', ')}`, `조심할 달: ${y.caution.map((m) => `${m.solarMonth}월(${m.score})`).join(', ')}`, L.daewoon ? `지금 대운(${STEMS[L.daewoon.pillar.stem]}${BRANCHES[L.daewoon.pillar.branch]})이 올해 점수의 30%를 함께 만들어요.` : '', L.daewoon ? crossLine(L.daewoon.god || tenGod(s.dayMaster, L.daewoon.pillar.stem), tenGod(s.dayMaster, L.year.pillar.stem)) : '', L.daewoon ? turnLine(y.sajuYear - s.input.year, L.daewoon, d.dw?.pillars.find((p) => p.startAge > y.sajuYear - s.input.year)) : ''].filter(Boolean),
     });
   }
   if (kind === 'nextmonth') { // 🔑 쪽지 도장 20개로 여는 다음 달 미리보기
@@ -1691,7 +1691,8 @@ function bonusLineHTML(f) {
 // ---------- 신년운세 책자 (첫 화면 개편 1단계): 게이지·별 없이 글로 읽는 한 해 ----------
 function bookletHTML() {
   const d = timelineData(); const y = d.next || d.year; const prev = d.next ? d.year : null;
-  const b = buildBooklet({ y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, concern: state.profile.concern });
+  const ageY = y.sajuYear - state.saju.input.year; const nextDw = d.dw?.pillars.find((p) => p.startAge > ageY) || null;
+  const b = buildBooklet({ y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, concern: state.profile.concern, gender: state.profile.gender, nextDaewoon: nextDw });
   const P = (t) => `<p>${esc(t)}</p>`;
   return `<article class="card booklet" id="booklet">
     <header class="bk-head">
@@ -4045,7 +4046,7 @@ function compatResultHTML(fr, idx) {
     <div class="bars">${bar('💕 연애', c.sub.love)}${bar('🤝 우정', c.sub.friend)}${bar('💼 일', c.sub.work)}</div>
     <ul class="reasons">
       <li><b>타고난 기운(일간)</b> ${STEMS[state.saju.dayMaster]} × ${STEMS[fs.dayMaster]} — ${c.stem.label}: ${c.stem.text} <em>${c.parts.stem >= 0 ? '+' : ''}${c.parts.stem}</em></li>
-      <li><b>생활 자리(일지)</b> ${BRANCHES[state.saju.pillars.day.branch]} × ${BRANCHES[fs.pillars.day.branch]} — ${c.day.label}: ${c.day.text} <em>${c.parts.day >= 0 ? '+' : ''}${c.parts.day}</em></li>
+      <li><b>생활 자리(일지)</b> ${c.day.unknown ? '' : `${BRANCHES[state.saju.pillars.day.branch]} × ${BRANCHES[fs.pillars.day.branch]} — ${c.day.label}: `}${c.day.text} <em>${c.parts.day >= 0 ? '+' : ''}${c.parts.day}</em></li>
       <li><b>필요한 기운 채워 주기</b> 상대가 내 용신 ${ELEMENT_KO[state.saju.yongsin]}${'을를를을를'[state.saju.yongsin]} ${c.yongMe}칸, 내가 상대 용신 ${ELEMENT_KO[fs.yongsin]}${'을를를을를'[fs.yongsin]} ${c.yongFriend}칸 채워 줘요 <em>+${c.parts.yong}</em></li>
       <li><b>띠</b> ${myInfo.zodiac.name}띠 × ${friendInfo.zodiac.name}띠 — ${c.branch.label}: ${c.branch.text} <em>${c.parts.ddi >= 0 ? '+' : ''}${c.parts.ddi}</em></li>
     </ul>

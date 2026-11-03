@@ -50,4 +50,10 @@ t('일지 관계: 子丑 육합 +, 子午 충 −, 같은 일지 +', () => {
   assert.ok(dayBranchRelation(0, 1).score > 10); assert.ok(dayBranchRelation(0, 6).score < 0); assert.equal(dayBranchRelation(3, 3).score, 4);
   assert.equal(dayBranchRelation(0, 4).score, 9, '子辰 반합');
 });
+t('공유 카드 친구(일지 없음)도 궁합 계산', () => {
+  const me = computeSaju({ year: 1990, month: 3, day: 5, hour: 9, minute: 0 });
+  const card = { fromCard: true, pillars: { year: { branch: 4 } }, dayMaster: 3, elements: [20, 20, 20, 20, 20], weakest: 0, yongsin: 1 };
+  const c = computeCompat(me, card, { year: 2026, month: 11, day: 3 });
+  assert.ok(c.score >= 10 && c.score <= 99); assert.ok(c.day.unknown); assert.equal(c.parts.day, 0);
+});
 console.log(`\n${pass} passed`);

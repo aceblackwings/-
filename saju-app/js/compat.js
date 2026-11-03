@@ -67,7 +67,9 @@ export function dayBranchRelation(a, b) {
 export function computeCompat(me, friend, date) {
   const br = branchRelation(me.pillars.year.branch, friend.pillars.year.branch);
   const st = stemRelation(me.dayMaster, friend.dayMaster);
-  const day = dayBranchRelation(me.pillars.day.branch, friend.pillars.day.branch);
+  // 공유 카드 친구는 일지가 없음(원칙 5: 카드에는 띠·오행 비율까지만) → 일지 항목은 빼고 계산
+  const day = me.pillars.day && friend.pillars.day ? dayBranchRelation(me.pillars.day.branch, friend.pillars.day.branch)
+    : { kinds: [], label: '정보 없음', score: 0, text: '공유 카드로 받은 친구라 생활 자리(일지)는 빼고 계산했어요', unknown: true };
   // 용신 채워 주기: 상대 사주에 내게 필요한 기운(용신)이 얼마나 있는지 (양방향, 각 0~6)
   const fill = (a, b) => Math.min(6, Math.round(b.elements[a.yongsin] / 4));
   const yongMe = fill(me, friend); const yongFriend = fill(friend, me);
@@ -96,6 +98,7 @@ export function computeCompat(me, friend, date) {
 
 /** 오늘의 둘: 그날 일진이 두 사람의 일지와 맺는 관계(점수와 무관, 날마다 바뀌는 재미) */
 export function todayPair(me, friend, today) {
+  if (!me.pillars.day || !friend.pillars.day) return '오늘은 짧은 안부 한 줄이 둘 사이를 데워 주는 날이에요.';
   const rel = (b) => branchPair(today.branch, b);
   const a = rel(me.pillars.day.branch); const b = rel(friend.pillars.day.branch);
   const good = (r) => r.includes('sixCombine') || r.includes('half');
