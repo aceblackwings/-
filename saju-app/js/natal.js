@@ -72,3 +72,26 @@ export function pillarReadings(saju) {
     return { key: k, name, head, body };
   });
 }
+
+// ---------- A4 「나라는 사람」 한 장 요약(v0.41): 일간·일주·격국·십성·강약을 서로 어긋나지 않게 세 문장으로 ----------
+const GYEOK_GROUP_KEY = { 건록격: 'bigeop', 양인격: 'bigeop', 월겁격: 'bigeop', 식신격: 'siksang', 상관격: 'siksang', 정재격: 'jaeseong', 편재격: 'jaeseong', 정관격: 'gwanseong', 편관격: 'gwanseong', 정인격: 'inseong', 편인격: 'inseong' };
+const EL_KO = ['목(木)', '화(火)', '토(土)', '금(金)', '수(水)'];
+const LV_TEXT = { 극신약: '기운이 아주 여린 편', 신약: '기운이 여린 편', 중화신약: '기운이 고르면서 조금 여린 편', 중화: '기운이 고른 편', 중화신강: '기운이 고르면서 조금 센 편', 신강: '기운이 센 편', 극신강: '기운이 아주 센 편' };
+const bat = (w) => { const c = w.charCodeAt(w.length - 1) - 0xac00; return c >= 0 && c % 28 !== 0; };
+
+/**
+ * @param saju · dayProfile DAY_MASTER_PROFILE[일간] · ilju buildIlju 결과 · gyeok analyzeGyeok 결과 · gyeokProfile GYEOK_PROFILE[격]
+ * @returns { headline, lines: [3문장] }
+ */
+export function personSummary(saju, dayProfile, ilju, gyeok, gyeokProfile) {
+  const t = tenGodProfile(saju);
+  const same = GYEOK_GROUP_KEY[gyeok.name] === t.top.key;
+  const lv = saju.strengthLevel || saju.strength;
+  const weak = (saju.strengthScore ?? 50) < 45;
+  const s1 = `일간은 ${dayProfile.name}(${dayProfile.image}), 태어난 날은 「${ilju.image}」예요. ${ilju.paras.personality.split('. ')[0]}.`;
+  const s2 = same
+    ? `타고난 그릇은 ${gyeok.name} 「${gyeokProfile.title}」이고, 사주 전체에도 ${t.top.mean}(${t.top.label} ${t.top.pct}%)이 가장 많아 이 성격이 또렷해요. 특히 ${gyeokProfile.strengths[0]}${bat(gyeokProfile.strengths[0]) ? '이' : '가'} 돋보여요.`
+    : `타고난 그릇은 ${gyeok.name} 「${gyeokProfile.title}」이고, 사주 전체로는 ${t.top.mean}(${t.top.label} ${t.top.pct}%)도 커서, ${gyeokProfile.strengths[0]}에 ${t.top.type} 기질이 함께 어우러져요.`;
+  const s3 = `${LV_TEXT[lv] || '기운이 고른 편'}이라 ${weak ? '나를 받쳐 주는' : '힘을 잘 써 주는'} ${EL_KO[saju.yongsin]} 기운이 가장 반가워요. 이 기운을 가까이할수록 일이 잘 풀려요.`;
+  return { headline: `「${ilju.image}」 같은 ${gyeokProfile.title}`, lines: [s1, s2, s3] };
+}

@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { computeSaju, STEMS, BRANCHES } from '../js/saju.js';
 import { ILJU, buildIlju } from '../js/ilju.js';
-import { tenGodProfile, pillarReadings, GOD_GROUPS } from '../js/natal.js';
+import { tenGodProfile, pillarReadings, GOD_GROUPS, personSummary } from '../js/natal.js';
+import { analyzeGyeok, GYEOK_PROFILE } from '../js/gyeokguk.js';
+import { DAY_MASTER_PROFILE } from '../js/fortune.js';
 import { sinsalOf, SINSAL_NOTE } from '../js/expert.js';
 import { toneProblems } from '../js/habit.js';
 
@@ -40,6 +42,15 @@ t('⑤ 신살 확장: 괴강(庚辰일)·홍염, 뜻은 긍정 문장', () => {
   let s = null; for (let d = 1; d <= 60 && !s; d++) { const x = computeSaju({ year: 2000, month: 3, day: d, hour: 12, minute: 0 }); if (x.pillars.day.stem === 6 && x.pillars.day.branch === 4) s = x; }
   assert.ok(sinsalOf(s).some((x) => x.name === '괴강살'));
   ['괴강살', '백호살', '귀문관살', '현침살', '홍염살'].forEach((k) => assert.ok(SINSAL_NOTE[k] && toneProblems(SINSAL_NOTE[k]).length === 0));
+});
+
+t('A4 한 장 요약: 세 문장, 일주 모습·격국 이름·용신, 이상 없음', () => {
+  for (const s of people) {
+    const g = analyzeGyeok(s); const j = buildIlju(s);
+    const r = personSummary(s, DAY_MASTER_PROFILE[s.dayMaster], j, g, GYEOK_PROFILE[g.name]);
+    assert.equal(r.lines.length, 3); assert.ok(r.headline.includes(j.image)); assert.ok(r.lines[1].includes(g.name));
+    const txt = JSON.stringify(r); assert.ok(!/undefined|NaN|습니다/.test(txt), txt); assert.deepEqual(toneProblems(txt), []);
+  }
 });
 
 console.log(`\nnatal: ${pass} passed`);

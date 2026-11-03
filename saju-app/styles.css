@@ -1122,3 +1122,4 @@ html.easy .main-tabs button i { font-size: 1.1rem; }
 .rt-q p { margin: 0 0 6px; line-height: 1.6; }
 .rt-q small { display: block; color: var(--muted); font-size: 0.76rem; font-weight: 400; }
 .rt-sum { margin: 10px 0 0; color: var(--gold); line-height: 1.7; }
+.person-card p { margin: 0 0 6px; line-height: 1.75; word-break: keep-all; }

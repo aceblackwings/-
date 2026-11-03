@@ -36,7 +36,7 @@ import { natalRelations } from './relations.js';
 import { buildIlju } from './ilju.js';
 import { retroQuestions, retroSummary, RETRO_ANSWERS } from './retro.js';
 import { kaiunPower, kaiunFor, kaiunLine, fieldKaiunSentence, withKaiun } from './kaiun.js';
-import { tenGodProfile, pillarReadings } from './natal.js';
+import { tenGodProfile, pillarReadings, personSummary } from './natal.js';
 import { growEquipped, fillOf, replaceCharm, pairType, fiveDone, elementsOwned, setUnlocked, boostRarity, offerUnlocked, offerValue, offerable, removeOffered, equipLine, charmKey, GROW_FULL, RARITY_KO as CC_RARITY_KO, TYPE_KO, OFFER_UNLOCK } from './charmcare.js';
 import { buildNote, markNote, weekStamps, stampRarity, AREA_CHARM, RARITY_KO, MONTH_KEY_NEED, monthStamps, STORY_STEPS, newStoryIndex, storiesOpen, buildStories, weeklyLetter } from './note.js';
 import { ELEMENT_LUCK } from './fortune.js';
@@ -557,6 +557,7 @@ function renderSaju() {
       <p class="muted" style="margin-bottom:0">나의 수호 캐릭터: <b>${hero.title}</b> — <a href="#" data-go="hero" style="color:var(--neon)">캐릭터 탭에서 만나 보세요 →</a></p>
     </div>
 
+    ${personCardHTML()}
     ${retroCardHTML()}
     ${iljuCardHTML()}
     ${gyeokCardHTML()}
@@ -585,6 +586,13 @@ function renderSaju() {
     ${expertCardHTML()}`;
   $('[data-panel="saju"]').insertAdjacentHTML('afterbegin', readingCardHTML());
   $$('[data-go]', $('[data-panel="saju"]')).forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); selectTab(b.dataset.go); }));
+}
+
+/** A4 「나라는 사람」 한 장 요약 */
+function personNow() { const s = state.saju; const g = analyzeGyeok(s); return personSummary(s, DAY_MASTER_PROFILE[s.dayMaster], buildIlju(s), g, GYEOK_PROFILE[g.name]); }
+function personCardHTML() {
+  const ps = personNow();
+  return `<div class="card person-card"><h3>나라는 사람 <span class="tag">한 장 요약</span></h3><p class="gk-title"><b>${esc(ps.headline)}</b></p>${ps.lines.map((l) => `<p>${esc(l)}</p>`).join('')}<small class="muted">아래 카드에서 일주·그릇·성향을 하나씩 더 자세히 볼 수 있어요.</small></div>`;
 }
 
 /** A1 지난 일 맞히기 */
@@ -3285,8 +3293,7 @@ function showSajuCard() {
   el.innerHTML = `<div class="evo-box saju-card">
     <p class="muted" style="margin:0">${state.profile.name ? `${esc(state.profile.name)}님의` : '나의'} 사주 한 장 요약</p>
     <div class="sc-pillars">${pillars}</div>
-    <h3 style="margin:8px 0 4px">${prof.image} 같은 사람 · ${prof.name}</h3>
-    <p style="margin:0 0 8px;font-size:0.88rem;line-height:1.55">${prof.text}</p>
+    ${(() => { const ps = personNow(); return `<h3 style="margin:8px 0 4px">${esc(ps.headline)}</h3>${ps.lines.map((l) => `<p style="margin:0 0 6px;font-size:0.88rem;line-height:1.6">${esc(l)}</p>`).join('')}`; })()}
     <div class="sc-els">${els}</div>
     <p class="muted" style="font-size:0.76rem;margin:4px 0 10px">${s.elements.map((v, e) => `${ELEMENT_HANJA[e]}${v}`).join(' · ')} · 필요한 기운 ${ELEMENT_HANJA[s.yongsin]} ${ELEMENT_KO[s.yongsin]}</p>
     <ul class="sc-list">
