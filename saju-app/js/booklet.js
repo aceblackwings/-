@@ -2,7 +2,7 @@
 // 총운을 여러 문단으로 자세히(한 해의 기운 → 내 사주와 만나는 방식 → 10년 큰 흐름 속 → 타고난 그릇과 올해 → 한 해의 모양 → 잘 풀리는 점·챙길 점 → 한 해의 열쇠)
 // 그 아래 분야별 풀이(재물·직장·애정·건강·대인). 모든 값은 period.js yearOf·saju·격국에서 나온다(같은 날짜면 같은 글)
 // 순수 로직만(테스트: tests/booklet.test.mjs)
-import { GOD_READING, partsStory } from './reading.js';
+import { GOD_READING, partsStory, stageLine } from './reading.js';
 import { YEAR_HEADLINE, seasonsOf, keyMonths, monthRange, friendlyZodiac } from './yearcard.js';
 import { categoryScores } from './period.js';
 import { ELEMENT_LUCK } from './fortune.js';
@@ -85,7 +85,8 @@ function daewoonLine(y, name) {
 
 /** 내 사주와 만나는 방식: 용신·기신, 일지와의 합·충, 조후 글자 */
 function meetLines(y, saju) {
-  const out = [strengthMeet(saju, y.year.god), ...partsStory(y.year.parts || [], saju)];
+  const ps = partsStory(y.year.parts || [], saju);
+  const out = [strengthMeet(saju, y.year.god), ...(ps.length ? [ps.join(' ')] : [])];
   const p = y.year.pillar;
   // v0.37 그해 글자와 원국의 관계(합·충·형·파·해·원진): 뜻 + 이렇게 쓰면 좋아요. 점수 근거에 이미 나온 일지 합·충은 겹치지 않게
   const scored = new Set((y.year.parts || []).map((x) => x.kind));
@@ -101,7 +102,8 @@ function meetLines(y, saju) {
 /** 신강·신약과 그해 십신: 힘을 받는 해인지, 힘을 쓰는 해인지 */
 function strengthMeet(saju, god) {
   const g = GROUP[god]; const support = g === 0 || g === 4;
-  const me = `${saju.strength === '신강' ? '타고난 기운이 센 편(신강)' : saju.strength === '신약' ? '타고난 기운이 여린 편(신약)' : '타고난 기운이 고른 편(중화)'}`;
+  const LV = { 극신약: '타고난 기운이 아주 여린 편(극신약)', 신약: '타고난 기운이 여린 편(신약)', 중화신약: '타고난 기운이 고른 편이면서 조금 여린 쪽(중화신약)', 중화: '타고난 기운이 고른 편(중화)', 중화신강: '타고난 기운이 고른 편이면서 조금 센 쪽(중화신강)', 신강: '타고난 기운이 센 편(신강)', 극신강: '타고난 기운이 아주 센 편(극신강)' };
+  const me = LV[saju.strengthLevel] || LV[saju.strength];
   if (saju.strength === '신약') return support
     ? `${me}인데, 그해에는 나를 받쳐 주는 ${GROUP_NAME[g]}이 들어와 든든한 뒷배가 생기는 해예요. 혼자 버티던 일에 힘이 실려요.`
     : `${me}인데, 그해에는 ${GROUP_NAME[g]}이 들어와 해야 할 일이 많아지는 해예요. 체력과 시간을 나눠 쓰고, 도움을 청하는 것이 오히려 실력이에요.`;
@@ -161,10 +163,11 @@ export function buildBooklet({ y, thisYear, saju, gyeok, name = '', concern = nu
         inner === god
           ? `바탕에 깔린 지지 ${BRANCHES[p.branch]}도 같은 ${god} 기운이라, 겉과 속이 한 방향을 가리켜요. 올해의 성격이 그만큼 또렷하게 드러나요.`
           : `바탕에 깔린 지지 ${BRANCHES[p.branch]}에는 ${inner}, 「${I.keyword}」의 기운이 흘러요. ${sentence(I.core.split('. ')[0])} 겉으로는 ${R.keyword}, 속으로는 ${I.keyword}${hasBatchim(I.keyword) ? '이' : '가'} 함께 움직이는 해예요.`,
+        stageLine(me, p.branch, god, '그해에는').text,
         `한 해를 한마디로 하면 「${H.title}」, ${toneOf(y.year.score)} 해예요. ${diff > 2 ? `올해(${thisYear.sajuYear}년)보다 흐름이 한결 나아져요.` : diff < -2 ? `올해(${thisYear.sajuYear}년)보다 속도를 조금 늦추면 더 단단해져요.` : `올해(${thisYear?.sajuYear ?? ''}년)와 비슷한 흐름을 차분히 이어 가요.`}`,
       ],
     },
-    { h: '내 사주와 만나는 방식', paras: [meetLines(y, saju).join(' ')] },
+    { h: '내 사주와 만나는 방식', paras: meetLines(y, saju) },
     ...(y.daewoon ? [{ h: '10년 큰 흐름 속의 한 해', paras: [daewoonLine(y, who)] }] : []),
     ...(gyeok ? [{ h: '타고난 그릇과 올해', paras: [gyeokMeet(gyeok, god)] }] : []),
     {

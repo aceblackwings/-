@@ -117,7 +117,36 @@ export function natalRelations(pillars) {
   // 삼합이 완성되면 그 안의 반합은 겹치므로 뺌
   const full = TRIPLE.filter(([x, y, z]) => [x, y, z].every((br) => keys.some((k) => pillars[k].branch === br)));
   const dup = (r) => r.kind === 'half' && full.some((g) => g.slice(0, 3).includes(pillars[r.a].branch) && g.slice(0, 3).includes(pillars[r.b].branch));
-  return out.filter((r) => !dup(r)).sort((p, q) => RANK.indexOf(p.kind) - RANK.indexOf(q.kind) || Number(q.near) - Number(p.near));
+  const list = out.filter((r) => !dup(r)).sort((p, q) => RANK.indexOf(p.kind) - RANK.indexOf(q.kind) || Number(q.near) - Number(p.near));
+  return mergeSame(list, pillars);
+}
+
+/** 같은 글자 쌍의 관계는 한 줄로: 「연주와 월주·시주의 寅巳 — 형·해」 */
+function mergeSame(list, pillars) {
+  const groups = new Map();
+  for (const r of list) {
+    if (!r.a) { groups.set(`t${groups.size}`, { ...r, kinds: [r.kind] }); continue; }
+    const stem = r.kind === 'stemCombine' || r.kind === 'stemClash';
+    const ca = stem ? STEMS[pillars[r.a].stem] : BRANCHES[pillars[r.a].branch]; const cb = stem ? STEMS[pillars[r.b].stem] : BRANCHES[pillars[r.b].branch];
+    const key = `${stem ? 's' : 'b'}${[ca, cb].sort().join('')}`;
+    const g = groups.get(key) || { kinds: [], pairs: [], chars: `${ca}${cb}`, stem, near: false };
+    if (!g.kinds.includes(r.kind)) g.kinds.push(r.kind);
+    if (!g.pairs.some(([x, y]) => x === r.a && y === r.b)) g.pairs.push([r.a, r.b]);
+    g.near = g.near || r.near; groups.set(key, g);
+  }
+  return [...groups.values()].map((g) => {
+    if (!g.pairs) return g;
+    const first = g.pairs[0][0]; const others = g.pairs.filter(([x]) => x === first).map(([, y]) => y);
+    const where = g.pairs.every(([x]) => x === first)
+      ? `${POS[first]}(${POS_MEAN[first]})와 ${others.map((k) => `${POS[k]}(${POS_MEAN[k]})`).join('·')}`
+      : g.pairs.map(([x, y]) => `${POS[x]}·${POS[y]}`).join(', ');
+    const R = g.kinds.map((k) => REL_INFO[k]);
+    return {
+      kind: g.kinds[0], kinds: g.kinds, name: R.map((x) => x.name).join('·'), mark: R[0].mark, near: g.near,
+      text: `${where}의 ${g.chars} ${R.map((x) => `${x.name}(${x.mark})`).join('·')} — ${R.map((x) => x.mean).join('. ')}.`,
+      act: `${R[0].act}.`,
+    };
+  });
 }
 
 /**
