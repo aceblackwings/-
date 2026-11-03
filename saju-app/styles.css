@@ -1040,3 +1040,17 @@ html.easy .main-tabs button i { font-size: 1.1rem; }
 .td-qa { margin: 0 0 10px; }
 .td-qa dt { font-weight: 700; margin-top: 10px; color: var(--gold); font-size: 0.92rem; }
 .td-qa dd { margin: 3px 0 0; line-height: 1.75; color: #d9d4f5; word-break: keep-all; }
+/* 수호신의 쪽지 */
+.td-note { padding: 14px 16px; border-radius: 14px; background: rgba(57, 255, 136, 0.05); border: 1px dashed rgba(57, 255, 136, 0.35); margin: -4px 0 14px; transform: rotate(-0.4deg); }
+.td-note p { margin: 0 0 6px; line-height: 1.8; word-break: keep-all; }
+.td-note .td-from { color: var(--wood); }
+.nt-task b { color: #fff; }
+.nt-stamps { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin: 10px 0 8px; }
+.nt-stamps span { display: grid; place-items: center; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255,255,255,0.03); font-size: 1rem; position: relative; padding-top: 10px; }
+.nt-stamps span i { position: absolute; top: 2px; font-style: normal; font-size: 0.62rem; color: var(--muted); }
+.nt-stamps span.on { border-color: var(--gold); background: rgba(255, 201, 60, 0.1); }
+.nt-stamps span.now { outline: 2px solid var(--wood); }
+.nt-reward { font-size: 0.86rem; color: var(--gold); }
+.nt-do { width: 100%; margin-top: 4px; }
+.td-note.done { transform: none; border-style: solid; }
+.nt-charm { width: 160px; margin: 0 auto; } .nt-charm svg { width: 100%; height: auto; display: block; }

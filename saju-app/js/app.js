@@ -32,6 +32,7 @@ import { orderedMenu, buildAnswer, concernAsk, ASK_MENU } from './ask.js';
 import { buildReading, FIELD_LABEL, closingLine, GOD_READING } from './reading.js';
 import { analyzeGyeok, GYEOK_PROFILE, strengthMission } from './gyeokguk.js';
 import { buildBooklet, todayLetter } from './booklet.js';
+import { buildNote, markNote, weekStamps, stampRarity, AREA_CHARM, RARITY_KO } from './note.js';
 import { preloadCharImages, itemImage } from './assets.js';
 /** 계절 한정 소품 그림 (없으면 빈칸) */
 const itemThumb = (key, cls = 'item-thumb') => { const u = itemImage(key); return u ? `<img class="${cls}" src="${u}" alt="" loading="lazy">` : ''; };
@@ -82,6 +83,7 @@ const RECORDS_KEY = 'unmyeong2099.records';
 const CHARTS_KEY = 'unmyeong2099.charts';
 const FW_KEY = 'unmyeong2099.firstweek';
 const EASY_KEY = 'unmyeong2099.easy'; // v0.31 쉬운 모드
+const NOTE_KEY = 'unmyeong2099.note'; // 수호신의 쪽지
 const DM_KEY = 'unmyeong2099.dmission';
 const PLEDGE_KEY = 'unmyeong2099.pledge';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
@@ -1721,6 +1723,52 @@ const FAMILIAR_DAYS = 3;
 const visitDays = () => Object.keys(loadRecords().days || {}).length;
 const familiar = () => visitDays() >= FAMILIAR_DAYS;
 
+/** 수호신의 쪽지: 오늘 할 일(우산 미션 문장) + 이번 주 좋은 날 + 보상 */
+function noteData(polite) {
+  const f = state.fortune; const d = timelineData(); const { pick } = todayUmbrella();
+  let nextWeek = null;
+  if (new Date(Date.UTC(f.date.year, f.date.month - 1, f.date.day)).getUTCDay() === 0) {
+    const n = new Date(Date.UTC(f.date.year, f.date.month - 1, f.date.day + 1));
+    nextWeek = weekOf(state.saju, { year: n.getUTCFullYear(), month: n.getUTCMonth() + 1, day: n.getUTCDate() }, state.profile.gender);
+  }
+  return buildNote({ today: f.date, task: pick.text, week: d.week, nextWeek, store: load(NOTE_KEY, {}), polite });
+}
+function noteHTML(polite) {
+  const n = noteData(polite);
+  return `<div class="td-note ${n.done ? 'done' : ''}" id="td-note">
+    <small class="td-from">📝 수호신의 쪽지</small>
+    <p>${esc(n.opening)}</p>
+    <p class="nt-task"><b>${esc(n.task)}</b></p>
+    <p>${esc(n.weekLine)}</p>
+    <div class="nt-stamps" aria-label="이번 주 도장 ${n.stamps}개">${n.days.map((x) => `<span class="${x.done ? 'on' : ''} ${x.today ? 'now' : ''}" title="${x.dow}요일${x.best ? ' · 가장 좋은 날' : ''}">${x.done ? '🧧' : x.best ? '🌟' : ''}<i>${x.dow}</i></span>`).join('')}</div>
+    <p class="nt-reward">${esc(n.reward)}</p>
+    ${n.done ? '' : '<button type="button" class="primary nt-do" data-note-done>✓ 오늘 했어요</button>'}
+  </div>`;
+}
+
+/** 쪽지 완료 → 부적 보상(이번 주 도장이 많을수록 등급 상승) + 우산 미션 완료(성장 점수·용신 충전) */
+function completeNote() {
+  const f = state.fortune; const store = load(NOTE_KEY, {});
+  if (store[f.dateKey]?.done) return;
+  const { u } = todayUmbrella();
+  const rarity = stampRarity(weekStamps(store, timelineData().week) + 1);
+  const t = createTalisman(state.saju, f, { type: AREA_CHARM[u.area] || 'luck', element: state.saju.yongsin, rarity });
+  const label = `${t.rarity.label} ${t.type.label}부`;
+  const list = load(COLLECTION_KEY, []); list.unshift({ ...recordOf(t), label: `쪽지 보상 ${label}` }); save(COLLECTION_KEY, list.slice(0, 80));
+  save(NOTE_KEY, markNote(store, f.dateKey, label).store);
+  completeActMission();
+  renderToday(); renderHero(false);
+  const box = document.createElement('div'); box.className = 'evo-modal';
+  box.innerHTML = `<div class="evo-box" style="text-align:center"><h3 style="margin:0 0 6px">🧧 쪽지 보상</h3>
+    <div class="nt-charm">${renderTalismanSVG(t)}</div>
+    <p style="margin:10px 0 4px"><b>${label}</b>를 받았어요</p>
+    <p class="muted" style="margin:0 0 14px;font-size:0.86rem">내 수호신 > 부적 장착에서 수호신에게 달아 줄 수 있어요. 이번 주 도장을 더 모으면 더 높은 등급의 부적을 드려요.</p>
+    <button type="button" class="primary" data-close-reward style="width:100%">고마워요</button></div>`;
+  document.body.appendChild(box);
+  box.addEventListener('click', (e) => { if (e.target.closest('[data-close-reward]') || e.target === box) box.remove(); });
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-note-done]')) completeNote(); });
+
 /** 오늘 운세 한 문단 + 근거 + 앱 쓰는 법 한 줄 */
 function todayCardHTML() {
   const f = state.fortune; const z = characterInfo(state.saju, state.profile).zodiac;
@@ -1733,6 +1781,7 @@ function todayCardHTML() {
       ${t.lines.map((l) => `<p>${esc(l)}</p>`).join('')}
       <p class="td-sign">${esc(t.sign)}</p>
     </div>
+    ${noteHTML(z.key === 'rooster')}
     <h4 class="td-qh">오늘의 세 가지 질문</h4>
     <dl class="td-qa">${t.qa.map((x) => `<dt>Q. ${esc(x.q)}</dt><dd>${esc(x.a)}</dd>`).join('')}</dl>
     <p class="td-why">${esc(t.why)}</p>
