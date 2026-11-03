@@ -36,6 +36,7 @@ import { natalRelations } from './relations.js';
 import { buildIlju } from './ilju.js';
 import { retroQuestions, retroSummary, RETRO_ANSWERS } from './retro.js';
 import { HOUR_QUESTIONS, guessHours } from './hourguess.js';
+import { formal, hasPoliteYo } from './formal.js';
 import { kaiunPower, kaiunFor, kaiunLine, fieldKaiunSentence, withKaiun, logKaiun, kaiunTrend, capState } from './kaiun.js';
 import { tenGodProfile, pillarReadings, personSummary } from './natal.js';
 import { growEquipped, fillOf, replaceCharm, pairType, fiveDone, elementsOwned, setUnlocked, boostRarity, offerUnlocked, offerValue, offerable, removeOffered, equipLine, charmKey, GROW_FULL, RARITY_KO as CC_RARITY_KO, TYPE_KO, OFFER_UNLOCK } from './charmcare.js';
@@ -191,6 +192,7 @@ function start(profile, mode = 'today') {
   grow((g) => checkIn(g, state.fortune.dateKey));
   save(FW_KEY, ensureStart(load(FW_KEY, null), state.fortune.dateKey, loadGrowth().exp));
   setupPlainTerms();
+  setupFormal();
   renderToday();
   setTimeout(() => { processDexRewards(); renderCompat(); }, 2600);
   setTimeout(initRealtime, 900);
@@ -1641,6 +1643,22 @@ const firstWeek = () => load(FW_KEY, null);
 
 /** 첫 주에는 화면에 나오는 게임 용어를 쉬운 말로 바꿔 보여 준다 (한 곳에서 처리) */
 let plainObserver = null;
+// 합니다체(2026-11-03 사용자 요청): 풀이 화면([data-formal] 안)의 「~요.」를 「~니다.」로. 수호신 편지·쪽지·대사는 해당 없음
+let formalObserver = null;
+function setupFormal() {
+  if (formalObserver) return;
+  const fix = (root) => {
+    const conv = (n) => { if (n.parentElement?.closest('[data-formal]') && !n.parentElement.closest('[data-casual], input, textarea, .speech, .td-letter, .td-note') && hasPoliteYo(n.nodeValue)) n.nodeValue = formal(n.nodeValue); };
+    if (root.nodeType === 3) { conv(root); return; }
+    if (root.nodeType !== 1) return;
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode()) conv(n);
+  };
+  fix(document.body);
+  formalObserver = new MutationObserver((muts) => muts.forEach((m) => m.addedNodes.forEach(fix)));
+  formalObserver.observe(document.body, { childList: true, subtree: true });
+}
+
 let plainMode = null;
 function setupPlainTerms() {
   // v0.31: 첫 주 || 쉬운 모드. 쉬운 모드면 사주 용어까지 쉬운 말로(easyTerms)
@@ -1811,7 +1829,7 @@ function bookletHTML() {
   const ageY = y.sajuYear - state.saju.input.year; const nextDw = d.dw?.pillars.find((p) => p.startAge > ageY) || null;
   const b = buildBooklet({ y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, concern: state.profile.concern, gender: state.profile.gender, nextDaewoon: nextDw });
   const P = (t) => `<p>${esc(t)}</p>`; const kp = kaiunNow();
-  return `<article class="card booklet" id="booklet">
+  return `<article class="card booklet" id="booklet" data-formal>
     <header class="bk-head">
       <small>${b.year} 신년운세</small>
       <h2>「${esc(b.title)}」</h2>
