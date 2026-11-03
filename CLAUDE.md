@@ -4,7 +4,7 @@
 
 ## 위치
 - 앱: `saju-app/` (빌드 없는 정적 웹, ES 모듈). 루트 `index.html`은 별개 프로젝트(일일계도상소) — 건드리지 않음
-- 기획·조사 문서: `docs/` (**최종 방향(2026-11-03): `docs/family-habit-direction.md` — 엄마·딸이 함께 운을 습관으로 바꾸는 앱, 날씨→우산 문법, 결정 10가지, v0.30~ 로드맵**, **홈 개편: `docs/home-quest-plan.md`**, **최신 기획: `docs/core-saju-review-plan.md` — 핵심 사주 타임라인·엔진 통합·경쟁 앱 리뷰 분석·v0.19~ 로드맵**, 전략: `docs/strategy-v013.md`, 방향: `docs/kaiun-loop-direction.md`, 승천·가챠: `docs/ascension-gacha-report.md`, 소셜 설계: `docs/social-design.md`)
+- 기획·조사 문서: `docs/` (**최종 방향(2026-11-03): `docs/together-habit-direction.md` — 소중한 사람(짝꿍: 가족·친구·연인 누구나, 엄마·딸은 대표 예시일 뿐 한정 금지)과 함께 운을 습관으로 바꾸는 앱, 날씨→우산 문법, 결정 10가지, v0.30~ 로드맵, 9절 알림·서버(1단계 서버 없이 로컬 알림으로 출시 → 2단계 Firebase)**, **홈 개편: `docs/home-quest-plan.md`**, **최신 기획: `docs/core-saju-review-plan.md` — 핵심 사주 타임라인·엔진 통합·경쟁 앱 리뷰 분석·v0.19~ 로드맵**, 전략: `docs/strategy-v013.md`, 방향: `docs/kaiun-loop-direction.md`, 승천·가챠: `docs/ascension-gacha-report.md`, 소셜 설계: `docs/social-design.md`)
 - 작업 브랜치: **최신 작업은 `ccr-c85c770a-b6ueyf`**(v0.16~ 그림 파이프라인까지, 아직 main에 병합 전). 새 세션이 다른 브랜치를 받으면 먼저 `git fetch origin ccr-c85c770a-b6ueyf && git merge origin/ccr-c85c770a-b6ueyf`로 최신 작업을 가져온 뒤 시작. (예전 브랜치 `claude/exciting-johnson-1f6o78`는 v0.15까지, PR #1로 main에 병합됨)
 - 미리보기(Claude 아티팩트): slug `f5ff35d3-d121-45d3-8a5e-b1b6c7e1fffe`, URL https://claude.ai/artifact/XNrP2AFTcULKijQSe1xzC5
   - 갱신: `Artifact` 도구 — 먼저 `action:read`(url), 바뀐 파일은 `read`의 `paths`로 확인 후 `publish`(url, file_path=`saju-app/index.html`, files={"styles.css":..., "js/x.js":"saju-app/js/x.js"}). 예전 `publish_files` 도구는 더 이상 없음
@@ -74,7 +74,7 @@
 
 ## 다음 할 일 후보
 (완료: v0.28 신년운세 카드·다짐, v0.27 홈 재구성·오늘의 미션 3가지, v0.26 첫 7일 소개·게임 용어 감추기, v0.25 전문가 보기·여러 명식, v0.24 신수 카드, v0.23 백업·이번 주 재물 흐름, v0.22 기록함·어제 운세 확인, v0.21.1 점수 눈금 60점대·길잡이 카드 위로, v0.21 홈 길잡이·내년 운세, v0.16 수호신의 기억, v0.17 계절 한정 패키지, v0.18 질문형 운세 메뉴·탭 5개, v0.19 운의 층 엔진 통합, v0.20 타임라인 홈·사주 한 장 요약·전체 미리보기 갤러리, v0.20.1 말투 개편·운세 풀이·등급별 그림 차별화)
-- **1순위(2026-11-03 결정): `docs/family-habit-direction.md` 6절 로드맵** — v0.30 날씨→우산 문법·마음 날씨·미션 라이브러리 → v0.31 엄마 모드 → v0.32 초대·연결 → v0.33 함께 미션·가족 복주머니 → v0.34 우리 둘 사용설명서·대화 질문 → v0.35 120 조후표·검증 세트 → v0.36 격국
+- **1순위(2026-11-03 결정): `docs/together-habit-direction.md` 6절 로드맵** — v0.30 날씨→우산 문법·마음 날씨·미션 라이브러리 → v0.31 쉬운 모드 → v0.32 짝꿍 초대·연결 → v0.33 함께 미션·우리 복주머니 → v0.34 우리 둘 사용설명서·대화 질문 → v0.35 120 조후표·검증 세트 → v0.36 격국
 - (이전) `docs/core-saju-review-plan.md` 5절 로드맵 (~~v0.19 엔진 통합~~ ~~v0.20 타임라인 홈~~ ~~v0.21 홈 길잡이~~ 완료 → ~~v0.22 기록함~~ ~~v0.23 백업·재물 흐름~~ ~~v0.24 신수 카드~~ ~~v0.25 전문가 보기~~ ~~v0.26 첫 7일~~ 완료 → 로드맵 끝. 다음 후보는 아래). 번호는 2026-11-02에 한 칸씩 밀어 정리함
 - 사용성 개편 다음 단계: ② 모든 결과 화면 끝에 한 걸음 버튼
 - 해외판 튜토리얼과 다국어, 정식 앱 전환(React Native/Flutter + 서버)
