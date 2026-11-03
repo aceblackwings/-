@@ -35,6 +35,7 @@ import { buildBooklet, todayLetter, monthLines } from './booklet.js';
 import { natalRelations } from './relations.js';
 import { buildIlju } from './ilju.js';
 import { retroQuestions, retroSummary, RETRO_ANSWERS } from './retro.js';
+import { HOUR_QUESTIONS, guessHours } from './hourguess.js';
 import { kaiunPower, kaiunFor, kaiunLine, fieldKaiunSentence, withKaiun, logKaiun, kaiunTrend } from './kaiun.js';
 import { tenGodProfile, pillarReadings, personSummary } from './natal.js';
 import { growEquipped, fillOf, replaceCharm, pairType, fiveDone, elementsOwned, setUnlocked, boostRarity, offerUnlocked, offerValue, offerable, removeOffered, equipLine, charmKey, GROW_FULL, RARITY_KO as CC_RARITY_KO, TYPE_KO, OFFER_UNLOCK } from './charmcare.js';
@@ -559,6 +560,7 @@ function renderSaju() {
     </div>
 
     ${personCardHTML()}
+    ${hourGuessCardHTML()}
     ${retroCardHTML()}
     ${iljuCardHTML()}
     ${gyeokCardHTML()}
@@ -595,6 +597,25 @@ function personCardHTML() {
   const ps = personNow();
   return `<div class="card person-card"><h3>나라는 사람 <span class="tag">한 장 요약</span></h3><p class="gk-title"><b>${esc(ps.headline)}</b></p>${ps.lines.map((l) => `<p>${esc(l)}</p>`).join('')}<small class="muted">아래 카드에서 일주·그릇·성향을 하나씩 더 자세히 볼 수 있어요.</small></div>`;
 }
+
+/** A6 시간 모름: 성향 질문 3개로 시주 후보 */
+function hourGuessCardHTML() {
+  if (state.saju.pillars.hour) return state.profile.guessedTime ? '<p class="muted" style="margin:-4px 0 12px;font-size:0.8rem">🕰️ 지금 사주는 성향 질문으로 추정한 태어난 시간으로 보고 있어요. 정확한 시간을 알게 되면 정보 수정에서 바꿔 주세요.</p>' : '';
+  const ans = state.hourAns || [null, null, null];
+  const ready = ans.every((x) => x != null);
+  const res = ready ? guessHours(state.saju.dayMaster, ans) : [];
+  return `<div class="card hg-card" id="hourguess"><h3>태어난 시간, 함께 추정해 볼까요? <span class="tag">시간 모름</span></h3>
+    <p class="muted" style="margin-top:0">시간을 몰라도 세 가지 성향으로 가장 잘 맞는 시주(태어난 시진) 후보를 좁혀 볼 수 있어요. 추정이라 참고로만 봐 주세요.</p>
+    ${HOUR_QUESTIONS.map((q, i) => `<div class="hg-q"><b>${q.q}</b><div class="hg-opts">${q.a.map((a, g) => `<button type="button" class="${ans[i] === g ? 'primary' : 'ghost'}" data-hg="${i}:${g}">${a}</button>`).join('')}</div></div>`).join('')}
+    ${ready ? `<h5>가장 잘 맞는 후보</h5><ul class="hg-res">${res.map((r, i) => `<li><span>${i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'} <b>${r.name}</b> <small>${r.range} · 시주 ${r.god}</small></span><button type="button" class="ghost" data-hg-apply="${r.clock}">이 시간으로 보기</button></li>`).join('')}</ul>` : ''}
+  </div>`;
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-hg]');
+  if (b) { const [i, g] = b.dataset.hg.split(':').map(Number); state.hourAns = [...(state.hourAns || [null, null, null])]; state.hourAns[i] = g; const el = $('#hourguess'); if (el) { const t = document.createElement('div'); t.innerHTML = hourGuessCardHTML(); el.replaceWith(t.firstElementChild); } return; }
+  const ap = e.target.closest('[data-hg-apply]');
+  if (ap) { const p = { ...state.profile, time: ap.dataset.hgApply, timeUnknown: false, guessedTime: true }; save(STORE_KEY, p); toast('🕰️ 추정한 시간으로 사주를 다시 계산했어요'); start(p); selectTab('saju'); }
+});
 
 /** A1 지난 일 맞히기 */
 function retroCardHTML() {

@@ -1131,3 +1131,11 @@ html.easy .main-tabs button i { font-size: 1.1rem; }
 .bk-month { border-top: 1px solid var(--line); padding-top: 6px; }
 .bk-month h4 small { color: var(--muted); font-weight: 400; font-size: 0.76rem; }
 .bk-act { color: var(--wood) !important; font-size: 0.88rem !important; }
+/* v0.41 태어난 시간 추정 */
+.hg-q { border-top: 1px solid var(--line); padding: 8px 0; }
+.hg-opts { display: grid; gap: 6px; margin-top: 6px; }
+.hg-opts button { text-align: left; padding: 9px 12px; white-space: normal; }
+.hg-res { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.hg-res li { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.hg-res small { display: block; color: var(--muted); font-size: 0.76rem; }
+.hg-card h5 { margin: 10px 0 6px; color: var(--gold); }
