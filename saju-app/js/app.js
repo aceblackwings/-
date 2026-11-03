@@ -532,7 +532,7 @@ function renderSaju() {
           <div class="bars">${bars}</div>
           <div class="stats">
             <div class="stat"><div class="k">신강/신약</div><div class="v">${s.strength}</div></div>
-            <div class="stat"><div class="k">용신 (필요한 기운)</div><div class="v el-${s.yongsin}">${ELEMENT_KO[s.yongsin]}(${ELEMENT_HANJA[s.yongsin]})</div></div>
+            <div class="stat"><div class="k">용신 (필요한 기운)</div><div class="v el-${s.yongsin}">${ELEMENT_KO[s.yongsin]}(${ELEMENT_HANJA[s.yongsin]})</div><small class="muted">${s.yongsinBasis || '억부'}</small></div>
             <div class="stat"><div class="k">가장 부족</div><div class="v el-${s.weakest}">${ELEMENT_KO[s.weakest]}(${ELEMENT_HANJA[s.weakest]})</div></div>
           </div>
         </div>
@@ -562,7 +562,18 @@ function strengthText(s) {
     : s.strength === '신약'
       ? `${me} 기운과 이를 돕는 기운이 ${s.support}%로 약한 편(신약)입니다. 나를 북돋아 주는 기운이 힘이 됩니다.`
       : `${me} 기운과 이를 돕는 기운이 ${s.support}%로 균형 잡힌 편(중화)입니다. 가장 부족한 기운을 채우면 더 좋아집니다.`;
-  return `${base} 그래서 용신은 ${ELEMENT_KO[s.yongsin]}(${ELEMENT_HANJA[s.yongsin]})입니다. (프로토타입용 간이 판정)`;
+  const el = (e) => `${ELEMENT_KO[e]}(${ELEMENT_HANJA[e]})`;
+  const eul = (e) => ['을', '를', '를', '을', '를'][e]; // 목·금은 받침 있음
+  const i = (e) => ['이', '가', '가', '이', '가'][e];
+  const j = s.johu || { level: 'none', text: '' };
+  const tail = s.yongsinBasis === '조후 우선'
+    ? ` 강약으로만 보면 ${el(s.eokbuYongsin)}${i(s.eokbuYongsin)} 필요하지만, ${j.text} 그래서 계절을 맞추는 ${el(s.yongsin)}${eul(s.yongsin)} 용신으로, ${el(s.heesin)}${eul(s.heesin)} 희신(두 번째로 반가운 기운)으로 봅니다.`
+    : s.yongsinBasis === '억부 + 조후 보완'
+      ? ` 그래서 용신은 ${el(s.yongsin)}입니다. 또 ${j.text} 그래서 ${el(s.heesin)}${eul(s.heesin)} 희신으로 함께 챙기면 좋아요.`
+      : s.yongsinBasis === '억부·조후 일치'
+        ? ` 그래서 용신은 ${el(s.yongsin)}입니다. ${j.text} 강약과 계절 두 기준이 같은 기운을 가리켜 용신이 더 분명해요.`
+        : ` 그래서 용신은 ${el(s.yongsin)}입니다. ${j.text || ''}`;
+  return `${base}${tail} (억부·조후 간이 판정)`;
 }
 
 // ---------- 오늘의 운세 ----------
@@ -1294,7 +1305,7 @@ function expertCardHTML() {
     <p class="muted" style="font-size:0.76rem;margin:4px 0 0">바꾸면 ${sub.id === 'me' ? '오늘 운세·대운까지 모든 화면이' : '이 명식이'} 바로 다시 계산돼요.</p></div>`;
   const i = s.input;
   return `<div class="card expert" id="expert">${head}${chips}${form}
-    <p class="ex-who"><b>${esc(sub.label)}</b> · 양력 ${i.year}.${i.month}.${i.day}${i.timeKnown ? ` ${String(i.hour).padStart(2, '0')}:${String(i.minute).padStart(2, '0')}` : ' (시간 모름)'} · ${s.animal}띠 · 일간 ${STEMS[s.dayMaster]}(${ELEMENT_KO[STEM_ELEMENT[s.dayMaster]]}) · ${s.strength} · 용신 ${ELEMENT_KO[s.yongsin]}</p>
+    <p class="ex-who"><b>${esc(sub.label)}</b> · 양력 ${i.year}.${i.month}.${i.day}${i.timeKnown ? ` ${String(i.hour).padStart(2, '0')}:${String(i.minute).padStart(2, '0')}` : ' (시간 모름)'} · ${s.animal}띠 · 일간 ${STEMS[s.dayMaster]}(${ELEMENT_KO[STEM_ELEMENT[s.dayMaster]]}) · ${s.strength} · 용신 ${ELEMENT_KO[s.yongsin]} (${s.yongsinBasis || '억부'}) · 희신 ${ELEMENT_KO[s.heesin]}${s.johu && s.johu.season ? ` · 조후 ${s.johu.season}${s.johu.level === 'none' ? ' 충족' : s.johu.level === 'urgent' ? ' 급함' : ' 보완'}` : ''}</p>
     ${table}${sinsal}${dwHTML}${basis}
     ${sub.id !== 'me' ? `<button type="button" class="ghost" data-ex-del="${sub.id}" style="width:100%;margin-top:8px">이 명식 삭제</button>` : ''}
   </div>`;
