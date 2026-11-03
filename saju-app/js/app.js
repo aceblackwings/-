@@ -39,6 +39,7 @@ import { festivalStatus } from './festivals.js';
 import { yearCard, monthRange, savePledge, pledgeReviewDue, reviewPledge, PLEDGE_MAX } from './yearcard.js';
 import { buildMissions, markDone as dmMarkDone, allDone as dmAllDone, claimBonus as dmClaimBonus, DM_BONUS_EXP } from './daymission.js';
 import { ensureStart, inFirstWeek, plainTerms, hasGameTerms } from './firstweek.js';
+import { emptyEasy, setEasy, dismissEasy, suggestEasy, easyTerms, hasEasyTerms, parseEasyLink, acceptLink, linkAskText, easyLinkQuery, FROM_MAX } from './easymode.js';
 import { expertTable, sinsalOf, calcBasis, STAGE_NOTE, makeChart, addChart, removeChart, emptyCharts, RELATIONS } from './expert.js';
 import { CARD_AREAS, SPREADS, drawReading } from './cards.js';
 import { weekWealth, SAFETY_LINES } from './wealthweek.js';
@@ -78,6 +79,7 @@ const GUIDE_KEY = 'unmyeong2099.guide';
 const RECORDS_KEY = 'unmyeong2099.records';
 const CHARTS_KEY = 'unmyeong2099.charts';
 const FW_KEY = 'unmyeong2099.firstweek';
+const EASY_KEY = 'unmyeong2099.easy'; // v0.31 쉬운 모드
 const DM_KEY = 'unmyeong2099.dmission';
 const PLEDGE_KEY = 'unmyeong2099.pledge';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
@@ -286,6 +288,8 @@ function initForm() {
     const solar = solarDateOf(profile);
     if (solar.error) { toast(solar.error); return; }
     const firstTime = !load(GROWTH_KEY, null);
+    if (form.easy && form.easy.checked !== easyOn()) save(EASY_KEY, setEasy(loadEasy(), form.easy.checked, todayKeyNow(), 'self'));
+    applyEasyClass();
     const prev = load(STORE_KEY, null);
     if (!prev || prev.concern !== profile.concern) save(JOURNEY_KEY, emptyJourney(profile.concern));
     save(STORE_KEY, profile);
@@ -298,10 +302,12 @@ function initForm() {
     $('#btn-edit').classList.add('hidden');
   });
 
+  applyEasyClass();
   const qs = new URLSearchParams(location.search);
   if (saved && saved.gender && saved.concern && !solarDateOf(saved).error && qs.get('auto') !== '0') start(saved);
   else if (qs.has('gallery')) start({ name: '미리보기', calendar: 'solar', year: 1998, month: 5, day: 20, time: '09:30', timeUnknown: false, lonCorr: true, zasi: 'early', gender: 'female', concern: 'job' }); // 저장하지 않는 견본 프로필
   if (qs.has('gallery') && state.saju) selectTab('gallery');
+  handleEasyLink();
 }
 
 // ---------- 탭 ----------
@@ -1065,7 +1071,7 @@ function umbrellaHTML() {
       : `<div class="umb-after"><b>해 보니 마음이 조금 가벼워졌나요?</b><div class="yday-btns"><button type="button" class="ghost" data-umb-after="lighter">🌤️ 가벼워졌어요</button><button type="button" class="ghost" data-umb-after="same">☁️ 그대로예요</button></div></div>`;
     return `<div class="umb done"><h5>☂️ 오늘의 우산 <small>완료</small></h5><p class="umb-doneline">✓ ${L.icon} ${esc(pick.text)}</p>${after}${week}</div>`;
   }
-  const sel = h.level || 1;
+  const sel = h.level || (easyOn() ? loadEasy().level : 1) || 1;
   return `<div class="umb"><h5>☂️ 오늘의 우산 <small>${u.byMood ? `${u.areaIcon} 마음 돌보기` : `${u.areaIcon} ${u.areaLabel} ${u.score}점`} · 필요한 기운 ${ELEMENT_KO[u.el]}(${ELEMENT_HANJA[u.el]})</small></h5>
     <p class="umb-frame">${u.frame}</p>
     <div class="umb-opts">${u.options.map((o) => { const L = LEVELS[o.level - 1]; return `<button type="button" class="umb-opt ${o.level === sel ? 'on' : ''}" data-umb-pick="${o.level}" aria-pressed="${o.level === sel}"><span>${L.icon} ${L.label}${L.exp ? ` <i>+${L.exp} EXP</i>` : ''}</span>${esc(o.text)}</button>`; }).join('')}</div>
@@ -1110,6 +1116,7 @@ function completeUmbrella() {
 /** 홈 안의 구역으로 가기 ('home:next' · 'home:week' · 'home:.css선택자') */
 function goHomeTarget(t) {
   const k = t.slice(5);
+  if (easyOn()) state.easyMore = true; // 쉬운 홈에는 타임라인이 없으니 「더 보기」로
   if (/^[a-z]+$/.test(k)) state.tlOpen = new Set([k, ...(k === 'next' ? ['today'] : [])]);
   renderToday();
   setTimeout(() => {
@@ -1131,7 +1138,7 @@ document.addEventListener('click', (e) => {
   const a = m.action;
   dmDone(key, a.type === 'guide' ? a.key : a.type === 'tab' ? a.tab : undefined);
   if (a.type === 'open-month') { goHomeTarget('home:month'); return; }
-  if (a.type === 'why') { renderToday(); setTimeout(() => { const w = $('[data-tl="today"] details.why'); if (w) { w.open = true; w.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }, 40); return; }
+  if (a.type === 'why') { if (easyOn()) state.easyMore = true; renderToday(); setTimeout(() => { const w = $('[data-tl="today"] details.why'); if (w) { w.open = true; w.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }, 40); return; }
   if (a.type === 'guide') finishGuide(a.key);
   const go = a.type === 'guide' ? a.go : a.tab;
   if (go.startsWith('home:')) { goHomeTarget(go); return; }
@@ -1458,15 +1465,19 @@ const firstWeek = () => load(FW_KEY, null);
 
 /** 첫 주에는 화면에 나오는 게임 용어를 쉬운 말로 바꿔 보여 준다 (한 곳에서 처리) */
 let plainObserver = null;
+let plainMode = null;
 function setupPlainTerms() {
-  const on = state.fortune && inFirstWeek(firstWeek(), state.fortune.dateKey);
-  if (!on) { plainObserver?.disconnect(); plainObserver = null; return; }
-  if (plainObserver) return;
+  // v0.31: 첫 주 || 쉬운 모드. 쉬운 모드면 사주 용어까지 쉬운 말로(easyTerms)
+  const mode = easyOn() ? 'easy' : (state.fortune && inFirstWeek(firstWeek(), state.fortune.dateKey)) ? 'plain' : null;
+  if (mode !== plainMode) { plainObserver?.disconnect(); plainObserver = null; plainMode = mode; }
+  if (!mode || plainObserver) return;
+  const [has, conv] = mode === 'easy' ? [hasEasyTerms, easyTerms] : [hasGameTerms, plainTerms];
+  const skip = (n) => n.parentElement?.closest('script, style, textarea, input, [data-raw]');
   const fix = (root) => {
-    if (root.nodeType === 3) { if (hasGameTerms(root.nodeValue)) root.nodeValue = plainTerms(root.nodeValue); return; }
+    if (root.nodeType === 3) { if (!skip(root) && has(root.nodeValue)) root.nodeValue = conv(root.nodeValue); return; }
     if (root.nodeType !== 1) return;
     const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    for (let n = w.nextNode(); n; n = w.nextNode()) if (hasGameTerms(n.nodeValue)) n.nodeValue = plainTerms(n.nodeValue);
+    for (let n = w.nextNode(); n; n = w.nextNode()) if (!skip(n) && has(n.nodeValue)) n.nodeValue = conv(n.nodeValue);
   };
   fix(document.body);
   plainObserver = new MutationObserver((muts) => muts.forEach((m) => m.addedNodes.forEach(fix)));
@@ -1560,8 +1571,134 @@ function bonusLineHTML(f) {
   return `<p class="bonus-line">🐉 수호신 능력 보너스(게임): ${b.map(([k, v]) => `${label[k]} +${v}`).join(' · ')} <small>— 캐릭터 능력치에만 쓰이고, 위 정통 점수에는 더하지 않았어요</small></p>`;
 }
 
+// ---------- 쉬운 모드 (v0.31, easymode.js): 큰 글씨 · 쉬운 말 · 카드 3장 홈 ----------
+const loadEasy = () => ({ ...emptyEasy(), ...load(EASY_KEY, {}) });
+const easyOn = () => !!loadEasy().on;
+
+/** 글씨 크기·대비(html.easy)와 머리줄 버튼을 지금 상태에 맞춤 */
+function applyEasyClass() {
+  const on = easyOn();
+  document.documentElement.classList.toggle('easy', on);
+  const b = $('#btn-easy');
+  if (b) { b.textContent = on ? '가−' : '가+'; b.setAttribute('aria-pressed', String(on)); b.title = on ? '쉬운 모드 끄기 (원래 글씨로)' : '쉬운 모드 켜기 (글씨를 크게, 말을 쉽게)'; b.setAttribute('aria-label', b.title); }
+  const c = $('#birth-form [name="easy"]'); if (c) c.checked = on;
+}
+
+/** 켜고 끄기 (가입 체크 상자 · 머리줄 버튼 · 추천 카드 · 링크) */
+function setEasyMode(on, by = 'self', quiet = false) {
+  const dk = state.fortune?.dateKey || todayKeyNow();
+  save(EASY_KEY, setEasy(loadEasy(), on, dk, by));
+  state.easyMore = false;
+  applyEasyClass();
+  if (state.saju) {
+    setupPlainTerms();
+    const tab = state.lastTab || 'today';
+    renderAll();
+    selectTab(tab);
+  }
+  if (!quiet) toast(on ? '가+ 글씨를 크게, 말을 쉽게 바꿨어요. 위의 「가−」를 누르면 원래대로 돌아가요' : '원래 화면으로 돌아왔어요. 위의 「가+」로 언제든 다시 켤 수 있어요');
+}
+const todayKeyNow = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+
+/** 추천 카드: 만 50세 이상·16세 이하에게 한 번만 */
+function easySuggestHTML() {
+  if (!state.profile) return '';
+  const birth = solarDateOf(state.profile); if (birth.error) return '';
+  if (!suggestEasy(birth, state.fortune.date, loadEasy())) return '';
+  return `<div class="card easy-suggest" id="easy-suggest"><b>가+ 글씨를 크게 볼까요?</b><p>글씨를 크게, 어려운 사주 말은 쉬운 말로 바꿔 보여 드려요. 언제든 위의 「가−」로 되돌릴 수 있어요.</p>
+    <div class="yday-btns"><button type="button" class="primary" data-easy-suggest="on">크게 보기</button><button type="button" class="ghost" data-easy-suggest="no">괜찮아요</button></div></div>`;
+}
+
+/** 쉬운 홈 ① 오늘: 마음 날씨 → 큰 점수 + 한 줄 → 오늘의 우산 */
+function easyTodayHTML() {
+  const f = state.fortune;
+  return `<section class="card easy-today" id="easy-today">
+    <small class="easy-date">${f.date.month}월 ${f.date.day}일 ${dowOf(f.date)}요일 · 오늘</small>
+    ${moodRowHTML()}
+    <div class="easy-score"><b style="color:${scoreColor(f.scores.total)}">${f.scores.total}<small>점</small></b><p>${toneWord(f.scores.total)} 하루예요</p></div>
+    <p class="tl-lead">${f.info.desc}</p>
+    ${umbrellaHTML()}
+  </section>`;
+}
+
+function easyHomeHTML() {
+  return `${easyTodayHTML()}
+    ${missionCardHTML()}
+    <div class="card easy-more"><b>📅 더 넓게 보기</b><p>이번 주, 이달, 올해 흐름도 볼 수 있어요.</p><button type="button" class="primary" data-easy-more="1">이번 주 · 이달 · 올해 보기</button></div>`;
+}
+
+/** 내 수호신 > 쉬운 모드 설정 · 부모님·아이 폰에 켜 주기 링크 */
+function easySettingsHTML() {
+  const e = loadEasy();
+  return `<div class="card easy-set" id="easy-set">
+    <h3>가+ 쉬운 모드 <span class="tag">${e.on ? '켜짐' : '꺼짐'}</span></h3>
+    <p class="muted" style="margin-top:0">글씨를 1.25배로 크게, 사주 용어는 쉬운 말로, 홈은 카드 3장으로 보여 드려요.</p>
+    <button type="button" class="${e.on ? 'ghost' : 'primary'}" data-easy-toggle style="width:100%">${e.on ? '가− 쉬운 모드 끄기' : '가+ 쉬운 모드 켜기'}</button>
+    <details class="easy-link-box"><summary>👨‍👩‍👧 부모님·아이 폰에 쉬운 모드 켜 주기</summary>
+      <p class="muted">링크를 보내면, 받은 사람이 열 때 「켤까요?」를 물어봐요. 링크에는 생년월일·이름이 들어가지 않아요.</p>
+      <form data-easy-link class="easy-link-form">
+        <label>나를 부르는 말 (선택)<input name="from" maxlength="${FROM_MAX}" placeholder="예: 큰딸 · 아빠 (이름은 넣지 마세요)"></label>
+        <label>아침 알림 시각 <small>(정식 앱에서 쓰여요)</small><input name="remind" type="time" value="08:00"></label>
+        <button type="submit" class="primary">링크 만들기</button>
+      </form>
+      <div class="easy-link-out" id="easy-link-out"></div>
+    </details>
+  </div>`;
+}
+
+document.addEventListener('click', (e) => {
+  const sg = e.target.closest('[data-easy-suggest]');
+  if (sg) { if (sg.dataset.easySuggest === 'on') setEasyMode(true); else { save(EASY_KEY, dismissEasy(loadEasy())); toast('알겠어요. 위의 「가+」로 언제든 켤 수 있어요'); renderToday(); } return; }
+  if (e.target.closest('#btn-easy') || e.target.closest('[data-easy-toggle]')) { setEasyMode(!easyOn()); return; }
+  const mo = e.target.closest('[data-easy-more]');
+  if (mo) { state.easyMore = mo.dataset.easyMore === '1'; renderToday(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  const cp = e.target.closest('[data-easy-copy]');
+  if (cp) {
+    const url = cp.dataset.easyCopy;
+    (navigator.clipboard?.writeText(url) || Promise.reject()).then(() => toast('🔗 링크를 복사했어요. 카톡·문자로 보내 주세요'), () => { const i = $('#easy-link-out input'); i?.select(); toast('링크를 길게 눌러 복사해 주세요'); });
+  }
+});
+document.addEventListener('submit', (e) => {
+  const f = e.target.closest('[data-easy-link]'); if (!f) return;
+  e.preventDefault();
+  const url = `${location.origin}${location.pathname}${easyLinkQuery({ remind: f.remind.value, level: 1, from: f.from.value })}`;
+  $('#easy-link-out').innerHTML = `<input type="text" readonly value="${esc(url)}" aria-label="쉬운 모드 링크" data-raw>
+    <div class="yday-btns"><button type="button" class="primary" data-easy-copy="${esc(url)}">🔗 복사하기</button>${navigator.share ? `<button type="button" class="ghost" data-easy-share="${esc(url)}">↗ 보내기</button>` : ''}</div>`;
+});
+document.addEventListener('click', (e) => {
+  const sh = e.target.closest('[data-easy-share]'); if (!sh) return;
+  navigator.share?.({ title: '12지신 강림 · 쉬운 모드', text: '글씨를 크게, 말을 쉽게 볼 수 있게 쉬운 모드를 추천해요', url: sh.dataset.easyShare }).catch(() => {});
+});
+
+/** ?easy=1 링크로 들어오면 확인창. 거절하면 아무것도 바꾸지 않음 */
+function handleEasyLink() {
+  const link = parseEasyLink(location.search); if (!link) return;
+  const clean = () => { const q = new URLSearchParams(location.search); ['easy', 'remind', 'level', 'from'].forEach((k) => q.delete(k)); history.replaceState(null, '', `${location.pathname}${q.toString() ? `?${q}` : ''}${location.hash}`); };
+  if (easyOn()) { clean(); return; }
+  const box = document.createElement('div'); box.className = 'evo-modal'; box.id = 'easy-link-ask';
+  box.innerHTML = `<div class="evo-box"><h3 style="margin:0 0 8px">가+ 쉬운 모드</h3>
+    <p style="margin:0 0 6px">${esc(linkAskText(link))}</p>
+    <p class="muted" style="margin:0 0 14px">글씨가 커지고, 어려운 말은 쉬운 말로 바뀌어요. 언제든 위의 「가−」로 되돌릴 수 있어요.</p>
+    <div class="yday-btns"><button type="button" class="primary" data-link-yes>네, 켤게요</button><button type="button" class="ghost" data-link-no>아니요</button></div></div>`;
+  document.body.appendChild(box);
+  box.addEventListener('click', (ev) => {
+    if (ev.target.closest('[data-link-yes]')) {
+      save(EASY_KEY, acceptLink(loadEasy(), link, state.fortune?.dateKey || todayKeyNow()));
+      box.remove(); clean(); state.easyMore = false; applyEasyClass();
+      if (state.saju) { setupPlainTerms(); renderAll(); selectTab('today'); }
+      toast('가+ 쉬운 모드를 켰어요');
+      return;
+    }
+    if (ev.target.closest('[data-link-no]')) { box.remove(); clean(); }
+  });
+}
+
 function renderToday() {
   logToday();
+  if (easyOn() && !state.easyMore) {
+    $('[data-panel="today"]').innerHTML = `${easySuggestHTML()}${easyHomeHTML()}`;
+    return;
+  }
   // 길잡이로 연 구역만 보인다. 모두 열리면 예전과 같은 전체 홈
   const sections = [
     ['ask', askChipsHTML], ['season', seasonCardHTML], ['festival', festivalCardHTML], ['say', todaySayCard],
@@ -1569,6 +1706,7 @@ function renderToday() {
     ['story', () => storyButton('fortune', '오늘의 운세를 스토리로 공유')],
   ];
   $('[data-panel="today"]').innerHTML = `
+    ${easyOn() ? '<button type="button" class="ghost easy-back" data-easy-more="0">← 쉬운 홈으로</button>' : easySuggestHTML()}
     ${timelineHTML()}
     ${sections.filter(([k]) => unlocked(k)).map(([, fn]) => fn()).join('\n')}`;
 
@@ -1827,7 +1965,8 @@ function renderHero(animate) {
       <h3>이모티콘 장착 <span class="tag">표정 + 말풍선</span></h3>
       <div class="emote-chips">${EMOTES.map((e) => { const own = ownedEmotes().has(e.key); return `<button type="button" data-emote="${e.key}" aria-pressed="${emote === e.key}" class="${own ? '' : 'locked'}">${own ? renderEmoticonSVG(s, f, { stage: heroOptions().stage, profile: p, mood: e.key, style: 'sticker', tag: '', caption: e.label, rarity: emoteRarity(e.key) }) : `<div class="emo-lock">🔒<br>${e.label}</div>`}</button>`; }).join('')}</div>
       <p class="muted" style="font-size:0.78rem;margin:6px 0 0">이모티콘은 운명 뽑기에서 모을 수 있어요. (${EMOTES.filter((e) => ownedEmotes().has(e.key)).length}/8)</p>
-    </div>`;
+    </div>
+    ${easySettingsHTML()}`;
 
   const panel = $('[data-panel="hero"]');
   bindSeasonWardrobe(panel);

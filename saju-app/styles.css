@@ -951,3 +951,48 @@ select option { background: #1d1742; color: #ffffff; }
 .item-thumb { width: 22px; height: 22px; object-fit: contain; vertical-align: -6px; margin-right: 4px; }
 .item-thumb.lg { width: 48px; height: 48px; flex: none; margin: 0 4px 0 0; }
 .season-ic-img { width: 34px; height: 34px; object-fit: contain; display: block; }
+
+/* ---------- 쉬운 모드 (v0.31): 글씨 1.25배 · 대비 · 48px 버튼 · 카드 3장 홈 ---------- */
+.top-btns { display: flex; gap: 8px; align-items: center; flex: none; }
+#btn-easy { min-width: 48px; font-weight: 800; padding: 8px 10px; }
+#btn-easy[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
+.easy-check { padding: 10px 12px !important; margin: 4px 0 12px; border: 1px dashed var(--line); border-radius: 12px; font-weight: 600; }
+.easy-check input { width: 22px; height: 22px; margin: 0; flex: none; }
+.easy-suggest b, .easy-more b { display: block; font-size: 1.05rem; }
+.easy-suggest p, .easy-more p { margin: 4px 0 10px; color: var(--muted); font-size: 0.9rem; }
+.easy-more .primary { width: 100%; }
+.easy-back { width: 100%; margin-bottom: 10px; }
+.easy-today .easy-date { color: var(--muted); font-weight: 600; }
+.easy-score { display: flex; align-items: baseline; gap: 12px; margin: 10px 0 4px; flex-wrap: wrap; }
+.easy-score b { font-family: var(--mono); font-size: 3rem; line-height: 1; }
+.easy-score b small { font-size: 1.1rem; margin-left: 2px; }
+.easy-score p { margin: 0; font-size: 1.3rem; font-weight: 800; }
+.easy-link-box summary { cursor: pointer; font-weight: 700; padding: 12px 0 4px; }
+.easy-link-form { display: grid; gap: 8px; }
+.easy-link-form label { display: grid; gap: 4px; }
+.easy-link-out input { width: 100%; margin: 10px 0 8px; font-size: 0.8rem; }
+
+html.easy { font-size: 125%; --muted: #c8c3ec; --line: rgba(190, 175, 255, 0.34); }
+html.easy body { line-height: 1.7; }
+html.easy button, html.easy .umb-opt, html.easy .seg label span, html.easy .concern-grid label span { min-height: 48px; }
+html.easy .main-tabs button { font-size: 0.8rem; min-height: 56px; }
+html.easy .subnav button { min-height: 44px; }
+html.easy .tl-lead { font-size: 1rem; }
+html.easy .dm-item { font-size: 1rem; gap: 12px; }
+html.easy .dm-body p { font-size: 0.92rem; }
+html.easy .dm-body .yday-btns button { font-size: 0.85rem; white-space: normal; }
+html.easy .umb-opts { gap: 10px; }
+html.easy .umb-opt { font-size: 0.95rem; padding: 12px 14px; }
+html.easy .mood-btns { gap: 8px; }
+html.easy .mood-btns button { min-height: 56px; font-size: 1.6rem; }
+html.easy .yday-btns { gap: 8px; }
+html.easy .yday-btns button { padding: 12px 6px; white-space: normal; }
+html.easy .tl-next-hint, html.easy [data-guide-all] { display: none !important; }
+html.easy .linkish { min-height: 44px; }
+html.easy h1 { font-size: 1.15rem; }
+html.easy .tagline { display: none; }
+html.easy .brand-mark { width: 40px; height: 40px; font-size: 24px; }
+html.easy #btn-edit { font-size: 0.8rem; padding: 8px 10px; }
+.easy-suggest .yday-btns, #easy-link-ask .yday-btns, .easy-link-out .yday-btns { grid-template-columns: 1fr 1fr; }
+html.easy .main-tabs button { font-size: 0.66rem; line-height: 1.2; word-break: keep-all; padding: 8px 1px; }
+html.easy .main-tabs button i { font-size: 1.1rem; }
