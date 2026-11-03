@@ -623,6 +623,8 @@ function retroCardHTML() {
   const d = timelineData(); const qs = retroQuestions(state.saju, d.dw, state.fortune.date.year);
   if (!qs.length) return '';
   const ans = load(RETRO_KEY, {}); const sum = retroSummary(qs, ans);
+  // 기본은 숨김(사용자 요청): 궁금한 사람만 눌러서 확인
+  if (!state.retroOpen) return `<div class="card retro-card" id="retro"><button type="button" class="linkish" data-retro-open>🔎 내 사주가 지난 일과 맞는지 궁금하면 확인해 보기</button></div>`;
   return `<div class="card retro-card" id="retro"><h3>내 사주, 지난 일과 맞을까요? <span class="tag">지난 흐름 확인</span></h3>
     <p class="muted" style="margin-top:0">사주로 보면 아래 해에 큰 흐름이 들어왔어요. 기억나는 대로 눌러 주세요.</p>
     ${qs.map((q) => `<div class="rt-q"><p><b>${esc(q.q)}</b><small>${esc(q.why)}</small></p><div class="yday-btns">${RETRO_ANSWERS.map(([k, l]) => `<button type="button" class="${ans[q.year] === k ? 'primary' : 'ghost'}" data-retro="${q.year}:${k}">${l}</button>`).join('')}</div></div>`).join('')}
@@ -630,6 +632,7 @@ function retroCardHTML() {
   </div>`;
 }
 document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-retro-open]')) { state.retroOpen = true; const el = $('#retro'); if (el) { const t = document.createElement('div'); t.innerHTML = retroCardHTML(); el.replaceWith(t.firstElementChild); } return; }
   const b = e.target.closest('[data-retro]'); if (!b) return;
   const [y, k] = b.dataset.retro.split(':'); const a = load(RETRO_KEY, {}); const first = !a[y];
   a[y] = k; save(RETRO_KEY, a);

@@ -6,7 +6,7 @@
 export const CHARM_FIELD = { wealth: 'wealth', love: 'love', exam: 'career', health: 'health', luck: 'all', protect: 'all' };
 const RARITY_POWER = { common: 1, rare: 1.5, epic: 2, legend: 3, myth: 4 };
 // 기간별 반영 비율과 한도 (한 해는 천천히, 한 달은 조금 더 빠르게)
-export const PERIOD_RATE = { year: 0.5, month: 0.8 };
+export const PERIOD_RATE = { year: 1.0, month: 1.6 }; // 2026-11-03 사용자 요청: +5까지 걸리는 시간 절반(예전 0.5·0.8)
 export const PERIOD_CAP = { year: 5, month: 8 };
 export const FIELDS = ['wealth', 'love', 'career', 'health', 'social'];
 const FIELD_KO = { wealth: '재물', love: '애정', career: '직장·학업', health: '건강', social: '대인' };
