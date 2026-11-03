@@ -33,6 +33,7 @@ import { buildReading, FIELD_LABEL, closingLine, GOD_READING } from './reading.j
 import { analyzeGyeok, GYEOK_PROFILE, strengthMission } from './gyeokguk.js';
 import { buildBooklet, todayLetter } from './booklet.js';
 import { natalRelations } from './relations.js';
+import { growEquipped, fillOf, replaceCharm, pairType, fiveDone, elementsOwned, setUnlocked, boostRarity, offerUnlocked, offerValue, offerable, removeOffered, equipLine, charmKey, GROW_FULL, RARITY_KO as CC_RARITY_KO, TYPE_KO, OFFER_UNLOCK } from './charmcare.js';
 import { buildNote, markNote, weekStamps, stampRarity, AREA_CHARM, RARITY_KO, MONTH_KEY_NEED, monthStamps, STORY_STEPS, newStoryIndex, storiesOpen, buildStories, weeklyLetter } from './note.js';
 import { ELEMENT_LUCK } from './fortune.js';
 import { preloadCharImages, itemImage } from './assets.js';
@@ -87,6 +88,8 @@ const FW_KEY = 'unmyeong2099.firstweek';
 const EASY_KEY = 'unmyeong2099.easy'; // v0.31 쉬운 모드
 const NOTE_KEY = 'unmyeong2099.note'; // 수호신의 쪽지
 const NOTESTAT_KEY = 'unmyeong2099.notestat'; // 쪽지 누적 도장 { total }
+const CHARMGROW_KEY = 'unmyeong2099.charmgrow'; // v0.38 장착 부적 기운 { 부적 키: 칸 }
+const FIVE_KEY = 'unmyeong2099.five'; // 오행 완성 칭호를 받았는지
 const DM_KEY = 'unmyeong2099.dmission';
 const PLEDGE_KEY = 'unmyeong2099.pledge';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
@@ -1777,6 +1780,82 @@ function noteHTML(polite) {
   </div>`;
 }
 
+// ---------- 부적 돌보기 (v0.38): A 장착 연출 · C 부적 성장 · D 세트 · E 바치기 ----------
+const isRooster = () => characterInfo(state.saju, state.profile).zodiac.key === 'rooster';
+/** C: 장착한 부적의 기운 칸 */
+function growMeter(rec) {
+  if (!rec) return '';
+  const n = fillOf(load(CHARMGROW_KEY, {}), rec);
+  if (rec.rarity === 'myth') return '<small class="cg-meter">✨ 가장 높은 등급</small>';
+  return `<small class="cg-meter" title="쪽지를 해낼 때마다 1칸, ${GROW_FULL}칸이면 등급이 올라요">${'●'.repeat(n)}${'○'.repeat(GROW_FULL - n)}</small>`;
+}
+/** A: 장착하는 순간 — 빛 + 수호신 대사 + 성장 안내 */
+function showEquipMoment(r) {
+  const info = characterInfo(state.saju, state.profile); const t = charmFromRecord(r);
+  const n = fillOf(load(CHARMGROW_KEY, {}), r);
+  const pair = pairType(loadEquip().charms);
+  const box = document.createElement('div'); box.className = 'evo-modal';
+  box.innerHTML = `<div class="evo-box eq-moment"><div class="eq-glow"><div class="nt-charm">${renderTalismanSVG(t)}</div></div>
+    <h3 style="margin:10px 0 4px">${esc(labelForRec(r))} 장착</h3>
+    <div class="speech"><p>${esc(equipLine(r.type, isRooster()))}</p></div>
+    <p class="muted" style="font-size:0.86rem;margin:8px 0">🌱 이 부적은 쪽지를 해낼 때마다 기운이 한 칸씩 차요. 지금 ${n}/${GROW_FULL}칸 · 다 차면 ${r.rarity === 'myth' ? '이미 가장 높은 등급이에요' : '한 등급 올라가요'}.</p>
+    ${pair ? `<p class="eq-pair">🎎 쌍부적 완성! ${TYPE_KO[pair]}부 두 장 — 쪽지 보상 부적이 한 등급 높아져요.</p>` : ''}
+    <button type="button" class="primary" data-close-reward style="width:100%">좋아요</button></div>`;
+  document.body.appendChild(box);
+  box.addEventListener('click', (e) => { if (e.target.closest('[data-close-reward]') || e.target === box) box.remove(); });
+  void info;
+}
+const labelForRec = (r) => `${CC_RARITY_KO[r.rarity]} ${TYPE_KO[r.type]}부`;
+
+/** D·E: 세트 효과·오행 수집·바치기 (조건이 되면 보임) */
+function charmCareHTML(eq, collection) {
+  const parts = [];
+  const pair = pairType(eq.charms);
+  if (pair) parts.push(`<p class="cc-line on">🎎 <b>쌍부적</b> · ${TYPE_KO[pair]}부 두 장 — 쪽지 보상 부적 등급 +1</p>`);
+  else if (setUnlocked(collection)) parts.push(`<p class="cc-line">🎎 같은 종류 부적 두 장을 함께 달면 <b>쌍부적</b>이 돼요(쪽지 보상 등급 +1).${loadEquip().charms.length && characterInfo(state.saju, state.profile) && heroOptions().unlock.charmSlots < 2 ? ' 두 번째 슬롯은 Lv.10에 열려요.' : ''}</p>`);
+  if (setUnlocked(collection) || fiveDone(collection)) {
+    const own = elementsOwned(collection);
+    parts.push(fiveDone(collection) ? '<p class="cc-line on">🌈 <b>오행 완성</b> · 목·화·토·금·수 부적을 모두 모았어요</p>'
+      : `<p class="cc-line">🌈 오행 수집 ${own.size}/5 · ${[0, 1, 2, 3, 4].map((e) => (own.has(e) ? ELEMENT_HANJA[e] : '·')).join(' ')} — 다 모으면 「오행 완성」 칭호</p>`);
+  }
+  if (offerUnlocked(collection)) parts.push(`<button type="button" class="ghost cc-offer" data-offer-open>🔥 부적 바치기 · 장착하지 않은 부적으로 수호신 키우기</button>`);
+  else if (collection.length >= 5) parts.push(`<p class="cc-line">🔥 부적이 ${OFFER_UNLOCK}장 모이면 수호신에게 바쳐 키울 수 있어요 (${collection.length}/${OFFER_UNLOCK})</p>`);
+  return parts.length ? `<div class="cc-box">${parts.join('')}</div>` : '';
+}
+
+/** E: 바치기 창 */
+function openOffer() {
+  const col = load(COLLECTION_KEY, []); const eq = loadEquip(); const gs = load(CHARMGROW_KEY, {});
+  const list = offerable(col, eq.charms);
+  const box = document.createElement('div'); box.className = 'evo-modal';
+  box.innerHTML = `<div class="evo-box"><h3 style="margin:0 0 6px">🔥 부적 바치기</h3>
+    <p class="muted" style="margin:0 0 10px;font-size:0.86rem">고른 부적은 도감에서 사라지고 수호신 성장 점수가 돼요. 등급이 높고 기운을 많이 키운 부적일수록 많이 올라요. 장착한 부적은 바칠 수 없어요.</p>
+    <div class="offer-list">${list.map(({ r, i }) => `<label><input type="checkbox" value="${i}" data-exp="${offerValue(r, fillOf(gs, r))}"><span class="nt-charm sm">${renderTalismanSVG(charmFromRecord(r))}</span><small>${esc(labelForRec(r))}<br>+${offerValue(r, fillOf(gs, r))}</small></label>`).join('')}</div>
+    <p class="offer-sum">고른 부적 0장 · +0</p>
+    <div class="yday-btns" style="grid-template-columns:1fr 1fr"><button type="button" class="ghost" data-offer-close>그만두기</button><button type="button" class="primary" data-offer-do>바치기</button></div></div>`;
+  document.body.appendChild(box);
+  const sum = () => { const c = [...box.querySelectorAll('input:checked')]; box.querySelector('.offer-sum').textContent = `고른 부적 ${c.length}장 · +${c.reduce((a, x) => a + Number(x.dataset.exp), 0)}`; };
+  box.addEventListener('change', sum);
+  box.addEventListener('click', (e) => {
+    if (e.target.closest('[data-offer-close]') || e.target === box) { box.remove(); return; }
+    if (!e.target.closest('[data-offer-do]')) return;
+    const c = [...box.querySelectorAll('input:checked')]; if (!c.length) { toast('바칠 부적을 골라 주세요'); return; }
+    const exp = c.reduce((a, x) => a + Number(x.dataset.exp), 0);
+    save(COLLECTION_KEY, removeOffered(load(COLLECTION_KEY, []), c.map((x) => Number(x.value))));
+    box.remove();
+    grow((g) => addExp(g, exp), isRooster() ? `🔥 부적 ${c.length}장 고마워요. 덕분에 제가 한 뼘 자랐어요 (+${exp})` : `🔥 부적 ${c.length}장 고마워. 덕분에 내가 한 뼘 자랐어 (+${exp})`);
+    renderHero(false);
+  });
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-offer-open]')) openOffer(); });
+
+/** 오행 완성 칭호: 처음 모았을 때 한 번 알림 */
+function checkFive() {
+  if (load(FIVE_KEY, false) || !fiveDone(load(COLLECTION_KEY, []))) return;
+  save(FIVE_KEY, true);
+  setTimeout(() => toast(isRooster() ? '🌈 오행 완성! 목·화·토·금·수 부적을 모두 모으셨어요' : '🌈 오행 완성! 목·화·토·금·수 부적을 모두 모았어'), 3200);
+}
+
 /** ③ 다음 달 미리보기 열쇠: 이달 도장 20개 */
 function monthKeyHTML() {
   const f = state.fortune; const n = monthStamps(load(NOTE_KEY, {}), f.date.year, f.date.month);
@@ -1829,12 +1908,22 @@ function completeNote() {
   const f = state.fortune; const store = load(NOTE_KEY, {});
   if (store[f.dateKey]?.done) return;
   const { u } = todayUmbrella();
-  const rarity = stampRarity(weekStamps(store, timelineData().week) + 1);
+  const eqNow = loadEquip(); const pair = pairType(eqNow.charms);
+  const rarity = boostRarity(stampRarity(weekStamps(store, timelineData().week) + 1), pair); // D: 쌍부적이면 한 등급 위
   const t = createTalisman(state.saju, f, { type: AREA_CHARM[u.area] || 'luck', element: state.saju.yongsin, rarity });
   const label = `${t.rarity.label} ${t.type.label}부`;
   const list = load(COLLECTION_KEY, []); list.unshift({ ...recordOf(t), label: `쪽지 보상 ${label}` }); save(COLLECTION_KEY, list.slice(0, 80));
   save(NOTE_KEY, markNote(store, f.dateKey, label).store);
   const before = load(NOTESTAT_KEY, {}).total || 0; save(NOTESTAT_KEY, { total: before + 1 });
+  // C: 장착한 부적에 기운 1칸, 다 차면 등급 +1 (도감·장착 모두 바꿔 끼움)
+  const g = growEquipped(load(CHARMGROW_KEY, {}), eqNow.charms); save(CHARMGROW_KEY, g.store);
+  for (const u of g.upgrades) {
+    save(COLLECTION_KEY, replaceCharm(load(COLLECTION_KEY, []), u.from, u.to));
+    const e2 = loadEquip(); save(EQUIP_KEY, { ...e2, charms: replaceCharm(e2.charms, u.from, u.to) });
+  }
+  const grownLines = g.upgrades.map((u) => `🌟 장착한 ${labelForRec(u.from)}가 다 자라 ${labelForRec(u.to)}로 올라갔어요!`);
+  const fedLines = g.upgrades.length ? [] : eqNow.charms.filter(Boolean).map((r) => `🌱 장착한 ${labelForRec(r)}에 기운 한 칸 (${fillOf(g.store, r)}/${GROW_FULL})`);
+  checkFive();
   const si = newStoryIndex(before, before + 1); const story = si >= 0 ? storyList()[si] : null;
   completeActMission();
   renderToday(); renderHero(false);
@@ -1843,6 +1932,8 @@ function completeNote() {
     <div class="nt-charm">${renderTalismanSVG(t)}</div>
     <p style="margin:10px 0 4px"><b>${label}</b>를 받았어요</p>
     <p class="muted" style="margin:0 0 14px;font-size:0.86rem">내 수호신 > 부적 장착에서 수호신에게 달아 줄 수 있어요. 이번 주 도장을 더 모으면 더 높은 등급의 부적을 드려요.</p>
+    ${pair ? `<p class="eq-pair">🎎 쌍부적 효과로 한 등급 높은 부적이에요</p>` : ''}
+    ${[...grownLines, ...fedLines].map((x) => `<p class="cg-line">${esc(x)}</p>`).join('')}
     ${story ? `<div class="nt-story"><b>📖 새 이야기가 열렸어요 · ${esc(story.title)}</b><p>${esc(story.text)}</p><small>내 수호신 > 수호신의 이야기에서 다시 볼 수 있어요</small></div>` : ''}
     <button type="button" class="primary" data-close-reward style="width:100%">고마워요</button></div>`;
   document.body.appendChild(box);
@@ -2096,7 +2187,7 @@ function renderHero(animate) {
     if (i >= unlock.charmSlots) return `<div class="slot locked"><span>🔒 부적 슬롯 ${i + 1}<br>Lv.10 진화 시 해금</span></div>`;
     const t = charms[i];
     return `<div class="slot ${t ? 'filled' : ''}" data-slot="${i}" title="${t ? '눌러서 해제' : ''}">
-      ${t ? `${renderTalismanSVG(t)}<span>${t.rarity.label} ${t.type.label}부</span>` : `<span>부적 슬롯 ${i + 1}<br>비어 있음</span>`}</div>`;
+      ${t ? `${renderTalismanSVG(t)}<span>${t.rarity.label} ${t.type.label}부</span>${growMeter(eq.charms[i])}` : `<span>부적 슬롯 ${i + 1}<br>비어 있음</span>`}</div>`;
   };
   const emoteSlot = !unlock.emote ? '<div class="slot locked"><span>🔒 이모티콘 슬롯<br>Lv.5 진화 시 해금</span></div>' : emote
     ? `<div class="slot emote filled" data-slot="emote">${renderEmoticonSVG(s, f, { stage: heroOptions().stage, profile: p, mood: emote, style: 'sticker', tag: '' })}<span>${EMOTES.find((e) => e.key === emote).label}</span></div>`
@@ -2142,6 +2233,7 @@ function renderHero(animate) {
         return `<button type="button" data-equip="${i}" class="${on ? 'on' : ''}" title="${esc(r.label)}">${renderTalismanSVG(charmFromRecord(r))}</button>`;
       }).join('')}</div><p class="muted" style="font-size:0.8rem;margin-bottom:0">부적을 누르면 빈 슬롯에 장착되고, 장착된 부적을 다시 누르면 해제됩니다. 슬롯이 다 차면 2번 슬롯과 교체됩니다.</p>`
       : '<p class="muted" style="margin:0">부적 공방에서 부적을 만들고 도감에 저장하면 여기서 장착할 수 있습니다.</p>'}
+      ${charmCareHTML(eq, collection)}
     </div>
 
     ${seasonWardrobeHTML()}
@@ -2165,7 +2257,8 @@ function renderHero(animate) {
       const allowed = unlock.charmSlots;
       const empty = next.charms.slice(0, allowed).findIndex((c) => !c);
       next.charms[empty >= 0 ? empty : allowed - 1] = r;
-      saveEquip(next, `${r.label} 장착! ${say('equip')}`);
+      saveEquip(next);
+      showEquipMoment(r);
       return;
     }
     saveEquip(next);
