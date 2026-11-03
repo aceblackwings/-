@@ -35,7 +35,7 @@ import { buildBooklet, todayLetter } from './booklet.js';
 import { natalRelations } from './relations.js';
 import { buildIlju } from './ilju.js';
 import { retroQuestions, retroSummary, RETRO_ANSWERS } from './retro.js';
-import { kaiunPower, kaiunFor, kaiunLine, fieldKaiunSentence, withKaiun } from './kaiun.js';
+import { kaiunPower, kaiunFor, kaiunLine, fieldKaiunSentence, withKaiun, logKaiun, kaiunTrend } from './kaiun.js';
 import { tenGodProfile, pillarReadings, personSummary } from './natal.js';
 import { growEquipped, fillOf, replaceCharm, pairType, fiveDone, elementsOwned, setUnlocked, boostRarity, offerUnlocked, offerValue, offerable, removeOffered, equipLine, charmKey, GROW_FULL, RARITY_KO as CC_RARITY_KO, TYPE_KO, OFFER_UNLOCK } from './charmcare.js';
 import { buildNote, markNote, weekStamps, stampRarity, AREA_CHARM, RARITY_KO, MONTH_KEY_NEED, monthStamps, STORY_STEPS, newStoryIndex, storiesOpen, buildStories, weeklyLetter } from './note.js';
@@ -91,6 +91,7 @@ const CHARTS_KEY = 'unmyeong2099.charts';
 const FW_KEY = 'unmyeong2099.firstweek';
 const EASY_KEY = 'unmyeong2099.easy'; // v0.31 쉬운 모드
 const NOTE_KEY = 'unmyeong2099.note'; // 수호신의 쪽지
+const KAIUNLOG_KEY = 'unmyeong2099.kaiunlog'; // v0.41 개운 그래프 { 날짜: {base, plus} }
 const RETRO_KEY = 'unmyeong2099.retro'; // v0.41 지난 일 맞히기 답 { 연도: yes|some|no }
 const NOTESTAT_KEY = 'unmyeong2099.notestat'; // 쪽지 누적 도장 { total }
 const CHARMGROW_KEY = 'unmyeong2099.charmgrow'; // v0.38 장착 부적 기운 { 부적 키: 칸 }
@@ -1725,15 +1726,41 @@ function bonusLineHTML(f) {
 function kaiunNow() {
   const { eq, unlock } = heroOptions();
   const equipped = eq.charms.slice(0, unlock.charmSlots).filter(Boolean);
-  return kaiunPower(equipped, loadGrowth().evolved, state.saju.yongsin, { pair: pairType(equipped), five: fiveDone(load(COLLECTION_KEY, [])) });
+  return kaiunPower(equipped, loadGrowth().evolved, state.saju.yongsin, { pair: pairType(equipped), five: fiveDone(load(COLLECTION_KEY, [])), charge: luckNow().index });
 }
 function kaiunBoxHTML(period, base) {
   const L = kaiunLine(kaiunNow(), period);
   const score = base != null && !L.empty ? `<b>정통 ${base}점 → 개운 반영 ${withKaiun(base, L.k.total)}점</b> ` : '';
   return `<div class="kaiun-box ${L.empty ? 'empty' : ''}"><p>🧧 ${score}${esc(L.text)}</p>
-    <button type="button" class="linkish" data-go-equip>${L.empty ? '부적 달아 주러 가기 →' : '부적·지신 돌보러 가기 →'}</button>
+    <button type="button" class="linkish" data-go-equip>${L.empty ? '부적 달아 주러 가기 →' : '부적·지신 돌보러 가기 →'}</button> <button type="button" class="linkish" data-kaiun-graph>📈 나의 개운 그래프</button>
     <small>개운은 게임 요소예요. 타고난 사주와 정통 점수는 바뀌지 않아요.</small></div>`;
 }
+/** B1 오늘의 개운 반영 올해 점수를 기록(하루 한 번 갱신) */
+function recordKaiun() {
+  const y = timelineData().year; const plus = kaiunFor(kaiunNow(), 'year').total;
+  save(KAIUNLOG_KEY, logKaiun(load(KAIUNLOG_KEY, {}), state.fortune.dateKey, { base: y.year.score, plus }));
+}
+function kaiunGraphHTML() {
+  const tr = kaiunTrend(load(KAIUNLOG_KEY, {}));
+  if (tr.pts.length < 2) return `<p>아직 기록이 ${tr.pts.length}일뿐이에요. 내일부터 선이 그려져요. 부적을 달고 쪽지를 해낼수록 선이 올라가요.</p>`;
+  const w = 300; const h = 110; const vals = tr.pts.map((p) => p.value); const lo = Math.min(...vals) - 2; const hi = Math.max(...vals) + 2;
+  const x = (i) => 10 + (i * (w - 20)) / (tr.pts.length - 1); const yv = (v) => h - 16 - ((v - lo) / Math.max(1, hi - lo)) * (h - 34);
+  const line = tr.pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${yv(p.value).toFixed(1)}`).join(' ');
+  const base = yv(tr.pts[0].base);
+  return `<svg viewBox="0 0 ${w} ${h}" class="kaiun-graph" role="img" aria-label="개운 그래프">
+    <line x1="10" x2="${w - 10}" y1="${base}" y2="${base}" stroke="#9a94c4" stroke-dasharray="4 4"/><text x="${w - 10}" y="${base - 4}" font-size="10" text-anchor="end" fill="#9a94c4">정통 ${tr.pts[0].base}</text>
+    <path d="${line}" fill="none" stroke="#ffc93c" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="${x(tr.pts.length - 1)}" cy="${yv(tr.last.value)}" r="5" fill="#ffc93c"/><text x="${x(tr.pts.length - 1)}" y="${yv(tr.last.value) - 9}" font-size="12" text-anchor="end" fill="#fff">${tr.last.value}</text>
+    <text x="10" y="${h - 2}" font-size="10" fill="#9a94c4">${tr.first.dateKey.slice(5)}</text><text x="${w - 10}" y="${h - 2}" font-size="10" text-anchor="end" fill="#9a94c4">${tr.last.dateKey.slice(5)}</text></svg>
+    <p><b>개운 첫날 +${tr.first.plus} → 지금 +${tr.last.plus}</b> (지금 올해 정통 ${tr.last.base}점 → 개운 반영 ${tr.last.value}점) · ${tr.pts.length}일 기록 · 가장 높았던 날 ${tr.best.dateKey.slice(5)} (+${tr.best.plus})</p>`;
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('[data-kaiun-graph]')) return;
+  const box = document.createElement('div'); box.className = 'evo-modal';
+  box.innerHTML = `<div class="evo-box"><h3 style="margin:0 0 8px">📈 나의 개운 그래프</h3><p class="muted" style="margin:0 0 8px;font-size:0.84rem">올해 정통 점수(점선)에 부적·지신·오행 충전으로 더한 개운 반영 점수(금색 선)예요. 게임 요소라 정통 점수는 그대로예요.</p>${kaiunGraphHTML()}<button type="button" class="primary" data-close-reward style="width:100%;margin-top:8px">닫기</button></div>`;
+  document.body.appendChild(box);
+  box.addEventListener('click', (ev) => { if (ev.target.closest('[data-close-reward]') || ev.target === box) box.remove(); });
+});
 const kaiunChip = (period) => { const k = kaiunFor(kaiunNow(), period); return k.total ? `<em class="kaiun-chip">🧧+${k.total}</em>` : ''; };
 document.addEventListener('click', (e) => {
   if (e.target.closest('[data-go-equip]')) {
@@ -2103,6 +2130,7 @@ function todayCardHTML() {
 
 function renderToday() {
   logToday();
+  recordKaiun();
   // 첫 화면 = 신년운세 책자 → 오늘 한 문단 → 앱 쓰는 법. 익숙해지면(3일째) 오늘 할 일·기능 구역
   const sections = [
     ['ask', askChipsHTML], ['season', seasonCardHTML], ['festival', festivalCardHTML], ['say', todaySayCard],
@@ -2470,7 +2498,7 @@ function charge(element, amount, source, lead = '') {
   if (!res.added) return 0;
   save(LUCK_KEY, res.luck);
   const after = luckIndex(res.luck, state.saju).index;
-  toast(`${lead ? `${lead} · ` : ''}${ELEMENT_HANJA[element]} ${ELEMENT_KO[element]} 기운 +${res.added} 충전! 개운 지수 ${before} → ${after}`);
+  toast(`${lead ? `${lead} · ` : ''}${ELEMENT_HANJA[element]} ${ELEMENT_KO[element]} 기운 +${res.added} 충전! 오행 충전도 ${before} → ${after}`);
   return res.added;
 }
 
@@ -2496,7 +2524,7 @@ function luckCardHTML() {
   return `<div class="card luck-card">
     <h3>☯ 오행 충전 · 개운 <span class="tag">${state.fortune.date.year}년</span></h3>
     <div class="luck-head">
-      <div class="luck-ring" style="--p:${index}"><b>${index}</b><span>개운 지수</span></div>
+      <div class="luck-ring" style="--p:${index}"><b>${index}</b><span>오행 충전도</span></div>
       <div>
         <div class="luck-tier">${tier.tier}</div>
         <p style="margin:2px 0 0;font-size:0.88rem">${tier.text}</p>
@@ -3696,7 +3724,7 @@ function renderReport() {
         <div>
           <p style="margin:0"><b>올해의 테마: ${th.god} · ${th.theme}</b></p>
           <p class="muted" style="margin:4px 0 0;font-size:0.84rem">올해 = 세운 ${r.yLayer.base}${r.dwLayer ? ` × 70% + 대운 ${r.dwLayer.score} × 30%` : ''} · 달 평균 <b>${r.avgBase}</b></p>
-          <p class="muted" style="margin:2px 0 0;font-size:0.8rem">🎮 개운 반영(게임) 평균 <b style="color:var(--gold)">${r.avgImp}</b> · 개운 지수 ${r.index}</p>
+          <p class="muted" style="margin:2px 0 0;font-size:0.8rem">🎮 개운 반영(게임) 평균 <b style="color:var(--gold)">${r.avgImp}</b> · 오행 충전도 ${r.index}</p>
           <p style="margin:6px 0 0;font-size:0.85rem">🌟 좋은 달: ${r.best.map((b) => `<b>${b.m}월</b>`).join(' · ')} &nbsp; ⚠️ 조심할 달: ${r.caution.map((b) => `${b.m}월`).join(' · ')}</p>
         </div>
       </div>
@@ -3730,7 +3758,7 @@ function applyAbilities(fortune) {
   return { ...fortune, gameScores, abilityBonus: ab.cat };
 }
 
-/** 진화 가능한 최고 단계 (레벨 + 개운 지수 + 누적 기운) */
+/** 진화 가능한 최고 단계 (레벨 + 오행 충전도 + 누적 기운) */
 function evolvableStage(gs) {
   const { index, luck } = luckNow();
   let best = gs.stage;
@@ -3751,7 +3779,7 @@ function abilityCardHTML(info) {
     <div class="asc-row">${ladder}</div>
     ${ab.list.length ? `<ul class="abilities">${ab.list.map((a) => `<li style="--c:${a.color}"><b>${a.name} · ${a.ability}</b><span>${a.desc}</span></li>`).join('')}</ul>`
       : '<p class="muted" style="margin:8px 0 0;font-size:0.85rem">지신의 신수(5단계)가 된 뒤, 오방 신수 → 상위 신 → 궁극신으로 승천하며 특별 능력이 쌓입니다.</p>'}
-    ${nx ? `<p class="concern-card" style="margin:10px 0 0">다음 승천 <b style="color:${nx.color}">${nx.name}</b> · ${nx.ability}<br><small class="muted">조건: Lv.${nx.level} · 개운 지수 ${STAGE_LUCK_GATE[nx.stage]} (지금 ${index}) · 누적 기운 ${STAGE_LIFETIME_GATE[nx.stage]} (지금 ${luck.lifetime || 0})</small></p>
+    ${nx ? `<p class="concern-card" style="margin:10px 0 0">다음 승천 <b style="color:${nx.color}">${nx.name}</b> · ${nx.ability}<br><small class="muted">조건: Lv.${nx.level} · 오행 충전도 ${STAGE_LUCK_GATE[nx.stage]} (지금 ${index}) · 누적 기운 ${STAGE_LIFETIME_GATE[nx.stage]} (지금 ${luck.lifetime || 0})</small></p>
       ${(() => { const tp = trialProgress(nx.stage, trialStats()); return `<div class="trial"><b>⚔️ ${tp.title}</b>${tp.items.map((x) => `<div class="${x.ok ? 'ok' : ''}">${x.ok ? '✅' : '⬜'} ${x.label} <small>(${Math.min(x.have, x.need)}/${x.need})</small></div>`).join('')}<small class="muted">성장 단계는 레벨로 오르지만, 오방 신수와 상위 신은 꾸준함·인연·발걸음으로 시련을 넘어야 승천합니다.</small></div>`; })()}` : '<p class="concern-card" style="margin:10px 0 0">🌌 궁극신에 도달했습니다. 모든 능력이 깨어났어요.</p>'}
   </div>`;
 }
@@ -3815,7 +3843,7 @@ function growthCard(info, gs) {
       <div class="streak" title="연속 출석">🔥 <b>${gs.streak.count}</b>일 연속${gs.freeze ? ` · 🛡️${gs.freeze}` : ''}</div>
     </div>
     <div class="exp"><div class="exp-fill" style="width:${pct}%"></div><span>${gs.into} / ${gs.need} EXP</span></div>
-    ${gs.canEvolve && evolvableStage(gs) === gs.stage ? `<p class="concern-card" style="margin:8px 0 0">🔒 레벨은 충분해요! <b>${stageName(gs.stage + 1, info.female)}</b>(으)로 진화하려면 개운 지수 <b>${STAGE_LUCK_GATE[gs.stage + 1]}</b>${STAGE_LIFETIME_GATE[gs.stage + 1] ? `과 누적 기운 <b>${STAGE_LIFETIME_GATE[gs.stage + 1]}</b>` : ''}이 필요합니다 (지금 ${luckNow().index}${STAGE_LIFETIME_GATE[gs.stage + 1] ? ` / ${luckNow().luck.lifetime || 0}` : ''}). 운명 뽑기와 미션으로 오행을 채워 주세요.</p>` : ''}
+    ${gs.canEvolve && evolvableStage(gs) === gs.stage ? `<p class="concern-card" style="margin:8px 0 0">🔒 레벨은 충분해요! <b>${stageName(gs.stage + 1, info.female)}</b>(으)로 진화하려면 오행 충전도 <b>${STAGE_LUCK_GATE[gs.stage + 1]}</b>${STAGE_LIFETIME_GATE[gs.stage + 1] ? `과 누적 기운 <b>${STAGE_LIFETIME_GATE[gs.stage + 1]}</b>` : ''}이 필요합니다 (지금 ${luckNow().index}${STAGE_LIFETIME_GATE[gs.stage + 1] ? ` / ${luckNow().luck.lifetime || 0}` : ''}). 운명 뽑기와 미션으로 오행을 채워 주세요.</p>` : ''}
     ${gs.canEvolve && evolvableStage(gs) > gs.stage ? `<button class="primary evolve-btn" type="button" id="btn-evolve">✦ ${stageName(evolvableStage(gs), info.female)}(으)로 진화하기 ✦</button>` : gs.canEvolve ? '' : `<p class="muted" style="margin:8px 0 0;font-size:0.85rem">${gs.next ? `다음 진화 <b>${stageName(gs.next.stage, info.female)}</b>까지 ${gs.levelsToNext}레벨 — ${gs.next.desc}` : '최종 진화 완료! 전설의 신수가 되었습니다.'}</p>`}
     ${gs.next ? `<div class="perks"><span class="muted">다음 진화 보상</span>${STAGE_UNLOCKS[gs.next.stage - 1].perks.map((x) => `<em>🎁 ${x}</em>`).join('')}</div>` : ''}
     ${rewards ? `<div class="actions" style="margin-top:10px">${rewards}</div>` : ''}
@@ -3857,7 +3885,7 @@ function bindGrowth(panel, info) {
     renderHero(false);
   }));
   $('#btn-exp-test', panel)?.addEventListener('click', () => grow((g) => addExp(g, 60)));
-  $('#btn-charge-test', panel)?.addEventListener('click', () => { [0, 1, 2, 3, 4].forEach((e) => { const r = addCharge(loadLuck(), state.saju, { element: e, amount: 15, source: 'test', dateKey: state.fortune.dateKey }); save(LUCK_KEY, r.luck); }); toast(`오행 충전 +15 (체험용) · 개운 지수 ${luckNow().index}`); renderHero(false); renderSaju(); });
+  $('#btn-charge-test', panel)?.addEventListener('click', () => { [0, 1, 2, 3, 4].forEach((e) => { const r = addCharge(loadLuck(), state.saju, { element: e, amount: 15, source: 'test', dateKey: state.fortune.dateKey }); save(LUCK_KEY, r.luck); }); toast(`오행 충전 +15 (체험용) · 오행 충전도 ${luckNow().index}`); renderHero(false); renderSaju(); });
 }
 
 function showEvolution(info, from, to) {

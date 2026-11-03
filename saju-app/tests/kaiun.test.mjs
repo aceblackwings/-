@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { kaiunPower, kaiunFor, kaiunLine, fieldKaiunSentence, withKaiun, PERIOD_CAP } from '../js/kaiun.js';
+import { kaiunPower, kaiunFor, kaiunLine, fieldKaiunSentence, withKaiun, PERIOD_CAP, logKaiun, kaiunTrend } from '../js/kaiun.js';
 import { toneProblems } from '../js/habit.js';
 
 let pass = 0;
@@ -35,6 +35,16 @@ t('문장: 출처 이름·분야, 게임 요소 표시, 금지어 없음', () =>
   const f = fieldKaiunSentence(p, 'wealth'); assert.ok(f.includes('재물부가') && f.includes('게임 요소'));
   assert.equal(fieldKaiunSentence(kaiunPower([], 1, 0), 'wealth'), '');
   assert.deepEqual(toneProblems(L.text + f), []);
+});
+
+t('B2 오행 충전도도 개운에 조금, B1 기록·추이', () => {
+  const p = kaiunPower([], 1, 0, { charge: 100 }); assert.ok(p.total >= 2 && p.sources[0].label.startsWith('오행 충전'));
+  let st = {};
+  st = logKaiun(st, '2026-11-1', { base: 60, plus: 0 }); st = logKaiun(st, '2026-11-2', { base: 60, plus: 2 }); st = logKaiun(st, '2026-11-2', { base: 60, plus: 3 });
+  const tr = kaiunTrend(st);
+  assert.equal(tr.pts.length, 2); assert.equal(tr.first.value, 60); assert.equal(tr.last.value, 63); assert.equal(tr.gain, 3);
+  for (let i = 0; i < 400; i++) { const d = new Date(Date.UTC(2025, 0, 1 + i)); st = logKaiun(st, `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`, { base: 60, plus: 1 }); }
+  assert.equal(Object.keys(st).length, 365);
 });
 
 console.log(`\nkaiun: ${pass} passed`);

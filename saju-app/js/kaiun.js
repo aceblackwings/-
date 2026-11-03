@@ -31,6 +31,8 @@ export function kaiunPower(equipped, stage = 1, yongsin = null, opts = {}) {
   const st = Math.max(0, (stage || 1) - 1) * 0.3; // 지신이 자랄수록 전체에
   if (st) { FIELDS.forEach((k) => { fields[k] += st; }); sources.push({ label: `지신 ${stage}단계`, amount: st, field: 'all' }); }
   if (opts.five) { FIELDS.forEach((k) => { fields[k] += 0.5; }); sources.push({ label: '오행 완성', amount: 0.5, field: 'all' }); }
+  // B2 오행 충전도(쪽지·미션·응원으로 채우는 예전 개운 지수 0~100)도 전체에 조금
+  if (opts.charge) { const c = Math.round((opts.charge / 100) * 2 * 10) / 10; if (c) { FIELDS.forEach((k) => { fields[k] += c; }); sources.push({ label: `오행 충전 ${opts.charge}%`, amount: c, field: 'all' }); } }
   const total = FIELDS.reduce((a, k) => a + fields[k], 0) / FIELDS.length;
   return { total, fields, sources };
 }
@@ -60,8 +62,25 @@ export function kaiunLine(power, period = 'year') {
 export function fieldKaiunSentence(power, field, period = 'year') {
   const k = kaiunFor(power, period);
   if (!k.fields[field]) return '';
-  const src = power.sources.filter((x) => (x.field === field || x.field === 'all') && !x.label.startsWith('지신') && x.label !== '오행 완성').map((x) => x.label);
+  const src = power.sources.filter((x) => (x.field === field || x.field === 'all') && !x.label.startsWith('지신') && !x.label.startsWith('오행')).map((x) => x.label);
   const who = src.length ? `장착한 ${src.join('·')}` : '키운 지신';
   const c = who.charCodeAt(who.length - 1) - 0xac00;
   return `🧧 ${who}${c >= 0 && c % 28 !== 0 ? '이' : '가'} ${FIELD_KO[field]}운에 개운 +${k.fields[field]}만큼 힘을 보태고 있어요(게임 요소).`;
+}
+
+// ---------- B1 나의 개운 그래프(v0.41): 날마다 「개운 반영 올해 점수」를 기록해 추이를 보여 줌 ----------
+const dn = (k) => { const [y, m, d] = k.split('-').map(Number); return Date.UTC(y, m - 1, d); };
+/** 그날 값 기록(같은 날은 덮어씀), 최근 365일만 */
+export function logKaiun(store, dateKey, entry) {
+  const s = { ...(store || {}), [dateKey]: entry };
+  const keys = Object.keys(s).sort((a, b) => dn(a) - dn(b));
+  keys.slice(0, Math.max(0, keys.length - 365)).forEach((k) => delete s[k]);
+  return s;
+}
+/** 추이: 날짜순 점들 + 첫날 대비 */
+export function kaiunTrend(store) {
+  const pts = Object.entries(store || {}).sort((a, b) => dn(a[0]) - dn(b[0])).map(([k, v]) => ({ dateKey: k, value: v.base + v.plus, plus: v.plus, base: v.base }));
+  if (!pts.length) return { pts, first: null, last: null, gain: 0 };
+  const first = pts[0]; const last = pts[pts.length - 1];
+  return { pts, first, last, gain: last.plus - first.plus, best: pts.reduce((a, b) => (b.plus > a.plus ? b : a)) };
 }

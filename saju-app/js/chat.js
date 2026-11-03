@@ -35,7 +35,7 @@ ${ctx.stage === 1 ? '- 아기 단계라 문장이 짧고 순하다.' : ''}${ctx.
 - 용신(필요한 기운): ${ELEMENT_HANJA[ctx.yongsin]} ${ELEMENT_KO[ctx.yongsin]} · 가장 부족한 기운: ${ELEMENT_HANJA[ctx.weakest]} ${ELEMENT_KO[ctx.weakest]}
 - 오늘 일진의 십신: ${f.tenGod} ("${f.info.title}") · 총운 ${f.scores.total}점 · 재물 ${f.scores.wealth} · 애정 ${f.scores.love} · 직장·학업 ${f.scores.career} · 건강 ${f.scores.health} · 대인 ${f.scores.social}
 - 오늘 행운: 색 ${f.luck.color}, 숫자 ${f.luck.number}, 방향 ${f.luck.direction}, 음식 ${f.luck.food}
-- 지금 대운: ${ctx.daewoon || '정보 없음'} · 개운 지수 ${ctx.luckIndex}/100
+- 지금 대운: ${ctx.daewoon || '정보 없음'} · 오행 충전도 ${ctx.luckIndex}/100
 - 가장 큰 고민: ${ctx.concern} · 고민 해결 여정 오늘의 걸음: "${ctx.journeyStep}"
 ${ctx.memory?.length ? `
 [수호신의 기억 — 이전 대화에서 기기에 남긴 메모]
