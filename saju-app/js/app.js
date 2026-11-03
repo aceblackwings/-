@@ -687,7 +687,11 @@ function strengthText(s) {
         ? ` 그래서 용신은 ${el(s.yongsin)}입니다. ${j.text} 강약과 계절 두 기준이 같은 기운을 가리켜 용신이 더 분명해요.`
         : ` 그래서 용신은 ${el(s.yongsin)}입니다. ${j.text || ''}`;
   const table = j.table && !String(j.text).includes(j.table) ? ` ${j.table}` : ''; // v0.35 천간 단위 처방
-  return `${base}${tail}${table} (지장간 오행 · 강약 7단계 · 억부 + 궁통보감 조후표)`;
+  // v0.39 종격·통관·병약
+  const sp = s.special ? ` ${s.special.text} 그래서 용신을 ${el(s.yongsin)}, 희신을 ${el(s.heesin)}으로 봐요.` : '';
+  const tg = s.tonggwan ? ` 또 ${el(s.tonggwan.a)}${i(s.tonggwan.a)} ${el(s.tonggwan.b)}${eul(s.tonggwan.b)} 누르며 맞서 있어, 둘 사이를 이어 주는 ${el(s.tonggwan.el)}${i(s.tonggwan.el)} 반가운 다리 역할을 해요(통관).` : '';
+  const by = s.byeongyak ? ` 사주에서 가장 넘치는 ${el(s.byeongyak.byeong)}${i(s.byeongyak.byeong)} 병(病)이라면, 그것을 다스리는 ${el(s.byeongyak.yak)}${i(s.byeongyak.yak)} 약(藥)이에요${s.byeongyak.match ? ' — 용신과 같아 처방이 더 분명해요' : ''}.` : '';
+  return s.special ? `${base}${sp}${tg}${by} (지장간 오행 · 강약 7단계 · 종격 판단)` : `${base}${tail}${table}${tg}${by} (지장간 오행 · 강약 7단계 · 억부 + 궁통보감 조후표 · 통관·병약)`;
 }
 
 // ---------- 오늘의 운세 ----------

@@ -163,5 +163,18 @@ t('절기 시각: 실제 천문 시각과 1분 안쪽 (입춘·춘분·하지·�
   }
   assert.ok(deltaT(1950) > 25 && deltaT(1950) < 32 && deltaT(2020) > 65 && deltaT(2020) < 75);
 });
+// ---- 종격·통관·병약 (v0.39) ----
+t('종격: 종왕격이면 용신 = 내 오행, 통관이면 다리 오행이 희신, 병약은 가장 넘치는 기운', () => {
+  let sp = null; let tg = null; let by = null;
+  for (let y = 1950; y < 2010 && !(sp && tg && by); y++) for (let m = 1; m <= 12; m++) for (const d of [5, 20]) for (const h of [3, 15]) {
+    const s = computeSaju({ year: y, month: m, day: d, hour: h, minute: 0 });
+    if (!sp && s.special) sp = s; if (!tg && s.tonggwan) tg = s; if (!by && s.byeongyak) by = s;
+  }
+  assert.ok(sp && tg && by);
+  assert.equal(sp.special.name, '종왕격'); assert.equal(sp.yongsin, Math.floor(sp.dayMaster / 2)); assert.ok(sp.yongsinBasis.startsWith('종격'));
+  const { a, b, el } = tg.tonggwan; assert.equal((a + 2) % 5, b); assert.equal((a + 1) % 5, el);
+  assert.ok(tg.heesin === el || tg.yongsin === el || tg.yongsinBasis === '조후 우선');
+  assert.ok(by.elements[by.byeongyak.byeong] >= 40); assert.equal((by.byeongyak.yak + 2) % 5, by.byeongyak.byeong);
+});
 function BRANCHES_OF(s) { return s.pillars.month.branch; }
 console.log(`\n${pass} passed`);

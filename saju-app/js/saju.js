@@ -405,9 +405,39 @@ export function analyzeStrength(dayStem, scores, monthBranch = null, chartStems 
   else if (johu.level === 'urgent') { yongsin = johu.need; heesin = eokbu; basis = '조후 우선'; }
   else if (johu.level === 'mild') { heesin = johu.need; basis = '억부 + 조후 보완'; }
 
+  // ⑦ 종격(v0.39, 보수적): 기운이 한쪽으로 극단적으로 쏠리면 억지로 누르지 않고 그 흐름을 따름
+  let special = null;
+  if (opts.pillars && strengthScoreV != null) {
+    const g = { bi: scores[me], in: scores[parentOf(me)], sik: scores[childOf(me)], jae: scores[mod(me + 2, 5)], gwan: scores[mod(me + 3, 5)] };
+    const rooted = factors.includes('통근');
+    if (strengthScoreV >= 85 && g.gwan <= 5 && g.jae <= 8) {
+      special = { name: '종왕격', follow: me, text: '나와 나를 돕는 기운이 사주를 거의 다 채운 「종왕격」이에요. 이런 사주는 넘치는 힘을 억지로 누르기보다 그 흐름을 따라 쓰는 것이 정통 풀이예요.' };
+    } else if (strengthScoreV <= 15 && !rooted && g.bi + g.in <= 10) {
+      const k = [['jae', '종재격', '재물·결실'], ['gwan', '종살격', '책임·조직'], ['sik', '종아격', '재능·표현']].reduce((x, y) => (g[y[0]] > g[x[0]] ? y : x));
+      const el = { jae: mod(me + 2, 5), gwan: mod(me + 3, 5), sik: childOf(me) }[k[0]];
+      special = { name: k[1], follow: el, text: `일간의 뿌리가 없고 ${k[2]}의 기운이 사주를 이끄는 「${k[1]}」이에요. 이런 사주는 나를 억지로 세우기보다 강한 흐름을 따라갈 때 가장 잘 풀린다고 봐요.` };
+    }
+    if (special) { yongsin = special.follow; heesin = special.name === '종왕격' ? parentOf(me) : parentOf(special.follow); basis = `종격(${special.name})`; }
+  }
+
+  // ⑧ 통관: 서로 극하는 두 기운이 맞서면(둘 다 30% 이상) 사이를 이어 주는 기운 / 병약: 가장 넘치는 기운(병)과 그것을 다스리는 기운(약)
+  let tonggwan = null; let byeongyak = null;
+  if (opts.pillars && !special) {
+    for (let x = 0; x < 5 && !tonggwan; x++) {
+      const y = mod(x + 2, 5); // x가 y를 극함
+      if (scores[x] >= 30 && scores[y] >= 30) {
+        const bridge = childOf(x); // x → bridge → y
+        if (scores[bridge] < 15) tonggwan = { a: x, b: y, el: bridge };
+      }
+    }
+    if (tonggwan && basis !== '조후 우선' && heesin !== tonggwan.el && yongsin !== tonggwan.el) { heesin = tonggwan.el; basis = `${basis} + 통관`; }
+    const top = [0, 1, 2, 3, 4].reduce((a, b) => (scores[b] > scores[a] ? b : a));
+    if (scores[top] >= 40) byeongyak = { byeong: top, yak: controllerOf(top), match: controllerOf(top) === yongsin };
+  }
+
   const weakest = pickLowest([0, 1, 2, 3, 4]);
   const strongest = [0, 1, 2, 3, 4].reduce((a, b) => (scores[b] > scores[a] ? b : a));
-  return { strength, strengthLevel: level || strength, strengthScore: strengthScoreV ?? support, strengthFactors: factors, support, yongsin, gisin: controllerOf(yongsin), heesin, eokbuYongsin: eokbu, yongsinBasis: basis, johu, weakest, strongest };
+  return { strength, strengthLevel: level || strength, strengthScore: strengthScoreV ?? support, strengthFactors: factors, support, yongsin, gisin: controllerOf(yongsin), heesin, eokbuYongsin: eokbu, yongsinBasis: basis, johu, weakest, strongest, special, tonggwan, byeongyak };
 }
 
 const TEN_GOD_NAMES = [
