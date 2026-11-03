@@ -1824,11 +1824,17 @@ document.addEventListener('click', (e) => {
 });
 
 // ---------- 신년운세 책자 (첫 화면 개편 1단계): 게이지·별 없이 글로 읽는 한 해 ----------
-function bookletHTML() {
+/** 책자 계산은 한 번만 (총운 카드 · 분야 카드가 함께 씀) */
+function bookletData() {
   const d = timelineData(); const y = d.next || d.year; const prev = d.next ? d.year : null;
   const ageY = y.sajuYear - state.saju.input.year; const nextDw = d.dw?.pillars.find((p) => p.startAge > ageY) || null;
   const b = buildBooklet({ y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, concern: state.profile.concern, gender: state.profile.gender, nextDaewoon: nextDw });
-  const P = (t) => `<p>${esc(t)}</p>`; const kp = kaiunNow();
+  return { d, y, b };
+}
+
+/** 첫 화면 위: 표지 + 총운(펼쳐 둠). 바로 아래가 오늘의 운세 (2026-11-03 사용자 요청: 스크롤 줄이기) */
+function bookletHTML(bd = bookletData()) {
+  const { b } = bd; const P = (t) => `<p>${esc(t)}</p>`;
   return `<article class="card booklet" id="booklet" data-formal>
     <header class="bk-head">
       <small>${b.year} 신년운세</small>
@@ -1840,11 +1846,21 @@ function bookletHTML() {
     <section class="bk-part"><h3>총운</h3>
       ${b.general.map((x) => `<h4>${x.h}</h4>${x.paras.map(P).join('')}`).join('')}
     </section>
-    ${b.fields.map((f) => { const kx = f.key === 'family' ? '' : fieldKaiunSentence(kp, f.key, 'year'); return `<section class="bk-part"><h3>${f.label}${f.focus ? ' <small>내 고민</small>' : ''}</h3><h4>${esc(f.title)}</h4>${f.paras.map(P).join('')}${kx ? `<p class="bk-kaiun">${esc(kx)}</p>` : ''}</section>`; }).join('')}
-    <details class="bk-part bk-months"><summary><h3>달마다 두 줄</h3><small>입춘부터 절기월 · 눌러서 펼치기</small></summary>
+  </article>`;
+}
+
+const FIELD_ICON = { wealth: '💰', career: '💼', love: '💗', family: '🏡', health: '🌿', social: '🤝' };
+
+/** 첫 화면 아래: 분야별 운세(모두 접힘, 눌러서 펼치기) + 달마다 두 줄 */
+function bookletFieldsHTML(bd = bookletData()) {
+  const { d, y, b } = bd; const P = (t) => `<p>${esc(t)}</p>`; const kp = kaiunNow();
+  return `<article class="card booklet bk-fields" id="booklet-fields" data-formal>
+    <h3 class="bk-fields-h">${b.year} 분야별 운세 <small>궁금한 분야를 눌러 펼쳐 보세요</small></h3>
+    ${b.fields.map((f) => { const kx = f.key === 'family' ? '' : fieldKaiunSentence(kp, f.key, 'year'); return `<details class="bk-part bk-fold"><summary><h3>${FIELD_ICON[f.key] || ''} ${f.label}${f.focus ? ' <small>내 고민</small>' : ''}</h3><span class="bk-peek">${esc(f.title)}</span></summary>${f.paras.map(P).join('')}${kx ? `<p class="bk-kaiun">${esc(kx)}</p>` : ''}</details>`; }).join('')}
+    <details class="bk-part bk-fold bk-months"><summary><h3>🗓️ 달마다 두 줄</h3><span class="bk-peek">입춘부터 절기월</span></summary>
       ${monthLines(y).map((m) => `<div class="bk-month"><h4>${m.mark} ${m.month}월 <small>${m.range}</small></h4><p>${esc(m.flow)}</p><p class="bk-act">${esc(m.act)}</p></div>`).join('')}
     </details>
-    <div class="bk-next"><button class="primary" type="button" data-go-today>☀️ 오늘의 운세 보기 ↓</button><button class="ghost" type="button" data-tl-step="read-${d.next ? 'next' : 'year'}">📖 12달 자세히</button></div>
+    <div class="bk-next"><button class="ghost" type="button" data-tl-step="read-${d.next ? 'next' : 'year'}">📖 12달 자세히</button></div>
   </article>`;
 }
 
@@ -2197,11 +2213,13 @@ function renderToday() {
     ['todo', todoCardHTML], ['journey', journeyCardHTML], ['daily', dailyCardHTML], ['concern', concernCard],
     ['story', () => storyButton('fortune', '오늘의 운세를 스토리로 공유')],
   ];
+  const bd = bookletData();
   $('[data-panel="today"]').innerHTML = `
     ${easySuggestHTML()}
-    ${bookletHTML()}
-    ${weeklyLetterHTML()}
+    ${bookletHTML(bd)}
     ${todayCardHTML()}
+    ${weeklyLetterHTML()}
+    ${bookletFieldsHTML(bd)}
     ${familiar() ? `${missionCardHTML()}${sections.filter(([k]) => unlocked(k)).map(([, fn]) => fn()).join('\n')}` : ''}`;
 
   $('#btn-daily')?.addEventListener('click', claimDaily);

@@ -17,6 +17,7 @@ t('총운 7구역 + 분야 5개, 고민 분야가 맨 앞', () => {
   assert.deepEqual(b.general.map((x) => x.h), ['한 해의 기운', '내 사주와 만나는 방식', '10년 큰 흐름 속의 한 해', '타고난 그릇과 올해', '한 해의 모양', '잘 풀리는 점 · 챙길 점', '한 해의 열쇠']);
   assert.equal(b.fields.length, FIELD_ORDER.length); assert.equal(b.fields[0].key, 'wealth'); assert.ok(b.fields[0].focus);
   assert.ok(JSON.stringify(b.general).length > 1000, '총운은 자세히(1,000자 이상)');
+  assert.ok(b.general.flatMap((x) => x.paras).join(' ').length < 2000, '총운은 첫 화면에 펼쳐 두므로 2,000자 안쪽(2026-11-03 줄임)');
 });
 
 t('가족운: 성별에 따라 육친 자리가 다름, 고민 「인간관계」면 대인운이 맨 앞', () => {

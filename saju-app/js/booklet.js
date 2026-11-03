@@ -2,8 +2,8 @@
 // 총운을 여러 문단으로 자세히(한 해의 기운 → 내 사주와 만나는 방식 → 10년 큰 흐름 속 → 타고난 그릇과 올해 → 한 해의 모양 → 잘 풀리는 점·챙길 점 → 한 해의 열쇠)
 // 그 아래 분야별 풀이(재물·직장·애정·건강·대인). 모든 값은 period.js yearOf·saju·격국에서 나온다(같은 날짜면 같은 글)
 // 순수 로직만(테스트: tests/booklet.test.mjs)
-import { GOD_READING, partsStory, stageLine, crossLine, turnLine } from './reading.js';
-import { YEAR_HEADLINE, seasonsOf, keyMonths, monthRange, friendlyZodiac } from './yearcard.js';
+import { GOD_READING, partsStory, crossLine, turnLine } from './reading.js';
+import { YEAR_HEADLINE, seasonsOf, keyMonths, monthRange } from './yearcard.js';
 import { categoryScores } from './period.js';
 import { ELEMENT_LUCK } from './fortune.js';
 import { STEMS_KO, BRANCHES_KO, STEMS, BRANCHES, ANIMALS, ELEMENT_KO, ELEMENT_HANJA, STEM_ELEMENT, BRANCH_MAIN_STEM, tenGod } from './saju.js';
@@ -94,7 +94,7 @@ function meetLines(y, saju) {
   const scored = new Set((y.year.parts || []).map((x) => x.kind));
   const rels = incomingRelations(saju.pillars, p, '그해')
     .filter((r) => !(r.at === 'day' && ((r.kind === 'sixCombine' && scored.has('combine')) || (r.kind === 'clash' && scored.has('clash')))))
-    .slice(0, 2);
+    .slice(0, 1);
   rels.forEach((r) => out.push(`${r.text} ${r.act}`));
   const js = saju.johu?.stems || [];
   if (js.includes(p.stem)) out.push(`게다가 그해 천간 ${stemLabel(p.stem)}(${STEM_IMAGE[p.stem]})${hasBatchim(stemLabel(p.stem)) ? '은' : '는'} 내 사주의 계절 균형을 맞춰 주는 글자(조후)라, 몸과 마음이 한결 편안해져요.`);
@@ -177,7 +177,6 @@ export function buildBooklet({ y, thisYear, saju, gyeok, name = '', concern = nu
         inner === god
           ? `바탕에 깔린 지지 ${BRANCHES[p.branch]}도 같은 ${god} 기운이라, 겉과 속이 한 방향을 가리켜요. 올해의 성격이 그만큼 또렷하게 드러나요.`
           : `바탕에 깔린 지지 ${BRANCHES[p.branch]}에는 ${inner}, 「${I.keyword}」의 기운이 흘러요. ${sentence(I.core.split('. ')[0])} 겉으로는 ${R.keyword}, 속으로는 ${I.keyword}${hasBatchim(I.keyword) ? '이' : '가'} 함께 움직이는 해예요.`,
-        stageLine(me, p.branch, god, '그해에는').text,
         quoteLine(y, saju),
         `한 해를 한마디로 하면 「${H.title}」, ${toneOf(y.year.score)} 해예요. ${diff > 2 ? `올해(${thisYear.sajuYear}년)보다 흐름이 한결 나아져요.` : diff < -2 ? `올해(${thisYear.sajuYear}년)보다 속도를 조금 늦추면 더 단단해져요.` : `올해(${thisYear?.sajuYear ?? ''}년)와 비슷한 흐름을 차분히 이어 가요.`}`,
       ],
@@ -195,15 +194,15 @@ export function buildBooklet({ y, thisYear, saju, gyeok, name = '', concern = nu
     {
       h: '잘 풀리는 점 · 챙길 점',
       paras: [
-        `잘 풀리는 점: ${R.good.map((t) => sentence(t)).join(' ')}`,
-        `챙길 점: ${R.watch.map((t) => sentence(t)).join(' ')} 미리 알고 있으면 충분히 다룰 수 있는 것들이에요.`,
+        `잘 풀리는 점: ${R.good.slice(0, 2).map((t) => sentence(t)).join(' ')}`,
+        `챙길 점: ${R.watch.slice(0, 2).map((t) => sentence(t)).join(' ')} 미리 알고 있으면 충분히 다룰 수 있는 것들이에요.`,
       ],
     },
     {
       h: '한 해의 열쇠',
       paras: [
-        `${who}에게 가장 필요한 기운은 ${el(saju.yongsin)}이에요. ${L.color} 계열의 물건, ${L.direction} 방향이 한 해 내내 힘이 되고, 행운의 숫자는 ${L.numbers.join('·')}예요. 힘이 되는 띠는 ${friendlyZodiac(saju.pillars.year.branch).join('·')}띠예요.`,
-        `올해의 실천: ${R.tips.map((t) => sentence(t)).join(' ')}`,
+        `${who}에게 가장 필요한 기운은 ${el(saju.yongsin)}이에요. ${L.color} 계열의 물건, ${L.direction} 방향이 한 해 내내 힘이 되고, 행운의 숫자는 ${L.numbers.join('·')}예요.`,
+        `올해의 실천: ${sentence(R.tips[0])}`,
         ageAction(y.sajuYear - saju.input.year, god),
       ],
     },
