@@ -33,4 +33,14 @@ t('축제: 2026-11-07 입동은 진행 중, 11-01은 D-6', () => {
   assert.equal(festivalStatus({ year: 2026, month: 11, day: 7 }).active.name, '입동');
   const st = festivalStatus({ year: 2026, month: 11, day: 1 }); assert.equal(st.active, null); assert.equal(st.daysToNext, 6);
 });
+t('B5 성장 상태: 지시문에 부적·개운·쪽지, 오프라인 답에 개운 한 줄', () => {
+  const g = { charms: ['희귀 재물부'], year: 2, month: 3, bestField: 'wealth', bestPlus: 3, stamps: 4, noteToday: false, person: '「밤바다의 등대」 같은 원칙의 사람' };
+  const ins = buildInstructions({ ...ctx, growth: g });
+  assert.ok(ins.includes('희귀 재물부') && ins.includes('올해 +2') && ins.includes('게임 요소'));
+  const r = offlineReply({ ...ctx, growth: g }, '요즘 돈이 걱정이야');
+  assert.ok(r.includes('재물부 덕분에') && r.includes('개운 +3'), r);
+  const r2 = offlineReply({ ...ctx, growth: { ...g, charms: [] } }, '친구랑 싸웠어');
+  assert.ok(r2.includes('쪽지'), r2);
+});
+
 console.log(`\n${pass} passed`);

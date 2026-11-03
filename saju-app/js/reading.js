@@ -2,6 +2,36 @@
 // 재료는 모두 정통 엔진(period.js / luck.js)에서 나온 값 — 그 기간 간지의 십신(천간), 속 기운(지지 본기의 십신),
 // 용신·기신 적합도, 일지와의 합·충, 점수. 여기에 십신별 해설·좋은 점·조심할 점·분야별 풀이·실천 팁을 엮는다.
 import { tenGod, BRANCH_MAIN_STEM, ELEMENT_KO, ELEMENT_HANJA, STEM_ELEMENT, BRANCH_ELEMENT } from './saju.js';
+import { twelveStage } from './expert.js';
+
+/**
+ * 12운성 × 십신 × 기간(v0.37, 로드맵 E4): 그 기간 지지에서 내 일간이 놓이는 자리로 「십신의 성격이 얼마나 힘 있게 드러나는지」를 풀이
+ * 자리 무리: 왕(장생·관대·건록·제왕) / 자람(목욕·양·태·쇠) / 모음(병·사·묘·절)
+ */
+export const STAGE_PERIOD = {
+  장생: { group: 'up', line: '새싹이 돋듯 새로 시작하는 힘이 붙는 자리예요', tip: '배우기 시작하거나 새 일을 여는 데 쓰면 좋아요' },
+  목욕: { group: 'mid', line: '꾸미고 드러내고 싶은 마음이 커지는 자리예요', tip: '나를 보여 주는 일은 좋지만, 마음이 들뜰 땐 한 박자 쉬어 가세요' },
+  관대: { group: 'up', line: '어른이 되어 옷을 갖춰 입듯 자리를 잡아 가는 자리예요', tip: '자격·직함·역할을 하나 더 갖추는 데 쓰면 좋아요' },
+  건록: { group: 'up', line: '내 힘으로 우뚝 서는 자리예요', tip: '남에게 기대기보다 내 이름으로 하는 일에 힘이 실려요' },
+  제왕: { group: 'up', line: '기운이 가장 왕성한 자리예요', tip: '힘이 넘칠수록 주변을 챙기면 운이 오래가요' },
+  쇠: { group: 'mid', line: '한창때를 지나 무르익어 차분해지는 자리예요', tip: '경험을 정리하고 나누는 일에서 빛나요' },
+  병: { group: 'in', line: '기운이 안으로 잦아들어 돌봄이 필요한 자리예요', tip: '무리한 확장보다 몸과 마음을 먼저 챙기세요' },
+  사: { group: 'in', line: '하던 일을 멈추고 정리하는 자리예요', tip: '끝낼 것을 끝내야 새 문이 열려요' },
+  묘: { group: 'in', line: '거둔 것을 창고에 모아 두는 자리예요', tip: '저축·기록·정리처럼 모으는 일에 좋아요' },
+  절: { group: 'in', line: '낡은 것과 끊고 새로 준비하는 자리예요', tip: '정리할 관계·습관 하나를 내려놓으면 가벼워져요' },
+  태: { group: 'mid', line: '새 씨앗이 맺히는 자리예요', tip: '당장 결과보다 계획과 구상에 쓰면 좋아요' },
+  양: { group: 'mid', line: '품 안에서 조용히 길러지는 자리예요', tip: '도움을 받으며 실력을 기르는 데 좋아요' },
+};
+const STAGE_GOD = {
+  up: (k) => `그래서 「${k}」의 성격이 힘 있게 겉으로 드러나요.`,
+  mid: (k) => `그래서 「${k}」의 성격이 서서히, 부드럽게 드러나요.`,
+  in: (k) => `그래서 「${k}」${(() => { const c = k.charCodeAt(k.length - 1) - 0xac00; return c >= 0 && c % 28 !== 0 ? '은' : '는'; })()} 서두르기보다 안에서 다질 때 오래 남아요.`,
+};
+/** 기간 지지에서의 12운성 문장 (when = '올해는' 등) */
+export function stageLine(dayStem, branch, god, when = '이 시기는') {
+  const st = twelveStage(dayStem, branch); const P = STAGE_PERIOD[st];
+  return { stage: st, text: `${when} 내 일간이 「${st}」 자리에 서요. ${P.line}. ${STAGE_GOD[P.group](GOD_READING[god].keyword)} ${P.tip}.` };
+}
 
 export const GOD_READING = {
   비견: {
@@ -149,6 +179,28 @@ export const GOD_READING = {
 export const FIELD_LABEL = { wealth: '💰 재물', love: '💕 애정', career: '💼 직장·학업', health: '🌿 건강', social: '🤝 대인' };
 const CONCERN_FIELD = { exam: 'career', job: 'career', business: 'career', change: 'career', wealth: 'wealth', love: 'love', marriage: 'love', health: 'health', people: 'social' };
 
+/**
+ * ⑩ 올해(세운) × 대운 교차(v0.39): 10년 큰 흐름의 십신 무리와 그해 십신 무리의 관계
+ * 같음 → 크게 드러남 / 대운이 그해를 낳음 → 결실 / 그해가 대운을 낳음 → 거름 / 극 → 균형 잡기
+ */
+const G5 = { 비견: 0, 겁재: 0, 식신: 1, 상관: 1, 편재: 2, 정재: 2, 편관: 3, 정관: 3, 편인: 4, 정인: 4 };
+export function crossLine(daewoonGod, yearGod) {
+  const d = G5[daewoonGod]; const y = G5[yearGod]; const m = (n) => ((n % 5) + 5) % 5;
+  const dk = GOD_READING[daewoonGod].keyword; const yk = GOD_READING[yearGod].keyword;
+  if (d === y) return `10년 큰 흐름(「${dk}」)과 그해(「${yk}」)가 같은 방향이라, 그 성격이 한 해 내내 크게 드러나요. 잘하는 것을 밀고 나가기 좋아요.`;
+  if (m(y - d) === 1) return `10년 큰 흐름(「${dk}」)의 힘이 그해(「${yk}」)로 흘러들어, 그동안 쌓은 것이 결실로 이어지기 좋은 해예요.`;
+  if (m(d - y) === 1) return `그해(「${yk}」)의 경험이 10년 큰 흐름(「${dk}」)을 키우는 거름이 돼요. 당장의 결과보다 쌓이는 것에 의미가 있는 해예요.`;
+  return `10년 큰 흐름(「${dk}」)과 그해(「${yk}」)가 서로 다른 방향을 가리켜요. 둘 사이 균형을 잡는 게 한 해의 숙제라, 큰 결정은 한 박자 쉬어 가면 좋아요.`;
+}
+
+/** ⑨ 교운기: 대운이 바뀌는 해(그해 나이 = 새 대운 시작 나이)·바뀌기 전 해 */
+export function turnLine(age, daewoon, nextDaewoon) {
+  if (!daewoon) return '';
+  if (age === daewoon.startAge) return `이 해는 10년 큰 흐름이 새로 바뀌는 해(교운기)예요. 환경·관계·마음가짐이 바뀌기 쉬우니, 새 흐름에 맞춰 계획을 다시 세우면 좋아요.`;
+  if (nextDaewoon && nextDaewoon.startAge - age === 1) return `다음 해에 10년 큰 흐름이 바뀌어요(교운기). 이 해에 정리할 것은 정리하고, 다음 10년의 준비를 시작해 보세요.`;
+  return '';
+}
+
 /** 점수 → 전체 흐름 한 문장 */
 export function toneLine(score) {
   if (score >= 65) return '흐름이 좋은 편이라 이 기운의 장점이 잘 살아나요.';
@@ -215,6 +267,7 @@ export function buildReading(kind, layer, ctx) {
     innerGod === god
       ? `겉과 속이 같은 ${god} 기운이라 이 성격이 더 또렷하게 드러나요.`
       : `속에는 「${innerGod} · ${I.keyword}」의 기운이 함께 흘러요. ${I.core.split('. ')[0]}.`,
+    stageLine(saju.dayMaster, layer.pillar.branch, god, when).text,
     `점수는 ${score}점. ${toneLine(score)}`,
   ];
   const good = score >= 50 ? R.good : R.good.slice(0, 2);

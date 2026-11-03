@@ -35,9 +35,15 @@ ${ctx.stage === 1 ? '- 아기 단계라 문장이 짧고 순하다.' : ''}${ctx.
 - 용신(필요한 기운): ${ELEMENT_HANJA[ctx.yongsin]} ${ELEMENT_KO[ctx.yongsin]} · 가장 부족한 기운: ${ELEMENT_HANJA[ctx.weakest]} ${ELEMENT_KO[ctx.weakest]}
 - 오늘 일진의 십신: ${f.tenGod} ("${f.info.title}") · 총운 ${f.scores.total}점 · 재물 ${f.scores.wealth} · 애정 ${f.scores.love} · 직장·학업 ${f.scores.career} · 건강 ${f.scores.health} · 대인 ${f.scores.social}
 - 오늘 행운: 색 ${f.luck.color}, 숫자 ${f.luck.number}, 방향 ${f.luck.direction}, 음식 ${f.luck.food}
-- 지금 대운: ${ctx.daewoon || '정보 없음'} · 개운 지수 ${ctx.luckIndex}/100
+- 지금 대운: ${ctx.daewoon || '정보 없음'} · 오행 충전도 ${ctx.luckIndex}/100
 - 가장 큰 고민: ${ctx.concern} · 고민 해결 여정 오늘의 걸음: "${ctx.journeyStep}"
-${ctx.memory?.length ? `
+${ctx.growth ? `
+[함께 키운 것 — 게임 요소(정통 사주와 별개)]
+- 이 사람은 「${ctx.growth.person}」
+- 장착한 부적: ${ctx.growth.charms.length ? ctx.growth.charms.join(', ') : '없음'} · 개운 반영 올해 +${ctx.growth.year} · 이달 +${ctx.growth.month}
+- 이번 주 쪽지 도장 ${ctx.growth.stamps}개 · 오늘 쪽지 ${ctx.growth.noteToday ? '완료' : '아직'}
+- 관련 있을 때 한 번만 자연스럽게: 장착한 부적이 그 분야에 힘을 보태고 있다고 말하거나, 쪽지를 아직 안 했으면 가볍게 권한다. 개운은 게임 요소라는 점을 지키고 실제 미래를 약속하지 않는다.
+` : ''}${ctx.memory?.length ? `
 [수호신의 기억 — 이전 대화에서 기기에 남긴 메모]
 ${ctx.memory.join('\n')}
 - 기억은 대답과 관련 있을 때만 한 가지를 자연스럽게 꺼낸다. 목록처럼 읊지 않는다.
@@ -104,7 +110,12 @@ export function offlineReply(ctx, text) {
   };
   const empathy = intent.key === 'mood' ? `${ctx.userName}, 마음이 무거웠구나. 이야기해 줘서 고마워.` : `${ctx.userName}의 ${intent.label} 이야기구나.`;
   const recall = ctx.followUp ? `${ctx.followUp} ` : ctx.recall ? `${ctx.recall} ` : '';
-  return `${recall}${empathy} 오늘 ${intent.label}은 ${score}점, ${tone}. ${ctx.pers.key === 'rooster' ? '제가 보기엔' : '내가 보기엔'} ${f.tenGod}의 날이라 "${f.info.title}"의 기운이 흐르고, 너한테 필요한 건 ${el} 기운이야. ${actions[intent.key]}. ${ctx.pers.key === 'rooster' ? '언제나 곁에서 응원할게요.' : '언제나 곁에서 응원할게.'}`;
+  const FIELD_OF = { wealth: '재물', love: '애정', career: '직장·학업', health: '건강', social: '대인' };
+  const g = ctx.growth; const P = ctx.pers.key === 'rooster';
+  const growLine = !g ? '' : g.charms.length && g.bestField && (intent.cat === g.bestField || intent.cat === 'total')
+    ? ` ${P ? '달아 주신' : '달아 준'} ${g.charms[0]} 덕분에 이달 ${FIELD_OF[g.bestField]} 기운에 개운 +${g.bestPlus}${[2, 4, 5, 9].includes(g.bestPlus % 10) ? '가' : '이'} 붙어 있어${P ? '요' : ''}.`
+    : !g.noteToday ? ` 오늘 쪽지 할 일도 하나 해 보면 ${P ? '부적을 드릴게요' : '부적 줄게'}.` : '';
+  return `${recall}${empathy} 오늘 ${intent.label}은 ${score}점, ${tone}.${growLine} ${ctx.pers.key === 'rooster' ? '제가 보기엔' : '내가 보기엔'} ${f.tenGod}의 날이라 "${f.info.title}"의 기운이 흐르고, 너한테 필요한 건 ${el} 기운이야. ${actions[intent.key]}. ${ctx.pers.key === 'rooster' ? '언제나 곁에서 응원할게요.' : '언제나 곁에서 응원할게.'}`;
 }
 
 export const QUICK_ASKS = ['오늘 운세 자세히 알려 줘', '요즘 고민 상담해 줘', '오늘 뭐 입을까?', '연애운 어때?', '나한테 맞는 부적 추천해 줘'];

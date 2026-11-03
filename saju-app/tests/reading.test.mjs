@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { computeSaju } from '../js/saju.js';
 import { layersAt } from '../js/period.js';
-import { GOD_READING, buildReading, partsStory, toneLine } from '../js/reading.js';
+import { GOD_READING, buildReading, partsStory, toneLine, STAGE_PERIOD, stageLine, crossLine, turnLine } from '../js/reading.js';
 let pass = 0;
 const t = (name, fn) => { fn(); pass++; console.log('ok -', name); };
 t('십신 10가지 모두 풀이 재료를 갖춤 (핵심·좋은 점·조심할 점·5분야·팁)', () => {
@@ -47,4 +47,26 @@ t('같은 오행 천간·지지는 한 문장, 맺음말은 기간에 맞춤', (
   assert.ok(closingLine('year', 37).startsWith('올해') && !closingLine('year', 37).includes('오늘'));
   assert.ok(closingLine('month', 70, true).endsWith('예요.'));
 });
+t('12운성 × 십신 문장(v0.37): 12자리 모두, 받침 조사, 금지어 없음', () => {
+  assert.equal(Object.keys(STAGE_PERIOD).length, 12);
+  // 甲 일간이 亥(장생)·卯(제왕)·午(사)
+  assert.equal(stageLine(0, 11, '정재', '올해는').stage, '장생');
+  assert.equal(stageLine(0, 3, '정재').stage, '제왕');
+  assert.ok(stageLine(0, 6, '식신').text.includes('「재능 발휘와 여유」는'), stageLine(0, 6, '식신').text);
+  for (let d = 0; d < 10; d++) for (let b = 0; b < 12; b++) for (const g of Object.keys(GOD_READING)) {
+    const x = stageLine(d, b, g, '이달은').text;
+    assert.ok(!/(나쁜 날|최악|불길)/.test(x), x);
+  }
+});
+
+t('⑨⑩ 교운기·대운×올해 교차(v0.39)', () => {
+  assert.ok(crossLine('정재', '편재').includes('같은 방향'));
+  assert.ok(crossLine('식신', '정재').includes('결실'));
+  assert.ok(crossLine('정재', '식신').includes('거름'));
+  assert.ok(crossLine('편인', '정재').includes('다른 방향'));
+  assert.ok(turnLine(32, { startAge: 32 }, null).includes('교운기'));
+  assert.ok(turnLine(31, { startAge: 22 }, { startAge: 32 }).includes('다음 해'));
+  assert.equal(turnLine(25, { startAge: 22 }, { startAge: 32 }), '');
+});
+
 console.log(`${pass} passed (with merge)`);

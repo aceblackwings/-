@@ -1,5 +1,6 @@
-// 친구 궁합: 띠(연지) 관계 + 일간 오행 관계 + 오행 보완 + 오늘 기운
-import { STEM_ELEMENT, ELEMENT_KO, ELEMENT_HANJA, ANIMALS, seededRandom, dayPillarIndex, pillarFromIndex } from './saju.js';
+// 궁합(v0.39): 일간 관계 + 일지 관계 + 서로의 용신 채워 주기 + 띠(가볍게). 날마다 바뀌는 무작위 몫 없음
+import { STEM_ELEMENT, ELEMENT_KO, ELEMENT_HANJA, ANIMALS, dayPillarIndex, pillarFromIndex } from './saju.js';
+import { branchPair } from './relations.js';
 import { characterMarkup } from './character.js';
 
 const mod = (n, m) => ((n % m) + m) % m;
@@ -37,35 +38,75 @@ export const GRADES = [
   { min: 0, key: 'push', label: '밀당 중인 사이', pose: 'apart', mood: ['calm', 'wow'], color: '#c77dff', desc: '아직 서로 알아 가는 중. 먼저 다가가는 쪽이 이겨요.' },
 ];
 
+// 일지(배우자·생활 자리)끼리의 관계 (v0.39): 정통 궁합의 핵심
+const DAY_REL = {
+  sixCombine: { score: 14, label: '일지 육합', text: '생활 자리(일지)끼리 끌어당기는 자석 같은 사이' },
+  triple: { score: 10, label: '일지 삼합', text: '생활 리듬이 한 방향으로 모이는 사이' },
+  half: { score: 9, label: '일지 반합', text: '생활 리듬이 한 방향으로 모이기 시작하는 사이' },
+  same: { score: 4, label: '같은 일지', text: '생활 방식이 닮아 편안한 사이' },
+  clash: { score: -8, label: '일지 충', text: '생활 방식이 정반대라 서로 자극이 되는 사이 — 각자의 시간을 존중하면 오히려 단단해져요' },
+  punish: { score: -3, label: '일지 형', text: '서로를 다듬어 주지만 잔소리가 늘기 쉬운 사이 — 칭찬을 먼저 건네 보세요' },
+  harm: { score: -3, label: '일지 해', text: '작은 말이 오해로 번지기 쉬운 사이 — 중요한 이야기는 글로 한 번 더' },
+  wonjin: { score: -4, label: '일지 원진', text: '이유 없이 서운함이 쌓이기 쉬운 사이 — 서운함은 하루 지나 부드럽게' },
+  break: { score: -2, label: '일지 파', text: '계획이 자주 바뀌는 사이 — 약속은 글로 남겨 두면 편해요' },
+};
+export function dayBranchRelation(a, b) {
+  const kinds = a === b ? ['same'] : branchPair(a, b).filter((k) => DAY_REL[k]);
+  if (!kinds.length) return { kinds: [], label: '무난', score: 0, text: '생활 자리끼리 크게 부딪히거나 묶이지 않는 담백한 사이' };
+  const list = kinds.map((k) => DAY_REL[k]);
+  const best = list.reduce((x, y) => (Math.abs(y.score) > Math.abs(x.score) ? y : x));
+  const score = Math.max(-10, Math.min(16, list.reduce((t, x) => t + x.score, 0)));
+  return { kinds, label: list.map((x) => x.label).join('·'), score, text: best.text };
+}
+
 /**
- * @param me, friend computeSaju 결과
- * @param date {year, month, day}
+ * 궁합(v0.39, 날마다 바뀌지 않음): 일간 관계 + 일지 관계 + 서로의 용신 채워 주기 + 띠(재미, 가볍게)
+ * 「오늘의 둘」(today)은 점수와 따로 날마다 바뀌는 한 줄
+ * @param me, friend computeSaju 결과 · date {year, month, day} (오늘의 둘에만 씀)
  */
 export function computeCompat(me, friend, date) {
   const br = branchRelation(me.pillars.year.branch, friend.pillars.year.branch);
   const st = stemRelation(me.dayMaster, friend.dayMaster);
-  // 오행 보완: 내가 가장 부족한 기운을 상대가 많이 가졌는지 (양방향)
-  const fill = (a, b) => Math.min(6, Math.round(b.elements[a.weakest] / 5));
-  const complement = fill(me, friend) + fill(friend, me);
-  const today = pillarFromIndex(dayPillarIndex(date.year, date.month, date.day));
-  const todayBonus = Math.round((seededRandom(`${me.dayMaster}-${friend.dayMaster}-${date.year}-${date.month}-${date.day}`) - 0.5) * 10);
-  const score = Math.max(10, Math.min(99, 50 + br.score + st.score + complement + todayBonus));
+  // 공유 카드 친구는 일지가 없음(원칙 5: 카드에는 띠·오행 비율까지만) → 일지 항목은 빼고 계산
+  const day = me.pillars.day && friend.pillars.day ? dayBranchRelation(me.pillars.day.branch, friend.pillars.day.branch)
+    : { kinds: [], label: '정보 없음', score: 0, text: '공유 카드로 받은 친구라 생활 자리(일지)는 빼고 계산했어요', unknown: true };
+  // 용신 채워 주기: 상대 사주에 내게 필요한 기운(용신)이 얼마나 있는지 (양방향, 각 0~6)
+  const fill = (a, b) => Math.min(6, Math.round(b.elements[a.yongsin] / 4));
+  const yongMe = fill(me, friend); const yongFriend = fill(friend, me);
+  const complement = yongMe + yongFriend;
+  // 가중치(v0.39): 등급 분포를 예전과 비슷하게(천생연분 약 14% · 밀당 약 9%) 맞춤
+  const parts = { stem: Math.round(st.score * 1.3), day: Math.round(day.score * 1.5), yong: complement, ddi: Math.round(br.score * 0.7) };
+  const score = Math.max(10, Math.min(99, 47 + parts.stem + parts.day + parts.yong + parts.ddi));
   const grade = GRADES.find((g) => score >= g.min);
 
   const clamp = (v) => Math.max(10, Math.min(99, Math.round(v)));
   const sub = {
-    love: clamp(50 + st.score * 1.4 + br.score * 0.6 + todayBonus),
-    friend: clamp(50 + br.score * 1.3 + complement + todayBonus),
-    work: clamp(50 + complement * 2.2 + (st.type === 'give' || st.type === 'take' ? 10 : st.score * 0.5)),
+    love: clamp(54 + st.score * 1.3 + day.score * 1.2 + complement * 0.6),
+    friend: clamp(54 + br.score * 0.8 + day.score * 0.6 + complement),
+    work: clamp(54 + complement * 1.8 + (st.type === 'give' || st.type === 'take' ? 10 : st.score * 0.5) + Math.min(0, day.score) * 0.5),
   };
   const tips = {
-    destiny: '오늘 함께 사진을 찍어 남기면 좋은 기운이 오래가요.',
+    destiny: '함께 사진을 찍어 남기면 좋은 기운이 오래가요.',
     perfect: '같이 새로운 걸 시작해 보세요. 프로젝트, 운동, 여행 모두 좋아요.',
     buddy: '고마웠던 일을 한 가지 말로 전해 보세요.',
     spark: '의견이 다를 땐 결론보다 이유를 먼저 들어 주세요.',
     push: '짧은 안부 메시지 하나가 거리를 확 좁혀요.',
   };
-  return { score, grade, branch: br, stem: st, complement, todayBonus, sub, tip: tips[grade.key], todayStem: today.stem };
+  const today = pillarFromIndex(dayPillarIndex(date.year, date.month, date.day));
+  return { score, grade, parts, branch: br, stem: st, day, complement, yongMe, yongFriend, todayBonus: 0, sub, tip: tips[grade.key], todayStem: today.stem, todayLine: todayPair(me, friend, today) };
+}
+
+/** 오늘의 둘: 그날 일진이 두 사람의 일지와 맺는 관계(점수와 무관, 날마다 바뀌는 재미) */
+export function todayPair(me, friend, today) {
+  if (!me.pillars.day || !friend.pillars.day) return '오늘은 짧은 안부 한 줄이 둘 사이를 데워 주는 날이에요.';
+  const rel = (b) => branchPair(today.branch, b);
+  const a = rel(me.pillars.day.branch); const b = rel(friend.pillars.day.branch);
+  const good = (r) => r.includes('sixCombine') || r.includes('half');
+  const tough = (r) => r.includes('clash');
+  if (good(a) && good(b)) return '오늘은 두 사람 모두 기운이 맞아떨어지는 날이에요. 같이 하는 일은 오늘 정하면 좋아요.';
+  if (good(a) || good(b)) return `오늘은 ${good(a) ? '내' : '상대'} 쪽 기운이 잘 풀리는 날이에요. ${good(a) ? '먼저 연락해 보세요.' : '상대의 제안에 귀 기울여 보세요.'}`;
+  if (tough(a) || tough(b)) return '오늘은 둘 중 한 사람 마음이 바쁜 날이에요. 짧은 안부 한 줄이면 충분해요.';
+  return '오늘은 잔잔한 날이에요. 가벼운 수다가 둘 사이를 데워 줘요.';
 }
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

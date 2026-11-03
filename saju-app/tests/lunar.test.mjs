@@ -56,7 +56,7 @@ t('음력 생일로 사주 계산', () => {
   assert.equal(pillarLabel(saju.pillars.day), '乙丑');
 });
 t('UTC+8:30 시기(1955년)에는 경도 보정 0분', () => {
-  const a = computeSaju({ year: 1955, month: 6, day: 1, hour: 23, minute: 10 });
+  const a = computeSaju({ year: 1955, month: 3, day: 25, hour: 23, minute: 10 }) // 서머타임(5/5~) 전;
   assert.equal(a.utcOffset, 8.5);
   assert.equal(a.pillars.hour.branch, 0); // 23:10 그대로 子시
 });

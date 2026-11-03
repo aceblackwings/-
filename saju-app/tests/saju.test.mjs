@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { computeSaju, dayPillarIndex, sunLongitude, julianDay, pillarLabel, tenGod, elementScores, analyzeStrength, analyzeJohu } from '../js/saju.js';
+import { computeSaju, dayPillarIndex, sunLongitude, julianDay, pillarLabel, tenGod, elementScores, analyzeStrength, analyzeJohu, HIDDEN_DAYS, strengthScore, levelOf, STRENGTH_LEVELS, inKoreaDst, KOREA_DST, BIRTH_CITIES, cityLon, deltaT } from '../js/saju.js';
 
 let pass = 0;
 const t = (name, fn) => { fn(); pass++; console.log('ok -', name); };
@@ -99,6 +99,82 @@ t('computeSaju: 한여름 출생 결과에 조후 정보·근거 문장 포함',
   assert.ok(['urgent', 'mild', 'none'].includes(s.johu.level));
   assert.ok(s.johu.text.length > 10);
   assert.ok(s.yongsinBasis);
+});
+// ---- 지장간 오행·강약 7단계 (v0.37) ----
+t('지장간 월률분야: 지지마다 30일, 寅 = 戊7·丙7·甲16', () => {
+  HIDDEN_DAYS.forEach((b) => assert.equal(b.reduce((a, [, d]) => a + d, 0), 30));
+  assert.deepEqual(HIDDEN_DAYS[2], [[4, 7], [2, 7], [0, 16]]);
+});
+t('오행 비율: 지장간을 나눠 셈 — 寅월이면 화·토도 조금 들어감, 예전 방식(basic)은 목만', () => {
+  const P = { year: { stem: 0, branch: 2 }, month: { stem: 0, branch: 2 }, day: { stem: 0, branch: 2 }, hour: null };
+  const now = elementScores(P); const old = elementScores(P, { basic: true });
+  assert.equal(old[1], 0); assert.ok(now[1] > 0 && now[2] > 0, now.join());
+  assert.equal(now.reduce((a, b) => a + b), 100);
+});
+t('강약 7단계: 경계값과 득령·통근 근거', () => {
+  assert.equal(STRENGTH_LEVELS.length, 7);
+  assert.deepEqual([10, 22, 40, 45, 55, 60, 70, 90].map(levelOf), ['극신약', '신약', '중화신약', '중화', '중화', '중화신강', '신강', '극신강']);
+  // 甲일 寅월(득령) 寅일(득지) → 득령·득지·통근
+  const P = { year: { stem: 6, branch: 8 }, month: { stem: 2, branch: 2 }, day: { stem: 0, branch: 2 }, hour: null };
+  const r = strengthScore(0, elementScores(P), P);
+  assert.deepEqual(r.factors.slice(0, 3), ['득령', '득지', '통근']);
+  const s = computeSaju({ year: 1990, month: 3, day: 1, hour: 9, minute: 0 });
+  assert.ok(STRENGTH_LEVELS.includes(s.strengthLevel)); assert.ok(['신강', '신약', '중화'].includes(s.strength));
+});
+// ---- 서머타임·출생 지역 (v0.37) ----
+t('서머타임 기간: 1988-05-08 02:00부터 10-09 03:00 전까지, 1957년 여름, 1970년은 없음', () => {
+  assert.equal(KOREA_DST.length, 12);
+  assert.ok(!inKoreaDst(1988, 5, 8, 119)); assert.ok(inKoreaDst(1988, 5, 8, 120)); assert.ok(inKoreaDst(1988, 10, 9, 179)); assert.ok(!inKoreaDst(1988, 10, 9, 180));
+  assert.ok(inKoreaDst(1957, 7, 15, 600)); assert.ok(!inKoreaDst(1970, 7, 15, 600));
+});
+t('서머타임 자동: 1988-07-01 13:40 → 표준시 12:40으로 계산, off면 그대로', () => {
+  const a = computeSaju({ year: 1988, month: 7, day: 1, hour: 13, minute: 40 });
+  const b = computeSaju({ year: 1988, month: 7, day: 1, hour: 12, minute: 40, dst: 'off' });
+  const c = computeSaju({ year: 1988, month: 7, day: 1, hour: 13, minute: 40, dst: 'off' });
+  assert.ok(a.dstApplied); assert.deepEqual(a.pillars, b.pillars);
+  assert.equal(a.input.hour, 13, '원래 입력은 그대로 보관');
+  assert.notDeepEqual(a.pillars.hour, c.pillars.hour); // 13:40-32분 → 未시 / 12:40-32분 → 午시
+});
+t('서머타임 자정 넘김: 1988-07-02 00:30 → 전날 23:30', () => {
+  const a = computeSaju({ year: 1988, month: 7, day: 2, hour: 0, minute: 30 });
+  const b = computeSaju({ year: 1988, month: 7, day: 1, hour: 23, minute: 30, dst: 'off' });
+  assert.deepEqual(a.pillars, b.pillars);
+});
+t('출생 지역: 기본 127.5°는 예전과 같은 -30분, 부산은 -24분, 서울은 -32분', () => {
+  assert.equal(cityLon(''), 127.5); assert.equal(cityLon('busan'), 129.08);
+  assert.equal(computeSaju({ year: 2000, month: 1, day: 1, hour: 10, minute: 0 }).lonMinutes, 30);
+  assert.equal(computeSaju({ year: 2000, month: 1, day: 1, hour: 10, minute: 0, birthLon: cityLon('busan') }).lonMinutes, 24);
+  assert.equal(computeSaju({ year: 2000, month: 1, day: 1, hour: 10, minute: 0, birthLon: cityLon('seoul') }).lonMinutes, 32);
+  // 경계: 11:28 출생 → 부산 11:04(午시), 서울 10:56(巳시)
+  const bu = computeSaju({ year: 2000, month: 1, day: 1, hour: 11, minute: 28, birthLon: cityLon('busan') });
+  const se = computeSaju({ year: 2000, month: 1, day: 1, hour: 11, minute: 28, birthLon: cityLon('seoul') });
+  assert.equal(bu.pillars.hour.branch, 6); assert.equal(se.pillars.hour.branch, 5);
+  assert.ok(BIRTH_CITIES.every(([, , lon]) => lon > 124 && lon < 131));
+});
+// ---- 절기 정밀도 (v0.39) ----
+t('절기 시각: 실제 천문 시각과 1분 안쪽 (입춘·춘분·하지·추분·동지 9건), ΔT 범위', () => {
+  const cases = [[2024, 2, 4, 8, 27, 315], [2025, 2, 3, 14, 10, 315], [2023, 2, 4, 2, 42, 315], [2024, 3, 20, 3, 6, 0], [2024, 6, 20, 20, 51, 90], [2022, 12, 21, 21, 48, 270], [2000, 3, 20, 7, 35, 0], [2010, 6, 21, 11, 28, 90], [1990, 9, 23, 6, 56, 180]];
+  for (const [y, m, d, hh, mm, tg] of cases) {
+    let lo = julianDay(y, m, d, 0) - 2; let hi = lo + 4;
+    const g = (jd) => ((sunLongitude(jd) - tg + 540) % 360) - 180;
+    for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; if (g(mid) < 0) lo = mid; else hi = mid; }
+    const err = Math.abs(lo - julianDay(y, m, d, hh + mm / 60)) * 1440;
+    assert.ok(err < 1.2, `${y}-${m}-${d} 오차 ${err.toFixed(2)}분`);
+  }
+  assert.ok(deltaT(1950) > 25 && deltaT(1950) < 32 && deltaT(2020) > 65 && deltaT(2020) < 75);
+});
+// ---- 종격·통관·병약 (v0.39) ----
+t('종격: 종왕격이면 용신 = 내 오행, 통관이면 다리 오행이 희신, 병약은 가장 넘치는 기운', () => {
+  let sp = null; let tg = null; let by = null;
+  for (let y = 1950; y < 2010 && !(sp && tg && by); y++) for (let m = 1; m <= 12; m++) for (const d of [5, 20]) for (const h of [3, 15]) {
+    const s = computeSaju({ year: y, month: m, day: d, hour: h, minute: 0 });
+    if (!sp && s.special) sp = s; if (!tg && s.tonggwan) tg = s; if (!by && s.byeongyak) by = s;
+  }
+  assert.ok(sp && tg && by);
+  assert.equal(sp.special.name, '종왕격'); assert.equal(sp.yongsin, Math.floor(sp.dayMaster / 2)); assert.ok(sp.yongsinBasis.startsWith('종격'));
+  const { a, b, el } = tg.tonggwan; assert.equal((a + 2) % 5, b); assert.equal((a + 1) % 5, el);
+  assert.ok(tg.heesin === el || tg.yongsin === el || tg.yongsinBasis === '조후 우선');
+  assert.ok(by.elements[by.byeongyak.byeong] >= 40); assert.equal((by.byeongyak.yak + 2) % 5, by.byeongyak.byeong);
 });
 function BRANCHES_OF(s) { return s.pillars.month.branch; }
 console.log(`\n${pass} passed`);
