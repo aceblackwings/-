@@ -2769,6 +2769,14 @@ function chatContext() {
     concern: info.concern.label, journeyStep: journeyStep(info.concern.key, Math.min(j.done, JOURNEY_DAYS - 1), s.yongsin).title,
     daewoon: d ? `${pillarLabelFull(d)} (${d.startAge}~${d.endAge}세)` : null, luckIndex: luckNow().index,
     memory: memoryLines(loadMemory(), state.fortune.dateKey),
+    // B5 수호신이 아는 성장 상태(부적·개운·쪽지)
+    growth: (() => {
+      const kp = kaiunNow(); const ky = kaiunFor(kp, 'year'); const km = kaiunFor(kp, 'month');
+      const { eq, unlock } = heroOptions(); const charms = eq.charms.slice(0, unlock.charmSlots).filter(Boolean);
+      const st = load(NOTE_KEY, {}); const wk = weekStamps(st, timelineData().week);
+      const best = Object.entries(km.fields).reduce((a, b) => (b[1] > a[1] ? b : a));
+      return { charms: charms.map((r) => labelForRec(r)), year: ky.total, month: km.total, bestField: best[1] ? best[0] : null, bestPlus: best[1], stamps: wk, noteToday: !!st[state.fortune.dateKey]?.done, person: personNow().headline };
+    })(),
   };
 }
 
