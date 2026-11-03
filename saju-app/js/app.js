@@ -34,6 +34,7 @@ import { analyzeGyeok, GYEOK_PROFILE, strengthMission } from './gyeokguk.js';
 import { buildBooklet, todayLetter } from './booklet.js';
 import { natalRelations } from './relations.js';
 import { buildIlju } from './ilju.js';
+import { retroQuestions, retroSummary, RETRO_ANSWERS } from './retro.js';
 import { kaiunPower, kaiunFor, kaiunLine, fieldKaiunSentence, withKaiun } from './kaiun.js';
 import { tenGodProfile, pillarReadings } from './natal.js';
 import { growEquipped, fillOf, replaceCharm, pairType, fiveDone, elementsOwned, setUnlocked, boostRarity, offerUnlocked, offerValue, offerable, removeOffered, equipLine, charmKey, GROW_FULL, RARITY_KO as CC_RARITY_KO, TYPE_KO, OFFER_UNLOCK } from './charmcare.js';
@@ -90,6 +91,7 @@ const CHARTS_KEY = 'unmyeong2099.charts';
 const FW_KEY = 'unmyeong2099.firstweek';
 const EASY_KEY = 'unmyeong2099.easy'; // v0.31 쉬운 모드
 const NOTE_KEY = 'unmyeong2099.note'; // 수호신의 쪽지
+const RETRO_KEY = 'unmyeong2099.retro'; // v0.41 지난 일 맞히기 답 { 연도: yes|some|no }
 const NOTESTAT_KEY = 'unmyeong2099.notestat'; // 쪽지 누적 도장 { total }
 const CHARMGROW_KEY = 'unmyeong2099.charmgrow'; // v0.38 장착 부적 기운 { 부적 키: 칸 }
 const FIVE_KEY = 'unmyeong2099.five'; // 오행 완성 칭호를 받았는지
@@ -555,6 +557,7 @@ function renderSaju() {
       <p class="muted" style="margin-bottom:0">나의 수호 캐릭터: <b>${hero.title}</b> — <a href="#" data-go="hero" style="color:var(--neon)">캐릭터 탭에서 만나 보세요 →</a></p>
     </div>
 
+    ${retroCardHTML()}
     ${iljuCardHTML()}
     ${gyeokCardHTML()}
     ${tenGodCardHTML()}
@@ -583,6 +586,25 @@ function renderSaju() {
   $('[data-panel="saju"]').insertAdjacentHTML('afterbegin', readingCardHTML());
   $$('[data-go]', $('[data-panel="saju"]')).forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); selectTab(b.dataset.go); }));
 }
+
+/** A1 지난 일 맞히기 */
+function retroCardHTML() {
+  const d = timelineData(); const qs = retroQuestions(state.saju, d.dw, state.fortune.date.year);
+  if (!qs.length) return '';
+  const ans = load(RETRO_KEY, {}); const sum = retroSummary(qs, ans);
+  return `<div class="card retro-card" id="retro"><h3>내 사주, 지난 일과 맞을까요? <span class="tag">지난 흐름 확인</span></h3>
+    <p class="muted" style="margin-top:0">사주로 보면 아래 해에 큰 흐름이 들어왔어요. 기억나는 대로 눌러 주세요.</p>
+    ${qs.map((q) => `<div class="rt-q"><p><b>${esc(q.q)}</b><small>${esc(q.why)}</small></p><div class="yday-btns">${RETRO_ANSWERS.map(([k, l]) => `<button type="button" class="${ans[q.year] === k ? 'primary' : 'ghost'}" data-retro="${q.year}:${k}">${l}</button>`).join('')}</div></div>`).join('')}
+    ${sum ? `<p class="rt-sum">🔎 ${esc(sum.text)}</p>` : ''}
+  </div>`;
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-retro]'); if (!b) return;
+  const [y, k] = b.dataset.retro.split(':'); const a = load(RETRO_KEY, {}); const first = !a[y];
+  a[y] = k; save(RETRO_KEY, a);
+  const el = $('#retro'); if (el) { const t = document.createElement('div'); t.innerHTML = retroCardHTML(); el.replaceWith(t.firstElementChild); }
+  if (first) grow((g) => addExp(g, 1));
+});
 
 /** ③ 나의 일주(60일주론) + 공유(모습·한마디만, 생일·간지 없음) */
 function iljuCardHTML() {
