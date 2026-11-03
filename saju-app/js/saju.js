@@ -61,6 +61,36 @@ export function koreaUtcOffset(jdUT) {
   return 9;
 }
 
+// ---------- 서머타임·출생 지역 (v0.37) ----------
+
+/**
+ * 한국 서머타임 기간(IANA 시간대 자료 Asia/Seoul 기준). [시작 연,월,일,분, 끝 연,월,일,분] — 시계(서머타임) 시각, 끝은 포함 안 함
+ * 이 기간 시계 시각은 표준시보다 1시간 빠르므로 계산 전에 1시간을 뺀다
+ */
+export const KOREA_DST = [
+  [1948, 6, 1, 0, 1948, 9, 13, 0], [1949, 4, 3, 0, 1949, 9, 11, 0], [1950, 4, 1, 0, 1950, 9, 10, 0], [1951, 5, 6, 0, 1951, 9, 9, 0],
+  [1955, 5, 5, 0, 1955, 9, 9, 0], [1956, 5, 20, 0, 1956, 9, 30, 0], [1957, 5, 5, 0, 1957, 9, 22, 0], [1958, 5, 4, 0, 1958, 9, 21, 0],
+  [1959, 5, 3, 0, 1959, 9, 20, 0], [1960, 5, 1, 0, 1960, 9, 18, 0], [1987, 5, 10, 120, 1987, 10, 11, 180], [1988, 5, 8, 120, 1988, 10, 9, 180],
+];
+/** 그 시계 시각이 서머타임 기간인지 */
+export function inKoreaDst(y, m, d, mins) {
+  const t = Date.UTC(y, m - 1, d) / 60000 + mins;
+  return KOREA_DST.some(([a, b, c, e, f, g, h, i]) => t >= Date.UTC(a, b - 1, c) / 60000 + e && t < Date.UTC(f, g - 1, h) / 60000 + i);
+}
+
+/** 출생 지역 경도(진태양시 보정용). 고르지 않으면 한국 중앙 127.5° */
+export const BIRTH_CITIES = [
+  ['', '모름 · 한국 중앙(동경 127.5°)', 127.5],
+  ['seoul', '서울', 126.98], ['incheon', '인천', 126.71], ['suwon', '수원·경기 남부', 127.03], ['uijeongbu', '의정부·경기 북부', 127.05],
+  ['chuncheon', '춘천', 127.73], ['gangneung', '강릉·동해', 128.9], ['wonju', '원주', 127.92],
+  ['cheongju', '청주', 127.49], ['chungju', '충주', 127.93], ['daejeon', '대전·세종', 127.38], ['cheonan', '천안·아산', 127.15], ['hongseong', '홍성·서산', 126.66],
+  ['jeonju', '전주', 127.15], ['gunsan', '군산·익산', 126.74], ['gwangju', '광주', 126.85], ['mokpo', '목포', 126.39], ['suncheon', '순천·여수', 127.49],
+  ['daegu', '대구', 128.6], ['andong', '안동', 128.73], ['pohang', '포항·경주', 129.36], ['gumi', '구미·김천', 128.34],
+  ['busan', '부산', 129.08], ['ulsan', '울산', 129.31], ['changwon', '창원·마산', 128.68], ['jinju', '진주', 128.11],
+  ['jeju', '제주', 126.53], ['pyongyang', '평양·북한 서부', 125.75], ['hamhung', '함흥·북한 동부', 127.54],
+];
+export const cityLon = (key) => (BIRTH_CITIES.find((c) => c[0] === key) || BIRTH_CITIES[0])[2];
+
 // ---------- 날짜 보조 ----------
 
 function addDays(y, m, d, n) {
@@ -89,12 +119,21 @@ export function pillarFromIndex(idx60) {
  */
 export function computeSaju(input, opts = {}) {
   const {
-    year, month, day,
-    hour = 12, minute = 0,
     timeKnown = true,
     longitudeCorrection = true,
     zasiMode = 'early',
+    birthLon = 127.5, // 출생 지역 경도(v0.37). 기본은 한국 중앙
+    dst = 'auto', // 서머타임: 'auto' = 기간이면 1시간 빼기, 'off' = 시계 시각 그대로(이미 빼서 입력한 경우)
   } = input;
+  let { year, month, day, hour = 12, minute = 0 } = input;
+  // 0) 서머타임 기간에 태어났으면 시계 시각에서 1시간을 빼 표준시로
+  let dstApplied = false;
+  if (timeKnown && dst !== 'off' && inKoreaDst(year, month, day, hour * 60 + minute)) {
+    dstApplied = true;
+    let mm = hour * 60 + minute - 60;
+    if (mm < 0) { mm += 1440; [year, month, day] = addDays(year, month, day, -1); }
+    hour = Math.floor(mm / 60); minute = mm % 60;
+  }
 
   // 1) 절기 판정: 실제 시각(KST → UT)으로 태양 황경을 구한다
   const h = timeKnown ? hour + minute / 60 : 12;
@@ -118,8 +157,8 @@ export function computeSaju(input, opts = {}) {
   let dayIdx;
 
   if (timeKnown) {
-    // 한국 중앙(동경 127.5°)의 태양시 = UTC+8:30. 표준시가 UTC+9인 시기에는 30분을 뺀다
-    let mins = hour * 60 + minute - (longitudeCorrection ? Math.round((utcOffset - 8.5) * 60) : 0);
+    // 진태양시 근사: 표준시 자오선(UTC+9 = 135°)과 출생지 경도 차이 × 4분. 기본 127.5°면 예전처럼 30분
+    let mins = hour * 60 + minute - (longitudeCorrection ? Math.round((utcOffset * 15 - birthLon) * 4) : 0);
     if (mins < 0) { mins += 1440; [dy, dm, dd] = addDays(dy, dm, dd, -1); }
     const isLateZi = mins >= 23 * 60;
     if (isLateZi && zasiMode === 'early') [dy, dm, dd] = addDays(dy, dm, dd, 1);
@@ -149,7 +188,9 @@ export function computeSaju(input, opts = {}) {
   const strength = analyzeStrength(dayPillar.stem, elements, monthBranch, chartStems, { ...opts, pillars });
 
   return {
-    input: { year, month, day, hour, minute, timeKnown, longitudeCorrection, zasiMode },
+    input: { year: input.year, month: input.month, day: input.day, hour: input.hour ?? 12, minute: input.minute ?? 0, timeKnown, longitudeCorrection, zasiMode, birthLon, dst },
+    dstApplied,
+    lonMinutes: timeKnown && longitudeCorrection ? Math.round((utcOffset * 15 - birthLon) * 4) : 0,
     utcOffset,
     sajuYear,
     solarLongitude: lambda,

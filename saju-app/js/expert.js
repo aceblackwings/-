@@ -97,11 +97,13 @@ export function calcBasis(saju) {
   const i = saju.input;
   const tz = saju.utcOffset;
   const tzText = `UTC+${Math.floor(tz)}${tz % 1 ? `:${String(Math.round((tz % 1) * 60)).padStart(2, '0')}` : ''}`;
-  const lonMin = i.longitudeCorrection && i.timeKnown ? Math.round((tz - 8.5) * 60) : 0;
+  const lonMin = i.longitudeCorrection && i.timeKnown ? (saju.lonMinutes ?? Math.round((tz - 8.5) * 60)) : 0;
+  const lon = i.birthLon ?? 127.5;
   return [
     { k: '태어난 시각의 표준시', v: `${tzText}${tz === 8.5 ? (i.year < 1912 ? ' (1911년 이전 표준시)' : ' (1954~1961 표준시)') : ''}` },
-    ...(dstLikely(i.year, i.month) ? [{ k: '서머타임', v: '이 무렵 한국은 여름에 서머타임(시계 +1시간)을 쓴 해예요. 앱은 자동으로 빼지 않으니, 서머타임 기간에 태어났다면 시계 시각에서 1시간을 뺀 시간으로 입력해 주세요.' }] : []),
-    { k: '경도 보정', v: !i.timeKnown ? '시간 모름 — 시주 없이 계산' : lonMin ? `동경 127.5° 기준 ${lonMin}분 빼서 계산 (진태양시 근사)` : '보정 안 함 (시계 시각 그대로)' },
+    ...(saju.dstApplied ? [{ k: '서머타임', v: '서머타임 기간에 태어나 시계 시각에서 1시간을 자동으로 빼고 계산했어요. 이미 빼서 입력하셨다면 정보 수정 > 고급 설정에서 「서머타임 자동 반영」을 꺼 주세요.' }]
+      : dstLikely(i.year, i.month) && i.dst === 'off' ? [{ k: '서머타임', v: '서머타임 자동 반영을 꺼 두셨어요(입력한 시각을 표준시로 계산).' }] : []),
+    { k: '경도 보정', v: !i.timeKnown ? '시간 모름 — 시주 없이 계산' : lonMin ? `출생지 동경 ${lon}° 기준 ${lonMin}분 빼서 계산 (진태양시 근사)` : '보정 안 함 (시계 시각 그대로)' },
     { k: '자시(23~01시)', v: i.zasiMode === 'late' ? '야자시: 0시에 날짜가 바뀜' : '23시에 날짜가 바뀜 (전통)' },
     { k: '연주·월주 기준', v: `태어난 순간의 태양 황경 ${saju.solarLongitude.toFixed(2)}° — 입춘(315°)부터 새해, 절입(30°마다)부터 새 달` },
     { k: '사주 연도', v: `${saju.sajuYear}년 (입춘 기준)` },

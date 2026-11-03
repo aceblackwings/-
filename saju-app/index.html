@@ -84,7 +84,11 @@
           </div>
           <details class="advanced">
           <summary>고급 설정</summary>
-          <label class="check"><input name="lonCorr" type="checkbox" checked> 한국 경도 보정 (-30분, 진태양시 근사)</label>
+          <label>태어난 지역 (진태양시 보정)
+            <select name="city"></select>
+          </label>
+          <label class="check"><input name="lonCorr" type="checkbox" checked> 경도 보정 (출생지 경도로 진태양시 근사, 모르면 -30분)</label>
+          <label class="check"><input name="dstAuto" type="checkbox" checked> 서머타임 자동 반영 (1948~1960·1987~1988년 여름 출생이면 1시간 빼기)</label>
           <label>자시(23~01시) 처리
             <select name="zasi">
               <option value="early">23시에 날짜 변경 (전통)</option>

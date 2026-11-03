@@ -1,5 +1,5 @@
 import {
-  computeSaju, tenGod, seededRandom, STEMS, STEMS_KO, BRANCHES, BRANCHES_KO, STEM_ELEMENT, BRANCH_ELEMENT,
+  computeSaju, tenGod, seededRandom, BIRTH_CITIES, cityLon, STEMS, STEMS_KO, BRANCHES, BRANCHES_KO, STEM_ELEMENT, BRANCH_ELEMENT,
   BRANCH_MAIN_STEM, ELEMENT_KO, ELEMENT_HANJA, pillarLabel, pillarLabelKo,
 } from './saju.js';
 import { MOODS, LEVELS, pickUmbrella, missionById, habitDay, setMood, pickLevel, completeHabit, setAfter, weekDone, needsCare, habitStats } from './habit.js';
@@ -146,6 +146,8 @@ function profileToInput(p) {
     timeKnown: !p.timeUnknown,
     longitudeCorrection: p.lonCorr,
     zasiMode: p.zasi,
+    birthLon: cityLon(p.city || ''),
+    dst: p.dstAuto === false ? 'off' : 'auto',
   };
 }
 
@@ -191,6 +193,7 @@ function initForm() {
   const leapRow = $('.leap-row');
 
   for (let m = 1; m <= 12; m++) form.month.add(new Option(`${m}월`, m));
+  BIRTH_CITIES.forEach(([k, label, lon]) => form.city.add(new Option(k ? `${label} (동경 ${lon}°)` : label, k)));
   $('#concern-grid').innerHTML = CONCERNS.map((c) => `<label><input type="radio" name="concern" value="${c.key}"><span><i>${CONCERN_ICONS[c.key]}</i>${c.label}</span></label>`).join('');
   const goStep = (n) => {
     $$('.step', form).forEach((st) => st.classList.toggle('hidden', st.dataset.step !== String(n)));
@@ -261,6 +264,8 @@ function initForm() {
     form.timeUnknown.checked = !!saved.timeUnknown;
     form.lonCorr.checked = saved.lonCorr !== false;
     form.zasi.value = saved.zasi || 'early';
+    form.city.value = saved.city || '';
+    form.dstAuto.checked = saved.dstAuto !== false;
     if (saved.gender) form.gender.value = saved.gender;
     if (saved.concern) form.concern.value = saved.concern;
   }
@@ -288,6 +293,8 @@ function initForm() {
       timeUnknown: form.timeUnknown.checked,
       lonCorr: form.lonCorr.checked,
       zasi: form.zasi.value,
+      city: form.city.value,
+      dstAuto: form.dstAuto.checked,
       gender: form.gender.value,
       concern: form.concern.value,
     };
@@ -1436,7 +1443,7 @@ function expertCardHTML() {
   const dwHTML = `<div class="ex-block"><h5>🏔️ 대운표 ${dw ? `<small>${dw.forward ? '순행' : '역행'} · ${dw.startAge}세 시작</small>` : ''}</h5>${dw ? `<div class="ex-dw">${dw.pillars.map((p) => `<span><small>${p.startAge}세</small><b>${STEMS[p.stem]}${BRANCHES[p.branch]}</b><i style="color:${scoreColor(p.score)}">${p.score}</i><small>${tenGod(s.dayMaster, p.stem)}</small></span>`).join('')}</div>` : '<p class="muted">성별을 넣으면 대운표가 나와요.</p>'}</div>`;
   const p = sub.profile;
   const basis = `<div class="ex-block"><h5>⚙️ 계산 기준</h5><ul class="ex-basis">${calcBasis(s).map((x) => `<li><b>${x.k}</b><span>${x.v}</span></li>`).join('')}</ul>
-    <div class="ex-grid"><label class="check"><input type="checkbox" data-ex-lon ${p.lonCorr !== false ? 'checked' : ''} ${p.timeUnknown ? 'disabled' : ''}> 경도 보정(-30분)</label>
+    <div class="ex-grid"><label class="check"><input type="checkbox" data-ex-lon ${p.lonCorr !== false ? 'checked' : ''} ${p.timeUnknown ? 'disabled' : ''}> 경도 보정(출생지 기준)</label>
       <label>자시 처리<select data-ex-zasi><option value="early" ${p.zasi !== 'late' ? 'selected' : ''}>23시에 날짜 변경</option><option value="late" ${p.zasi === 'late' ? 'selected' : ''}>야자시(0시)</option></select></label></div>
     <p class="muted" style="font-size:0.76rem;margin:4px 0 0">바꾸면 ${sub.id === 'me' ? '오늘 운세·대운까지 모든 화면이' : '이 명식이'} 바로 다시 계산돼요.</p></div>`;
   const i = s.input;

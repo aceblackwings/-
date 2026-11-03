@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { computeSaju, dayPillarIndex, sunLongitude, julianDay, pillarLabel, tenGod, elementScores, analyzeStrength, analyzeJohu, HIDDEN_DAYS, strengthScore, levelOf, STRENGTH_LEVELS } from '../js/saju.js';
+import { computeSaju, dayPillarIndex, sunLongitude, julianDay, pillarLabel, tenGod, elementScores, analyzeStrength, analyzeJohu, HIDDEN_DAYS, strengthScore, levelOf, STRENGTH_LEVELS, inKoreaDst, KOREA_DST, BIRTH_CITIES, cityLon } from '../js/saju.js';
 
 let pass = 0;
 const t = (name, fn) => { fn(); pass++; console.log('ok -', name); };
@@ -120,6 +120,36 @@ t('강약 7단계: 경계값과 득령·통근 근거', () => {
   assert.deepEqual(r.factors.slice(0, 3), ['득령', '득지', '통근']);
   const s = computeSaju({ year: 1990, month: 3, day: 1, hour: 9, minute: 0 });
   assert.ok(STRENGTH_LEVELS.includes(s.strengthLevel)); assert.ok(['신강', '신약', '중화'].includes(s.strength));
+});
+// ---- 서머타임·출생 지역 (v0.37) ----
+t('서머타임 기간: 1988-05-08 02:00부터 10-09 03:00 전까지, 1957년 여름, 1970년은 없음', () => {
+  assert.equal(KOREA_DST.length, 12);
+  assert.ok(!inKoreaDst(1988, 5, 8, 119)); assert.ok(inKoreaDst(1988, 5, 8, 120)); assert.ok(inKoreaDst(1988, 10, 9, 179)); assert.ok(!inKoreaDst(1988, 10, 9, 180));
+  assert.ok(inKoreaDst(1957, 7, 15, 600)); assert.ok(!inKoreaDst(1970, 7, 15, 600));
+});
+t('서머타임 자동: 1988-07-01 13:40 → 표준시 12:40으로 계산, off면 그대로', () => {
+  const a = computeSaju({ year: 1988, month: 7, day: 1, hour: 13, minute: 40 });
+  const b = computeSaju({ year: 1988, month: 7, day: 1, hour: 12, minute: 40, dst: 'off' });
+  const c = computeSaju({ year: 1988, month: 7, day: 1, hour: 13, minute: 40, dst: 'off' });
+  assert.ok(a.dstApplied); assert.deepEqual(a.pillars, b.pillars);
+  assert.equal(a.input.hour, 13, '원래 입력은 그대로 보관');
+  assert.notDeepEqual(a.pillars.hour, c.pillars.hour); // 13:40-32분 → 未시 / 12:40-32분 → 午시
+});
+t('서머타임 자정 넘김: 1988-07-02 00:30 → 전날 23:30', () => {
+  const a = computeSaju({ year: 1988, month: 7, day: 2, hour: 0, minute: 30 });
+  const b = computeSaju({ year: 1988, month: 7, day: 1, hour: 23, minute: 30, dst: 'off' });
+  assert.deepEqual(a.pillars, b.pillars);
+});
+t('출생 지역: 기본 127.5°는 예전과 같은 -30분, 부산은 -24분, 서울은 -32분', () => {
+  assert.equal(cityLon(''), 127.5); assert.equal(cityLon('busan'), 129.08);
+  assert.equal(computeSaju({ year: 2000, month: 1, day: 1, hour: 10, minute: 0 }).lonMinutes, 30);
+  assert.equal(computeSaju({ year: 2000, month: 1, day: 1, hour: 10, minute: 0, birthLon: cityLon('busan') }).lonMinutes, 24);
+  assert.equal(computeSaju({ year: 2000, month: 1, day: 1, hour: 10, minute: 0, birthLon: cityLon('seoul') }).lonMinutes, 32);
+  // 경계: 11:28 출생 → 부산 11:04(午시), 서울 10:56(巳시)
+  const bu = computeSaju({ year: 2000, month: 1, day: 1, hour: 11, minute: 28, birthLon: cityLon('busan') });
+  const se = computeSaju({ year: 2000, month: 1, day: 1, hour: 11, minute: 28, birthLon: cityLon('seoul') });
+  assert.equal(bu.pillars.hour.branch, 6); assert.equal(se.pillars.hour.branch, 5);
+  assert.ok(BIRTH_CITIES.every(([, , lon]) => lon > 124 && lon < 131));
 });
 function BRANCHES_OF(s) { return s.pillars.month.branch; }
 console.log(`\n${pass} passed`);
