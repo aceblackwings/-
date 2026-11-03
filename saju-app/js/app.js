@@ -31,7 +31,7 @@ import { layersAt, monthPeriod, explainParts, TEN_GOD_MOD, weekOf, yearOf, month
 import { orderedMenu, buildAnswer, concernAsk, ASK_MENU } from './ask.js';
 import { buildReading, FIELD_LABEL, closingLine, GOD_READING } from './reading.js';
 import { analyzeGyeok, GYEOK_PROFILE, strengthMission } from './gyeokguk.js';
-import { buildBooklet } from './booklet.js';
+import { buildBooklet, todayLetter } from './booklet.js';
 import { preloadCharImages, itemImage } from './assets.js';
 /** 계절 한정 소품 그림 (없으면 빈칸) */
 const itemThumb = (key, cls = 'item-thumb') => { const u = itemImage(key); return u ? `<img class="${cls}" src="${u}" alt="" loading="lazy">` : ''; };
@@ -380,6 +380,7 @@ function renderAsk() {
   if (state.askOpen) { panel.innerHTML = askAnswerHTML(state.askOpen); return; }
   const menu = orderedMenu(state.profile.concern);
   panel.innerHTML = `
+    <div class="card flow-card"><h3>📅 나의 흐름 <small>이번 주 · 이달 · 올해 · 10년</small></h3>${timelineHTML()}</div>
     <div class="card ask-menu">
       <h3>🔮 무엇이 궁금하세요?</h3>
       <p class="muted" style="margin:-4px 0 12px;font-size:0.84rem">궁금한 것을 누르면 ${characterInfo(state.saju, state.profile).zodiac.name} 수호신이 내 사주로 바로 풀어 드려요.</p>
@@ -769,13 +770,12 @@ function ensureUnlocked(sec) {
 }
 
 /** 홈에 보이는 타임라인 순서 (잠긴 층은 뺌) */
-function tlVisible() {
-  const d = timelineData();
-  return [...(d.next ? ['next'] : []), ...TL_ORDER.filter((k) => k === 'today' || k === 'month' || k === 'year' || unlocked(k))];
-}
+// 첫 화면 개편(2026-11-03): 흐름(이번 주·이달·올해·대운·타고난 나)은 「운세 보기」 탭으로. 오늘은 홈의 한 문단
+const FLOW_KEYS = ['week', 'month', 'year', 'daewoon', 'natal'];
+function tlVisible() { return FLOW_KEYS; }
 
 function tlCard(k, summary, body) {
-  const open = (state.tlOpen || new Set(['today'])).has(k);
+  const open = (state.tlOpen || new Set(['week'])).has(k);
   const m = TL_META[k];
   const vis = tlVisible().filter((x) => x !== 'next');
   const i = vis.indexOf(k);
@@ -981,10 +981,9 @@ function timelineHTML() {
   const R = { next: () => tlNext(d), today: tlToday, week: () => tlWeek(d), month: () => tlMonth(d), year: () => tlYear(d), daewoon: () => tlDaewoon(d), natal: tlNatal };
   const vis = tlVisible();
   return `<div class="timeline" id="timeline">
-    ${vis.filter((k) => k !== 'next').map((k) => R[k]()).join('')}
+    ${vis.map((k) => R[k]()).join('')}
     <p class="tl-hint">카드를 누르면 펼쳐져요 · 모든 점수는 같은 계산으로 이어져요</p>
-  </div>
-  ${missionCardHTML()}`;
+  </div>`;
 }
 
 /** 「오늘의 미션 3가지」(v0.27): 이달 운세에서 이어지는 하루 퀘스트 — 이달의 실천 · 돌아보기 · 새 기능 열기 */
@@ -1136,12 +1135,16 @@ function completeUmbrella() {
 
 /** 홈 안의 구역으로 가기 ('home:next' · 'home:week' · 'home:.css선택자') */
 function goHomeTarget(t) {
-  const k = t.slice(5);
-  if (easyOn()) state.easyMore = true; // 쉬운 홈에는 타임라인이 없으니 「더 보기」로
-  if (/^[a-z]+$/.test(k)) state.tlOpen = new Set([k, ...(k === 'next' ? ['today'] : [])]);
-  renderToday();
+  let k = t.slice(5);
+  if (FLOW_KEYS.includes(k)) { // 흐름 카드는 「운세 보기」 탭에 있음
+    state.tlOpen = new Set([k]); state.askOpen = null; selectTab('ask');
+    setTimeout(() => $(`[data-tl="${k}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+    return;
+  }
+  if (k === 'next' || k === 'today') k = k === 'next' ? '#booklet' : '#today-card';
+  renderToday(); selectTab('today');
   setTimeout(() => {
-    const el = /^[a-z]+$/.test(k) ? $(`[data-tl="${k}"]`) : $(k);
+    const el = $(k);
     (el?.closest('.card, .tl-card') || el)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, 40);
 }
@@ -1159,7 +1162,7 @@ document.addEventListener('click', (e) => {
   const a = m.action;
   dmDone(key, a.type === 'guide' ? a.key : a.type === 'tab' ? a.tab : undefined);
   if (a.type === 'open-month') { goHomeTarget('home:month'); return; }
-  if (a.type === 'why') { if (easyOn()) state.easyMore = true; renderToday(); setTimeout(() => { const w = $('[data-tl="today"] details.why'); if (w) { w.open = true; w.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }, 40); return; }
+  if (a.type === 'why') { renderToday(); setTimeout(() => { const w = $('#today-card details.why'); if (w) { w.open = true; w.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }, 40); return; }
   if (a.type === 'guide') finishGuide(a.key);
   const go = a.type === 'guide' ? a.go : a.tab;
   if (go.startsWith('home:')) { goHomeTarget(go); return; }
@@ -1629,7 +1632,6 @@ function applyEasyClass() {
 function setEasyMode(on, by = 'self', quiet = false) {
   const dk = state.fortune?.dateKey || todayKeyNow();
   save(EASY_KEY, setEasy(loadEasy(), on, dk, by));
-  state.easyMore = false;
   applyEasyClass();
   if (state.saju) {
     setupPlainTerms();
@@ -1648,24 +1650,6 @@ function easySuggestHTML() {
   if (!suggestEasy(birth, state.fortune.date, loadEasy())) return '';
   return `<div class="card easy-suggest" id="easy-suggest"><b>가+ 글씨를 크게 볼까요?</b><p>글씨를 크게, 어려운 사주 말은 쉬운 말로 바꿔 보여 드려요. 언제든 위의 「가−」로 되돌릴 수 있어요.</p>
     <div class="yday-btns"><button type="button" class="primary" data-easy-suggest="on">크게 보기</button><button type="button" class="ghost" data-easy-suggest="no">괜찮아요</button></div></div>`;
-}
-
-/** 쉬운 홈 ① 오늘: 마음 날씨 → 큰 점수 + 한 줄 → 오늘의 우산 */
-function easyTodayHTML() {
-  const f = state.fortune;
-  return `<section class="card easy-today" id="easy-today">
-    <small class="easy-date">${f.date.month}월 ${f.date.day}일 ${dowOf(f.date)}요일 · 오늘</small>
-    ${moodRowHTML()}
-    <div class="easy-score"><b style="color:${scoreColor(f.scores.total)}">${f.scores.total}<small>점</small></b><p>${toneWord(f.scores.total)} 하루예요</p></div>
-    <p class="tl-lead">${f.info.desc}</p>
-    ${umbrellaHTML()}
-  </section>`;
-}
-
-function easyHomeHTML() {
-  return `${easyTodayHTML()}
-    ${missionCardHTML()}
-    <div class="card easy-more"><b>📅 더 넓게 보기</b><p>이번 주, 이달, 올해 흐름도 볼 수 있어요.</p><button type="button" class="primary" data-easy-more="1">이번 주 · 이달 · 올해 보기</button></div>`;
 }
 
 /** 내 수호신 > 쉬운 모드 설정 · 부모님·아이 폰에 켜 주기 링크 */
@@ -1691,8 +1675,6 @@ document.addEventListener('click', (e) => {
   const sg = e.target.closest('[data-easy-suggest]');
   if (sg) { if (sg.dataset.easySuggest === 'on') setEasyMode(true); else { save(EASY_KEY, dismissEasy(loadEasy())); toast('알겠어요. 위의 「가+」로 언제든 켤 수 있어요'); renderToday(); } return; }
   if (e.target.closest('#btn-easy') || e.target.closest('[data-easy-toggle]')) { setEasyMode(!easyOn()); return; }
-  const mo = e.target.closest('[data-easy-more]');
-  if (mo) { state.easyMore = mo.dataset.easyMore === '1'; renderToday(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   const cp = e.target.closest('[data-easy-copy]');
   if (cp) {
     const url = cp.dataset.easyCopy;
@@ -1725,7 +1707,7 @@ function handleEasyLink() {
   box.addEventListener('click', (ev) => {
     if (ev.target.closest('[data-link-yes]')) {
       save(EASY_KEY, acceptLink(loadEasy(), link, state.fortune?.dateKey || todayKeyNow()));
-      box.remove(); clean(); state.easyMore = false; applyEasyClass();
+      box.remove(); clean(); applyEasyClass();
       if (state.saju) { setupPlainTerms(); renderAll(); selectTab('today'); }
       toast('가+ 쉬운 모드를 켰어요');
       return;
@@ -1734,23 +1716,53 @@ function handleEasyLink() {
   });
 }
 
+/** 여러 날 들어와 익숙해졌는지 (기록된 날 수). 3일째부터 오늘 할 일(미션)·기능 구역을 보여 줌 */
+const FAMILIAR_DAYS = 3;
+const visitDays = () => Object.keys(loadRecords().days || {}).length;
+const familiar = () => visitDays() >= FAMILIAR_DAYS;
+
+/** 오늘 운세 한 문단 + 근거 + 앱 쓰는 법 한 줄 */
+function todayCardHTML() {
+  const f = state.fortune; const z = characterInfo(state.saju, state.profile).zodiac;
+  const t = todayLetter(f, { name: state.profile.name, animal: z.name, polite: z.key === 'rooster' });
+  const left = FAMILIAR_DAYS - visitDays();
+  return `<article class="card today-card" id="today-card">
+    <h3>오늘의 운세 <small>${t.head}</small></h3>
+    <div class="td-letter">
+      <small class="td-from">✉️ ${esc(t.from)}</small>
+      ${t.lines.map((l) => `<p>${esc(l)}</p>`).join('')}
+      <p class="td-sign">${esc(t.sign)}</p>
+    </div>
+    <h4 class="td-qh">오늘의 세 가지 질문</h4>
+    <dl class="td-qa">${t.qa.map((x) => `<dt>Q. ${esc(x.q)}</dt><dd>${esc(x.a)}</dd>`).join('')}</dl>
+    <p class="td-why">${esc(t.why)}</p>
+    ${whyTodayHTML(f)}
+  </article>
+  <details class="card howto" id="howto"${familiar() ? '' : ' open'}>
+    <summary>처음이신가요? <b>앱 쓰는 법</b></summary>
+    <ol>
+      <li><b>맨 위 신년운세</b>에서 한 해를 글로 읽어요. 내 고민 분야가 총운 바로 아래에 있어요.</li>
+      <li><b>🔮 운세 보기</b>에서 이번 주·이달·올해·10년 흐름과 궁금한 질문의 답을 볼 수 있어요.</li>
+      <li><b>💬 상담</b>에서 수호신에게 고민을 편하게 말해 보세요.</li>
+      <li><b>💞 궁합·친구</b>, <b>🐉 내 수호신</b>(기록함·부적)은 천천히 둘러보세요.</li>
+      <li>${left > 0 ? `${left}일 더 들어오시면 「오늘 할 일」을 추천해 드려요.` : '이제 아래에서 「오늘 할 일」을 추천해 드려요.'}</li>
+    </ol>
+  </details>`;
+}
+
 function renderToday() {
   logToday();
-  if (easyOn() && !state.easyMore) {
-    $('[data-panel="today"]').innerHTML = `${easySuggestHTML()}${easyHomeHTML()}`;
-    return;
-  }
-  // 길잡이로 연 구역만 보인다. 모두 열리면 예전과 같은 전체 홈
+  // 첫 화면 = 신년운세 책자 → 오늘 한 문단 → 앱 쓰는 법. 익숙해지면(3일째) 오늘 할 일·기능 구역
   const sections = [
     ['ask', askChipsHTML], ['season', seasonCardHTML], ['festival', festivalCardHTML], ['say', todaySayCard],
     ['todo', todoCardHTML], ['journey', journeyCardHTML], ['daily', dailyCardHTML], ['concern', concernCard],
     ['story', () => storyButton('fortune', '오늘의 운세를 스토리로 공유')],
   ];
   $('[data-panel="today"]').innerHTML = `
-    ${easyOn() ? '<button type="button" class="ghost easy-back" data-easy-more="0">← 쉬운 홈으로</button>' : easySuggestHTML()}
+    ${easySuggestHTML()}
     ${bookletHTML()}
-    ${timelineHTML()}
-    ${sections.filter(([k]) => unlocked(k)).map(([, fn]) => fn()).join('\n')}`;
+    ${todayCardHTML()}
+    ${familiar() ? `${missionCardHTML()}${sections.filter(([k]) => unlocked(k)).map(([, fn]) => fn()).join('\n')}` : ''}`;
 
   $('#btn-daily')?.addEventListener('click', claimDaily);
   $('#btn-journey')?.addEventListener('click', doJourneyStep);

@@ -21,7 +21,7 @@ const ro = (w) => (hasBatchim(w) && (w.charCodeAt(w.length - 1) - 0xac00) % 28 !
 const sentence = (t) => { const x = String(t).trim(); return /[.!?]$/.test(x) ? x : `${x}.`; };
 
 export const FIELD_ORDER = [
-  ['wealth', '재물운'], ['career', '직장·학업운'], ['love', '애정운'], ['health', '건강운'], ['social', '대인운'],
+  ['wealth', '재물운'], ['career', '직장·학업운'], ['love', '애정운'], ['family', '가족운'], ['health', '건강운'], ['social', '대인운'],
 ];
 const FIELD_ACT = {
   wealth: '저축 계획·지출 정리·중요한 계약은 이 달에 맞춰 보세요.',
@@ -30,7 +30,25 @@ const FIELD_ACT = {
   health: '운동 시작·건강검진 예약·생활 습관 바꾸기는 이 달에 해 보세요.',
   social: '모임·오랜만의 연락·도움 부탁은 이 달에 해 보세요.',
 };
-const CONCERN_FIELD = { money: 'wealth', love: 'love', job: 'career', study: 'career', health: 'health', relation: 'social', people: 'social' };
+// 가입 때 고른 고민(character.js CONCERNS) → 분야
+const CONCERN_FIELD = { exam: 'career', job: 'career', wealth: 'wealth', business: 'wealth', love: 'love', marriage: 'love', health: 'health', people: 'social', change: 'career' };
+
+// 가족운: 그해 십신 무리별 집안 흐름(가족 전체) + 육친(성별에 따라 그 기운이 가리키는 가족)
+const FAMILY_GROUP = [
+  { line: '형제·친구 같은 가족과 어깨를 나란히 하는 해예요. 집안일을 나눠 맡으면 서로 든든해지고, 가족끼리 돈이 오갈 때는 금액과 날짜를 분명히 해 두면 마음이 편해요.', act: '가족 단체방에 이번 달 할 일 하나씩 나눠 적기' },
+  { line: '돌보고 챙겨 주는 마음이 커지는 해예요. 자녀·조카·아랫사람에게 신경 쓸 일이 늘지만, 잔소리보다 칭찬 한마디가 훨씬 멀리 가요.', act: '가족 한 명에게 구체적인 칭찬 한마디 하기' },
+  { line: '집안 살림과 돈 이야기가 화제가 되기 쉬운 해예요. 이사·가전·저축처럼 함께 정할 일은 가족 회의로 계획을 세우면 오히려 사이가 단단해져요.', act: '가족과 올해 함께 모을 돈 목표 하나 정하기' },
+  { line: '집안에서 맡는 책임이 커지는 해예요. 혼자 다 짊어지기보다 역할을 나누면, 가족이 나를 더 믿고 의지하게 돼요.', act: '집안일 하나를 다른 가족에게 정중히 부탁하기' },
+  { line: '부모님·어른의 관심과 도움이 커지는 해예요. 집·계약 같은 문서 일이 생기기 쉽고, 어른께 먼저 안부를 여쭈면 뜻밖의 도움이 돌아와요.', act: '부모님·어른께 안부 전화 한 통 드리기' },
+];
+// 육친: [여성, 남성] 기준 그 십신 무리가 가리키는 가족
+const FAMILY_KIN = [
+  ['형제자매·친구', '형제자매·친구'],
+  ['자녀', '장모·아랫사람'],
+  ['아버지', '배우자·아버지'],
+  ['배우자', '자녀'],
+  ['어머니', '어머니'],
+];
 
 /** 점수를 말로 (숫자는 부풀리지 않고 해석만) */
 export function toneOf(score) {
@@ -89,6 +107,24 @@ function strengthMeet(saju, god) {
   return `${me}이라 그해의 ${GROUP_NAME[g]}을 무리 없이 받아 쓸 수 있어요. 균형을 지키며 꾸준히 가면 돼요.`;
 }
 
+/** 가족운: 애정·대인 점수를 함께 본 흐름 + 그해·속 기운의 가족 자리 */
+function familyField(y, god, inner, gender, focus, used) {
+  const gi = gender === 'male' ? 1 : 0;
+  const c = categoryScores(y.year.score, god); const v = Math.round((c.love + c.social) / 2);
+  const g = GROUP[god]; const ig = GROUP[inner];
+  const kin = FAMILY_KIN[g][gi]; const ikin = FAMILY_KIN[ig][gi];
+  const list = y.months.map((m, i) => { const x = categoryScores(m.score, m.god); return { v: x.love + x.social, m, i }; }).sort((a, b) => b.v - a.v || a.i - b.i);
+  const best = list.find((x) => !used.has(x.m.solarMonth) && x.v >= list[0].v - 6) || list[0]; used.add(best.m.solarMonth);
+  return {
+    key: 'family', label: '가족운', focus, title: `${toneOf(v)} 흐름`,
+    paras: [
+      FAMILY_GROUP[g].line,
+      `육친으로 보면 그해 들어오는 ${god} 기운은 ${kin}의 자리예요. 그래서 ${kin}${hasBatchim(kin) ? '과' : '와'}의 일이 한 해의 중심이 되기 쉬워요.${ig !== g ? ` 바탕에는 ${ikin}의 자리인 ${inner} 기운도 흘러, ${ikin}에게도 마음을 써 주면 집안이 고르게 편안해져요.` : ''}`,
+      `가족과 함께하기 좋은 달은 ${best.m.solarMonth}월(${monthRange(y.months, best.i)})이에요. 가족 여행·식사·중요한 의논은 이 달에 잡아 보세요. 올해의 작은 실천: ${FAMILY_GROUP[g].act}.`,
+    ],
+  };
+}
+
 /** 분야별 그해 가장 힘이 실리는 달 */
 function bestMonthFor(y, key, used = new Set()) {
   const list = y.months.map((m, i) => ({ v: categoryScores(m.score, m.god)[key], m, i })).sort((a, b) => b.v - a.v || a.i - b.i);
@@ -102,7 +138,7 @@ function bestMonthFor(y, key, used = new Set()) {
  * 책자 전체
  * @param y yearOf(그해) · thisYear yearOf(올해) · saju · gyeok(analyzeGyeok) · name 부를 이름 · concern 고민 키
  */
-export function buildBooklet({ y, thisYear, saju, gyeok, name = '', concern = null }) {
+export function buildBooklet({ y, thisYear, saju, gyeok, name = '', concern = null, gender = 'female' }) {
   const who = name ? `${name} 님` : '당신';
   const god = y.year.god; const R = GOD_READING[god]; const H = YEAR_HEADLINE[god];
   const p = y.year.pillar;
@@ -155,6 +191,7 @@ export function buildBooklet({ y, thisYear, saju, gyeok, name = '', concern = nu
   const order = focus ? [FIELD_ORDER.find(([k]) => k === focus), ...FIELD_ORDER.filter(([k]) => k !== focus)] : FIELD_ORDER;
   const used = new Set();
   const fields = order.map(([k, label]) => {
+    if (k === 'family') return familyField(y, god, inner, gender, k === focus, used);
     const bm = bestMonthFor(y, k, used);
     const v = Math.round((cats[k] * 2 + icats[k]) / 3);
     return {
@@ -171,5 +208,46 @@ export function buildBooklet({ y, thisYear, saju, gyeok, name = '', concern = nu
     year: y.sajuYear, name: yearName(p), title: H.title, score: y.year.score, god,
     lead: `${who}의 ${y.sajuYear}년은 「${H.title}」. ${sentence(R.core.split('. ')[0])}`,
     general, fields,
+  };
+}
+
+/**
+ * 오늘의 운세 (첫 화면, 2026-11-03 사용자 선택: A 수호신의 아침 편지 + C 오늘의 세 가지 질문)
+ * 편지 = 수호신 말투(닭띠만 존댓말, 나머지 다정한 반말), 질문 3개 = 돈·연락·결정. 숫자는 그대로 두고 해석과 행동만
+ */
+const FIELD_KO = { wealth: '재물', love: '애정', career: '일·공부', health: '건강', social: '사람 사이' };
+const DOW = '일월화수목금토';
+const FIELD_NUDGE = {
+  casual: { wealth: '작은 기회가 오면 망설이지 말고 잡아 봐.', love: '마음 가는 사람이 있으면 먼저 한마디 건네 봐.', career: '생각해 둔 의견이 있다면 오늘 꺼내 봐.', health: '가볍게 몸을 움직이면 하루가 더 개운할 거야.', social: '오랜만에 떠오르는 사람에게 안부를 보내 봐.' },
+  polite: { wealth: '작은 기회가 오면 망설이지 말고 잡아 보세요.', love: '마음 가는 분이 있으면 먼저 한마디 건네 보세요.', career: '생각해 둔 의견이 있다면 오늘 꺼내 보세요.', health: '가볍게 몸을 움직이면 하루가 더 개운할 거예요.', social: '오랜만에 떠오르는 분께 안부를 보내 보세요.' },
+};
+const callName = (name, polite) => (!name ? '' : polite ? `${name} 님, ` : `${name}${hasBatchim(name) ? '아' : '야'}, `);
+const isWa = (w) => (hasBatchim(w) ? '이' : '');
+
+export function todayLetter(f, { name = '', animal = '', polite = false } = {}) {
+  const best = ['wealth', 'love', 'career', 'health', 'social'].reduce((a, b) => (f.scores[b] > f.scores[a] ? b : a));
+  const dow = DOW[new Date(Date.UTC(f.date.year, f.date.month - 1, f.date.day)).getUTCDay()];
+  const time = f.luck.time.split(' (')[0];
+  const T = f.info.title; const P = polite;
+  const lines = [
+    `${callName(name, P)}오늘은 「${T}」${P ? (hasBatchim(T) ? '이에요' : '예요') : `${isWa(T)}야`}.`,
+    `오늘은 ${FIELD_KO[best]}에 힘이 실려${P ? '요' : ''}. ${FIELD_NUDGE[P ? 'polite' : 'casual'][best]}`,
+    `${time} 사이가 ${P ? '가장 좋은 시간이에요' : '네 시간이야'}. ${f.luck.color} 소품을 하나 챙겨 ${P ? '가세요' : '가'}.`,
+    `「${f.info.caution}」만 한 번 더 ${P ? '살펴 주세요' : '살피자'}.${f.scores.total < 55 ? (P ? ' 조금 느린 하루여도 괜찮아요. 천천히 가도 돼요.' : ' 조금 느린 하루여도 괜찮아. 천천히 가도 돼.') : ''}`,
+  ];
+  const sign = `— 오늘도 ${P ? '곁에 있는' : '네 편인'} ${animal ? `${animal} ` : ''}수호신`;
+
+  const w = f.scores.wealth; const rel = Math.max(f.scores.love, f.scores.social); const relKey = f.scores.love >= f.scores.social ? 'love' : 'social';
+  const c = Math.round((f.scores.career + f.scores.total) / 2);
+  const qa = [
+    { q: '오늘 돈 써도 될까요?', a: `${w >= 70 ? '좋아요. 필요한 곳이라면 시원하게 쓰셔도 돼요.' : w >= 60 ? '필요한 곳이라면 괜찮아요. 쓰기 전에 한 번만 더 따져 보세요.' : '큰 지출은 하루 미뤄도 좋아요. 오늘은 지키는 쪽이 이득이에요.'} ${sentence(f.texts?.wealth || '')}` },
+    { q: '먼저 연락해도 될까요?', a: `${rel >= 68 ? '좋아요. 먼저 다가가면 반가워할 거예요.' : rel >= 58 ? '짧고 가벼운 안부라면 좋아요.' : '오늘은 듣는 쪽이 더 잘 맞아요. 답장을 기다려 주는 여유를 가져 보세요.'} ${sentence(f.texts?.[relKey] || '')}` },
+    { q: '중요한 결정, 오늘 해도 될까요?', a: c >= 70 ? `좋은 날이에요. ${time} 사이를 노려 보세요.` : c >= 60 ? '준비가 됐다면 괜찮아요. 마지막으로 한 번만 확인하고 정하세요.' : '오늘은 정리하는 날로 쓰고, 결정은 흐름이 좋은 날로 옮겨 보세요.' },
+  ].map((x) => ({ ...x, a: x.a.trim() }));
+  return {
+    head: `${f.date.month}월 ${f.date.day}일(${dow})`,
+    from: `${animal ? `${animal} ` : ''}수호신의 아침 편지`,
+    lines, sign, qa,
+    why: `왜 그런지: 오늘 일진 ${f.pillar ? `${STEMS[f.pillar.stem]}${BRANCHES[f.pillar.branch]} · ` : ''}${f.tenGod}의 날 · ${toneOf(f.scores.total)} 하루`,
   };
 }
