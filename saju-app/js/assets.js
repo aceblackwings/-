@@ -4,11 +4,12 @@
 //   나중에 `${띠}_s${단계}_${오행}` 파일을 추가하면 그 오행 사용자에게는 그 그림을 먼저 쓴다
 // - 목록에 없으면 기존 SVG 그림. 승천 6~14단계는 5단계 그림 + 코드 효과
 // - 스토리 카드·PNG 저장은 외부 파일 참조가 안 되므로 미리 data URL로 불러 둔다
-import { CHAR_FILES, EMO_FILES } from './asset-manifest.js';
+import { CHAR_FILES, EMO_FILES, SCENE_FILES } from './asset-manifest.js';
 
 export const EL_NAME = ['wood', 'fire', 'earth', 'metal', 'water'];
 export const CHAR_ASSETS = new Set(CHAR_FILES);
 export const EMO_ASSETS = new Set(EMO_FILES);
+export const SCENE_ASSETS = new Set(SCENE_FILES || []);
 
 const dataCache = new Map();
 const url = (kind, key) => dataCache.get(`${kind}/${key}`) || `assets/${kind}/${key}.webp`;
@@ -24,6 +25,22 @@ export function charImage(zodiacKey, stage, el) {
 export function emoImage(zodiacKey, mood, el) {
   for (const key of [`${zodiacKey}_${mood}_${EL_NAME[el]}`, `${zodiacKey}_${mood}`]) if (EMO_ASSETS.has(key)) return url('emo', key);
   return null;
+}
+
+/** 계절 장면 그림 주소 (꾸미기 세트의 배경, 없으면 null → SVG 장면) */
+export function sceneImage(seasonKey) {
+  return SCENE_ASSETS.has(seasonKey) ? url('scene', seasonKey) : null;
+}
+
+/** 스토리 카드처럼 캔버스로 그릴 때: 그 계절 장면만 data URL로 불러 두기 */
+export async function preloadScene(seasonKey) {
+  const key = `scene/${seasonKey}`;
+  if (!SCENE_ASSETS.has(seasonKey) || dataCache.has(key) || typeof fetch !== 'function' || typeof FileReader === 'undefined') return false;
+  try {
+    const blob = await (await fetch(`assets/${key}.webp`)).blob();
+    dataCache.set(key, await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob); }));
+    return true;
+  } catch { return false; }
 }
 
 /** 앱 시작 때 한 번: 내 띠 그림부터 data URL로 불러 두기 (스토리 카드·PNG 저장용) */

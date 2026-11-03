@@ -206,7 +206,7 @@ export function seasonAccessorySVG(key) {
 }
 
 /** 계절 배경 효과 (유료 세트 전용, 화면 앞쪽에 얇게) */
-export function seasonEffectSVG(effect, animate = false, seed = 1) {
+export function seasonEffectSVG(effect, animate = false, seed = 1, noGlow = false) {
   const n = 16;
   const items = Array.from({ length: n }, (_, i) => {
     const x = (i * 83 + seed * 29) % 320; const y = (i * 47 + seed * 13) % 400; const d = 6 + (i % 5) * 1.4;
@@ -223,7 +223,7 @@ export function seasonEffectSVG(effect, animate = false, seed = 1) {
     }[effect] || '';
     return `<g${at}>${anim}${shape}</g>`;
   }).join('');
-  const glow = effect === 'moon' ? '<circle cx="268" cy="58" r="46" fill="#ffe9a0" opacity="0.18"/><circle cx="268" cy="58" r="28" fill="#fff4c9"/><circle cx="276" cy="50" r="5" fill="#f1dc9a" opacity="0.7"/><circle cx="258" cy="66" r="4" fill="#f1dc9a" opacity="0.6"/>' : '';
+  const glow = effect === 'moon' && !noGlow ? '<circle cx="268" cy="58" r="46" fill="#ffe9a0" opacity="0.18"/><circle cx="268" cy="58" r="28" fill="#fff4c9"/><circle cx="276" cy="50" r="5" fill="#f1dc9a" opacity="0.7"/><circle cx="258" cy="66" r="4" fill="#f1dc9a" opacity="0.6"/>' : '';
   return `<g class="season-fx" pointer-events="none">${glow}${items}</g>`;
 }
 

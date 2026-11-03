@@ -5,6 +5,7 @@ import { CATEGORIES } from './fortune.js';
 import { ELEMENT_KO, ELEMENT_HANJA, STEM_ELEMENT, STEMS } from './saju.js';
 import { renderTalismanSVG } from './talisman.js';
 import { renderCharacterSVG, characterStats } from './character.js';
+import { preloadScene } from './assets.js';
 import { renderCompatSVG } from './compat.js';
 
 export const STORY_W = 1080;
@@ -225,6 +226,7 @@ async function drawCharm(ctx, d) {
 async function drawHero(ctx, d) {
   const { fortune: f } = d;
   const { info, charms, mood, emote, stage, season } = d.hero;
+  if (season?.effect) await preloadScene(season.key); // 캔버스는 외부 그림 주소를 못 쓰므로 data URL로
   const img = await svgToImage(renderCharacterSVG(info, { mood, charms, emote, stage, season, width: 640 }));
   const w = 640; const h = 800;
   ctx.save();
@@ -249,6 +251,7 @@ async function drawHero(ctx, d) {
 
 async function drawEvolve(ctx, d) {
   const { info, charms, emote, stage, season } = d.hero;
+  if (season?.effect) await preloadScene(season.key);
   const img = await svgToImage(renderCharacterSVG(info, { mood: 'excited', charms, emote, stage, season, width: 720, backdrop: true }));
   ctx.save();
   rr(ctx, 120, 320, 840, 1050, 48); ctx.clip();

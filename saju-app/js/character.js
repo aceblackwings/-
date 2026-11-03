@@ -1,7 +1,7 @@
 // 12지신 수호 캐릭터 생성기 (SVG)
 // 띠(연지) → 동물 / 일간 오행 → 한복 색 / 성별 → 한복 스타일 / 고민 → 소품
 // 장착: 부적 2칸(허리·머리 옆), 이모티콘 1칸(표정 + 말풍선)
-import { charImage } from './assets.js';
+import { charImage, sceneImage } from './assets.js';
 import { seasonAccessorySVG, seasonEffectSVG, seasonSceneSVG, SEASON_PACKS } from './season.js';
 
 export const CONCERNS = [
@@ -581,8 +581,12 @@ export function characterMarkup(info, opts = {}) {
   const backdrop = opts.backdrop ? stageBackdrop(stage, el, id) : '';
   const asc = stage >= 11 ? godAura(stage, id) : stage >= 6 ? spiritBeast(stage, id) : '';
   const tint = opts.backdrop && stage >= 6 ? `<rect width="320" height="400" fill="${ASC_COLOR[stage]}" opacity="0.12"/>` : '';
-  const scene = opts.season?.effect ? seasonSceneSVG(opts.season.key) : '';
-  const body = `${backdrop}${tint}${asc}${scene}${auraMarkup}${scaled}${ascensionFront(stage)}${stage >= 3 && !img ? orbs(stage, el, id) : ''}${stage >= 5 ? particles(id) : ''}${miniCharm(charms[2], 276, 300, 12, 0.9)}${opts.season?.effect ? seasonEffectSVG(SEASON_PACKS[opts.season.key].effect, opts.animate, stage) : ''}`;
+  // 계절 장면: 그림이 있으면 화면 전체 배경(가장자리 장식 + 가운데 빈 공간)으로 깔고, 없으면 기존 SVG 장면
+  const sceneImg = opts.season?.effect ? sceneImage(opts.season.key) : null;
+  const scene = !opts.season?.effect ? '' : sceneImg
+    ? `<image class="season-scene" href="${sceneImg}" x="0" y="0" width="320" height="400" preserveAspectRatio="xMidYMid slice"/>`
+    : seasonSceneSVG(opts.season.key);
+  const body = `${sceneImg ? '' : backdrop}${scene}${tint}${asc}${auraMarkup}${scaled}${ascensionFront(stage)}${stage >= 3 && !img ? orbs(stage, el, id) : ''}${stage >= 5 ? particles(id) : ''}${miniCharm(charms[2], 276, 300, 12, 0.9)}${opts.season?.effect ? seasonEffectSVG(SEASON_PACKS[opts.season.key].effect, opts.animate, stage, !!sceneImg) : ''}`;
   return { id, defs, body };
 }
 

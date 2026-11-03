@@ -71,7 +71,8 @@ def manifest():
         return sorted(os.path.basename(p)[:-5] for p in glob.glob(os.path.join(APP, 'assets', kind, '*.webp')))
     js = ('// 자동 생성 파일 (tools/ingest.py manifest) — 손으로 고치지 마세요\n'
           f'export const CHAR_FILES = {json.dumps(keys("char"))};\n'
-          f'export const EMO_FILES = {json.dumps(keys("emo"))};\n')
+          f'export const EMO_FILES = {json.dumps(keys("emo"))};\n'
+          f'export const SCENE_FILES = {json.dumps(keys("scene"))};\n')
     open(os.path.join(APP, 'js', 'asset-manifest.js'), 'w').write(js)
     return js
 

@@ -63,11 +63,12 @@ t('한정 소품: 꾸미기 세트는 계절 장면까지, 무료 소품은 소�
     assert.ok(set.length > item.length + 500, k);
   }
 });
-import { CHAR_ASSETS, charImage, EMO_ASSETS } from '../js/assets.js';
+import { CHAR_ASSETS, charImage, EMO_ASSETS, SCENE_ASSETS, sceneImage } from '../js/assets.js';
 import fs from 'node:fs';
 t('이미지 그림: 띠별 그림은 모든 오행에 쓰고(오행 배지), 없는 띠는 코드 그림 · 파일이 실제로 있음', () => {
   for (const k of CHAR_ASSETS) assert.ok(fs.statSync(new URL(`../assets/char/${k}.webp`, import.meta.url)).size > 1000, k);
   for (const k of EMO_ASSETS) assert.ok(fs.statSync(new URL(`../assets/emo/${k}.webp`, import.meta.url)).size > 1000, k);
+  for (const k of SCENE_ASSETS) assert.ok(fs.statSync(new URL(`../assets/scene/${k}.webp`, import.meta.url)).size > 10000, k);
   const tiger = (el, stage, noImage) => renderCharacterSVG(characterInfo(galSaju(2, el), { gender: 'female', concern: 'job' }), { stage, noImage });
   assert.ok(tiger(1, 2).includes('assets/char/tiger_s2.webp') && tiger(1, 2).includes('火'));
   assert.ok(tiger(0, 2).includes('assets/char/tiger_s2.webp') && tiger(0, 2).includes('木')); // 목(木) 호랑이도 그림 + 木 배지
@@ -78,5 +79,16 @@ t('이미지 그림: 띠별 그림은 모든 오행에 쓰고(오행 배지), �
   const emo = renderEmoticonSVG(galSaju(2, 3), f, { mood: 'fighting', rarity: 'legend', profile: { gender: 'female', concern: 'job' } });
   assert.ok(emo.includes('assets/emo/tiger_fighting.webp') && !emo.includes('必勝')); // 그림 속 머리띠 → 코드 소품 생략
   assert.ok(emo.includes('-gold)')); // 등급 장면(금메달)은 그대로
+});
+t('계절 장면 그림 11장: 꾸미기 세트는 그림 장면(전체 배경), 소품만이면 장면 없음', () => {
+  assert.equal(SCENE_ASSETS.size, 11);
+  const info = characterInfo(galSaju(2, 1), { gender: 'female', concern: 'job' });
+  for (const k of Object.keys(SEASON_PACKS)) {
+    assert.equal(sceneImage(k), `assets/scene/${k}.webp`, k);
+    const set = renderCharacterSVG(info, { stage: 3, season: { key: k, effect: true }, backdrop: true });
+    assert.ok(set.includes(`assets/scene/${k}.webp`) && set.includes('xMidYMid slice'), k);
+    assert.ok(!renderCharacterSVG(info, { stage: 3, season: { key: k, effect: false } }).includes('assets/scene/'), k);
+  }
+  assert.equal(sceneImage('nope'), null);
 });
 console.log(`\n${pass} passed`);

@@ -50,7 +50,7 @@
 | memory.js | 수호신의 기억: 일정·주제·사람·좋아하는 것 추출, 요약, 지난 일정 안부, 개인정보 제외 (`unmyeong2099.memory`) |
 | realtime.js | 실시간 궁합방(room)·친구 우편함(db) 도우미 |
 | story.js | 인스타 스토리 카드(캔버스) |
-| assets.js / asset-manifest.js | 이미지 그림 목록(`asset-manifest.js`는 ingest.py가 자동 생성)·주소(`charImage`·`emoImage`, 오행별 파일 우선 → 띠 공통)·미리 불러오기(`preloadCharImages(띠)`, 스토리 카드용 data URL). 없으면 SVG. 6~14단계는 5단계 그림 + 코드 승천 효과 |
+| assets.js / asset-manifest.js | 이미지 그림 목록(`CHAR_FILES`·`EMO_FILES`·`SCENE_FILES`, 계절 장면 `sceneImage`·`preloadScene`)(`asset-manifest.js`는 ingest.py가 자동 생성)·주소(`charImage`·`emoImage`, 오행별 파일 우선 → 띠 공통)·미리 불러오기(`preloadCharImages(띠)`, 스토리 카드용 data URL). 없으면 SVG. 6~14단계는 5단계 그림 + 코드 승천 효과 |
 | app.js | 화면·상태·localStorage(`unmyeong2099.*` 키). 홈(v0.21) = 내년 카드(`tlNext`, 금색) + 「다음 할 일」(v0.21.1부터 내년 카드 바로 아래, `timelineHTML` 안) + 타임라인(잠긴 층은 숨김, `tlVisible`) + 「다음 할 일」(`guideCardHTML`) + 길잡이로 연 구역만(`renderToday`의 `sections`). 다른 화면이 잠긴 구역을 부르면 `ensureUnlocked`로 바로 엶. 운세 풀이에 「🎁 2027년」 탭(`readingFor('next')`). 홈 = **운의 타임라인**(`timelineHTML`: 오늘·이번 주·이달·올해·대운·타고난 나, 카드마다 근거·층 이동·한 걸음 버튼), 첫 가입 = `showSajuCard`(사주 한 장 요약) → `showSummon`, 🧪 `renderGallery`(내 수호신 > 전체 미리보기, `?gallery=1`로 바로 열림, 프로필이 없으면 저장하지 않는 견본 프로필 사용) |
 
 ## 설계 원칙 (지켜야 할 것)
@@ -64,12 +64,12 @@
 
 ## 그림 제작 (이미지 생성 도구)
 - **방식(2026-11-02 확정): 띠마다 대표 한복 1벌, 오행은 코드로 표현**(배경 빛 + 오른쪽 아래 오행 배지 `elementBadge`). 띠당 13장(진화 5 + 표정 8) × 12띠 + 공용(부적 상징 6·부적 종이 2·한정 소품 11·계절 장면 11) ≈ 186장. 나중에 `${띠}_s${단계}_${오행}` 파일을 추가하면 그 오행 사용자에게 우선 사용
-- **다시 뽑기·추가 시트(2026-11-03)**: `docs/prompts/redo-2026-11-03.md` — **A1~A3·B1~B5 반영 완료(2026-11-03)**, 남은 것 C 계절 장면 4장·D 공용 R01~R15. A 진화 3장(토끼·원숭이 s5 한복 색 바뀜, 닭 s3 그림자), B 표정 5장(가장자리 잘림: rabbit_excited·rabbit_thanks·rat_love·rooster_love·dog_excited), C 계절 장면 4장(6.3MB 초과분 1K 재생성), D 공용 R01~R15. 다시 뽑은 그림은 띠 폴더 14번째 파일로 오므로 ingest 대신 `chroma.py`로 해당 칸만 교체
+- **다시 뽑기·추가 시트(2026-11-03)**: `docs/prompts/redo-2026-11-03.md` — **A1~A3·B1~B5·C 계절 장면 반영 완료(2026-11-03)**, 남은 것 D 공용 R01~R15. A 진화 3장(토끼·원숭이 s5 한복 색 바뀜, 닭 s3 그림자), B 표정 5장(가장자리 잘림: rabbit_excited·rabbit_thanks·rat_love·rooster_love·dog_excited), C 계절 장면 4장(6.3MB 초과분 1K 재생성), D 공용 R01~R15. 다시 뽑은 그림은 띠 폴더 14번째 파일로 오므로 ingest 대신 `chroma.py`로 해당 칸만 교체
 - 프롬프트: 띠별 시트 `docs/prompts/zodiac/NN-{띠}.md`(목록 `README.md`, 대표 한복·배경색은 `saju-app/tools/zodiac_specs.json`), 공용 물건 수정본 `docs/prompts/tiger-pilot-redo.md`(사람 금지 강화). 사용자는 **1K(1024px)**로 생성
 - 드라이브: 「12지신 강림 그림」 아래 띠별 폴더(id는 `saju-app/tools/drive_folders.json`, 호랑이 = 「호랑이 시범 세트」). 사용자가 시트 순서대로 생성해 올림(파일 이름은 힉스필드 기본 `hf_YYYYMMDD_HHMMSS_…`)
 - **처리 순서**: ① `search_files`(parentId=띠 폴더, 한 쪽에 5·8장씩 나오니 pageToken으로 다음 쪽까지) ② `download_file_content`를 **한 장씩**(동시 호출 시 연결 끊김, 결과는 tool-results 파일로 저장됨 → base64 디코드) ③ `python3 -I saju-app/tools/ingest.py zodiac {띠} {원본폴더} [swap=calm:sleepy]`(배경색은 그림마다 자동 판별) → 생성 시각순으로 시트 01~13에 매칭(01=s2, 02~05=s1,s3,s4,s5, 06~13=표정), 배경 제거, `assets/char/{띠}_s{n}.webp`(768)·`assets/emo/{띠}_{표정}.webp`(512), `js/asset-manifest.js` 자동 갱신, 원본폴더에 `contact.jpg` ④ contact.jpg를 눈으로 확인(사람·글자 섞임, 순서) ⑤ `npm test` → 커밋 → 아티팩트에 새 webp·manifest 게시
 - 드라이브 도구 한도: 약 6.3MB 넘는 파일은 받을 수 없음(1K면 문제없음)
-- 들어간 그림: **12띠 전부** 진화 1~5 + 표정 8(`{띠}_s*.webp`, `{띠}_{표정}.webp`). 밝은 바탕 확인용으로 contact.jpg(어두운 바탕)와 함께 밝은 바탕 모음도 보면 외곽선·소품이 지워졌는지 잘 보임. 공용 물건: 깨끗한 것 보름달 등불·창포 비녀·별핀·송편 바구니(아직 앱 미연결), 장면 7장 받음(미연결), 장면 4장(064725·064828·064914·064921)은 큰 파일이라 미수령
+- 들어간 그림: **12띠 전부** 진화 1~5 + 표정 8(`{띠}_s*.webp`, `{띠}_{표정}.webp`). 밝은 바탕 확인용으로 contact.jpg(어두운 바탕)와 함께 밝은 바탕 모음도 보면 외곽선·소품이 지워졌는지 잘 보임. **계절 장면 11장 연결 완료**(`assets/scene/{시즌키}.webp`, 640폭: 입동·동지·설날·대보름·춘분·단오·하지는 드라이브 064626~064813, 입춘·칠석·추분·추석은 사용자가 채팅으로 1024 정사각 재전송). 꾸미기 세트(`season.effect`)를 켜면 `character.js`가 `sceneImage`로 320×400 전체 배경(`xMidYMid slice`)을 깔고 SVG 장면·배경막 대신 씀, 그림 속 달이 있으면 코드 달(`seasonEffectSVG` noGlow) 생략, 스토리 카드는 `preloadScene`으로 data URL. 공용 물건: 깨끗한 것 보름달 등불·창포 비녀·별핀·송편 바구니(드라이브 064605, 아직 앱 미연결)
 - 배경 제거 단독 도구: `python3 -I saju-app/tools/chroma.py 입력 출력 [green|magenta] [크기]`
 - 힉스필드 무제한은 웹사이트에서만(API·CLI·MCP는 크레딧 차감). 사용자는 윈도우라 Remote Control 불가
 
