@@ -1812,7 +1812,7 @@ function charmCareHTML(eq, collection) {
   const parts = [];
   const pair = pairType(eq.charms);
   if (pair) parts.push(`<p class="cc-line on">🎎 <b>쌍부적</b> · ${TYPE_KO[pair]}부 두 장 — 쪽지 보상 부적 등급 +1</p>`);
-  else if (setUnlocked(collection)) parts.push(`<p class="cc-line">🎎 같은 종류 부적 두 장을 함께 달면 <b>쌍부적</b>이 돼요(쪽지 보상 등급 +1).${loadEquip().charms.length && characterInfo(state.saju, state.profile) && heroOptions().unlock.charmSlots < 2 ? ' 두 번째 슬롯은 Lv.10에 열려요.' : ''}</p>`);
+  else if (setUnlocked(collection)) parts.push(`<p class="cc-line">🎎 같은 종류 부적 두 장을 함께 달면 <b>쌍부적</b>이 돼요(쪽지 보상 등급 +1).</p>`);
   if (setUnlocked(collection) || fiveDone(collection)) {
     const own = elementsOwned(collection);
     parts.push(fiveDone(collection) ? '<p class="cc-line on">🌈 <b>오행 완성</b> · 목·화·토·금·수 부적을 모두 모았어요</p>'
@@ -1848,6 +1848,15 @@ function openOffer() {
   });
 }
 document.addEventListener('click', (e) => { if (e.target.closest('[data-offer-open]')) openOffer(); });
+
+/** 같은 종류 부적이 처음 2장 모이면 두 번째 슬롯이 열렸다고 한 번 알림 */
+const SLOT2_KEY = 'unmyeong2099.slot2';
+function checkPairSlot() {
+  if (load(SLOT2_KEY, false) || !setUnlocked(load(COLLECTION_KEY, []))) return false;
+  save(SLOT2_KEY, true);
+  setTimeout(() => toast(isRooster() ? '🎎 같은 종류 부적이 두 장 모였어요! 두 번째 부적 슬롯이 열렸어요. 함께 달면 쌍부적이에요' : '🎎 같은 종류 부적이 두 장 모였어! 두 번째 부적 슬롯이 열렸어. 함께 달면 쌍부적이야'), 2600);
+  return true;
+}
 
 /** 오행 완성 칭호: 처음 모았을 때 한 번 알림 */
 function checkFive() {
@@ -1923,7 +1932,7 @@ function completeNote() {
   }
   const grownLines = g.upgrades.map((u) => `🌟 장착한 ${labelForRec(u.from)}가 다 자라 ${labelForRec(u.to)}로 올라갔어요!`);
   const fedLines = g.upgrades.length ? [] : eqNow.charms.filter(Boolean).map((r) => `🌱 장착한 ${labelForRec(r)}에 기운 한 칸 (${fillOf(g.store, r)}/${GROW_FULL})`);
-  checkFive();
+  checkFive(); const slotOpened = checkPairSlot();
   const si = newStoryIndex(before, before + 1); const story = si >= 0 ? storyList()[si] : null;
   completeActMission();
   renderToday(); renderHero(false);
@@ -1933,6 +1942,7 @@ function completeNote() {
     <p style="margin:10px 0 4px"><b>${label}</b>를 받았어요</p>
     <p class="muted" style="margin:0 0 14px;font-size:0.86rem">내 수호신 > 부적 장착에서 수호신에게 달아 줄 수 있어요. 이번 주 도장을 더 모으면 더 높은 등급의 부적을 드려요.</p>
     ${pair ? `<p class="eq-pair">🎎 쌍부적 효과로 한 등급 높은 부적이에요</p>` : ''}
+    ${slotOpened ? '<p class="eq-pair">🎎 같은 종류 부적이 두 장 모여 <b>두 번째 부적 슬롯</b>이 열렸어요. 함께 달면 쌍부적!</p>' : ''}
     ${[...grownLines, ...fedLines].map((x) => `<p class="cg-line">${esc(x)}</p>`).join('')}
     ${story ? `<div class="nt-story"><b>📖 새 이야기가 열렸어요 · ${esc(story.title)}</b><p>${esc(story.text)}</p><small>내 수호신 > 수호신의 이야기에서 다시 볼 수 있어요</small></div>` : ''}
     <button type="button" class="primary" data-close-reward style="width:100%">고마워요</button></div>`;
@@ -2161,7 +2171,9 @@ const sameRecord = (a, b) => a && b && a.type === b.type && a.theme === b.theme 
 function heroOptions() {
   const eq = loadEquip();
   const stage = loadGrowth().evolved;
-  const unlock = STAGE_UNLOCKS[stage - 1];
+  // 두 번째 부적 슬롯: 진화 3단계 또는 같은 종류 부적 2장(쌍부적 재료)이 모이면 열림 (2026-11-03 사용자 요청)
+  const base = STAGE_UNLOCKS[stage - 1];
+  const unlock = { ...base, charmSlots: Math.max(base.charmSlots, setUnlocked(load(COLLECTION_KEY, [])) ? 2 : 1) };
   const charms = eq.charms.map((r, i) => (i < unlock.charmSlots ? charmFromRecord(r) : null));
   const emote = unlock.emote ? eq.emote : null;
   return { eq, charms, mood: emote || todayEmote(state.fortune), emote, stage, unlock, season: seasonLook(loadSeason()) };
@@ -2169,6 +2181,7 @@ function heroOptions() {
 
 function renderHero(animate) {
   const s = state.saju; const f = state.fortune; const p = state.profile;
+  checkPairSlot(); // 공방·뽑기 등 다른 곳에서 모인 경우도
   const info = characterInfo(s, p);
   const { eq, charms, mood, emote, stage, unlock, season } = heroOptions();
   info.stage = stage;
@@ -2184,7 +2197,7 @@ function renderHero(animate) {
     .filter((r, i, arr) => arr.findIndex((x) => sameRecord(x, r)) === i);
 
   const slot = (i) => {
-    if (i >= unlock.charmSlots) return `<div class="slot locked"><span>🔒 부적 슬롯 ${i + 1}<br>Lv.10 진화 시 해금</span></div>`;
+    if (i >= unlock.charmSlots) return `<div class="slot locked"><span>🔒 부적 슬롯 ${i + 1}<br>${i === 1 ? '같은 종류 부적 2장을 모으면 열려요' : '더 진화하면 열려요'}</span></div>`;
     const t = charms[i];
     return `<div class="slot ${t ? 'filled' : ''}" data-slot="${i}" title="${t ? '눌러서 해제' : ''}">
       ${t ? `${renderTalismanSVG(t)}<span>${t.rarity.label} ${t.type.label}부</span>${growMeter(eq.charms[i])}` : `<span>부적 슬롯 ${i + 1}<br>비어 있음</span>`}</div>`;
