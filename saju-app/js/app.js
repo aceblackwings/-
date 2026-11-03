@@ -1761,6 +1761,7 @@ document.addEventListener('click', (e) => {
   document.body.appendChild(box);
   box.addEventListener('click', (ev) => { if (ev.target.closest('[data-close-reward]') || ev.target === box) box.remove(); });
 });
+const numIga = (n) => ([2, 4, 5, 9].includes(Math.abs(n) % 10) && Math.abs(n) % 10 !== 0 ? '가' : '이'); // 숫자 읽기 받침(이·사·오·구는 받침 없음)
 const kaiunChip = (period) => { const k = kaiunFor(kaiunNow(), period); return k.total ? `<em class="kaiun-chip">🧧+${k.total}</em>` : ''; };
 document.addEventListener('click', (e) => {
   if (e.target.closest('[data-go-equip]')) {
@@ -2108,6 +2109,14 @@ function todayCardHTML() {
     <div class="td-letter">
       <small class="td-from">✉️ ${esc(t.from)}</small>
       ${t.lines.map((l) => `<p>${esc(l)}</p>`).join('')}
+      ${(() => { // B3 오늘의 개운 한 줄(이달 개운을 오늘에)
+        const kp = kaiunNow(); const km = kaiunFor(kp, 'month');
+        if (!km.total) return '';
+        const best = Object.entries(km.fields).reduce((x, y) => (y[1] > x[1] ? y : x));
+        const FK = { wealth: '재물', love: '애정', career: '일·공부', health: '건강', social: '사람 사이' };
+        const src = kp.sources.filter((x) => !x.label.startsWith('오행')).map((x) => x.label)[0] || '키운 기운';
+        return `<p class="td-kaiun">🧧 ${esc(src)} 덕에 오늘 ${FK[best[0]]} 기운에 개운 +${best[1]}${numIga(best[1])} 실려 있어${z.key === 'rooster' ? '요' : ''}. <small>(게임 요소)</small></p>`;
+      })()}
       <p class="td-sign">${esc(t.sign)}</p>
     </div>
     ${noteHTML(z.key === 'rooster')}
@@ -3909,9 +3918,15 @@ function showEvolution(info, from, to) {
     <p class="muted">${STAGES[to - 1].desc}</p>
     ${speechBubble([speak(zIdx(), 'evolve', { stage: to })])}
     <div class="perks" style="justify-content:center">${STAGE_UNLOCKS[to - 1].perks.map((x) => `<em>✨ ${x}</em>`).join('')}</div>
+    ${(() => { // B4 진화로 오른 개운
+      const { eq, unlock } = heroOptions(); const eqd = eq.charms.slice(0, unlock.charmSlots).filter(Boolean);
+      const op = { pair: pairType(eqd), five: fiveDone(load(COLLECTION_KEY, [])), charge: luckNow().index };
+      const a = kaiunFor(kaiunPower(eqd, from, state.saju.yongsin, op), 'year').total; const b = kaiunFor(kaiunPower(eqd, to, state.saju.yongsin, op), 'year').total;
+      return `<p class="eq-pair">🧧 이번 진화로 올해 개운 +${a} → <b>+${b}</b>${b > a ? ' 상승!' : ''} <small class="muted">(게임 요소)</small></p>`;
+    })()}
     <div class="actions" style="justify-content:center"><button class="primary" type="button" data-evo="ok">확인</button><button class="ghost" type="button" data-evo="share">📸 진화 공유 카드</button></div></div>`;
   document.body.appendChild(el);
-  el.querySelector('[data-evo=ok]').addEventListener('click', () => { el.remove(); renderHero(true); renderEmoji(); });
+  el.querySelector('[data-evo=ok]').addEventListener('click', () => { el.remove(); renderHero(true); renderEmoji(); renderToday(); });
   el.querySelector('[data-evo=share]').addEventListener('click', () => { el.remove(); renderHero(false); state.storyTemplate = 'evolve'; selectTab('story'); });
 }
 

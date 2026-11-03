@@ -113,7 +113,7 @@ export function offlineReply(ctx, text) {
   const FIELD_OF = { wealth: '재물', love: '애정', career: '직장·학업', health: '건강', social: '대인' };
   const g = ctx.growth; const P = ctx.pers.key === 'rooster';
   const growLine = !g ? '' : g.charms.length && g.bestField && (intent.cat === g.bestField || intent.cat === 'total')
-    ? ` ${P ? '달아 주신' : '달아 준'} ${g.charms[0]} 덕분에 이달 ${FIELD_OF[g.bestField]} 기운에 개운 +${g.bestPlus}이 붙어 있어${P ? '요' : ''}.`
+    ? ` ${P ? '달아 주신' : '달아 준'} ${g.charms[0]} 덕분에 이달 ${FIELD_OF[g.bestField]} 기운에 개운 +${g.bestPlus}${[2, 4, 5, 9].includes(g.bestPlus % 10) ? '가' : '이'} 붙어 있어${P ? '요' : ''}.`
     : !g.noteToday ? ` 오늘 쪽지 할 일도 하나 해 보면 ${P ? '부적을 드릴게요' : '부적 줄게'}.` : '';
   return `${recall}${empathy} 오늘 ${intent.label}은 ${score}점, ${tone}.${growLine} ${ctx.pers.key === 'rooster' ? '제가 보기엔' : '내가 보기엔'} ${f.tenGod}의 날이라 "${f.info.title}"의 기운이 흐르고, 너한테 필요한 건 ${el} 기운이야. ${actions[intent.key]}. ${ctx.pers.key === 'rooster' ? '언제나 곁에서 응원할게요.' : '언제나 곁에서 응원할게.'}`;
 }

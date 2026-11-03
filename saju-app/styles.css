@@ -1124,3 +1124,4 @@ html.easy .main-tabs button i { font-size: 1.1rem; }
 .rt-sum { margin: 10px 0 0; color: var(--gold); line-height: 1.7; }
 .person-card p { margin: 0 0 6px; line-height: 1.75; word-break: keep-all; }
 .kaiun-graph { width: 100%; height: auto; display: block; margin: 4px 0; } .evo-box .kaiun-graph + p { font-size: 0.88rem; line-height: 1.6; }
+.td-kaiun { color: var(--gold); font-size: 0.9rem; } .td-kaiun small { color: var(--muted); font-size: 0.72rem; }
