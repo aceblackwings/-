@@ -48,6 +48,7 @@ export function publicCard(saju, profile, stage, code) {
     gender: profile.gender === 'male' ? 'male' : 'female',
     branch: saju.pillars.year.branch,
     dayMaster: saju.dayMaster,
+    dayBranch: saju.pillars.day.branch, // v0.39 궁합의 일지(생활 자리) 비교용. 생년월일은 넣지 않음
     elements: saju.elements.map((x) => Math.round(x)),
     weakest: saju.weakest,
     yongsin: saju.yongsin,
@@ -63,6 +64,7 @@ export function cleanCard(raw) {
   const weakest = int(raw.weakest, 0, 4);
   const yongsin = int(raw.yongsin, 0, 4);
   const stage = int(raw.stage, 1, 14) ?? 1;
+  const dayBranch = int(raw.dayBranch, 0, 11); // 예전 카드에는 없음 → null
   const elements = Array.isArray(raw.elements) && raw.elements.length === 5 ? raw.elements.map((x) => int(x, 0, 100)) : null;
   if (branch === null || dayMaster === null || weakest === null || yongsin === null || !elements || elements.some((x) => x === null)) return null;
   return {
@@ -70,7 +72,7 @@ export function cleanCard(raw) {
     code: normalizeCode(raw.code),
     name: clip(raw.name, 10) || '친구',
     gender: raw.gender === 'male' ? 'male' : 'female',
-    branch, dayMaster, elements, weakest, yongsin, stage,
+    branch, dayMaster, elements, weakest, yongsin, stage, ...(dayBranch === null ? {} : { dayBranch }),
   };
 }
 
@@ -78,7 +80,7 @@ export function cleanCard(raw) {
 export function cardToSaju(card) {
   return {
     fromCard: true,
-    pillars: { year: { branch: card.branch } },
+    pillars: { year: { branch: card.branch }, ...(card.dayBranch == null ? {} : { day: { stem: card.dayMaster, branch: card.dayBranch } }) },
     dayMaster: card.dayMaster,
     elements: card.elements,
     weakest: card.weakest,
