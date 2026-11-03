@@ -224,6 +224,14 @@ const FIELD_NUDGE = {
 const callName = (name, polite) => (!name ? '' : polite ? `${name} 님, ` : `${name}${hasBatchim(name) ? '아' : '야'}, `);
 const isWa = (w) => (hasBatchim(w) ? '이' : '');
 
+// 세 가지 질문의 덧붙임 말(해요체). 점수 구간은 fortune.js tierOf와 같음(40·60·80)
+const tier = (v) => (v >= 80 ? 3 : v >= 60 ? 2 : v >= 40 ? 1 : 0);
+const QA_MORE = {
+  wealth: ['결제 버튼 앞에서 열까지 세어 보면 새는 돈이 줄어요.', '큰 거래보다 가계부 정리 같은 관리에 힘을 쓰면 좋아요.', '작은 이익이 들어오는 흐름이에요. 정산과 받을 돈을 챙겨 보세요.', '재물 기운이 강하게 들어와요. 좋은 기회가 오면 놓치지 마세요.'],
+  love: ['말보다 작은 행동으로 마음을 보여 주면 오해가 풀려요.', '가벼운 안부 한 줄이 관계를 따뜻하게 데워 줘요.', '호감을 얻기 쉬운 날이에요. 먼저 웃으며 다가가 보세요.', '매력이 빛나는 날이에요. 데이트나 고백에도 좋은 기운이에요.'],
+  social: ['오늘은 내 말보다 상대 말을 끝까지 들어 주는 쪽이 좋아요.', '약속 시간만 잘 지켜도 신뢰가 쌓여요.', '사람 사이에서 기회가 생겨요. 모임에 얼굴을 비춰 보세요.', '귀한 인연이 다가오는 날이에요. 새로운 만남을 반겨 보세요.'],
+};
+
 export function todayLetter(f, { name = '', animal = '', polite = false } = {}) {
   const best = ['wealth', 'love', 'career', 'health', 'social'].reduce((a, b) => (f.scores[b] > f.scores[a] ? b : a));
   const dow = DOW[new Date(Date.UTC(f.date.year, f.date.month - 1, f.date.day)).getUTCDay()];
@@ -240,8 +248,8 @@ export function todayLetter(f, { name = '', animal = '', polite = false } = {}) 
   const w = f.scores.wealth; const rel = Math.max(f.scores.love, f.scores.social); const relKey = f.scores.love >= f.scores.social ? 'love' : 'social';
   const c = Math.round((f.scores.career + f.scores.total) / 2);
   const qa = [
-    { q: '오늘 돈 써도 될까요?', a: `${w >= 70 ? '좋아요. 필요한 곳이라면 시원하게 쓰셔도 돼요.' : w >= 60 ? '필요한 곳이라면 괜찮아요. 쓰기 전에 한 번만 더 따져 보세요.' : '큰 지출은 하루 미뤄도 좋아요. 오늘은 지키는 쪽이 이득이에요.'} ${sentence(f.texts?.wealth || '')}` },
-    { q: '먼저 연락해도 될까요?', a: `${rel >= 68 ? '좋아요. 먼저 다가가면 반가워할 거예요.' : rel >= 58 ? '짧고 가벼운 안부라면 좋아요.' : '오늘은 듣는 쪽이 더 잘 맞아요. 답장을 기다려 주는 여유를 가져 보세요.'} ${sentence(f.texts?.[relKey] || '')}` },
+    { q: '오늘 돈 써도 될까요?', a: `${w >= 70 ? '좋아요. 필요한 곳이라면 시원하게 쓰셔도 돼요.' : w >= 60 ? '필요한 곳이라면 괜찮아요. 쓰기 전에 한 번만 더 따져 보세요.' : '큰 지출은 하루 미뤄도 좋아요. 오늘은 지키는 쪽이 이득이에요.'} ${QA_MORE.wealth[tier(w)]}` },
+    { q: '먼저 연락해도 될까요?', a: `${rel >= 68 ? '좋아요. 먼저 다가가면 반가워할 거예요.' : rel >= 58 ? '짧고 가벼운 안부라면 좋아요.' : '오늘은 듣는 쪽이 더 잘 맞아요. 답장을 기다려 주는 여유를 가져 보세요.'} ${QA_MORE[relKey][tier(f.scores[relKey])]}` },
     { q: '중요한 결정, 오늘 해도 될까요?', a: c >= 70 ? `좋은 날이에요. ${time} 사이를 노려 보세요.` : c >= 60 ? '준비가 됐다면 괜찮아요. 마지막으로 한 번만 확인하고 정하세요.' : '오늘은 정리하는 날로 쓰고, 결정은 흐름이 좋은 날로 옮겨 보세요.' },
   ].map((x) => ({ ...x, a: x.a.trim() }));
   return {

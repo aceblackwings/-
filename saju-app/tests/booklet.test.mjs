@@ -48,6 +48,7 @@ t('오늘의 편지 + 세 가지 질문: 반말·존댓말, 금지어 없음, �
     assert.deepEqual(toneProblems(txt), [], txt);
     assert.ok(!/undefined|NaN/.test(txt));
     assert.equal(c.qa.length, 3);
+    assert.ok(!/습니다|합니다/.test(c.qa.map((x) => x.a).join(' ')), '질문 답은 해요체');
     assert.ok(/^(은하야|민준아), /.test(c.lines[0]), c.lines[0]);
     assert.ok(/^은하 님, .*(이에요|예요)\.$/.test(p.lines[0]), p.lines[0]);
     assert.ok(!/에요\.$/.test(c.lines[0]) && !/[^이]에요/.test(p.lines[0].replace('예요', '')), p.lines[0]);
