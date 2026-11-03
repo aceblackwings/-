@@ -62,4 +62,11 @@ t('12월에 올해 다짐이 있으면 ②는 다짐 돌아보기가 먼저', ()
   assert.equal(ms[1].action.type, 'pledge'); assert.ok(ms[1].desc.includes('매일 걷기'));
 });
 
+t('v0.30: 우산 정보가 오면 ①은 「오늘의 우산」(분야·해석 문장·절입 기간)', () => {
+  const umbrella = { areaIcon: '💰', areaLabel: '재물', frame: '재물은 "지키는 쪽이 이기는 날"이에요. 작은 습관 하나를 지키면 새는 돈이 막혀요.' };
+  const ms = buildMissions({ ...base, today: { mission: '결제 버튼을 누르기 전에 10초 멈추기', umbrella, score: 58 } });
+  assert.ok(ms[0].tag.startsWith('오늘의 우산 · 💰 재물')); assert.ok(ms[0].tag.includes('입동 11/7~12/6'));
+  assert.equal(ms[0].title, '결제 버튼을 누르기 전에 10초 멈추기'); assert.ok(ms[0].desc.startsWith(umbrella.frame)); assert.equal(ms[0].icon, '☂️');
+});
+
 console.log(`${pass} passed`);

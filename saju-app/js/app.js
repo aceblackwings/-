@@ -2,6 +2,7 @@ import {
   computeSaju, tenGod, seededRandom, STEMS, STEMS_KO, BRANCHES, BRANCHES_KO, STEM_ELEMENT, BRANCH_ELEMENT,
   BRANCH_MAIN_STEM, ELEMENT_KO, ELEMENT_HANJA, pillarLabel, pillarLabelKo,
 } from './saju.js';
+import { MOODS, LEVELS, pickUmbrella, missionById, habitDay, setMood, pickLevel, completeHabit, setAfter, weekDone, needsCare, habitStats } from './habit.js';
 import { computeFortune, CATEGORIES, DAY_MASTER_PROFILE, TEN_GOD_INFO } from './fortune.js';
 import {
   createTalisman, renderTalismanSVG, downloadSVGAsPNG, TALISMAN_TYPES, THEMES, RARITIES, EMBLEM_NAME,
@@ -54,6 +55,7 @@ import {
 const STORE_KEY = 'unmyeong2099.profile';
 const COLLECTION_KEY = 'unmyeong2099.collection';
 const MISSION_KEY = 'unmyeong2099.missions';
+const HABIT_KEY = 'unmyeong2099.habit'; // v0.30 마음 날씨 + 오늘의 우산
 const EQUIP_KEY = 'unmyeong2099.equip';
 const GROWTH_KEY = 'unmyeong2099.growth';
 const FRIENDS_KEY = 'unmyeong2099.friends';
@@ -769,8 +771,10 @@ function tlToday() {
   const weakLabel = CATEGORIES.find((c) => c.key === weak).label;
   const sum = `<small>${f.date.month}/${f.date.day}(${dowOf(f.date)}) · ${f.info.title}</small>${scoreChip(f.scores.total)}`;
   const body = `
+    ${moodRowHTML()}
     <p class="tl-lead"><b>${toneWord(f.scores.total)} 하루예요.</b> ${f.info.desc}</p>
     ${catBars(f.scores)}
+    ${umbrellaHTML()}
     <div class="tl-kit"><span>🎨 ${f.luck.color}</span><span>🔢 ${f.luck.number}</span><span>🧭 ${f.luck.direction}</span><span>⏰ ${f.luck.time.split(' (')[0]}</span></div>
     <p class="tl-do">✅ ${f.info.lucky} &nbsp;·&nbsp; ⚠️ ${f.info.caution}</p>
     ${whyTodayHTML(f)}
@@ -961,10 +965,10 @@ function missionCardHTML() {
   const ms = buildMissions({
     dateKey: f.dateKey,
     month: { term: per.term, start: per.start, end: per.end, theme: pillarTheme(state.saju, f.layers.month.pillar).theme, best: d.month.best },
-    today: { mission: f.info.mission, score: f.scores.total },
+    today: { mission: todayUmbrella().pick.text, umbrella: todayUmbrella().u, score: f.scores.total },
     pending: pendingFeedback(loadRecords(), f.date), pledgeReview: pledgeReviewDue(load(PLEDGE_KEY, {}), f.date),
     discovery: g.all ? null : nextStep(g, gctx), steps: GUIDE_STEPS, nextYear: d.next?.sajuYear, progress: guideProgress(g, gctx),
-    actDone: !!load(MISSION_KEY, {})[f.dateKey], state: load(DM_KEY, {})[f.dateKey],
+    actDone: !!load(MISSION_KEY, {})[f.dateKey] || !!todayUmbrella().h.done, state: load(DM_KEY, {})[f.dateKey],
   });
   const n = ms.filter((m) => m.done).length;
   const row = (m, i) => {
@@ -1013,12 +1017,92 @@ function checkDayBonus() {
 /** 미션 ① 이달의 실천 = 오늘의 액땜 미션 (완료하면 액막이 부적 정화 + 용신 충전) */
 function completeActMission() {
   const f = state.fortune; const m = load(MISSION_KEY, {});
+  // v0.30: 미션 ① = 오늘의 우산. 어디서 완료하든 우산 기록도 함께 남긴다
+  const { pick, h } = todayUmbrella();
+  if (!h.done) { const r = completeHabit(load(HABIT_KEY, {}), f.dateKey, pick); if (r.changed) save(HABIT_KEY, r.store); }
   if (m[f.dateKey]) return;
   m[f.dateKey] = true; save(MISSION_KEY, m);
   grow((g) => complete(g, f.dateKey, 'mission', qBonus('mission')), `${say('missionDone')} (액막이 부적 등급 +1)`);
   setTimeout(() => charge(state.saju.yongsin, 4, 'mission', '🧧 실천 완료'), 2400);
   renderCharm(false);
   checkDayBonus();
+}
+
+// ---------- 마음 날씨 + 오늘의 우산 (v0.30, habit.js): 날씨(운세) → 우산(5분 안에 할 행동 하나) → 확인·보상 ----------
+
+/** 오늘의 우산과 저장 상태. pick = 지금 고른(또는 이미 한) 미션 */
+function todayUmbrella() {
+  const f = state.fortune; const s = state.saju;
+  const h = habitDay(load(HABIT_KEY, {}), f.dateKey);
+  const u = pickUmbrella({ dateKey: f.dateKey, scores: f.scores, yongsin: s.yongsin, heesin: s.heesin, mood: h.before ?? null });
+  const pick = (h.done && missionById(h.id)) || u.options[(h.level || 1) - 1];
+  return { u, h, pick };
+}
+
+function moodRowHTML() {
+  const f = state.fortune; const st = load(HABIT_KEY, {}); const h = habitDay(st, f.dateKey);
+  const care = needsCare(st, f.dateKey)
+    ? '<p class="mood-care">요즘 마음에 천둥이 자주 치네요. 혼자 견디지 않아도 괜찮아요. 이야기 나눌 곳이 있어요: ☎ <b>109</b>(24시간 상담) · ☎ <b>1577-0199</b>(정신건강 상담)</p>' : '';
+  if (h.before) {
+    const m = MOODS.find((x) => x.v === h.before);
+    return `<div class="mood-row set"><span>오늘 마음 날씨 <b>${m.icon} ${m.label}</b></span>${h.done ? '' : '<button type="button" class="linkish" data-mood-edit>바꾸기</button>'}</div>${care}`;
+  }
+  return `<div class="mood-row"><b>지금 마음 날씨는?</b>
+    <div class="mood-btns">${MOODS.map((m) => `<button type="button" data-mood="${m.v}" title="${m.label}" aria-label="${m.label}">${m.icon}</button>`).join('')}</div>
+    <small>한 번만 눌러 주세요. 마음에 맞춰 오늘의 우산을 골라 드려요.</small></div>${care}`;
+}
+
+function umbrellaHTML() {
+  const f = state.fortune; const st = load(HABIT_KEY, {}); const { u, h, pick } = todayUmbrella();
+  const wk = weekDone(st, f.dateKey);
+  const week = `<small class="umb-week">이번 주 우산 ${wk}번${wk >= 3 ? ' · 🔥 이번 주 지켰어요' : ` · ${3 - wk}번 더 하면 이번 주 연속 유지`}</small>`;
+  if (h.done) {
+    const L = LEVELS[pick.level - 1];
+    const after = h.after
+      ? `<p class="umb-after-msg">${h.after === 'lighter' ? '🌤️ 마음이 가벼워졌다니 다행이에요.' : '☁️ 괜찮아요. 해낸 것만으로도 어제보다 한 걸음 나아갔어요.'}</p>`
+      : `<div class="umb-after"><b>해 보니 마음이 조금 가벼워졌나요?</b><div class="yday-btns"><button type="button" class="ghost" data-umb-after="lighter">🌤️ 가벼워졌어요</button><button type="button" class="ghost" data-umb-after="same">☁️ 그대로예요</button></div></div>`;
+    return `<div class="umb done"><h5>☂️ 오늘의 우산 <small>완료</small></h5><p class="umb-doneline">✓ ${L.icon} ${esc(pick.text)}</p>${after}${week}</div>`;
+  }
+  const sel = h.level || 1;
+  return `<div class="umb"><h5>☂️ 오늘의 우산 <small>${u.byMood ? `${u.areaIcon} 마음 돌보기` : `${u.areaIcon} ${u.areaLabel} ${u.score}점`} · 필요한 기운 ${ELEMENT_KO[u.el]}(${ELEMENT_HANJA[u.el]})</small></h5>
+    <p class="umb-frame">${u.frame}</p>
+    <div class="umb-opts">${u.options.map((o) => { const L = LEVELS[o.level - 1]; return `<button type="button" class="umb-opt ${o.level === sel ? 'on' : ''}" data-umb-pick="${o.level}" aria-pressed="${o.level === sel}"><span>${L.icon} ${L.label}${L.exp ? ` <i>+${L.exp} EXP</i>` : ''}</span>${esc(o.text)}</button>`; }).join('')}</div>
+    <button type="button" class="primary umb-do" data-umb-done>☂️ 했어요</button>
+    ${week}</div>`;
+}
+
+document.addEventListener('click', (e) => {
+  const mood = e.target.closest('[data-mood]');
+  if (mood) {
+    const v = Number(mood.dataset.mood); const r = setMood(load(HABIT_KEY, {}), state.fortune.dateKey, v);
+    if (r.changed) save(HABIT_KEY, r.store);
+    const m = MOODS.find((x) => x.v === v);
+    toast(v <= 2 ? `${m.icon} 알려 줘서 고마워요. 오늘은 마음을 돌보는 우산부터 챙겨요` : `${m.icon} 기록했어요. 오늘의 우산을 확인해 보세요`);
+    renderToday(); return;
+  }
+  if (e.target.closest('[data-mood-edit]')) {
+    const st = load(HABIT_KEY, {}); const dk = state.fortune.dateKey;
+    if (st[dk] && !st[dk].done) { delete st[dk].before; save(HABIT_KEY, st); }
+    renderToday(); return;
+  }
+  const pk = e.target.closest('[data-umb-pick]');
+  if (pk) { const r = pickLevel(load(HABIT_KEY, {}), state.fortune.dateKey, Number(pk.dataset.umbPick)); if (r.changed) save(HABIT_KEY, r.store); renderToday(); return; }
+  if (e.target.closest('[data-umb-done]')) { completeUmbrella(); return; }
+  const af = e.target.closest('[data-umb-after]');
+  if (af) {
+    const r = setAfter(load(HABIT_KEY, {}), state.fortune.dateKey, af.dataset.umbAfter);
+    if (r.changed) { save(HABIT_KEY, r.store); grow((g) => addExp(g, 1), af.dataset.umbAfter === 'lighter' ? '🌤️ 오늘도 나를 잘 돌봤어요' : '☁️ 솔직하게 알려 줘서 고마워요'); }
+    renderToday();
+  }
+});
+
+/** 우산 완료: 미션 ①과 같은 보상(액막이 정화·용신 충전) + 난이도 보너스 */
+function completeUmbrella() {
+  const { pick, h } = todayUmbrella(); if (h.done) return;
+  const L = LEVELS[pick.level - 1];
+  completeActMission();
+  if (L.exp) setTimeout(() => grow((g) => addExp(g, L.exp), `${L.icon} ${L.label} 우산 보너스`), 1600);
+  renderToday();
 }
 
 /** 홈 안의 구역으로 가기 ('home:next' · 'home:week' · 'home:.css선택자') */
@@ -1037,7 +1121,7 @@ document.addEventListener('click', (e) => {
   if (all) { save(GUIDE_KEY, guideSetAll(loadGuide(), all.dataset.guideAll === '1')); renderToday(); return; }
   const b = e.target.closest('[data-dm]'); if (!b) return;
   const key = b.dataset.dm;
-  if (key === 'act') { completeActMission(); renderToday(); return; }
+  if (key === 'act') { completeUmbrella(); return; }
   // ②·③은 그 화면으로 이동하면 완료
   const f = state.fortune; const g = loadGuide(); const gctx = guideCtx(); const d = timelineData(); const per = d.month.period;
   const ms = buildMissions({ dateKey: f.dateKey, month: { term: per.term, start: per.start, end: per.end, theme: '', best: d.month.best }, today: { mission: '', score: f.scores.total }, pending: pendingFeedback(loadRecords(), f.date), discovery: g.all ? null : nextStep(g, gctx), nextYear: d.next?.sajuYear, progress: guideProgress(g, gctx), state: {} });
@@ -1060,7 +1144,7 @@ const loadRecords = () => ({ ...emptyRecords(), ...load(RECORDS_KEY, {}) });
 /** 오늘 운세를 기록함에 남김 (홈을 볼 때마다, 같은 날은 덮어씀) */
 function logToday() {
   const f = state.fortune; if (!f) return;
-  save(RECORDS_KEY, logDay(loadRecords(), { dateKey: f.dateKey, title: f.info.title, score: f.scores.total, best: catLabel(f.best), worst: catLabel(f.worst), mission: f.info.mission }));
+  save(RECORDS_KEY, logDay(loadRecords(), { dateKey: f.dateKey, title: f.info.title, score: f.scores.total, best: catLabel(f.best), worst: catLabel(f.worst), mission: todayUmbrella().pick.text }));
 }
 
 /** 결과 저장 버튼 (질문 답·운세 풀이·신수 카드) */
@@ -1101,6 +1185,13 @@ function renderRecords() {
         <div><b>${st.items}</b><small>저장한 결과</small></div>
       </div>
       ${st.answered >= 5 && st.highHit !== null && st.lowHit !== null ? `<p class="rec-insight">🔎 점수가 높았던 날은 ${st.highHit}%, 낮았던 날은 ${st.lowHit}% "맞았다"고 답했어요.</p>` : st.answered ? `<p class="rec-insight">🔎 ${5 - st.answered > 0 ? `${5 - st.answered}번 더 답하면 점수와 실제 하루가 얼마나 맞는지 분석해 드려요.` : ''}</p>` : ''}
+      ${(() => { const hs = habitStats(load(HABIT_KEY, {})); if (!hs.doneDays && !hs.moodDays) return ''; const mood = hs.avgMood == null ? null : MOODS.reduce((x, y) => (Math.abs(y.v - hs.avgMood) < Math.abs(x.v - hs.avgMood) ? y : x));
+        return `<div class="rec-stats rec-habit">
+        <div><b>${hs.doneDays}</b><small>☂️ 우산 챙긴 날</small></div>
+        <div><b>${hs.lighterRate === null ? '-' : `${hs.lighterRate}%`}</b><small>마음이 가벼워진 비율</small></div>
+        <div><b>${mood ? mood.icon : '-'}</b><small>평균 마음 날씨</small></div>
+        <div><b>${hs.byLevel[2]}</b><small>🌳 30분 도전</small></div>
+      </div>`; })()}
     </div>
     <div class="card">
       <h3>🗓️ 날마다 운세 <small class="muted">최근 30일</small></h3>

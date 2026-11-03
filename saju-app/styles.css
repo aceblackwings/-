@@ -918,3 +918,32 @@ select option { background: #1d1742; color: #ffffff; }
 .rd-months li.good { background: rgba(255, 201, 60, 0.06); } .rd-months li.caution { background: rgba(255, 46, 99, 0.06); }
 .tl-card.tl-next .tl-sum .ny-title { grid-column: 1; display: block; font-size: 1rem; margin: 2px 0 1px; line-height: 1.35; }
 .tl-card.tl-next .tl-sum .tl-score { grid-row: 1 / span 3; }
+
+/* ---------- v0.30 마음 날씨 + 오늘의 우산 ---------- */
+.mood-row { display: grid; gap: 6px; padding: 10px 12px; margin: 2px 0 10px; border-radius: 14px; background: rgba(255, 255, 255, 0.05); border: 1px dashed var(--line); }
+.mood-row b { font-size: 0.92rem; }
+.mood-row small { color: var(--muted); font-size: 0.76rem; }
+.mood-row.set { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; border-style: solid; font-size: 0.84rem; color: #d9d4ff; }
+.mood-btns { display: flex; gap: 6px; }
+.mood-btns button { flex: 1; min-width: 0; font-size: 1.45rem; line-height: 1; padding: 8px 0; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.04); cursor: pointer; }
+.mood-btns button:hover, .mood-btns button:focus-visible { border-color: var(--neon); background: rgba(0, 229, 255, 0.1); }
+.mood-care { margin: -4px 0 10px; padding: 10px 12px; border-radius: 12px; background: rgba(255, 201, 60, 0.1); border: 1px solid rgba(255, 201, 60, 0.4); font-size: 0.82rem; line-height: 1.6; }
+
+.umb { margin: 10px 0; padding: 12px; border-radius: 16px; border: 1.5px solid rgba(255, 201, 60, 0.55); background: linear-gradient(160deg, rgba(255, 201, 60, 0.1), rgba(20, 16, 44, 0.6)); }
+.umb h5 { margin: 0 0 4px; font-size: 0.98rem; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.umb h5 small { color: var(--muted); font-weight: 400; font-size: 0.76rem; }
+.umb-frame { margin: 0 0 8px; font-size: 0.86rem; line-height: 1.6; color: #f3efff; }
+.umb-opts { display: grid; gap: 6px; margin-bottom: 8px; }
+.umb-opt { text-align: left; display: grid; gap: 2px; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.04); color: var(--text); font: inherit; font-size: 0.88rem; cursor: pointer; }
+.umb-opt span { font-size: 0.74rem; color: var(--muted); }
+.umb-opt span i { font-style: normal; color: var(--gold); margin-left: 4px; }
+.umb-opt.on { border-color: var(--gold); background: rgba(255, 201, 60, 0.14); box-shadow: 0 0 0 1px rgba(255, 201, 60, 0.35); }
+.umb-do { width: 100%; }
+.umb-week { display: block; margin-top: 6px; color: var(--muted); font-size: 0.76rem; }
+.umb.done { border-color: rgba(57, 255, 136, 0.5); background: linear-gradient(160deg, rgba(57, 255, 136, 0.08), rgba(20, 16, 44, 0.6)); }
+.umb-doneline { margin: 0 0 6px; font-weight: 700; font-size: 0.9rem; }
+.umb-after b { font-size: 0.86rem; display: block; margin-bottom: 6px; }
+.umb-after-msg { margin: 0; font-size: 0.84rem; color: #d9d4ff; }
+.umb-after .yday-btns { display: flex; gap: 6px; }
+.umb-after .yday-btns button { flex: 1; white-space: nowrap; }
+.rec-habit { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }

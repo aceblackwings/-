@@ -1,5 +1,5 @@
 // 오늘의 미션 3가지(v0.27): 이달 운세에서 이어지는 하루 퀘스트
-// ① 이달의 실천: 이달(절기월) 기운 위에서 오늘 할 행동 하나 (= 오늘의 액땜 미션, 완료하면 액막이 부적 정화)
+// ① 오늘의 우산(v0.30, habit.js): 오늘 가장 약한 분야 × 필요한 기운의 행동 하나 (= 오늘의 액땜 미션, 완료하면 액막이 부적 정화)
 // ② 돌아보기: (12월이면) 올해 다짐 돌아보기 → 어제 운세 맞았나요?(기록이 있을 때) → 없으면 이달 좋은 날 확인 / 오늘 점수의 근거 보기를 번갈아
 // ③ 새 기능 열기: 길잡이 순서(guide.js)대로 하루 한 가지. 다 열면 신수 카드·상담·질문·기록함을 번갈아
 // 세 가지를 다 하면 보너스와 함께 「내일 미리보기」가 열려 다음 날로 자연스럽게 이어진다.
@@ -30,7 +30,14 @@ export function buildMissions(ctx) {
   const st = ctx.state || {};
   const day = dn(ctx.dateKey);
   const m = ctx.month;
-  const act = {
+  // v0.30: ① = 오늘의 우산(habit.js). 우산 정보가 없으면 예전처럼 이달의 실천 문장
+  const u = ctx.today.umbrella;
+  const act = u ? {
+    key: 'act', icon: '☂️', tag: `오늘의 우산 · ${u.areaIcon} ${u.areaLabel} · ${m.term} ${md(m.start)}~${md(m.end)}`,
+    title: ctx.today.mission,
+    desc: `${u.frame} 완료하면 액막이 부적이 한 단계 맑아져요. 난이도는 오늘 운세 카드에서 바꿀 수 있어요.`,
+    btn: '했어요', action: { type: 'self' }, done: !!ctx.actDone,
+  } : {
     key: 'act', icon: '🌙', tag: `이달의 실천 · ${m.term} ${md(m.start)}~${md(m.end)}`,
     title: ctx.today.mission,
     desc: `이번 달은 「${m.theme}」의 기운이 흐르는 달이에요. 오늘은 이것 하나만 해 보세요. 완료하면 액막이 부적이 한 단계 맑아져요.`,
