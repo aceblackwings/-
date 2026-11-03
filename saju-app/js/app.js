@@ -30,6 +30,7 @@ import { dateToJdn } from './lunar.js';
 import { layersAt, monthPeriod, explainParts, TEN_GOD_MOD, weekOf, yearOf, monthDays, sajuYearOf, categoryScores } from './period.js';
 import { orderedMenu, buildAnswer, concernAsk, ASK_MENU } from './ask.js';
 import { buildReading, FIELD_LABEL, closingLine, GOD_READING } from './reading.js';
+import { analyzeGyeok, GYEOK_PROFILE, strengthMission } from './gyeokguk.js';
 import { preloadCharImages, itemImage } from './assets.js';
 /** 계절 한정 소품 그림 (없으면 빈칸) */
 const itemThumb = (key, cls = 'item-thumb') => { const u = itemImage(key); return u ? `<img class="${cls}" src="${u}" alt="" loading="lazy">` : ''; };
@@ -534,6 +535,8 @@ function renderSaju() {
       <p class="muted" style="margin-bottom:0">나의 수호 캐릭터: <b>${hero.title}</b> — <a href="#" data-go="hero" style="color:var(--neon)">캐릭터 탭에서 만나 보세요 →</a></p>
     </div>
 
+    ${gyeokCardHTML()}
+
     <div class="card">
       <h3>오행 스탯 <span class="tag">ELEMENT STATS</span></h3>
       <div class="split">
@@ -554,6 +557,23 @@ function renderSaju() {
     ${expertCardHTML()}`;
   $('[data-panel="saju"]').insertAdjacentHTML('afterbegin', readingCardHTML());
   $$('[data-go]', $('[data-panel="saju"]')).forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); selectTab(b.dataset.go); }));
+}
+
+/** 타고난 그릇(격국, v0.36): 근거 → 강점 → 일하는 방식 → 다듬을 점 → 강점 미션 하나 */
+function gyeokCardHTML() {
+  const g = analyzeGyeok(state.saju); const p = GYEOK_PROFILE[g.name];
+  const mark = g.quality === 'good' ? '잘 짜인 그릇' : g.quality === 'care' ? '다듬으면 빛나는 그릇' : '기본 그릇';
+  return `<div class="card gyeok-card">
+    <h3>타고난 그릇 <span class="tag">격국 · ${g.name}</span></h3>
+    <p class="gk-title"><b>「${p.title}」</b> <small>${mark}</small></p>
+    <p class="muted gk-basis">${g.basisText}</p>
+    <h5>타고난 강점</h5>
+    <ul class="gk-list">${p.strengths.map((x) => `<li>${x}</li>`).join('')}</ul>
+    <h5>잘 맞는 일하는 방식</h5><p>${p.work}</p>
+    <h5>${g.quality === 'good' ? '그릇이 잘 짜인 이유' : '더 빛나게 하는 법'}</h5><p>${g.note}</p>
+    <p class="gk-care">💡 ${p.care}</p>
+    <p class="gk-mission">🌱 오늘의 강점 키우기: <b>${strengthMission(g, state.fortune.dateKey)}</b></p>
+  </div>`;
 }
 
 function birthDatesText(p, i) {
@@ -1406,7 +1426,7 @@ function expertCardHTML() {
     <p class="muted" style="font-size:0.76rem;margin:4px 0 0">바꾸면 ${sub.id === 'me' ? '오늘 운세·대운까지 모든 화면이' : '이 명식이'} 바로 다시 계산돼요.</p></div>`;
   const i = s.input;
   return `<div class="card expert" id="expert">${head}${chips}${form}
-    <p class="ex-who"><b>${esc(sub.label)}</b> · 양력 ${i.year}.${i.month}.${i.day}${i.timeKnown ? ` ${String(i.hour).padStart(2, '0')}:${String(i.minute).padStart(2, '0')}` : ' (시간 모름)'} · ${s.animal}띠 · 일간 ${STEMS[s.dayMaster]}(${ELEMENT_KO[STEM_ELEMENT[s.dayMaster]]}) · ${s.strength} · 용신 ${ELEMENT_KO[s.yongsin]} (${s.yongsinBasis || '억부'}) · 희신 ${ELEMENT_KO[s.heesin]}${s.johu && s.johu.season ? ` · 조후 ${s.johu.season}${s.johu.level === 'none' ? ' 충족' : s.johu.level === 'urgent' ? ' 급함' : ' 보완'}${s.johu.stems ? `(조후표 ${s.johu.stems.map((x) => STEMS[x]).join('·')})` : ''}` : ''}</p>
+    <p class="ex-who"><b>${esc(sub.label)}</b> · 양력 ${i.year}.${i.month}.${i.day}${i.timeKnown ? ` ${String(i.hour).padStart(2, '0')}:${String(i.minute).padStart(2, '0')}` : ' (시간 모름)'} · ${s.animal}띠 · 일간 ${STEMS[s.dayMaster]}(${ELEMENT_KO[STEM_ELEMENT[s.dayMaster]]}) · ${s.strength} · 용신 ${ELEMENT_KO[s.yongsin]} (${s.yongsinBasis || '억부'}) · 희신 ${ELEMENT_KO[s.heesin]} · 격국 ${analyzeGyeok(s).name}${s.johu && s.johu.season ? ` · 조후 ${s.johu.season}${s.johu.level === 'none' ? ' 충족' : s.johu.level === 'urgent' ? ' 급함' : ' 보완'}${s.johu.stems ? `(조후표 ${s.johu.stems.map((x) => STEMS[x]).join('·')})` : ''}` : ''}</p>
     ${table}${sinsal}${dwHTML}${basis}
     ${sub.id !== 'me' ? `<button type="button" class="ghost" data-ex-del="${sub.id}" style="width:100%;margin-top:8px">이 명식 삭제</button>` : ''}
   </div>`;

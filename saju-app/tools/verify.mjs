@@ -4,7 +4,11 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { computeSaju } from '../js/saju.js';
+import { computeSaju as baseSaju } from '../js/saju.js';
+import { analyzeGyeok } from '../js/gyeokguk.js';
+
+// 엔진 답에 격국까지 (v0.36)
+const computeSaju = (input, opts) => { const s = baseSaju(input, opts); s.gyeok = analyzeGyeok(s); return s; };
 import { buildVerifySet, sheetCSV, parseAnswers, compare, engineAnswers, calibrate } from '../js/verify.js';
 
 const here = dirname(fileURLToPath(import.meta.url));

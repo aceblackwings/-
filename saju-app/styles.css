@@ -996,3 +996,13 @@ html.easy #btn-edit { font-size: 0.8rem; padding: 8px 10px; }
 .easy-suggest .yday-btns, #easy-link-ask .yday-btns, .easy-link-out .yday-btns { grid-template-columns: 1fr 1fr; }
 html.easy .main-tabs button { font-size: 0.66rem; line-height: 1.2; word-break: keep-all; padding: 8px 1px; }
 html.easy .main-tabs button i { font-size: 1.1rem; }
+
+/* ---------- 타고난 그릇(격국, v0.36) ---------- */
+.gyeok-card h5 { margin: 14px 0 4px; font-size: 0.9rem; color: var(--gold); }
+.gyeok-card p { margin: 0 0 6px; line-height: 1.7; }
+.gk-title { font-size: 1.1rem; }
+.gk-title small { color: var(--muted); font-size: 0.8rem; margin-left: 6px; }
+.gk-basis { font-size: 0.84rem; }
+.gk-list { margin: 0; padding-left: 20px; line-height: 1.8; }
+.gk-care { padding: 10px 12px; border-radius: 12px; background: rgba(255, 201, 60, 0.07); border: 1px solid rgba(255, 201, 60, 0.25); font-size: 0.9rem; }
+.gk-mission { font-size: 0.9rem; margin-top: 10px !important; }
