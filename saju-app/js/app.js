@@ -3986,11 +3986,12 @@ function compatResultHTML(fr, idx) {
     <p style="margin-top:0">${c.grade.desc}</p>
     <div class="bars">${bar('💕 연애', c.sub.love)}${bar('🤝 우정', c.sub.friend)}${bar('💼 일', c.sub.work)}</div>
     <ul class="reasons">
-      <li><b>띠</b> ${myInfo.zodiac.name}띠 × ${friendInfo.zodiac.name}띠 — ${c.branch.label}: ${c.branch.text} <em>${c.branch.score >= 0 ? '+' : ''}${c.branch.score}</em></li>
-      <li><b>타고난 기운</b> ${STEMS[state.saju.dayMaster]} × ${STEMS[fs.dayMaster]} — ${c.stem.label}: ${c.stem.text} <em>${c.stem.score >= 0 ? '+' : ''}${c.stem.score}</em></li>
-      <li><b>오행 보완</b> 서로 부족한 기운을 채워 주는 정도 <em>+${c.complement}</em></li>
-      <li><b>오늘의 기운</b> 오늘 날짜에 따라 달라지는 보너스 <em>${c.todayBonus >= 0 ? '+' : ''}${c.todayBonus}</em></li>
+      <li><b>타고난 기운(일간)</b> ${STEMS[state.saju.dayMaster]} × ${STEMS[fs.dayMaster]} — ${c.stem.label}: ${c.stem.text} <em>${c.parts.stem >= 0 ? '+' : ''}${c.parts.stem}</em></li>
+      <li><b>생활 자리(일지)</b> ${BRANCHES[state.saju.pillars.day.branch]} × ${BRANCHES[fs.pillars.day.branch]} — ${c.day.label}: ${c.day.text} <em>${c.parts.day >= 0 ? '+' : ''}${c.parts.day}</em></li>
+      <li><b>필요한 기운 채워 주기</b> 상대가 내 용신 ${ELEMENT_KO[state.saju.yongsin]}${'을를를을를'[state.saju.yongsin]} ${c.yongMe}칸, 내가 상대 용신 ${ELEMENT_KO[fs.yongsin]}${'을를를을를'[fs.yongsin]} ${c.yongFriend}칸 채워 줘요 <em>+${c.parts.yong}</em></li>
+      <li><b>띠</b> ${myInfo.zodiac.name}띠 × ${friendInfo.zodiac.name}띠 — ${c.branch.label}: ${c.branch.text} <em>${c.parts.ddi >= 0 ? '+' : ''}${c.parts.ddi}</em></li>
     </ul>
+    <p class="concern-card" style="margin:8px 0 0">🌤️ 오늘의 둘: ${c.todayLine} <small class="muted">(궁합 점수와 별개로 날마다 바뀌어요)</small></p>
     ${dialogueHTML(myInfo, friendInfo, state.compat.dialogue, stage)}
     <p class="concern-card" style="margin:10px 0 0">💡 오늘의 팁: ${c.tip}</p>
     <div class="actions" style="margin-top:12px">
