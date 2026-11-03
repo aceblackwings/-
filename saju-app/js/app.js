@@ -550,7 +550,7 @@ function renderSaju() {
         <div>
           <div class="bars">${bars}</div>
           <div class="stats">
-            <div class="stat"><div class="k">신강/신약</div><div class="v">${s.strength}</div></div>
+            <div class="stat"><div class="k">신강/신약 (7단계)</div><div class="v">${s.strengthLevel || s.strength}</div><small class="muted">강약 점수 ${s.strengthScore ?? s.support}</small></div>
             <div class="stat"><div class="k">용신 (필요한 기운)</div><div class="v el-${s.yongsin}">${ELEMENT_KO[s.yongsin]}(${ELEMENT_HANJA[s.yongsin]})</div><small class="muted">${s.yongsinBasis || '억부'}</small></div>
             <div class="stat"><div class="k">가장 부족</div><div class="v el-${s.weakest}">${ELEMENT_KO[s.weakest]}(${ELEMENT_HANJA[s.weakest]})</div></div>
           </div>
@@ -593,11 +593,11 @@ function birthDatesText(p, i) {
 
 function strengthText(s) {
   const me = ELEMENT_KO[STEM_ELEMENT[s.dayMaster]];
-  const base = s.strength === '신강'
-    ? `${me} 기운과 이를 돕는 기운이 ${s.support}%로 강한 편(신강)입니다. 힘을 밖으로 써 주는 기운이 균형을 잡아 줍니다.`
-    : s.strength === '신약'
-      ? `${me} 기운과 이를 돕는 기운이 ${s.support}%로 약한 편(신약)입니다. 나를 북돋아 주는 기운이 힘이 됩니다.`
-      : `${me} 기운과 이를 돕는 기운이 ${s.support}%로 균형 잡힌 편(중화)입니다. 가장 부족한 기운을 채우면 더 좋아집니다.`;
+  // v0.37: 지장간까지 센 오행 비율 + 득령·득지·통근으로 강약 7단계
+  const F = { 득령: '태어난 달이 나를 도와요(득령)', 실령: '태어난 달은 나를 직접 돕지 않아요(실령)', 득지: '태어난 날의 지지가 나를 받쳐요(득지)', 실지: '태어난 날의 지지는 다른 기운이에요(실지)', 통근: '지지 속에 내 뿌리가 있어요(통근)', '뿌리 없음': '지지 속에 내 뿌리가 없어 바람을 타기 쉬워요', 득세: '천간에 도와주는 글자가 많아요(득세)', 실세: '' };
+  const why = (s.strengthFactors || []).map((k) => F[k]).filter(Boolean).join(', ');
+  const lv = s.strengthLevel || s.strength;
+  const base = `${me} 기운과 이를 돕는 기운이 지장간까지 합쳐 ${s.support}%, ${why ? `${why}. ` : ''}강약 점수 ${s.strengthScore}점으로 7단계 중 「${lv}」입니다. ${s.strength === '신강' ? '힘을 밖으로 써 주는 기운이 균형을 잡아 줍니다.' : s.strength === '신약' ? '나를 북돋아 주는 기운이 힘이 됩니다.' : lv === '중화신약' ? '균형에 가깝지만 조금 여린 쪽이라, 나를 받쳐 주는 기운이 반가워요.' : lv === '중화신강' ? '균형에 가깝지만 조금 센 쪽이라, 힘을 써 줄 기운이 반가워요.' : '가장 부족한 기운을 채우면 더 좋아집니다.'}`;
   const el = (e) => `${ELEMENT_KO[e]}(${ELEMENT_HANJA[e]})`;
   const eul = (e) => ['을', '를', '를', '을', '를'][e]; // 목·금은 받침 있음
   const i = (e) => ['이', '가', '가', '이', '가'][e];
@@ -610,7 +610,7 @@ function strengthText(s) {
         ? ` 그래서 용신은 ${el(s.yongsin)}입니다. ${j.text} 강약과 계절 두 기준이 같은 기운을 가리켜 용신이 더 분명해요.`
         : ` 그래서 용신은 ${el(s.yongsin)}입니다. ${j.text || ''}`;
   const table = j.table && !String(j.text).includes(j.table) ? ` ${j.table}` : ''; // v0.35 천간 단위 처방
-  return `${base}${tail}${table} (억부 + 궁통보감 조후표)`;
+  return `${base}${tail}${table} (지장간 오행 · 강약 7단계 · 억부 + 궁통보감 조후표)`;
 }
 
 // ---------- 오늘의 운세 ----------
@@ -1441,7 +1441,7 @@ function expertCardHTML() {
     <p class="muted" style="font-size:0.76rem;margin:4px 0 0">바꾸면 ${sub.id === 'me' ? '오늘 운세·대운까지 모든 화면이' : '이 명식이'} 바로 다시 계산돼요.</p></div>`;
   const i = s.input;
   return `<div class="card expert" id="expert">${head}${chips}${form}
-    <p class="ex-who"><b>${esc(sub.label)}</b> · 양력 ${i.year}.${i.month}.${i.day}${i.timeKnown ? ` ${String(i.hour).padStart(2, '0')}:${String(i.minute).padStart(2, '0')}` : ' (시간 모름)'} · ${s.animal}띠 · 일간 ${STEMS[s.dayMaster]}(${ELEMENT_KO[STEM_ELEMENT[s.dayMaster]]}) · ${s.strength} · 용신 ${ELEMENT_KO[s.yongsin]} (${s.yongsinBasis || '억부'}) · 희신 ${ELEMENT_KO[s.heesin]} · 격국 ${analyzeGyeok(s).name}${s.johu && s.johu.season ? ` · 조후 ${s.johu.season}${s.johu.level === 'none' ? ' 충족' : s.johu.level === 'urgent' ? ' 급함' : ' 보완'}${s.johu.stems ? `(조후표 ${s.johu.stems.map((x) => STEMS[x]).join('·')})` : ''}` : ''}</p>
+    <p class="ex-who"><b>${esc(sub.label)}</b> · 양력 ${i.year}.${i.month}.${i.day}${i.timeKnown ? ` ${String(i.hour).padStart(2, '0')}:${String(i.minute).padStart(2, '0')}` : ' (시간 모름)'} · ${s.animal}띠 · 일간 ${STEMS[s.dayMaster]}(${ELEMENT_KO[STEM_ELEMENT[s.dayMaster]]}) · ${s.strengthLevel || s.strength}(${s.strengthScore ?? s.support}) · 용신 ${ELEMENT_KO[s.yongsin]} (${s.yongsinBasis || '억부'}) · 희신 ${ELEMENT_KO[s.heesin]} · 격국 ${analyzeGyeok(s).name}${s.johu && s.johu.season ? ` · 조후 ${s.johu.season}${s.johu.level === 'none' ? ' 충족' : s.johu.level === 'urgent' ? ' 급함' : ' 보완'}${s.johu.stems ? `(조후표 ${s.johu.stems.map((x) => STEMS[x]).join('·')})` : ''}` : ''}</p>
     ${table}${sinsal}${dwHTML}${basis}
     ${sub.id !== 'me' ? `<button type="button" class="ghost" data-ex-del="${sub.id}" style="width:100%;margin-top:8px">이 명식 삭제</button>` : ''}
   </div>`;

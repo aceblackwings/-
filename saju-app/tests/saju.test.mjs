@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { computeSaju, dayPillarIndex, sunLongitude, julianDay, pillarLabel, tenGod, elementScores, analyzeStrength, analyzeJohu } from '../js/saju.js';
+import { computeSaju, dayPillarIndex, sunLongitude, julianDay, pillarLabel, tenGod, elementScores, analyzeStrength, analyzeJohu, HIDDEN_DAYS, strengthScore, levelOf, STRENGTH_LEVELS } from '../js/saju.js';
 
 let pass = 0;
 const t = (name, fn) => { fn(); pass++; console.log('ok -', name); };
@@ -99,6 +99,27 @@ t('computeSaju: 한여름 출생 결과에 조후 정보·근거 문장 포함',
   assert.ok(['urgent', 'mild', 'none'].includes(s.johu.level));
   assert.ok(s.johu.text.length > 10);
   assert.ok(s.yongsinBasis);
+});
+// ---- 지장간 오행·강약 7단계 (v0.37) ----
+t('지장간 월률분야: 지지마다 30일, 寅 = 戊7·丙7·甲16', () => {
+  HIDDEN_DAYS.forEach((b) => assert.equal(b.reduce((a, [, d]) => a + d, 0), 30));
+  assert.deepEqual(HIDDEN_DAYS[2], [[4, 7], [2, 7], [0, 16]]);
+});
+t('오행 비율: 지장간을 나눠 셈 — 寅월이면 화·토도 조금 들어감, 예전 방식(basic)은 목만', () => {
+  const P = { year: { stem: 0, branch: 2 }, month: { stem: 0, branch: 2 }, day: { stem: 0, branch: 2 }, hour: null };
+  const now = elementScores(P); const old = elementScores(P, { basic: true });
+  assert.equal(old[1], 0); assert.ok(now[1] > 0 && now[2] > 0, now.join());
+  assert.equal(now.reduce((a, b) => a + b), 100);
+});
+t('강약 7단계: 경계값과 득령·통근 근거', () => {
+  assert.equal(STRENGTH_LEVELS.length, 7);
+  assert.deepEqual([10, 22, 40, 45, 55, 60, 70, 90].map(levelOf), ['극신약', '신약', '중화신약', '중화', '중화', '중화신강', '신강', '극신강']);
+  // 甲일 寅월(득령) 寅일(득지) → 득령·득지·통근
+  const P = { year: { stem: 6, branch: 8 }, month: { stem: 2, branch: 2 }, day: { stem: 0, branch: 2 }, hour: null };
+  const r = strengthScore(0, elementScores(P), P);
+  assert.deepEqual(r.factors.slice(0, 3), ['득령', '득지', '통근']);
+  const s = computeSaju({ year: 1990, month: 3, day: 1, hour: 9, minute: 0 });
+  assert.ok(STRENGTH_LEVELS.includes(s.strengthLevel)); assert.ok(['신강', '신약', '중화'].includes(s.strength));
 });
 function BRANCHES_OF(s) { return s.pillars.month.branch; }
 console.log(`\n${pass} passed`);

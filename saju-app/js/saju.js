@@ -146,7 +146,7 @@ export function computeSaju(input, opts = {}) {
 
   const elements = elementScores(pillars);
   const chartStems = [pillars.year.stem, pillars.month.stem, ...(hourPillar ? [hourPillar.stem] : [])];
-  const strength = analyzeStrength(dayPillar.stem, elements, monthBranch, chartStems, opts);
+  const strength = analyzeStrength(dayPillar.stem, elements, monthBranch, chartStems, { ...opts, pillars });
 
   return {
     input: { year, month, day, hour, minute, timeKnown, longitudeCorrection, zasiMode },
@@ -161,13 +161,30 @@ export function computeSaju(input, opts = {}) {
   };
 }
 
-/** 오행 점수 (합계 100). 천간 1.0, 지지 1.0, 월지 1.5 */
-export function elementScores(pillars) {
+/**
+ * 지장간 월률분야(v0.37): 지지 속 천간과 30일 중 맡는 날 수 [천간, 날 수] (여기 → 중기 → 본기)
+ * 子 壬10 癸20 · 丑 癸9 辛3 己18 · 寅 戊7 丙7 甲16 · 卯 甲10 乙20 · 辰 乙9 癸3 戊18 · 巳 戊7 庚7 丙16
+ * 午 丙10 己9 丁11 · 未 丁9 乙3 己18 · 申 戊7 壬7 庚16 · 酉 庚10 辛20 · 戌 辛9 丁3 戊18 · 亥 戊7 甲7 壬16
+ */
+export const HIDDEN_DAYS = [
+  [[8, 10], [9, 20]], [[9, 9], [7, 3], [5, 18]], [[4, 7], [2, 7], [0, 16]], [[0, 10], [1, 20]],
+  [[1, 9], [9, 3], [4, 18]], [[4, 7], [6, 7], [2, 16]], [[2, 10], [5, 9], [3, 11]], [[3, 9], [1, 3], [5, 18]],
+  [[4, 7], [8, 7], [6, 16]], [[6, 10], [7, 20]], [[7, 9], [3, 3], [4, 18]], [[4, 7], [0, 7], [8, 16]],
+];
+
+/**
+ * 오행 점수 (합계 100). 천간 1.0, 지지 1.0(월지 1.5)
+ * v0.37부터 지지는 지장간 날 수 비율로 나눠 셈(寅 = 戊·丙·甲 7:7:16). opts.basic = 예전 방식(지지 = 본래 오행 하나)
+ * opts.stemEl = 합화로 오행이 바뀐 천간 { year: 2, ... }
+ */
+export function elementScores(pillars, opts = {}) {
   const raw = [0, 0, 0, 0, 0];
   for (const [key, p] of Object.entries(pillars)) {
     if (!p) continue;
-    raw[STEM_ELEMENT[p.stem]] += 1;
-    raw[BRANCH_ELEMENT[p.branch]] += key === 'month' ? 1.5 : 1;
+    raw[opts.stemEl?.[key] ?? STEM_ELEMENT[p.stem]] += 1;
+    const w = key === 'month' ? 1.5 : 1;
+    if (opts.basic) { raw[BRANCH_ELEMENT[p.branch]] += w; continue; }
+    for (const [st, days] of HIDDEN_DAYS[p.branch]) raw[STEM_ELEMENT[st]] += (w * days) / 30;
   }
   const total = raw.reduce((a, b) => a + b, 0);
   const scores = raw.map((v) => Math.round((v / total) * 100));
@@ -236,6 +253,33 @@ export function analyzeJohu(monthBranch, scores, dayStem = null, chartStems = []
   return { level: 'none', need: null, season, have, text: `${season}에 태어났고, 조후표가 꼽는 ${EL_NAME[el]} 기운이 사주에 ${have}% 있어 계절 균형이 맞춰져 있어요.`, source: 'table', ...extra(key) };
 }
 
+/** 강약 7단계(v0.37) */
+export const STRENGTH_LEVELS = ['극신약', '신약', '중화신약', '중화', '중화신강', '신강', '극신강'];
+const STRENGTH_GROUP = { 극신약: '신약', 신약: '신약', 중화신약: '중화', 중화: '중화', 중화신강: '중화', 신강: '신강', 극신강: '신강' };
+export const STRENGTH_CUTS = [22, 36, 45, 55, 64, 78]; // 이 점수 미만이면 앞 단계 (중화는 45~55)
+export function levelOf(score) {
+  const i = STRENGTH_CUTS.findIndex((c, k) => (k < 3 ? score < c : score <= c));
+  return STRENGTH_LEVELS[i < 0 ? 6 : i];
+}
+
+/**
+ * 강약 점수(0~100): 나와 나를 돕는 기운의 비율(지장간 포함)에
+ * 득령(태어난 달 본기가 나를 도움) +8 / 실령 -4, 득지(태어난 날 지지 본기가 나를 도움) +4 / 실지 -2,
+ * 통근(지지 어디에도 내 오행 뿌리가 없으면) -6 을 더함. 득세(연·월·시 천간 둘 이상이 도움)는 근거로만 표시
+ */
+export function strengthScore(dayStem, scores, pillars) {
+  const me = STEM_ELEMENT[dayStem]; const sup = (e) => e === me || e === parentOf(me);
+  let v = scores[me] + scores[parentOf(me)];
+  const factors = [];
+  const dl = sup(STEM_ELEMENT[BRANCH_MAIN_STEM[pillars.month.branch]]); v += dl ? 8 : -4; factors.push(dl ? '득령' : '실령');
+  const dj = sup(STEM_ELEMENT[BRANCH_MAIN_STEM[pillars.day.branch]]); v += dj ? 4 : -2; factors.push(dj ? '득지' : '실지');
+  const root = Object.values(pillars).some((p) => p && HIDDEN_DAYS[p.branch].some(([st]) => STEM_ELEMENT[st] === me));
+  if (!root) v -= 6; factors.push(root ? '통근' : '뿌리 없음');
+  const help = ['year', 'month', 'hour'].filter((k) => pillars[k] && sup(STEM_ELEMENT[pillars[k].stem])).length;
+  factors.push(help >= 2 ? '득세' : '실세');
+  return { score: Math.max(0, Math.min(100, Math.round(v))), factors };
+}
+
 /**
  * 신강/신약(억부) + 조후를 함께 본 용신.
  * - 억부: 나를 돕는 기운 비율로 강약을 나누고, 강하면 빼 주는 기운·약하면 돕는 기운 중 가장 적은 것
@@ -246,15 +290,23 @@ export function analyzeJohu(monthBranch, scores, dayStem = null, chartStems = []
 export function analyzeStrength(dayStem, scores, monthBranch = null, chartStems = [], opts = {}) {
   const me = STEM_ELEMENT[dayStem];
   const support = scores[me] + scores[parentOf(me)];
-  let strength;
-  if (support >= 50) strength = '신강';
-  else if (support <= 35) strength = '신약';
-  else strength = '중화';
+  let strength; let lean; let level = null; let strengthScoreV = null; let factors = [];
+  if (opts.pillars) {
+    // v0.37 강약 7단계: 돕는 기운 비율 + 득령·득지·통근 점수
+    const r = strengthScore(dayStem, scores, opts.pillars);
+    strengthScoreV = r.score; factors = r.factors; level = levelOf(r.score);
+    strength = STRENGTH_GROUP[level]; lean = r.score < 45 ? 'weak' : r.score > 55 ? 'strong' : 'mid';
+  } else {
+    if (support >= 50) strength = '신강';
+    else if (support <= 35) strength = '신약';
+    else strength = '중화';
+    lean = strength === '신강' ? 'strong' : strength === '신약' ? 'weak' : 'mid';
+  }
 
   const pickLowest = (cands) => cands.reduce((a, b) => (scores[b] < scores[a] ? b : a));
   let eokbu;
-  if (strength === '신강') eokbu = pickLowest([childOf(me), mod(me + 2, 5), mod(me + 3, 5)]);
-  else if (strength === '신약') eokbu = pickLowest([parentOf(me), me]);
+  if (lean === 'strong') eokbu = pickLowest([childOf(me), mod(me + 2, 5), mod(me + 3, 5)]);
+  else if (lean === 'weak') eokbu = pickLowest([parentOf(me), me]);
   else eokbu = pickLowest([0, 1, 2, 3, 4]);
 
   const johu = monthBranch == null ? analyzeJohu(-1, scores) : analyzeJohu(monthBranch, scores, chartStems.length ? dayStem : null, chartStems, opts);
@@ -265,7 +317,7 @@ export function analyzeStrength(dayStem, scores, monthBranch = null, chartStems 
 
   const weakest = pickLowest([0, 1, 2, 3, 4]);
   const strongest = [0, 1, 2, 3, 4].reduce((a, b) => (scores[b] > scores[a] ? b : a));
-  return { strength, support, yongsin, gisin: controllerOf(yongsin), heesin, eokbuYongsin: eokbu, yongsinBasis: basis, johu, weakest, strongest };
+  return { strength, strengthLevel: level || strength, strengthScore: strengthScoreV ?? support, strengthFactors: factors, support, yongsin, gisin: controllerOf(yongsin), heesin, eokbuYongsin: eokbu, yongsinBasis: basis, johu, weakest, strongest };
 }
 
 const TEN_GOD_NAMES = [

@@ -116,7 +116,10 @@ t('이달의 날짜: 절기월 전체(입동월 30일), 좋은 날·조심할 �
 });
 t('점수 눈금(v0.22): 평균 60점 이상, 50점 밑은 드물게', () => {
   const day = []; const yr = [];
-  for (const b of births) for (let k = 0; k < 40; k++) {
+  // v0.37 지장간 반영 뒤 50점 미만이 약 0.7%라 표본을 넓혀 셈(1950~2009년생 240명 × 30일)
+  const wide = [];
+  for (let y = 1950; y < 2010; y += 3) for (let m = 1; m <= 12; m += 1) wide.push(computeSaju({ year: y, month: m, day: 10, hour: 9, minute: 0 }));
+  for (const b of wide) for (let k = 0; k < 30; k++) {
     const d = { year: 2026, month: 1 + (k % 12), day: 1 + ((k * 7) % 28) };
     const { L, scores } = dayScores(b, d, 'female');
     day.push(scores.total); yr.push(L.year.score);
@@ -125,7 +128,7 @@ t('점수 눈금(v0.22): 평균 60점 이상, 50점 밑은 드물게', () => {
   const low = (a) => a.filter((x) => x < 50).length / a.length;
   assert.ok(mean(day) >= 60, `오늘 평균 ${mean(day)}`);
   assert.ok(mean(yr) >= 60, `올해 평균 ${mean(yr)}`);
-  assert.ok(low(day) > 0 && low(day) <= 0.06, `오늘 50점 미만 비율 ${low(day)}`);
+  assert.ok(low(day) > 0.002 && low(day) <= 0.06, `오늘 50점 미만 비율 ${low(day)}`);
   assert.ok(low(yr) <= 0.08, `올해 50점 미만 비율 ${low(yr)}`);
 });
 console.log(`${pass} passed (with 5-year check)`);
