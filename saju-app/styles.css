@@ -1408,3 +1408,11 @@ details.fold[open] > summary { border-bottom: 1px solid var(--line); }
 .ki-done { margin: 12px 0 0; font-size: 0.88rem; background: var(--rose-soft); border-radius: 12px; padding: 10px 12px; }
 .hero-main .hero-stage { max-width: 300px; margin: 0 auto; }
 @media (max-width: 380px) { .ki-row { grid-template-columns: 1fr; } .ki-face { max-width: 180px; margin: 0 auto; } }
+.slots.two { grid-template-columns: repeat(2, 1fr); }
+/* v0.43.1 타로 아르카나 그림 카드 */
+.tc-face.major.art { padding: 0; background: #fff; }
+.tc-face.major.art .tc-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.tc-face.major.art.rev .tc-art { transform: rotate(180deg); }
+.tc-face.major.art .tc-label { position: absolute; left: 6%; right: 6%; bottom: 5%; background: rgba(255,250,245,0.92); border-radius: 999px; font-size: 0.72rem; font-weight: 700; color: var(--ink); text-align: center; padding: 2px 4px; }
+.tc-face.major.art .tc-label small { color: var(--gold); }
+.hero-main .hero-title { text-align: center !important; width: 100%; }

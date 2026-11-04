@@ -47,7 +47,7 @@ import { fiveScores } from './todayfive.js';
 import { claimItem, PIECES_PER_ITEM } from './tteok.js';
 import { TTEOK, visit as tteokVisit, doTask as tteokDoTask, todayTasks, doneCount, isOpen as scrollOpen, spend as tteokSpend, buy as tteokBuy, SCROLLS, PACKS, TASKS as TTEOK_TASKS, ALL_BONUS } from './tteok.js';
 import { emoImage, charImage } from './assets.js';
-import { preloadCharImages, itemImage } from './assets.js';
+import { preloadCharImages, itemImage, tarotImage } from './assets.js';
 /** 계절 한정 소품 그림 (없으면 빈칸) */
 const itemThumb = (key, cls = 'item-thumb') => { const u = itemImage(key); return u ? `<img class="${cls}" src="${u}" alt="" loading="lazy">` : ''; };
 import { GUIDE_STEPS, emptyGuide, showNextYear, nextStep, progress as guideProgress, isUnlocked, stepFor, completeStep as completeGuideStep, setAll as guideSetAll } from './guide.js';
@@ -351,7 +351,7 @@ function initForm() {
 const TAB_PARENT = { ask: 'today', cards: 'today', saju: 'today', report: 'today', feng: 'today', chat: 'hero', charm: 'hero', emoji: 'hero', story: 'hero', gallery: 'hero', records: 'hero' };
 const SUBNAV = {
   today: [['today', '← 오늘'], ['ask', '🔮 운세 더 보기'], ['saju', '🀄 내 사주'], ['report', '📅 올해·5년'], ['feng', '🧭 풍수 지도']],
-  hero: [['hero', '🐉 지신'], ['chat', '💬 상담'], ['records', '📒 기록함'], ['charm', '📜 부적 만들기'], ['emoji', '😊 이모티콘'], ['story', '📸 스토리 카드'], ['gallery', '🧪 전체 미리보기']],
+  hero: [['hero', '← 지신']],
 };
 
 function selectTab(name) {
@@ -361,7 +361,7 @@ function selectTab(name) {
   $$('.panel').forEach((p) => p.classList.toggle('hidden', p.dataset.panel !== name));
   const sub = $('#subnav');
   const items = SUBNAV[parent];
-  const showSub = items && (parent === 'hero' || name !== parent);
+  const showSub = items && name !== parent;
   sub.classList.toggle('hidden', !showSub);
   if (showSub) {
     sub.innerHTML = items.map(([k, label]) => `<button type="button" data-sub="${k}" aria-current="${k === name ? 'page' : 'false'}">${label}</button>`).join('');
@@ -2501,6 +2501,8 @@ function tarotState() { if (!state.tarot) state.tarot = { step: 'topic' }; retur
 /** 카드 앞면: 지신 카드 = 지신 표정 그림, 메이저 아르카나 = 로마 숫자·상징·이름 + 내 지신이 작게 곁에 */
 const tarotFace = (key, mood, reversed) => {
   const c = cardOf(key);
+  const art = c.kind === 'major' ? tarotImage(c.key) : null;
+  if (art) return `<div class="tc-face major art ${reversed ? 'rev' : ''}"><img class="tc-art" src="${art}" alt="${c.name} 카드" loading="lazy"><span class="tc-label"><small>${ROMAN[c.num]}</small> ${c.name}</span></div>`;
   if (c.kind === 'major') return `<div class="tc-face major ${reversed ? 'rev' : ''}"><div class="tc-in"><small class="tc-num">${ROMAN[c.num]}</small><span class="tc-sym">${c.icon}</span><b class="tc-name">${c.name}</b></div>${zodiacFace('smile', 'tc-buddy')}</div>`;
   return `<div class="tc-face ${reversed ? 'rev' : ''}">${zodiacFace(mood, 'tc-img', key)}</div>`;
 };
@@ -2572,7 +2574,6 @@ function renderToday() {
       ${foldHTML('habit', '☂️', '오늘의 좋은 습관 하나', '5분이면 끝나는 오늘의 한 걸음', habitCardHTML())}
       ${foldHTML('next', '📜', `${bd.y.sajuYear}년 운세`, `「${bd.b.title}」의 해 · 총운·분야별`, `${bookletHTML(bd)}${bookletFieldsHTML(bd)}`)}
       ${foldHTML('saju', '🀄', '내 사주', `일간 ${STEMS[sj.dayMaster]}(${STEMS_KO[sj.dayMaster]}) · 필요한 기운 ${ELEMENT_KO[sj.yongsin]}`, sajuOpenHTML())}
-      ${foldHTML('letter', '✉️', '수호신의 아침 편지', '오늘의 세 가지 질문 · 오늘 운세의 근거', todayCardHTML())}
       ${weekly ? foldHTML('weekly', '💌', '이번 주 편지', '한 주 돌아보기', weekly) : ''}
       ${foldHTML('more', '🔮', '운세 더 보기', '이번 주·이달·올해·10년 · 궁금한 질문', `<div class="fold-go"><button type="button" class="primary" data-go-tab="ask">🔮 궁금한 것 물어보기</button><button type="button" class="ghost" data-go-tab="report">📅 올해·5년 흐름</button></div>`)}
     </div>`;
@@ -2767,9 +2768,7 @@ function renderHero(animate) {
   const info = characterInfo(s, p);
   const { eq, charms, mood, emote, stage, unlock, season } = heroOptions();
   info.stage = stage;
-  const stats = characterStats(s, f, info, charms);
   const svg = renderCharacterSVG(info, { mood, charms, emote, stage, season, width: 300, backdrop: true, animate: true });
-  const svgStatic = renderCharacterSVG(info, { mood, charms, emote, stage, season, width: 300, backdrop: true });
   const gs = summary(loadGrowth(), f.dateKey);
 
   // 장착 후보: 지금 공방의 부적 + 도감
@@ -2784,11 +2783,7 @@ function renderHero(animate) {
     return `<div class="slot ${t ? 'filled' : ''}" data-slot="${i}" title="${t ? '눌러서 해제' : ''}">
       ${t ? `${renderTalismanSVG(t)}<span>${t.rarity.label} ${t.type.label}부</span>${growMeter(eq.charms[i])}` : `<span>부적 슬롯 ${i + 1}<br>비어 있음</span>`}</div>`;
   };
-  const emoteSlot = !unlock.emote ? '<div class="slot locked"><span>🔒 이모티콘 슬롯<br>Lv.5 진화 시 해금</span></div>' : emote
-    ? `<div class="slot emote filled" data-slot="emote">${renderEmoticonSVG(s, f, { stage: heroOptions().stage, profile: p, mood: emote, style: 'sticker', tag: '' })}<span>${EMOTES.find((e) => e.key === emote).label}</span></div>`
-    : `<div class="slot emote" data-slot="emote"><span>이모티콘 슬롯<br>비어 있음</span></div>`;
 
-  const bar = (label, v, max, color) => `<div class="bar"><span>${label}</span><div class="track"><div class="fill" style="width:${Math.min(100, (v / max) * 100)}%;background:${color};color:${color}"></div></div><span class="num">${v}</span></div>`;
 
   // v0.43 단순화: 지신 그림 + 기운 게이지 + 오늘 카드만 펼치고 나머지는 접힘
   const kst = loadKi(); const kc = todayKiCard(kst, f.dateKey);
@@ -2798,20 +2793,6 @@ function renderHero(animate) {
       }).join('')}</div><p class="muted" style="font-size:0.8rem;margin-bottom:0">부적을 누르면 빈 슬롯에 장착되고, 장착된 부적을 다시 누르면 해제됩니다. 슬롯이 다 차면 2번 슬롯과 교체됩니다.</p>`
       : '<p class="muted" style="margin:0">기운 카드를 7일 연속 뽑거나 부적 공방에서 부적을 만들면 여기서 장착할 수 있어요.</p>'}
       ${charmCareHTML(eq, collection)}`;
-  const emoteBody = `<div class="emote-chips">${EMOTES.map((e) => { const own = ownedEmotes().has(e.key); return `<button type="button" data-emote="${e.key}" aria-pressed="${emote === e.key}" class="${own ? '' : 'locked'}">${own ? renderEmoticonSVG(s, f, { stage: heroOptions().stage, profile: p, mood: e.key, style: 'sticker', tag: '', caption: e.label, rarity: emoteRarity(e.key) }) : `<div class="emo-lock">🔒<br>${e.label}</div>`}</button>`; }).join('')}</div>
-      <p class="muted" style="font-size:0.78rem;margin:6px 0 0">이모티콘은 운명 뽑기에서 모을 수 있어요. (${EMOTES.filter((e) => ownedEmotes().has(e.key)).length}/8)</p>`;
-  const infoBody = `${personalityCard()}
-          <p class="muted" style="margin-top:8px;font-size:0.82rem">띠는 동물과 성격, 타고난 기운은 한복 색, 성별은 한복 모양, 고민은 손에 든 소품으로 정해졌습니다.</p>
-          <div class="stats" style="grid-template-columns:1fr 1fr">
-            <div class="stat"><div class="k">행운력</div><div class="v" style="color:var(--gold)">${stats.luckPower}</div></div>
-            <div class="stat"><div class="k">오늘의 ${stats.concern.label}</div><div class="v" style="color:${scoreColor(stats.concern.value)}">${stats.concern.value}${stats.bonus ? ` <small style="color:var(--wood)">(+${stats.concern.value - stats.concern.baseValue})</small>` : ''}</div></div>
-          </div>
-          <div class="bars" style="margin-top:12px">${stats.base.map((b, i) => bar(b.label, b.value, 120, EL_COLORS[i])).join('')}</div>
-          <div class="actions" style="margin-top:14px">
-            <button class="primary" type="button" id="btn-hero-png">캐릭터 PNG 저장</button>
-            <button class="ghost" type="button" data-story="hero">스토리 공유 ↗</button>
-          </div>`;
-
   $('[data-panel="hero"]').innerHTML = `
     <div class="card hero-main">
       ${speechBubble(state.heroLine ? [state.heroLine] : todayLines().slice(0, 2), 'hero-say')}
@@ -2823,19 +2804,12 @@ function renderHero(animate) {
       ${kiGaugeHTML(kc ? kc.element : -1)}
       ${kiProgressHTML(kst)}
       ${kc ? `<p class="ki-done">🎴 오늘은 <b>${esc(kiCardText(kc, s).name)}</b> 카드로 ${ELEMENT_HANJA[kc.element]} 기운을 채웠어요. 내일 또 만나요!</p>` : '<button type="button" class="primary ki-hero-btn" data-ki-hero>🎴 오늘의 기운 카드 뽑으러 가기</button>'}
-      <div class="slots">${slot(0)}${slot(1)}${emoteSlot}</div>
+      <div class="slots two">${slot(0)}${slot(1)}</div>
       <button type="button" class="ghost ki-go" data-go-tab="chat">💬 지신과 이야기하기</button>
     </div>
     <div class="fold-list">
       ${foldHTML('equip', '🧧', '부적 달아 주기', `${candidates.length}장 보유 · 달면 올해·이달 개운이 올라요`, equipBody)}
       ${foldHTML('wardrobe', '🎀', '지신 꾸미기', '계절 소품 · 꾸미기 세트', seasonWardrobeHTML())}
-      ${foldHTML('emote', '😊', '이모티콘 장착', '표정 + 말풍선', emoteBody)}
-      ${foldHTML('info', '📋', '지신 정보 · 능력치', `${info.zodiac.name}띠 · 일간 ${STEMS[s.dayMaster]} · 행운력 ${stats.luckPower}`, infoBody)}
-      ${foldHTML('growth', '🌱', '성장 기록', `Lv.${gs.level} · 오늘의 퀘스트`, growthCard(info, gs))}
-      ${foldHTML('luck', '🔋', '오행 충전 · 5년 흐름', '기운을 채운 만큼 앞으로의 흐름', luckCardHTML())}
-      ${foldHTML('ability', '✨', '진화 능력', '단계마다 깨어나는 힘', abilityCardHTML(info))}
-      ${(() => { const h = storiesCardHTML(); return h ? foldHTML('stories', '📖', '수호신의 이야기', '도장을 모으면 한 편씩', h) : ''; })()}
-      ${foldHTML('easy', '가+', '쉬운 모드', '큰 글씨 · 쉬운 말', easySettingsHTML())}
     </div>`;
 
   const panel = $('[data-panel="hero"]');
@@ -2868,7 +2842,6 @@ function renderHero(animate) {
     next.emote = next.emote === b.dataset.emote ? null : b.dataset.emote;
     saveEquip(next);
   }));
-  $('#btn-hero-png')?.addEventListener('click', () => downloadSVGAsPNG(svgStatic, `character-${info.zodiac.key}.png`, 3));
   bindGrowth(panel, info);
   $('#hero-stage', panel).addEventListener('click', () => {
     tteokTask('care');

@@ -28,4 +28,14 @@ t('풀이: 자리 수 확인, 모든 조합 금지어 없음·undefined 없음·
   }
   assert.throws(() => readTarot({ topic: 'love', spread: 'three', picks: [{ key: 'rat' }] }));
 });
+{
+  const fs = await import('node:fs');
+  const { TAROT_FILES } = await import('../js/tarot-manifest.js');
+  const { tarotImage } = await import('../js/assets.js');
+  t('아르카나 그림: 목록의 파일은 모두 있고(m0~m21), 없으면 null → 코드 카드', () => {
+    for (const k of TAROT_FILES) { assert.match(k, /^m(\d|1\d|2[01])$/); assert.ok(fs.statSync(new URL(`../assets/tarot/${k}.webp`, import.meta.url)).size > 1000, k); assert.equal(tarotImage(k), `assets/tarot/${k}.webp`); }
+    if (!TAROT_FILES.includes('m0')) assert.equal(tarotImage('m0'), null);
+    assert.equal(tarotImage('rat'), null, '지신 카드는 표정 그림 그대로');
+  });
+}
 console.log(`\ntarot: ${pass} passed`);
