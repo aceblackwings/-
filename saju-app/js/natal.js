@@ -95,3 +95,38 @@ export function personSummary(saju, dayProfile, ilju, gyeok, gyeokProfile) {
   const s3 = `${LV_TEXT[lv] || '기운이 고른 편'}이라 ${weak ? '나를 받쳐 주는' : '힘을 잘 써 주는'} ${EL_KO[saju.yongsin]} 기운이 가장 반가워요. 이 기운을 가까이할수록 일이 잘 풀려요.`;
   return { headline: `「${ilju.image}」 같은 ${gyeokProfile.title}`, lines: [s1, s2, s3] };
 }
+
+/**
+ * 타고난 사주에서 조심할 습관(2026-11-04 사용자 의견 「좋은 말만 하지 말고 조심할 부분도」)
+ * 십성이 넘치거나(35% 이상) 비는(5% 이하) 무리, 강약 극단, 일지와 월지의 충·원진을 근거로 최대 3개
+ * @returns [{ title, text, act, basis }]
+ */
+const OVER = {
+  bigeop: ['혼자 다 하려는 고집', '나를 세우는 힘(비겁)이 많아 뜻이 분명한 대신, 조언을 늦게 듣고 혼자 짊어지다 지치기 쉬워요. 가까운 사람과 돈이 오갈 때 서운함이 생기기도 쉬워요.', '큰 결정 전에는 믿는 사람 한 명에게 반대 의견을 일부러 물어보기'],
+  siksang: ['벌여 놓고 마무리가 약해지는 습관', '재능을 펼치는 힘(식상)이 많아 아이디어와 말솜씨가 좋은 대신, 말이 앞서거나 일을 여러 개 벌여 놓고 끝맺음이 늦어지기 쉬워요.', '새 일을 시작할 때 「끝낼 날짜」부터 달력에 적기'],
+  jaeseong: ['일·돈 욕심에 몸을 뒷전으로 미루는 습관', '결실을 거두는 힘(재성)이 많아 현실 감각이 좋은 대신, 일과 돈을 챙기느라 쉬는 시간·공부·건강을 미루기 쉬워요.', '일주일에 하루는 돈 이야기 없는 쉬는 날로 정하기'],
+  gwanseong: ['책임감이 지나쳐 쌓이는 스트레스', '책임과 자리의 힘(관성)이 많아 믿음직한 대신, 남의 눈과 평가를 크게 의식해 거절을 못 하고 스트레스를 속으로 쌓기 쉬워요.', '「이번엔 어렵겠어요」 거절 한 문장을 미리 정해 두기'],
+  inseong: ['생각이 길어 실행이 늦어지는 습관', '배우고 품는 힘(인성)이 많아 생각이 깊은 대신, 걱정과 준비가 길어져 시작을 미루거나 도움에 기대기 쉬워요.', '고민은 10분 타이머를 맞춰 하고, 끝나면 작은 일 하나 바로 하기'],
+};
+const UNDER = {
+  bigeop: ['내 몫을 챙기지 못하는 습관', '나를 세우는 힘(비겁)이 적어 남을 잘 맞춰 주는 대신, 싫은 걸 싫다고 못 해 손해를 보거나 체력이 쉽게 떨어지기 쉬워요.', '하루 한 번 「나는 이게 좋아/싫어」를 분명히 말해 보기'],
+  siksang: ['마음을 말하지 않아 생기는 오해', '재능을 펼치는 힘(식상)이 적어 신중한 대신, 고마움·서운함을 표현하지 않아 상대가 내 마음을 모르기 쉬워요.', '고마운 일·서운한 일을 그날 한 줄로 말해 보기'],
+  jaeseong: ['돈 관리가 느슨해지는 습관', '결실을 거두는 힘(재성)이 적어 욕심이 적은 대신, 돈이 어디로 나가는지 놓치기 쉽고 「얼마면 될까」 감각이 약할 수 있어요.', '고정비는 자동이체로 묶고, 한 달에 한 번 통장 내역 보기'],
+  gwanseong: ['마감과 규칙에 느슨해지는 습관', '책임과 자리의 힘(관성)이 적어 자유로운 대신, 마감·약속·규칙을 가볍게 넘기다 신뢰를 잃기 쉬워요.', '중요한 마감은 하루 전에 알림 두 번 맞춰 두기'],
+  inseong: ['쉬지 못하고 달리는 습관', '배우고 품는 힘(인성)이 적어 행동이 빠른 대신, 쉬거나 도움을 받는 게 어색해 혼자 지치기 쉬워요.', '힘든 일 하나는 「도와줄 수 있어?」 하고 부탁해 보기'],
+};
+export function natalWatch(saju) {
+  const t = tenGodProfile(saju); const out = [];
+  const over = [...t.groups].sort((a, b) => b.pct - a.pct).filter((g) => g.pct >= 35);
+  const under = [...t.groups].sort((a, b) => a.pct - b.pct).filter((g) => g.pct <= 5);
+  for (const g of over.slice(0, 1)) { const [title, text, act] = OVER[g.key]; out.push({ title, text, act, basis: `${g.label} ${g.pct}%` }); }
+  for (const g of under.slice(0, 1)) { const [title, text, act] = UNDER[g.key]; out.push({ title, text, act, basis: `${g.label} ${g.pct}%` }); }
+  const lv = saju.strengthLevel;
+  if (lv === '극신약') out.push({ title: '부탁을 거절하지 못하는 마음', text: '타고난 기운이 아주 여린 편(극신약)이라 주변 기운에 쉽게 흔들려요. 남의 부탁을 다 들어주다 내 일과 몸이 밀리기 쉬워요.', act: '부탁을 받으면 바로 답하지 말고 「확인하고 알려 줄게요」로 하루 시간 벌기', basis: '강약 극신약' });
+  if (lv === '극신강') out.push({ title: '내 방식만 고집하는 마음', text: '타고난 기운이 아주 센 편(극신강)이라 추진력이 강한 대신, 내 방식이 옳다고 믿어 주변과 부딪히기 쉬워요.', act: '하루 한 번은 상대 말을 끝까지 듣고 「그렇구나」로 받아 주기', basis: '강약 극신강' });
+  const P = saju.pillars; const d = P.day.branch; const m = P.month.branch;
+  if (Math.abs(d - m) === 6) out.push({ title: '일과 집 사이에서 자주 바뀌는 마음', text: '태어난 날(나·배우자 자리)과 태어난 달(일터·부모 자리)의 지지가 서로 부딪혀요(충). 직장과 가정, 내 뜻과 부모님 뜻 사이에서 마음이 자주 바뀌거나 이동·이직이 잦기 쉬워요.', act: '큰 변화는 한 달 기다렸다가도 같은 마음이면 그때 정하기', basis: `일지·월지 충` });
+  // 넘치거나 빈 기운이 없으면(고른 사주) 가장 많은 기운의 뒷면 하나만 가볍게
+  if (!out.length) { const g = t.top; const [title, text, act] = OVER[g.key]; out.push({ title, text, act, basis: `가장 많은 ${g.label} ${g.pct}%` }); }
+  return out.slice(0, 3);
+}

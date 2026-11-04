@@ -39,7 +39,7 @@ import { retroQuestions, retroSummary, RETRO_ANSWERS } from './retro.js';
 import { HOUR_QUESTIONS, guessHours } from './hourguess.js';
 import { formal, hasPoliteYo } from './formal.js';
 import { kaiunPower, kaiunFor, kaiunLine, fieldKaiunSentence, withKaiun, logKaiun, kaiunTrend, capState } from './kaiun.js';
-import { tenGodProfile, pillarReadings, personSummary } from './natal.js';
+import { tenGodProfile, pillarReadings, personSummary, natalWatch } from './natal.js';
 import { growEquipped, fillOf, replaceCharm, pairType, fiveDone, elementsOwned, setUnlocked, boostRarity, offerUnlocked, offerValue, offerable, removeOffered, equipLine, charmKey, GROW_FULL, RARITY_KO as CC_RARITY_KO, TYPE_KO, OFFER_UNLOCK } from './charmcare.js';
 import { buildNote, markNote, weekStamps, stampRarity, AREA_CHARM, RARITY_KO, MONTH_KEY_NEED, monthStamps, STORY_STEPS, newStoryIndex, storiesOpen, buildStories, weeklyLetter } from './note.js';
 import { ELEMENT_LUCK } from './fortune.js';
@@ -578,6 +578,7 @@ function renderSajuFull() {
     </div>
 
     ${personCardHTML()}
+    ${natalWatchHTML()}
     ${hourGuessCardHTML()}
     ${retroCardHTML()}
     ${iljuCardHTML()}
@@ -614,6 +615,13 @@ function personNow() { const s = state.saju; const g = analyzeGyeok(s); return p
 function personCardHTML() {
   const ps = personNow();
   return `<div class="card person-card"><h3>나라는 사람 <span class="tag">한 장 요약</span></h3><p class="gk-title"><b>${esc(ps.headline)}</b></p>${ps.lines.map((l) => `<p>${esc(l)}</p>`).join('')}<small class="muted">아래 카드에서 일주·그릇·성향을 하나씩 더 자세히 볼 수 있어요.</small></div>`;
+}
+
+/** 타고난 사주에서 조심할 습관(natal.js natalWatch): 근거 → 장면 → 행동 */
+function natalWatchHTML() {
+  const list = natalWatch(state.saju); if (!list.length) return '';
+  return `<div class="card bk-part bk-checks nw-card"><h3>🧭 타고난 사주에서 조심할 습관 <small>강점의 뒷면이라, 알고 있으면 충분히 다룰 수 있어요</small></h3>
+    <ul class="ck-list">${list.map((c) => `<li class="ck watch"><b>⚠️ <em>${esc(c.basis)}</em> ${esc(c.title)}</b><p>${esc(c.text)}</p><p class="ck-act">👉 ${esc(c.act)}</p></li>`).join('')}</ul></div>`;
 }
 
 /** A6 시간 모름: 성향 질문 3개로 시주 후보 */
@@ -745,10 +753,12 @@ function birthDatesText(p, i) {
 function strengthText(s) {
   const me = ELEMENT_KO[STEM_ELEMENT[s.dayMaster]];
   // v0.37: 지장간까지 센 오행 비율 + 득령·득지·통근으로 강약 7단계
-  const F = { 득령: '태어난 달이 나를 도와요(득령)', 실령: '태어난 달은 나를 직접 돕지 않아요(실령)', 득지: '태어난 날의 지지가 나를 받쳐요(득지)', 실지: '태어난 날의 지지는 다른 기운이에요(실지)', 통근: '지지 속에 내 뿌리가 있어요(통근)', '뿌리 없음': '지지 속에 내 뿌리가 없어 바람을 타기 쉬워요', 득세: '천간에 도와주는 글자가 많아요(득세)', 실세: '' };
-  const why = (s.strengthFactors || []).map((k) => F[k]).filter(Boolean).join(', ');
+  const F = { 득령: '태어난 달이 나를 도움(득령)', 실령: '태어난 달은 나를 직접 돕지 않음(실령)', 득지: '태어난 날의 지지가 나를 받침(득지)', 실지: '태어난 날의 지지는 다른 기운(실지)', 통근: '지지 속에 내 뿌리가 있음(통근)', '뿌리 없음': '지지 속에 내 뿌리가 없음(바람을 타기 쉬움)', 득세: '천간에 도와주는 글자가 많음(득세)', 실세: '' };
+  // 2026-11-04 사용자 의견 「이해하기 어려운 문장」: 한 줄로 이어 붙이지 않고 「비율 → 근거 번호 → 결론」 세 토막으로
+  const NUM = '①②③④⑤';
+  const why = (s.strengthFactors || []).map((k) => F[k]).filter(Boolean).map((t, n) => `${NUM[n] || '·'} ${t}`).join(' ');
   const lv = s.strengthLevel || s.strength;
-  const base = `${me} 기운과 이를 돕는 기운이 지장간까지 합쳐 ${s.support}%, ${why ? `${why}. ` : ''}강약 점수 ${s.strengthScore}점으로 7단계 중 「${lv}」입니다. ${s.strength === '신강' ? '힘을 밖으로 써 주는 기운이 균형을 잡아 줍니다.' : s.strength === '신약' ? '나를 북돋아 주는 기운이 힘이 됩니다.' : lv === '중화신약' ? '균형에 가깝지만 조금 여린 쪽이라, 나를 받쳐 주는 기운이 반가워요.' : lv === '중화신강' ? '균형에 가깝지만 조금 센 쪽이라, 힘을 써 줄 기운이 반가워요.' : '가장 부족한 기운을 채우면 더 좋아집니다.'}`;
+  const base = `나(${me})와 나를 돕는 기운이 사주 전체(속 글자인 지장간 포함)의 ${s.support}%를 차지합니다. ${why ? `여기에 ${why}. ` : ''}이를 합친 강약 점수는 ${s.strengthScore}점, 7단계 중 「${lv}」입니다. ${s.strength === '신강' ? '힘을 밖으로 써 주는 기운이 균형을 잡아 줍니다.' : s.strength === '신약' ? '나를 북돋아 주는 기운이 힘이 됩니다.' : lv === '중화신약' ? '균형에 가깝지만 조금 여린 쪽이라, 나를 받쳐 주는 기운이 반가워요.' : lv === '중화신강' ? '균형에 가깝지만 조금 센 쪽이라, 힘을 써 줄 기운이 반가워요.' : '가장 부족한 기운을 채우면 더 좋아집니다.'}`;
   const el = (e) => `${ELEMENT_KO[e]}(${ELEMENT_HANJA[e]})`;
   const eul = (e) => ['을', '를', '를', '을', '를'][e]; // 목·금은 받침 있음
   const i = (e) => ['이', '가', '가', '이', '가'][e];

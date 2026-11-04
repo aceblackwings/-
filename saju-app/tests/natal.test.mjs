@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { natalWatch } from '../js/natal.js';
 import { computeSaju, STEMS, BRANCHES } from '../js/saju.js';
 import { ILJU, buildIlju } from '../js/ilju.js';
 import { tenGodProfile, pillarReadings, GOD_GROUPS, personSummary } from '../js/natal.js';
@@ -53,4 +54,11 @@ t('A4 한 장 요약: 세 문장, 일주 모습·격국 이름·용신, 이상 �
   }
 });
 
+t('타고난 사주에서 조심할 습관: 모든 사람에게 1~3개, 근거·행동 포함', () => {
+  for (let y = 1950; y < 2012; y += 3) for (const m of [1, 5, 9]) {
+    const s = computeSaju({ year: y, month: m, day: 1 + (y * 7 + m) % 27, hour: (y + m) % 24, minute: 0 });
+    const w = natalWatch(s); assert.ok(w.length >= 1 && w.length <= 3);
+    for (const c of w) { assert.ok(c.title && c.text && c.act && c.basis); assert.deepEqual(toneProblems(c.text), []); }
+  }
+});
 console.log(`\nnatal: ${pass} passed`);

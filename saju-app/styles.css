@@ -1445,3 +1445,4 @@ details.fold[open] > summary { border-bottom: 1px solid var(--line); }
   html.easy .brand h1 { font-size: 1.05rem; }
   html.easy #btn-easy, html.easy #btn-edit { font-size: 0.78rem; padding: 6px 8px; }
 }
+.bk-part.bk-checks h3 { display: block; }
