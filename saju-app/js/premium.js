@@ -235,6 +235,35 @@ export function premiumTeaser(rep) {
   return { h: b.h, open: b.paras[0], blur: b.paras[1] };
 }
 
+/**
+ * 타로 결과 끝 → 그해 상세판 다리(2026-11-04 사용자 제안).
+ * 타로 주제에 맞는 상세판 분야를 골라, 가장 궁금한 곳(힘이 실리는 두 달·조심할 장면)에서 끊는다.
+ * 'day'(오늘·궁금한 일)는 분야 대신 12달 달력의 「흐름이 가장 좋은 세 달」로 잇는다.
+ * @returns { field, label, sec, block, q:[{q, a}] } — sec·block은 읽기 화면에서 바로 찾아갈 자리
+ */
+export const TAROT_FIELD = { love: 'love', job: 'career', money: 'wealth', health: 'health', day: null };
+export function tarotBridge(rep, topic) {
+  const field = TAROT_FIELD[topic] ?? null;
+  const fsec = rep.sections.findIndex((s) => s.key === 'fields');
+  const label = field ? FIELD_ORDER.find(([k]) => k === field)[1] : null;
+  const bi = field && fsec >= 0 ? rep.sections[fsec].blocks.findIndex((b) => b.h.startsWith(label)) : -1;
+  if (bi >= 0) {
+    const ps = rep.sections[fsec].blocks[bi].paras;
+    const two = ps[2].split(/(?<=요\.)\s+/)[0]; const watch = ps[3];
+    return { field, label, sec: fsec, block: bi, q: [
+      { q: `${label}에 가장 힘이 실리는 두 달은?`, a: two },
+      { q: `${label}에서 조심할 장면 두 가지는?`, a: watch },
+    ] };
+  }
+  const open = rep.sections.find((s) => s.key === 'open').blocks[0].paras[1];
+  const msec = rep.sections.findIndex((s) => s.key === 'months');
+  const mb = Math.max(0, rep.sections[msec].blocks.findIndex((b) => b.h.includes('🌟')));
+  return { field: null, label: '12달 흐름', sec: msec, block: mb, q: [
+    { q: '흐름이 가장 좋은 세 달은?', a: open },
+    { q: '마음에 걸린 일, 몇 월에 움직이면 좋을까?', a: rep.sections[msec].blocks[mb].paras[0] },
+  ] };
+}
+
 // ======================================================================
 // 2) 평생 정통사주 종합(4,900원)
 // ======================================================================
