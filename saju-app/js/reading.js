@@ -197,8 +197,11 @@ export function crossLine(daewoonGod, yearGod) {
 /** ⑨ 교운기: 대운이 바뀌는 해(그해 나이 = 새 대운 시작 나이)·바뀌기 전 해 */
 export function turnLine(age, daewoon, nextDaewoon) {
   if (!daewoon) return '';
-  if (age === daewoon.startAge) return `이 해는 10년 큰 흐름이 새로 바뀌는 해(교운기)예요. 환경·관계·마음가짐이 바뀌기 쉬우니, 새 흐름에 맞춰 계획을 다시 세우면 좋아요.`;
-  if (nextDaewoon && nextDaewoon.startAge - age === 1) return `다음 해에 10년 큰 흐름이 바뀌어요(교운기). 이 해에 정리할 것은 정리하고, 다음 10년의 준비를 시작해 보세요.`;
+  const turnOf = (d) => d.turnAge ?? d.startAge;
+  const when = daewoon.startDate ? ` (${daewoon.startDate.year}년 ${daewoon.startDate.month}월쯤부터)` : '';
+  if (age === turnOf(daewoon)) return `이 해는 10년 큰 흐름이 새로 바뀌는 해(교운기)${when}예요. 환경·관계·마음가짐이 바뀌기 쉬우니, 새 흐름에 맞춰 계획을 다시 세우면 좋아요.`;
+  if (nextDaewoon && turnOf(nextDaewoon) === age) return `이 해 ${nextDaewoon.startDate?.month ?? ''}월쯤 10년 큰 흐름이 새로 바뀌어요(교운기). 그 전까지는 지금 흐름을 마무리하고, 그 뒤로는 새 흐름에 맞춰 계획을 다시 세우면 좋아요.`.replace('이 해 월쯤', '이 해');
+  if (nextDaewoon && turnOf(nextDaewoon) - age === 1) return `다음 해${nextDaewoon.startDate ? ` ${nextDaewoon.startDate.month}월쯤` : ''}에 10년 큰 흐름이 바뀌어요(교운기). 이 해에 정리할 것은 정리하고, 다음 10년의 준비를 시작해 보세요.`;
   return '';
 }
 

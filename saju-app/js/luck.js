@@ -33,20 +33,30 @@ export function computeDaewoon(saju, gender) {
   if (!forward) diff -= 360;
   const jdTerm = solarTermJDE(targetLon, jdBirth + (diff / 360) * 365.2422);
   const days = Math.abs(jdTerm - jdBirth);
-  const startAge = clamp(Math.round(days / 3), 1, 10);
+  const startAge = clamp(Math.round(days / 3), 1, 10); // 전통 대운수(3일 = 1년, 반올림) — 화면의 「○세」 표기
+  // 2026-11-04 정확도 1단계 ②: 1일 = 4개월로 개월까지 계산 → 대운이 실제로 바뀌는 해·달(startDate)
+  const startMonths = clamp(Math.round(days * 4), 1, 124);
+  const addMonths = (n) => { const t = i.year * 12 + (i.month - 1) + n; return { year: Math.floor(t / 12), month: (t % 12) + 1, day: i.day }; };
 
   const m = saju.pillars.month;
   const pillars = Array.from({ length: 8 }, (_, n) => {
     const step = (n + 1) * (forward ? 1 : -1);
     const p = { stem: mod(m.stem + step, 10), branch: mod(m.branch + step, 12) };
     const age = startAge + n * 10;
-    return { ...p, startAge: age, endAge: age + 9, startYear: i.year + age, score: pillarScore(saju, p) };
+    const startDate = addMonths(startMonths + n * 120);
+    return { ...p, startAge: age, endAge: age + 9, startYear: startDate.year, startDate, turnAge: startDate.year - i.year, score: pillarScore(saju, p) };
   });
-  return { forward, startAge, days: Math.round(days), pillars };
+  return { forward, startAge, startMonths, startExact: { years: Math.floor(startMonths / 12), months: startMonths % 12 }, days: Math.round(days * 10) / 10, pillars };
 }
 
 /** 나이(만 나이 기준 근사)에 해당하는 대운 */
-export function daewoonAt(daewoon, age) {
+export function daewoonAt(daewoon, age, date = null) {
+  // 날짜가 있으면 실제 교운 시점(startDate, 개월 단위)으로 고른다
+  if (date && daewoon.pillars[0]?.startDate) {
+    const v = (d) => d.year * 12 + d.month;
+    const cur = [...daewoon.pillars].reverse().find((p) => v(p.startDate) <= v(date));
+    return cur || null;
+  }
   if (age < daewoon.startAge) return null;
   return daewoon.pillars.find((p) => age >= p.startAge && age <= p.endAge) || daewoon.pillars[daewoon.pillars.length - 1];
 }
@@ -175,7 +185,7 @@ export function fiveYearForecast(saju, gender, now, idx, stage, extra = 0, yearB
     const year = now.year + n;
     const age = year - birthYear;
     const yp = yearPillar(year);
-    const d = daewoonAt(dw, age);
+    const d = daewoonAt(dw, age, { year, month: 8, day: 1 }); // 그해 한가운데 기준(period.js daewoonFor와 같게)
     // 오늘 운세·월별 리포트와 같은 규칙(period.js): 올해 = 세운 70% + 대운 30%
     const base = d ? Math.round((7 * pillarScore(saju, yp) + 3 * d.score) / 10) : pillarScore(saju, yp);
     // 개운 누적 효과: 꾸준히 채운 기운이 해마다 조금씩 더 쌓이는 곡선

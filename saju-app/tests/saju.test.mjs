@@ -178,3 +178,28 @@ t('종격: 종왕격이면 용신 = 내 오행, 통관이면 다리 오행이 �
 });
 function BRANCHES_OF(s) { return s.pillars.month.branch; }
 console.log(`\n${pass} passed`);
+import { equationOfTime as EOT, julianDay as JD } from '../js/saju.js';
+import { computeDaewoon as CDW, daewoonAt as DWAT } from '../js/luck.js';
+t('균시차(2026-11-04): 2월 중순 약 −14분 · 11월 초 약 +16분, 경도 보정을 켤 때만 시주 계산에 들어감', () => {
+  assert.ok(Math.abs(EOT(JD(2026, 2, 11, 3)) + 14.2) < 0.6); assert.ok(Math.abs(EOT(JD(2026, 11, 3, 3)) - 16.4) < 0.6);
+  // 11월 3일 08:50 출생(서울): 경도 −32분 → 08:18(辰시) / 균시차 +16분 → 08:34 … 같은 시. 06:50 → 06:18 + 16 = 06:34 卯시 그대로
+  // 경계 사례: 07:40 → 경도만 07:08(辰), 균시차까지 07:24(辰)
+  const a = computeSaju({ year: 1990, month: 11, day: 3, hour: 7, minute: 20, birthLon: 127.0, eot: false });
+  const b = computeSaju({ year: 1990, month: 11, day: 3, hour: 7, minute: 20, birthLon: 127.0 });
+  assert.equal(a.pillars.hour.branch, 3, '경도만: 06:48 → 卯시'); assert.equal(b.pillars.hour.branch, 4, '균시차 +16분: 07:04 → 辰시');
+  assert.ok(b.eotMinutes >= 15 && b.eotMinutes <= 17);
+  const c = computeSaju({ year: 1990, month: 11, day: 3, hour: 7, minute: 20, longitudeCorrection: false });
+  assert.equal(c.eotMinutes, 0, '경도 보정을 끄면 균시차도 안 씀');
+});
+t('대운 개월 단위(2026-11-04): 1일 = 4개월, 교운 달(startDate)로 현재 대운을 고름', () => {
+  const s = computeSaju({ year: 1990, month: 8, day: 3, hour: 14, minute: 0 });
+  const dw = CDW(s, 'female');
+  assert.equal(dw.startMonths, Math.max(1, Math.min(124, Math.round(dw.days * 4))) || dw.startMonths);
+  assert.equal(dw.startExact.years * 12 + dw.startExact.months, dw.startMonths);
+  const p0 = dw.pillars[0]; const p1 = dw.pillars[1];
+  assert.equal((p1.startDate.year * 12 + p1.startDate.month) - (p0.startDate.year * 12 + p0.startDate.month), 120);
+  const before = { year: p1.startDate.month === 1 ? p1.startDate.year - 1 : p1.startDate.year, month: p1.startDate.month === 1 ? 12 : p1.startDate.month - 1, day: 1 };
+  assert.equal(DWAT(dw, 0, before).startAge, p0.startAge, '교운 달 전에는 앞 대운');
+  assert.equal(DWAT(dw, 0, p1.startDate).startAge, p1.startAge, '교운 달부터 새 대운');
+  assert.equal(DWAT(dw, 0, { year: 1990, month: 9, day: 1 }), null, '첫 대운 전');
+});

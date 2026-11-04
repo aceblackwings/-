@@ -133,12 +133,12 @@ function save(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* 저장 불가 환경 */ }
 }
 
-function toast(msg) {
+function toast(msg, ms) {
   document.querySelectorAll('.toast').forEach((t) => t.remove());
   const el = document.createElement('div');
   el.className = 'toast'; el.textContent = msg;
   document.body.appendChild(el);
-  setTimeout(() => el.remove(), Math.min(5200, 2000 + msg.length * 35));
+  setTimeout(() => el.remove(), ms || Math.min(5200, 2000 + msg.length * 35));
 }
 
 // ---------- 입력 ----------
@@ -159,6 +159,17 @@ function solarDateOf(p) {
   return { year: p.year, month: p.month, day: p.day };
 }
 
+/** 균시차(2026-11-04)로 기존 사용자의 시주·일주가 바뀌었으면 한 번만 알림(되돌리는 방법 포함) */
+function eotNotice(profile, mode) {
+  if (mode === 'summon' || profile.eotSeen || profile.timeUnknown || profile.eot === false || profile.lonCorr === false) return;
+  const old = computeSaju({ ...profileToInput(profile), eot: false });
+  state.profile = { ...profile, eotSeen: true }; save(STORE_KEY, state.profile);
+  const P = (x) => (x ? pillarLabel(x) : '');
+  if (P(old.pillars.hour) === P(state.saju.pillars.hour) && P(old.pillars.day) === P(state.saju.pillars.day)) return;
+  const e = state.saju.eotMinutes;
+  setTimeout(() => toast(`🕰️ 계산이 더 정밀해졌어요. 태어난 날 해의 실제 위치(균시차 ${e > 0 ? '+' : ''}${e}분)까지 반영해 ${P(old.pillars.day) !== P(state.saju.pillars.day) ? `일주가 ${P(old.pillars.day)} → ${P(state.saju.pillars.day)}, ` : ''}시주가 ${P(old.pillars.hour)} → ${P(state.saju.pillars.hour)}로 바뀌었어요. 예전 방식으로 보려면 정보 수정 > 고급 설정에서 「균시차 반영」을 꺼 주세요.`, 10000), 1500);
+}
+
 function profileToInput(p) {
   const solar = solarDateOf(p);
   const [hour, minute] = (p.time || '12:00').split(':').map(Number);
@@ -169,6 +180,7 @@ function profileToInput(p) {
     zasiMode: p.zasi,
     birthLon: cityLon(p.city || ''),
     dst: p.dstAuto === false ? 'off' : 'auto',
+    eot: p.eot !== false, // 균시차(2026-11-04, 기본 켬)
   };
 }
 
@@ -201,6 +213,7 @@ function start(profile, mode = 'today') {
   save(FW_KEY, ensureStart(load(FW_KEY, null), state.fortune.dateKey, loadGrowth().exp));
   setupPlainTerms();
   setupFormal();
+  eotNotice(profile, mode);
   renderToday();
   setTimeout(() => { processDexRewards(); renderCompat(); }, 2600);
   setTimeout(initRealtime, 900);
@@ -288,6 +301,7 @@ function initForm() {
     form.zasi.value = saved.zasi || 'early';
     form.city.value = saved.city || '';
     form.dstAuto.checked = saved.dstAuto !== false;
+    if (form.eot) form.eot.checked = saved.eot !== false;
     if (saved.gender) form.gender.value = saved.gender;
     if (saved.concern) form.concern.value = saved.concern;
   }
@@ -317,6 +331,7 @@ function initForm() {
       zasi: form.zasi.value,
       city: form.city.value,
       dstAuto: form.dstAuto.checked,
+      eot: form.eot ? form.eot.checked : true,
       gender: form.gender.value,
       concern: form.concern.value,
     };
@@ -741,6 +756,12 @@ function gyeokCardHTML() {
   </div>`;
 }
 
+/** 대운 첫 교운 시점: 만 ○세 ○개월(YYYY년 M월) */
+function dwExact(dw) {
+  const e = dw.startExact; const sd = dw.pillars[0]?.startDate;
+  return e && sd ? `만 ${e.years}세${e.months ? ` ${e.months}개월` : ''}(${sd.year}년 ${sd.month}월)` : `${dw.startAge}세`;
+}
+
 function birthDatesText(p, i) {
   const lunar = solarToLunar(i.year, i.month, i.day);
   const solarText = `양력 ${i.year}년 ${i.month}월 ${i.day}일`;
@@ -1065,7 +1086,7 @@ function tlDaewoon(d) {
   const s = state.saju;
   if (!d.dw) return tlCard('daewoon', '<small>성별을 입력하면 대운을 계산해요</small>', '<p class="muted">대운은 성별에 따라 순행·역행이 달라져요. 정보 수정에서 성별을 넣어 주세요.</p>');
   const age = state.fortune.date.year - s.input.year;
-  const cur = daewoonAt(d.dw, age);
+  const cur = daewoonAt(d.dw, age, state.fortune.date);
   const nextStart = cur ? cur.endAge + 1 : d.dw.startAge;
   const sum = cur ? `<small>${plKo(cur)} · ${cur.startAge}~${cur.endAge}세 · 다음 대운까지 ${nextStart - age}년</small>${scoreChip(cur.score)}` : `<small>첫 대운은 ${d.dw.startAge}세부터</small>`;
   const chips = d.dw.pillars.map((p) => `<span class="dw-chip ${cur && p.startAge === cur.startAge ? 'now' : ''}"><b>${p.startAge}세</b>${STEMS[p.stem]}${BRANCHES[p.branch]}<i style="color:${scoreColor(p.score)}">${p.score}</i></span>`).join('');
@@ -1073,7 +1094,7 @@ function tlDaewoon(d) {
   const body = `
     ${cur ? `<p class="tl-lead"><b>지금은 「${th.god} · ${th.theme}」의 10년</b>이에요. ${daewoonComment(s, cur, 0)}</p>` : '<p class="tl-lead">아직 첫 대운이 시작되기 전이에요. 타고난 원국의 흐름대로 자라는 시기입니다.</p>'}
     <div class="dw-chips">${chips}</div>
-    <p class="why-calc">${d.dw.forward ? '순행' : '역행'} 대운 · ${d.dw.startAge}세 시작 (태어난 날부터 절기까지 ${d.dw.days}일 ÷ 3)${cur ? ` · 근거: ${explainParts(layersAt(s, state.fortune.date, state.profile.gender).daewoon.parts)}` : ''}</p>
+    <p class="why-calc">${d.dw.forward ? '순행' : '역행'} 대운 · ${d.dw.startAge}세 시작 (태어난 날부터 절기까지 ${d.dw.days}일 ÷ 3 · 정확히는 ${dwExact(d.dw)}부터)${cur ? ` · 근거: ${explainParts(layersAt(s, state.fortune.date, state.profile.gender).daewoon.parts)}` : ''}</p>
     <button class="ghost tl-read" type="button" data-tl-step="read-daewoon">📖 대운 풀이 자세히 읽기</button>
     ${stepBtn('앞으로 5년 흐름 보기', 'five')}`;
   return tlCard('daewoon', sum, body);
@@ -1852,7 +1873,7 @@ document.addEventListener('click', (e) => {
 /** 책자 계산은 한 번만 (총운 카드 · 분야 카드가 함께 씀) */
 function bookletData() {
   const d = timelineData(); const y = d.next || d.year; const prev = d.next ? d.year : null;
-  const ageY = y.sajuYear - state.saju.input.year; const nextDw = d.dw?.pillars.find((p) => p.startAge > ageY) || null;
+  const ageY = y.sajuYear - state.saju.input.year; const nextDw = d.dw?.pillars.find((p) => (p.turnAge ?? p.startAge) >= ageY && (!y.daewoon || p.startAge > y.daewoon.startAge)) || null;
   const b = buildBooklet({ y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, concern: state.profile.concern, gender: state.profile.gender, nextDaewoon: nextDw });
   return { d, y, b };
 }
@@ -2985,7 +3006,7 @@ function daewoonCardHTML() {
   if (!p.gender) return '';
   const dw = computeDaewoon(s, p.gender);
   const age = state.fortune.date.year - s.input.year;
-  const cur = daewoonAt(dw, age);
+  const cur = daewoonAt(dw, age, state.fortune.date);
   const { index } = luckNow();
   const fc = forecastNow();
   const cells = dw.pillars.map((d) => {
@@ -2998,7 +3019,7 @@ function daewoonCardHTML() {
   }).join('');
   return `<div class="card">
     <h3>📜 대운 · 앞으로 5년 <span class="tag">정통 사주 + 개운</span></h3>
-    <p class="muted" style="margin-top:0;font-size:0.84rem">${dw.forward ? '순행' : '역행'} 대운 · ${dw.startAge}세 시작 (태어난 날부터 절기까지 ${dw.days}일 ÷ 3) · 지금 ${age}세${cur ? `, ${cur.startAge}~${cur.endAge}세 대운 진행 중` : ''}</p>
+    <p class="muted" style="margin-top:0;font-size:0.84rem">${dw.forward ? '순행' : '역행'} 대운 · ${dw.startAge}세 시작 (태어난 날부터 절기까지 ${dw.days}일 ÷ 3 · 정확히는 ${dwExact(dw)}부터) · 지금 ${age}세${cur ? `, ${cur.startAge}~${cur.endAge}세 대운 진행 중` : ''}</p>
     <div class="dw-row">${cells}</div>
     ${cur ? `<p class="concern-card" style="margin:10px 0 0">🧭 <b>지금의 대운 ${pillarLabelFull(cur)}</b> — ${daewoonComment(s, cur, index)}</p>` : ''}
     <h4 style="margin:14px 0 4px">앞으로 5년의 흐름</h4>
@@ -3186,7 +3207,7 @@ function chatContext() {
   const s = state.saju; const info = characterInfo(s, state.profile);
   const stage = heroOptions().stage;
   const dw = state.profile.gender ? computeDaewoon(s, state.profile.gender) : null;
-  const d = dw ? daewoonAt(dw, state.fortune.date.year - s.input.year) : null;
+  const d = dw ? daewoonAt(dw, state.fortune.date.year - s.input.year, state.fortune.date) : null;
   const j = loadJourney();
   return {
     pers: personalityOf(zIdx()), zodiacName: info.zodiac.name, stage, stageName: stageName(stage, info.female),

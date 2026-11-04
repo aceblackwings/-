@@ -20,7 +20,7 @@ export function retroQuestions(saju, daewoon, nowYear, max = 3) {
   for (let y = nowYear - 1; y >= nowYear - 12; y--) {
     const age = y - by; if (age < 12) break;
     const kinds = [];
-    if (daewoon?.pillars?.some((p) => p.startAge === age)) kinds.push('turn');
+    if (daewoon?.pillars?.some((p) => (p.turnAge ?? p.startAge) === age)) kinds.push('turn');
     const rel = branchPair(yearPillar(y).branch, db);
     if (rel.includes('clash')) kinds.push('clash');
     if (rel.includes('sixCombine')) kinds.push('combine');

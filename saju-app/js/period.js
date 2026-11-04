@@ -68,7 +68,10 @@ function daewoonFor(saju, gender, date) {
   if (!gender) return null;
   const k = `${JSON.stringify(saju.input)}|${gender}`;
   if (!dwCache.has(k)) dwCache.set(k, computeDaewoon(saju, gender));
-  return daewoonAt(dwCache.get(k), date.year - saju.input.year);
+  // 점수에 쓰는 대운 = 그 사주 해(입춘~)의 한가운데(8월)에 머무는 대운 → 같은 해는 어느 화면·어느 날짜든 같은 대운(원칙 2)
+  // 지금 어느 대운인지 「보여 줄 때」는 app.js가 실제 교운 달(startDate)로 고른다
+  const sy = sajuYearOf(date);
+  return daewoonAt(dwCache.get(k), sy - saju.input.year, { year: sy, month: 8, day: 1 });
 }
 
 /** 한 간지의 점수·근거·십신 */
@@ -84,7 +87,7 @@ function layerOf(saju, pillar) {
 export function layersAt(saju, date, gender) {
   const p = datePillars(date);
   const dw = daewoonFor(saju, gender, date);
-  const daewoon = dw ? { ...layerOf(saju, dw), score: dw.score, startAge: dw.startAge, endAge: dw.endAge } : null;
+  const daewoon = dw ? { ...layerOf(saju, dw), score: dw.score, startAge: dw.startAge, endAge: dw.endAge, startDate: dw.startDate, turnAge: dw.turnAge } : null;
   const year = layerOf(saju, p.year);
   year.score = daewoon ? mix(LAYER_WEIGHT.year, year.base, daewoon.score) : year.base;
   const month = layerOf(saju, p.month);
@@ -182,7 +185,7 @@ export function yearOf(saju, sajuYear, gender) {
     return { order: i + 1, solarMonth: m, term: JEOL_NAME[m - 1], start, pillar: L.month.pillar, base: L.month.base, score: L.month.score, god: L.month.god };
   });
   const mid = months[0].start;
-  const L = layersAt(saju, jdnToDate(dateToJdn(mid.year, mid.month, mid.day) + 30), gender);
+  const L = layersAt(saju, jdnToDate(dateToJdn(mid.year, mid.month, mid.day) + 182), gender); // 한 해의 대운 = 그해 한가운데 기준(교운이 해 중간이면 더 오래 머무는 쪽)
   const sorted = [...months].sort((a, b) => b.score - a.score);
   return { sajuYear, year: L.year, daewoon: L.daewoon, months, best: sorted.slice(0, 3), caution: sorted.slice(-2) };
 }

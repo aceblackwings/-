@@ -76,6 +76,22 @@ const VSOP_L = [
 ];
 
 /**
+ * 균시차(분, 2026-11-04 정확도 1단계 ①): 진태양시 − 평균태양시. 2월 중순 약 −14분, 11월 초 약 +16분
+ * NOAA 일반식(오차 약 30초). 시(時) 경계 근처 출생은 이 값으로 시주가 바뀔 수 있다
+ * @param jd 세계시 율리우스일
+ */
+export function equationOfTime(jd) {
+  const T = (jd - 2451545) / 36525; const r = Math.PI / 180;
+  const eps = (23.439291 - 0.0130042 * T) * r;
+  const L0 = mod(280.46646 + 36000.76983 * T, 360) * r;
+  const M = mod(357.52911 + 35999.05029 * T, 360) * r;
+  const e = 0.016708634 - 0.000042037 * T;
+  const y = Math.tan(eps / 2) ** 2;
+  const E = y * Math.sin(2 * L0) - 2 * e * Math.sin(M) + 4 * e * y * Math.sin(M) * Math.cos(2 * L0) - 0.5 * y * y * Math.sin(4 * L0) - 1.25 * e * e * Math.sin(2 * M);
+  return (E / r) * 4;
+}
+
+/**
  * 태양의 겉보기 황경 (도). v0.39 정밀 방식: VSOP87 요약 급수 + ΔT + 장동(주요 4항) + 광행차 → 절기 시각 오차 약 1분 안팎
  * @param jd 세계시(UT) 율리우스일
  */
@@ -171,6 +187,7 @@ export function computeSaju(input, opts = {}) {
     zasiMode = 'early',
     birthLon = 127.5, // 출생 지역 경도(v0.37). 기본은 한국 중앙
     dst = 'auto', // 서머타임: 'auto' = 기간이면 1시간 빼기, 'off' = 시계 시각 그대로(이미 빼서 입력한 경우)
+    eot = true, // 균시차(2026-11-04): 경도 보정을 켠 경우에만 더해 진태양시로. false면 예전처럼 경도만
   } = input;
   let { year, month, day, hour = 12, minute = 0 } = input;
   // 0) 서머타임 기간에 태어났으면 시계 시각에서 1시간을 빼 표준시로
@@ -201,11 +218,14 @@ export function computeSaju(input, opts = {}) {
   // 4) 일주와 시주
   let [dy, dm, dd] = [year, month, day];
   let hourPillar = null;
-  let dayIdx;
+  let dayIdx; let eotMin = 0;
 
   if (timeKnown) {
     // 진태양시 근사: 표준시 자오선(UTC+9 = 135°)과 출생지 경도 차이 × 4분. 기본 127.5°면 예전처럼 30분
-    let mins = hour * 60 + minute - (longitudeCorrection ? Math.round((utcOffset * 15 - birthLon) * 4) : 0);
+    // + 균시차: 진태양시 = 평균태양시 + 균시차 (경도 보정을 켠 경우에만)
+    eotMin = longitudeCorrection && eot ? Math.round(equationOfTime(julianDay(year, month, day, h - utcOffset))) : 0;
+    let mins = hour * 60 + minute - (longitudeCorrection ? Math.round((utcOffset * 15 - birthLon) * 4) : 0) + eotMin;
+    if (mins >= 1440) { mins -= 1440; [dy, dm, dd] = addDays(dy, dm, dd, 1); }
     if (mins < 0) { mins += 1440; [dy, dm, dd] = addDays(dy, dm, dd, -1); }
     const isLateZi = mins >= 23 * 60;
     if (isLateZi && zasiMode === 'early') [dy, dm, dd] = addDays(dy, dm, dd, 1);
@@ -236,7 +256,8 @@ export function computeSaju(input, opts = {}) {
   const strength = analyzeStrength(dayPillar.stem, elements, monthBranch, chartStems, { ...opts, pillars });
 
   return {
-    input: { year: input.year, month: input.month, day: input.day, hour: input.hour ?? 12, minute: input.minute ?? 0, timeKnown, longitudeCorrection, zasiMode, birthLon, dst },
+    input: { year: input.year, month: input.month, day: input.day, hour: input.hour ?? 12, minute: input.minute ?? 0, timeKnown, longitudeCorrection, zasiMode, birthLon, dst, eot },
+    eotMinutes: eotMin,
     dstApplied,
     hwa: hwa.list,
     lonMinutes: timeKnown && longitudeCorrection ? Math.round((utcOffset * 15 - birthLon) * 4) : 0,
