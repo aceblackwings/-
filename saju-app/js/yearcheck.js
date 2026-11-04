@@ -10,6 +10,7 @@
 import { tenGod, STEMS, BRANCHES, BRANCH_MAIN_STEM, STEM_ELEMENT, BRANCH_ELEMENT, ELEMENT_KO, ELEMENT_HANJA, ANIMALS } from './saju.js';
 import { branchPair, groupCompletions } from './relations.js';
 import { gongmangOf } from './luck.js';
+import { sinsal12, SINSAL12_NOTE } from './expert.js';
 import { tenGodProfile } from './natal.js';
 import { monthRange } from './yearcard.js';
 import { josa } from './josa.js';
@@ -49,13 +50,12 @@ export function samjaeOf(birthBranch, yearBranch) {
   const yrs = SAMJAE[TRIAD(birthBranch)]; const i = yrs.indexOf(yearBranch);
   return i < 0 ? null : ['들삼재', '눌삼재', '날삼재'][i];
 }
-const YEOKMA = [2, 8, 11, 5]; const DOHWA = [9, 3, 6, 0]; const HWAGAE = [4, 10, 1, 7];
 
 /**
  * @param y yearOf 결과 · saju · gender
  * @returns [{ kind: 'watch'|'good'|'note', key, title, text, act, when }] 중요한 순
  */
-export function yearChecks(y, saju, { gender = 'female' } = {}) {
+export function yearChecks(y, saju, { gender = 'female', calib = null } = {}) {
   const p = y.year.pillar; const ds = saju.dayMaster;
   const sg = tenGod(ds, p.stem); const bg = tenGod(ds, BRANCH_MAIN_STEM[p.branch]);
   const inYear = (...gods) => gods.includes(sg) || gods.includes(bg);
@@ -188,12 +188,14 @@ export function yearChecks(y, saju, { gender = 'female' } = {}) {
     act: '보험·안전 점검처럼 「지키는 일」 하나를 이번 달에 해 두기', when: '',
   });
 
-  // ── 그해 신살(역마·도화·화개): 연지·일지 기준 ──
-  const bases = [saju.pillars.year.branch, saju.pillars.day.branch].map(TRIAD);
-  const star = (table) => bases.some((t) => table[t] === p.branch);
-  if (star(YEOKMA)) add({ kind: 'note', key: 'yeokma', rank: 4, title: '움직임의 별(역마)이 들어와요', text: `그해 지지 ${josa(BRANCHES[p.branch], '은/는')} 내 사주의 역마 자리예요. 이사·출장·여행·이직처럼 몸이 움직이는 일이 늘고, 멀리서 기회가 오기 쉬워요.`, act: '가 보고 싶던 곳·일자리 정보를 하나 찾아 저장해 두기', when: '' });
-  if (star(DOHWA)) add({ kind: 'note', key: 'dohwa', rank: 4, title: '사람을 끄는 별(도화)이 들어와요', text: `그해 지지 ${josa(BRANCHES[p.branch], '은/는')} 내 사주의 도화 자리예요. 인기·호감이 오르고 새 인연이 생기기 쉬운 해예요. 반대로 말 한마디·사진 한 장이 소문이 되기도 쉬워요.`, act: 'SNS에 올리기 전에 한 번 더 읽어 보고, 좋은 인연에는 먼저 연락하기', when: '' });
-  if (star(HWAGAE)) add({ kind: 'note', key: 'hwagae', rank: 3, title: '깊이 파고드는 별(화개)이 들어와요', text: `그해 지지 ${josa(BRANCHES[p.branch], '은/는')} 내 사주의 화개 자리예요. 공부·종교·예술처럼 혼자 깊이 들어가는 일에 집중이 잘되고, 사람 만남은 조금 줄기 쉬워요.`, act: '하루 30분 혼자 몰입하는 시간을 정해 두기', when: '' });
+  // ── 그해 12신살(2026-11-04 정확도 3단계 ⑥): 띠(연지) 기준 ──
+  {
+    const nm = sinsal12(saju.pillars.year.branch, p.branch); const N = SINSAL12_NOTE[nm];
+    const heavy = ['겁살', '재살', '천살', '망신살', '육해살'].includes(nm);
+    add({ kind: 'note', key: `ss12-${nm}`, rank: heavy ? 4.5 : 3.5, title: `그해는 내 띠에게 ${nm}의 해예요`,
+      text: `띠(${ANIMALS[saju.pillars.year.branch]}) 기준 12신살로 보면 그해 지지 ${josa(BRANCHES[p.branch], '은/는')} ${N.mean}예요. ${heavy ? '겁낼 일이 아니라 미리 챙기면 작게 지나가는 기운이에요.' : '이 기운을 알고 쓰면 한 해가 한결 수월해요.'} (12신살은 보조 해석이라 점수에는 넣지 않았어요.)`,
+      act: N.act, when: '' });
+  }
 
   // ── 건강: 그해 넘치는 오행이 누르는 곳 ──
   const yEls = [STEM_ELEMENT[p.stem], BRANCH_ELEMENT[p.branch]];
@@ -207,6 +209,12 @@ export function yearChecks(y, saju, { gender = 'female' } = {}) {
     });
   }
 
+  // 지난 일 맞히기 보정(retro.js retroCalib): 그 사람에게 잘 맞았던 신호(충·교운)는 앞으로, 덜 맞았던 신호는 뒤로
+  const W = calib?.weights;
+  if (W) for (const c of out) {
+    if (c.key.startsWith('rel-clash')) c.rank *= W.clash;
+    else if (c.key.startsWith('dw') || (c.key.startsWith('group') && /대운/.test(c.text))) c.rank *= W.turn;
+  }
   return out.sort((a, b) => b.rank - a.rank).map(({ rank, ...x }) => x);
 }
 

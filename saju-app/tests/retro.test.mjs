@@ -29,3 +29,18 @@ t('요약: 다 답하면 맞은 수, 덜 답하면 안내, 적게 맞아도 다�
 });
 
 console.log(`\nretro: ${pass} passed`);
+import { retroCalib as RC, kindsOfYear as KY } from '../js/retro.js';
+import { computeSaju as CS2 } from '../js/saju.js';
+import { computeDaewoon as CD2 } from '../js/luck.js';
+{
+  const s = CS2({ year: 1985, month: 6, day: 15, hour: 10, minute: 0 }); const dw = CD2(s, 'female');
+  const flagged = []; for (let y = 2000; y < 2026; y++) { const k = KY(s, dw, y); if (k.length) flagged.push([y, k]); }
+  const clashYears = flagged.filter(([, k]) => k.includes('clash')).map(([y]) => y);
+  const yes = Object.fromEntries(clashYears.map((y) => [y, 'yes'])); const no = Object.fromEntries(clashYears.map((y) => [y, 'no']));
+  const a = RC(s, dw, yes); const b = RC(s, dw, no);
+  if (!(a.weights.clash > 1 && b.weights.clash < 1)) throw new Error(`보정 방향 ${a.weights.clash} ${b.weights.clash}`);
+  if (!(a.rate === 1 && b.rate === 0)) throw new Error('비율');
+  if (RC(s, dw, {}).n !== 0) throw new Error('답 없음');
+  if (!(a.weights.clash <= 1.4 && b.weights.clash >= 0.6)) throw new Error('범위');
+  console.log('ok - 지난 일 답 → 개인 보정(맞은 신호는 앞으로, 안 맞은 신호는 뒤로, 0.6~1.4)');
+}

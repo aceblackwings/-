@@ -35,7 +35,7 @@ import { analyzeGyeok, GYEOK_PROFILE, strengthMission } from './gyeokguk.js';
 import { buildBooklet, todayLetter, monthLines } from './booklet.js';
 import { natalRelations } from './relations.js';
 import { buildIlju } from './ilju.js';
-import { retroQuestions, retroSummary, RETRO_ANSWERS } from './retro.js';
+import { retroQuestions, retroSummary, RETRO_ANSWERS, retroCalib } from './retro.js';
 import { HOUR_QUESTIONS, guessHours } from './hourguess.js';
 import { formal, hasPoliteYo } from './formal.js';
 import { kaiunPower, kaiunFor, kaiunLine, fieldKaiunSentence, withKaiun, logKaiun, kaiunTrend, capState } from './kaiun.js';
@@ -58,7 +58,7 @@ import { yearCard, monthRange, savePledge, pledgeReviewDue, reviewPledge, PLEDGE
 import { buildMissions, markDone as dmMarkDone, allDone as dmAllDone, claimBonus as dmClaimBonus, DM_BONUS_EXP } from './daymission.js';
 import { ensureStart, inFirstWeek, plainTerms, hasGameTerms } from './firstweek.js';
 import { emptyEasy, setEasy, dismissEasy, suggestEasy, easyTerms, hasEasyTerms, parseEasyLink, acceptLink, linkAskText, easyLinkQuery, FROM_MAX } from './easymode.js';
-import { expertTable, sinsalOf, calcBasis, STAGE_NOTE, twelveStage, makeChart, addChart, removeChart, emptyCharts, RELATIONS } from './expert.js';
+import { expertTable, sinsalOf, calcBasis, STAGE_NOTE, twelveStage, makeChart, addChart, removeChart, emptyCharts, RELATIONS , sinsal12Of, SINSAL12_NOTE } from './expert.js';
 import { CARD_AREAS, SPREADS, drawReading } from './cards.js';
 import { weekWealth, SAFETY_LINES } from './wealthweek.js';
 import { makeBackup, parseBackup, backupText, backupFileName, PREFIX as BACKUP_PREFIX } from './backup.js';
@@ -669,6 +669,7 @@ function retroCardHTML() {
     <p class="muted" style="margin-top:0">사주로 보면 아래 해에 큰 흐름이 들어왔어요. 기억나는 대로 눌러 주세요.</p>
     ${qs.map((q) => `<div class="rt-q"><p><b>${esc(q.q)}</b><small>${esc(q.why)}</small></p><div class="yday-btns">${RETRO_ANSWERS.map(([k, l]) => `<button type="button" class="${ans[q.year] === k ? 'primary' : 'ghost'}" data-retro="${q.year}:${k}">${l}</button>`).join('')}</div></div>`).join('')}
     ${sum ? `<p class="rt-sum">🔎 ${esc(sum.text)}</p>` : ''}
+    ${(() => { if (!sum || sum.done < sum.total) return ''; const c = retroCalibNow(d.dw); return c?.n ? `<p class="rt-sum">🧭 ${esc(c.text)} 이 답은 2027년 「조심할 점」을 고르는 순서에 반영돼요.</p>` : ''; })()}
   </div>`;
 }
 document.addEventListener('click', (e) => {
@@ -678,6 +679,7 @@ document.addEventListener('click', (e) => {
   a[y] = k; save(RETRO_KEY, a);
   const el = $('#retro'); if (el) { const t = document.createElement('div'); t.innerHTML = retroCardHTML(); el.replaceWith(t.firstElementChild); }
   if (first) grow((g) => addExp(g, 1));
+  renderToday(); // 2026-11-04 답이 바뀌면 2027년 「조심할 점」 순서(개인 보정)도 바로 반영
 });
 
 /** ③ 나의 일주(60일주론) + 공유(모습·한마디만, 생일·간지 없음) */
@@ -722,9 +724,12 @@ function pillarCardHTML() {
 /** ⑤ 사주에 숨은 별(신살) — 뜻은 「이렇게 쓰면 힘이 돼요」 */
 function sinsalCardHTML() {
   const list = sinsalOf(state.saju);
-  if (!list.length) return '';
-  return `<div class="card ss-card"><h3>사주에 숨은 별 <span class="tag">신살 ${list.length}개</span></h3>
-    <ul class="rel-list">${list.map((x) => `<li><p><b>${x.name}</b> <small class="muted">${x.where.join('·')} ${x.branch}</small></p><small>✨ ${esc(x.note)}</small></li>`).join('')}</ul>
+  const POSK = { year: '연지', month: '월지', day: '일지', hour: '시지' };
+  const s12 = sinsal12Of(state.saju);
+  return `<div class="card ss-card"><h3>사주에 숨은 별 <span class="tag">신살 ${list.length}개 · 12신살</span></h3>
+    ${list.length ? `<ul class="rel-list">${list.map((x) => `<li><p><b>${x.name}</b> <small class="muted">${x.where.join('·')} ${x.branch}</small></p><small>✨ ${esc(x.note)}</small></li>`).join('')}</ul>` : ''}
+    <h4 style="margin:12px 0 6px">12신살 <small class="muted">띠(연지) 기준</small></h4>
+    <ul class="rel-list">${s12.map((x) => `<li><p><b>${POSK[x.k]} ${BRANCHES[x.branch]} · ${x.name}</b></p><small>✨ ${esc(SINSAL12_NOTE[x.name].mean)} — 💡 ${esc(SINSAL12_NOTE[x.name].act)}</small></li>`).join('')}</ul>
   </div>`;
 }
 
@@ -1871,10 +1876,24 @@ document.addEventListener('click', (e) => {
 
 // ---------- 신년운세 책자 (첫 화면 개편 1단계): 게이지·별 없이 글로 읽는 한 해 ----------
 /** 책자 계산은 한 번만 (총운 카드 · 분야 카드가 함께 씀) */
+/** 지난 일 맞히기 답 → 개인 보정(retro.js retroCalib). 다른 계산 후보: 균시차 끔·자시 처리 반대·시간 ±1시간 */
+function retroCalibNow(dw) {
+  const ans = load(RETRO_KEY, {}); if (!Object.keys(ans).length) return null;
+  const p = state.profile; const g = p.gender; const alt = [];
+  if (!p.timeUnknown) {
+    const base = profileToInput(p);
+    const mk = (label, inp) => { const s = computeSaju(inp); alt.push({ label, saju: s, daewoon: computeDaewoon(s, g) }); };
+    if (base.eot !== false) mk('균시차 반영 끔', { ...base, eot: false });
+    mk(base.zasiMode === 'late' ? '자시 23시 날짜 변경' : '야자시(0시 날짜 변경)', { ...base, zasiMode: base.zasiMode === 'late' ? 'early' : 'late' });
+    for (const dh of [-1, 1]) { const h = (base.hour + dh + 24) % 24; mk(`태어난 시간 ${String(h).padStart(2, '0')}:${String(base.minute).padStart(2, '0')}`, { ...base, hour: h }); }
+  }
+  return retroCalib(state.saju, dw, ans, alt);
+}
+
 function bookletData() {
   const d = timelineData(); const y = d.next || d.year; const prev = d.next ? d.year : null;
   const ageY = y.sajuYear - state.saju.input.year; const nextDw = d.dw?.pillars.find((p) => (p.turnAge ?? p.startAge) >= ageY && (!y.daewoon || p.startAge > y.daewoon.startAge)) || null;
-  const b = buildBooklet({ y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, concern: state.profile.concern, gender: state.profile.gender, nextDaewoon: nextDw });
+  const b = buildBooklet({ y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, concern: state.profile.concern, gender: state.profile.gender, nextDaewoon: nextDw, calib: retroCalibNow(d.dw) });
   return { d, y, b };
 }
 
@@ -1892,15 +1911,15 @@ function bookletHTML(bd = bookletData()) {
     <section class="bk-part"><h3>총운</h3>
       ${b.general.map((x) => `<h4>${x.h}</h4>${x.paras.map(P).join('')}`).join('')}
     </section>
-    ${checksHTML(b.checks)}
+    ${checksHTML(b.checks, b.calibText)}
   </article>`;
 }
 
 /** 한 해 조심할 점 · 참고할 점(yearcheck.js): 내 원국과 그해 글자가 만나는 방식이라 사람마다 다름 */
-function checksHTML(list = []) {
+function checksHTML(list = [], calibText = '') {
   if (!list.length) return '';
   const ICON = { watch: '⚠️', good: '🌟', note: '📌' }; const TAG = { watch: '조심', good: '기회', note: '참고' };
-  return `<section class="bk-part bk-checks"><h3>⚠️ 조심할 점 · 참고할 점 <small>내 사주 글자와 그해 글자가 만나는 방식으로 골랐어요</small></h3>
+  return `<section class="bk-part bk-checks"><h3>⚠️ 조심할 점 · 참고할 점 <small>내 사주 글자와 그해 글자가 만나는 방식으로 골랐어요</small></h3>${calibText ? `<p class="ck-calib">🔎 ${esc(calibText)}</p>` : ''}
     <ul class="ck-list">${list.map((c) => `<li class="ck ${c.kind}"><b>${ICON[c.kind]} <em>${TAG[c.kind]}</em> ${esc(c.title)}</b><p>${esc(c.text)}</p><p class="ck-act">👉 ${esc(c.act)}${c.when ? ` <span class="ck-when">· 특히 ${esc(c.when)}</span>` : ''}</p></li>`).join('')}</ul>
   </section>`;
 }

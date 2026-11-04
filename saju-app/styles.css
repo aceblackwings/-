@@ -1446,3 +1446,4 @@ details.fold[open] > summary { border-bottom: 1px solid var(--line); }
   html.easy #btn-easy, html.easy #btn-edit { font-size: 0.78rem; padding: 6px 8px; }
 }
 .bk-part.bk-checks h3 { display: block; }
+.ck-calib { margin: 6px 0 0; font-size: 0.82rem; color: var(--muted); background: rgba(154,134,214,0.1); border-radius: 10px; padding: 6px 10px; }

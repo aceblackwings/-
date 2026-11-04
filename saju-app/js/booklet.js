@@ -259,7 +259,7 @@ function bestMonthFor(y, key, used = new Set()) {
  * 책자 전체
  * @param y yearOf(그해) · thisYear yearOf(올해) · saju · gyeok(analyzeGyeok) · name 부를 이름 · concern 고민 키
  */
-export function buildBooklet({ y, thisYear, saju, gyeok, name = '', concern = null, gender = 'female', nextDaewoon = null }) {
+export function buildBooklet({ y, thisYear, saju, gyeok, name = '', concern = null, gender = 'female', nextDaewoon = null, calib = null }) {
   watchUsed = new Set();
   const who = name ? `${name} 님` : '당신';
   const god = y.year.god; const R = GOD_READING[god]; const H = YEAR_HEADLINE[god];
@@ -338,7 +338,8 @@ export function buildBooklet({ y, thisYear, saju, gyeok, name = '', concern = nu
     lead: `${who}의 ${y.sajuYear}년은 「${H.title}」. ${sentence(R.core.split('. ')[0])}`,
     general, fields,
     // 조심할 점 · 참고할 점: 그해 글자 × 내 원국(사람마다 다름) — 화면은 제목·내용·대비·때를 나눠 보여 줌
-    checks: pickChecks(yearChecks(y, saju, { gender })),
+    checks: pickChecks(yearChecks(y, saju, { gender, calib })),
+    calibText: calib?.n ? calib.text : '',
   };
 }
 
