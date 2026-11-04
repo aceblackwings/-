@@ -48,6 +48,8 @@ import { fiveScores } from './todayfive.js';
 import { claimItem, PIECES_PER_ITEM } from './tteok.js';
 import { TTEOK, visit as tteokVisit, doTask as tteokDoTask, todayTasks, doneCount, isOpen as scrollOpen, spend as tteokSpend, buy as tteokBuy, SCROLLS, PACKS, TASKS as TTEOK_TASKS, ALL_BONUS } from './tteok.js';
 import { emoImage, charImage } from './assets.js';
+import { PRODUCTS, buildPremiumYear, buildLifeReport, buildCompatReport, premiumTeaser } from './premium.js';
+import { emptyShop, owns as shopOwns, priceOf, grant as shopGrant, yearKey, compatKey } from './shop.js';
 import { preloadCharImages, itemImage, tarotImage } from './assets.js';
 /** 계절 한정 소품 그림 (없으면 빈칸) */
 const itemThumb = (key, cls = 'item-thumb') => { const u = itemImage(key); return u ? `<img class="${cls}" src="${u}" alt="" loading="lazy">` : ''; };
@@ -602,6 +604,7 @@ function renderSajuFull() {
     ${pillarCardHTML()}
     ${relationsCardHTML()}
     ${sinsalCardHTML()}
+    ${lifeOfferHTML()}
 
     <div class="card">
       <h3>오행 스탯 <span class="tag">ELEMENT STATS</span></h3>
@@ -1912,6 +1915,7 @@ function bookletHTML(bd = bookletData()) {
       ${b.general.map((x) => `<h4>${x.h}</h4>${x.paras.map(P).join('')}`).join('')}
     </section>
     ${checksHTML(b.checks, b.calibText)}
+    ${premiumYearOfferHTML(bd)}
   </article>`;
 }
 
@@ -1938,6 +1942,130 @@ function bookletFieldsHTML(bd = bookletData()) {
     <div class="bk-next"><button class="ghost" type="button" data-tl-step="read-${d.next ? 'next' : 'year'}">📖 12달 자세히</button></div>
   </article>`;
 }
+
+// ---------- 유료 상세 풀이 (v0.46, premium.js · shop.js): 무료 책자 끝에서 990원 상세판, 내 사주에서 평생 정통사주, 궁합에서 궁합 상세 ----------
+// 디자인(2026-11-04 사용자 결정): 매일 쓰는 화면은 파스텔 그대로, 돈을 내고 여는 풀이는 「한지와 인주」 책자 스타일(.hanji)
+const SHOP_KEY = 'unmyeong2099.shop';
+const loadShop = () => load(SHOP_KEY, emptyShop());
+const won = (n) => `${n.toLocaleString('ko-KR')}원`;
+const kChars = (n) => `${Math.round(n / 100) * 100 >= 1000 ? (Math.round(n / 100) * 100).toLocaleString('ko-KR') : n}자`;
+function premiumYearOf(bd) {
+  const key = `${bd.y.sajuYear}|${JSON.stringify(state.saju.input)}|${state.profile.gender}|${state.profile.name}|${state.profile.concern}|${bd.b.calibText}`;
+  if (state.pyear?.key === key) return state.pyear.rep;
+  const d = bd.d; const prev = d.next ? d.year : null; const ageY = bd.y.sajuYear - state.saju.input.year;
+  const nextDw = d.dw?.pillars.find((p) => (p.turnAge ?? p.startAge) >= ageY && (!bd.y.daewoon || p.startAge > bd.y.daewoon.startAge)) || null;
+  const rep = buildPremiumYear({ y: bd.y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, gender: state.profile.gender, concern: state.profile.concern, nextDaewoon: nextDw, calib: retroCalibNow(d.dw) });
+  state.pyear = { key, rep }; return rep;
+}
+function lifeReportNow() {
+  const key = `${JSON.stringify(state.saju.input)}|${state.profile.gender}|${state.profile.name}|${state.fortune.date.year}`;
+  if (state.plife?.key === key) return state.plife.rep;
+  const rep = buildLifeReport({ saju: state.saju, gyeok: analyzeGyeok(state.saju), daewoon: state.profile.gender ? computeDaewoon(state.saju, state.profile.gender) : null, name: state.profile.name, gender: state.profile.gender, nowYear: sajuYearOf(state.fortune.date) });
+  state.plife = { key, rep }; return rep;
+}
+function compatReportNow() {
+  const cp = state.compat; if (!cp?.friendSaju || cp.fr?.card) return null;
+  const Y = timelineData().next ? timelineData().next.sajuYear : sajuYearOf(state.fortune.date);
+  const fg = cp.fr.gender || (state.profile.gender === 'male' ? 'female' : 'male');
+  return buildCompatReport({ me: state.saju, friend: cp.friendSaju, compat: cp.compat, myName: state.profile.name || '나', friendName: cp.fr.name || '상대', myGender: state.profile.gender, friendGender: fg, yMe: yearOf(state.saju, Y, state.profile.gender), yFriend: yearOf(cp.friendSaju, Y, fg) });
+}
+const tocHTML = (rep, freeKey) => `<ul class="hj-toc">${rep.toc.map((t) => `<li${t.key === freeKey ? ' class="free"' : ''}><span>${esc(t.h)}</span><span>${kChars(t.chars)}</span></li>`).join('')}</ul>`;
+const priceTag = (key) => { const p = priceOf(loadShop(), key); return `${p.was ? `<s>${won(p.was)}</s> ` : ''}${won(p.price)}`; };
+
+/** 책자 맨 아래: 상세판 열쇠(산 사람은 바로 열기) */
+function premiumYearOfferHTML(bd) {
+  const rep = premiumYearOf(bd); const key = yearKey(bd.y.sajuYear);
+  if (shopOwns(loadShop(), key)) return `<section class="hanji hj-offer owned"><p class="hj-eyebrow">📜 ${bd.y.sajuYear}년 상세 운세 · 내 서재</p><h3>${kChars(rep.chars)} 상세판을 가지고 있어요</h3><button type="button" class="hj-buy" data-read="year">📖 상세판 펼쳐 읽기</button></section>`;
+  const t = premiumTeaser(rep); const who = state.profile.name ? `${esc(state.profile.name)} 님의` : '나의';
+  return `<section class="hanji hj-offer" id="hj-year-offer">
+    <p class="hj-eyebrow">📜 ${bd.y.sajuYear}년 상세 운세</p>
+    <h3>${who} ${bd.y.sajuYear}년, 여기까지가 무료예요</h3>
+    <p class="hj-teaser"><b>${esc(t.h)}</b><br>${esc(t.open)} <span class="hj-blur" aria-hidden="true">${esc(t.blur)}</span></p>
+    ${tocHTML(rep)}
+    <p class="hj-note">상세판 ${kChars(rep.chars)} · 한 번 열면 계속 보관 · 다시 열어도 같은 내용 · 운 점수는 결제와 상관없이 같아요</p>
+    <button type="button" class="hj-buy" data-pay="${key}">상세판 열기 · ${priceTag(key)}</button>
+  </section>`;
+}
+/** 내 사주: 평생 정통사주 종합 */
+function lifeOfferHTML() {
+  const rep = lifeReportNow(); const key = 'life';
+  if (shopOwns(loadShop(), key)) return `<section class="card hanji hj-offer owned"><p class="hj-eyebrow">🀄 평생 정통사주 종합 · 내 서재</p><h3>${kChars(rep.chars)} 종합 풀이를 가지고 있어요</h3><button type="button" class="hj-buy" data-read="life">📖 종합 풀이 펼쳐 읽기</button></section>`;
+  return `<section class="card hanji hj-offer">
+    <p class="hj-eyebrow">🀄 평생 정통사주 종합</p>
+    <h3>여덟 글자를 처음부터 끝까지</h3>
+    <p class="hj-desc">${PRODUCTS.life.desc}. 이 화면의 요약을 ${kChars(rep.chars)} 분량의 책으로 풀어 드려요.</p>
+    ${tocHTML(rep)}
+    <p class="hj-note">${priceOf(loadShop(), key).note ? `${priceOf(loadShop(), key).note} · ` : '상세판을 사신 분은 1,000원 할인 · '}한 번 열면 계속 보관 · 운 점수는 결제와 상관없이 같아요</p>
+    <button type="button" class="hj-buy" data-pay="life">종합 풀이 열기 · ${priceTag(key)}</button>
+  </section>`;
+}
+/** 궁합 결과: 궁합 상세(생일로 추가한 친구만) */
+function compatOfferHTML(fr) {
+  if (fr.card) return `<p class="muted hj-mini">💞 궁합 상세는 생일로 추가한 친구와 볼 수 있어요. 공유 카드로 받은 친구는 생활 자리(일지)를 몰라 자세히 풀 수 없어요.</p>`;
+  const key = compatKey(fr);
+  if (shopOwns(loadShop(), key)) return `<div class="hanji hj-offer owned slim"><p class="hj-eyebrow">💞 궁합 상세 · 내 서재</p><button type="button" class="hj-buy" data-read="compat">📖 ${esc(fr.name || '상대')} 님과의 궁합 상세 읽기</button></div>`;
+  return `<div class="hanji hj-offer slim">
+    <p class="hj-eyebrow">💞 궁합 상세</p>
+    <p class="hj-desc">${PRODUCTS.compat.desc}. 궁합 묻고 답하기 5가지까지.</p>
+    <button type="button" class="hj-buy" data-pay="${key}">궁합 상세 열기 · ${priceTag(key)}</button>
+  </div>`;
+}
+
+/** 결제 창(체험판: 결제 없이 기록만). 정식 출시 때 이 자리에 웹 결제(PG)·스토어 결제를 붙임 */
+function openPay(key) {
+  document.querySelectorAll('.pay-modal').forEach((x) => x.remove());
+  const kind = key.split(':')[0]; const P = PRODUCTS[kind]; const pr = priceOf(loadShop(), key);
+  const label = kind === 'year' ? `${key.split(':')[1]}년 ${P.label}` : kind === 'compat' ? `${state.compat?.fr?.name || '상대'} 님과의 ${P.label}` : P.label;
+  const box = document.createElement('div'); box.className = 'evo-modal pay-modal';
+  box.innerHTML = `<div class="evo-box hanji hj-pay" role="dialog" aria-label="${esc(label)} 결제">
+    <p class="hj-eyebrow">${P.icon} 결제</p>
+    <h3>${esc(label)}</h3>
+    <p class="hj-desc">${P.desc}</p>
+    <p class="hj-price">${pr.was ? `<s>${won(pr.was)}</s> ` : ''}<b>${won(pr.price)}</b>${pr.note ? ` <small>${pr.note}</small>` : ''}</p>
+    <ul class="hj-promise"><li>한 번 결제하면 이 기기에서 계속 볼 수 있어요</li><li>운 점수·부적·지신 성장은 결제와 상관없이 같아요</li><li>풀이는 확률적 해석이에요. 의료·법률·투자 판단은 전문가와 함께 하세요</li></ul>
+    <button type="button" class="hj-buy" data-pay-ok="${key}">체험판으로 열기 (결제 없음)</button>
+    <p class="hj-note">지금은 체험판이라 실제 결제 없이 열려요. 정식 출시 때 이 자리에서 ${won(pr.price)}이 결제돼요.</p>
+    <button type="button" class="ghost" data-pay-close style="width:100%">닫기</button>
+  </div>`;
+  document.body.appendChild(box);
+  box.addEventListener('click', (e) => { if (e.target === box || e.target.closest('[data-pay-close]')) box.remove(); });
+}
+function completePay(key) {
+  const pr = priceOf(loadShop(), key);
+  const r = shopGrant(loadShop(), key, { paid: pr.price, via: 'trial' }); save(SHOP_KEY, r.store);
+  document.querySelectorAll('.pay-modal').forEach((x) => x.remove());
+  const kind = key.split(':')[0];
+  renderToday(); if (state.saju) { renderSaju(); }
+  if (kind === 'compat') { const ph = $('[data-panel="compat"]'); if (ph) renderCompat(); }
+  toast('📖 열렸어요. 내 서재에 보관했어요');
+  openReader(kind);
+}
+
+/** 읽기 화면: 한지 책자(전체 화면) */
+function openReader(kind) {
+  const rep = kind === 'year' ? premiumYearOf(bookletData()) : kind === 'life' ? lifeReportNow() : compatReportNow();
+  if (!rep) return;
+  document.querySelectorAll('.hj-reader').forEach((x) => x.remove());
+  const P = (t) => `<p>${esc(t)}</p>`;
+  const box = document.createElement('div'); box.className = 'hj-reader hanji'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', rep.title);
+  box.innerHTML = `<header class="hj-bar"><button type="button" class="hj-close" data-reader-close aria-label="닫기">✕</button><span>${esc(rep.title)}</span><small>${kChars(rep.chars)}</small></header>
+    <article class="hj-book" data-formal>
+      <header class="hj-cover"><p class="hj-eyebrow">${PRODUCTS[rep.kind].icon} ${esc(rep.title)}</p><h2>${esc(rep.sub)}</h2><span class="hj-seal" aria-hidden="true">${esc(state.profile.name ? state.profile.name.slice(0, 2) : '符')}</span></header>
+      <nav class="hj-index">${rep.sections.map((s, i) => `<a href="#hj-s${i}" data-hj-jump="hj-s${i}">${esc(s.h)}</a>`).join('')}</nav>
+      ${rep.sections.map((s, i) => `<section class="hj-sec" id="hj-s${i}"><h3>${esc(s.h)}</h3>${s.intro ? `<p class="hj-intro">${esc(s.intro)}</p>` : ''}${s.blocks.map((b) => `${b.h ? `<h4>${esc(b.h)}</h4>` : ''}${b.paras.map(P).join('')}`).join('')}</section>`).join('')}
+      <footer class="hj-end"><p>— 끝 —</p><button type="button" class="hj-buy" data-reader-close>닫기</button></footer>
+    </article>`;
+  document.body.appendChild(box); document.body.classList.add('hj-open');
+  box.addEventListener('click', (e) => {
+    const j = e.target.closest('[data-hj-jump]'); if (j) { e.preventDefault(); box.querySelector(`#${j.dataset.hjJump}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+    if (e.target.closest('[data-reader-close]')) { box.remove(); document.body.classList.remove('hj-open'); }
+  });
+}
+document.addEventListener('click', (e) => {
+  const p = e.target.closest('[data-pay]'); if (p) { e.preventDefault(); const key = p.dataset.pay; if (shopOwns(loadShop(), key)) openReader(key.split(':')[0]); else openPay(key); return; }
+  const ok = e.target.closest('[data-pay-ok]'); if (ok) { completePay(ok.dataset.payOk); return; }
+  const r = e.target.closest('[data-read]'); if (r) { openReader(r.dataset.read); }
+});
 
 // ---------- 쉬운 모드 (v0.31, easymode.js): 큰 글씨 · 쉬운 말 · 카드 3장 홈 ----------
 const loadEasy = () => ({ ...emptyEasy(), ...load(EASY_KEY, {}) });
@@ -4614,7 +4742,7 @@ function compatResultHTML(fr, idx) {
   const myName = state.profile.name || '나';
   const svg = renderCompatSVG(myInfo, friendInfo, c, { myName, friendName: fr.name, myStage: stage, myCharms: charms });
   const dialogue = pairDialogue(state.saju.pillars.year.branch, fs.pillars.year.branch, { stageA: stage, stageB: 2 });
-  state.compat = { myInfo, friendInfo, compat: c, svg, myName, friendName: fr.name, friendSaju: fs, myStage: stage, myCharms: charms, dialogue };
+  state.compat = { myInfo, friendInfo, compat: c, svg, myName, friendName: fr.name, friendSaju: fs, myStage: stage, myCharms: charms, dialogue, fr };
   const bar = (label, v) => `<div class="bar"><span>${label}</span><div class="track"><div class="fill" style="width:${v}%;background:${scoreColor(v)};color:${scoreColor(v)}"></div></div><span class="num">${v}</span></div>`;
   return `<div class="card">
     <div class="compat-stage">${svg}</div>
@@ -4636,6 +4764,7 @@ function compatResultHTML(fr, idx) {
       <button class="ghost" type="button" id="btn-compat-png">PNG 저장</button>
       <button class="ghost" type="button" id="btn-friend-del">친구 삭제</button>
     </div>
+    ${compatOfferHTML(fr)}
     ${friendSocialHTML(fr, idx)}
     ${stickerReactHTML(fr, idx)}
     <div style="display:none">

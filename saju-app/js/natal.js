@@ -1,5 +1,6 @@
 // 원국 깊이 보기(v0.39): ④ 십성 분포로 본 성향 · ⑥ 기둥 자리별 해석
 // 순수 로직만(테스트: tests/natal.test.mjs)
+import { iyeyo } from './josa.js';
 import { tenGod, HIDDEN_DAYS, STEMS, BRANCHES, BRANCH_MAIN_STEM } from './saju.js';
 import { twelveStage, STAGE_NOTE } from './expert.js';
 import { STAGE_PERIOD } from './reading.js';
@@ -68,7 +69,7 @@ export function pillarReadings(saju) {
     const head = `${name}(${STEMS[p.stem]}${BRANCHES[p.branch]}) · ${plant} — ${mean}`;
     const body = k === 'day'
       ? `나 자신의 자리예요. 바로 아래 배우자 자리(일지)에 ${bg}, ${GOD_IN_POS[bg]}. 12운성은 「${st}」 — ${STAGE_PERIOD[st].line}.`
-      : `이 자리 겉(천간)에는 ${sg}, ${GOD_IN_POS[sg]}. 속(지지)에는 ${bg}${sg === bg ? `${'재'.includes(bg.slice(-1)) ? '로' : '으로'} 겉과 속이 같아` + ' 그 성격이 더 또렷해요' : `, ${GOD_IN_POS[bg]}`}. 12운성은 「${st}」(${STAGE_NOTE[st]})이에요.`;
+      : `이 자리 겉(천간)에는 ${sg}, ${GOD_IN_POS[sg]}. 속(지지)에는 ${bg}${sg === bg ? `${'재'.includes(bg.slice(-1)) ? '로' : '으로'} 겉과 속이 같아` + ' 그 성격이 더 또렷해요' : `, ${GOD_IN_POS[bg]}`}. 12운성은 ${iyeyo(`「${st}」(${STAGE_NOTE[st]})`)}.`;
     return { key: k, name, head, body };
   });
 }
