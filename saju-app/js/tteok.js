@@ -103,3 +103,24 @@ export function claimItem(store, seasons, ownedIds) {
   if (!item) return { store: s, item: null };
   return { store: { ...s, pieces: s.pieces - PIECES_PER_ITEM }, item };
 }
+
+// ---------- 타로 이용(v0.46.1, 2026-11-04 사용자 결정): 하루 1회 무료, 그다음부터는 복떡 ----------
+// 현금 소액 결제(300원대)는 스토어 수수료와 결제 피로가 커서, 무료로도 모을 수 있는 복떡으로 받는다
+// 복떡 꾸러미(10개 1,100원)가 현금 상품이 되고, 매일 들르기·할 일로 모은 복떡으로도 더 볼 수 있음
+export const TAROT_FREE_PER_DAY = 1;
+export const TAROT_COST = { one: 3, three: 5 };
+export const tarotUsed = (store, dateKey) => norm(store).days[dateKey]?.tarot || 0;
+/** 이번 뽑기 값: { free: true } 또는 { free: false, cost } */
+export function tarotPrice(store, dateKey, spread) {
+  if (tarotUsed(store, dateKey) < TAROT_FREE_PER_DAY) return { free: true, cost: 0 };
+  return { free: false, cost: TAROT_COST[spread] ?? TAROT_COST.one };
+}
+/** 카드를 펼칠 때 한 번 셈: 무료면 횟수만, 아니면 복떡을 씀(모자라면 ok:false, need) */
+export function useTarot(store, dateKey, spread) {
+  const s = norm(store); const pr = tarotPrice(s, dateKey, spread);
+  if (!pr.free && s.balance < pr.cost) return { store: s, ok: false, need: pr.cost - s.balance, cost: pr.cost };
+  const day = s.days[dateKey] || {};
+  let next = { ...s, days: { ...s.days, [dateKey]: { ...day, tarot: (day.tarot || 0) + 1 } } };
+  if (!pr.free) next = addLog(next, `타로 ${spread === 'three' ? '세 장' : '한 장'}`, -pr.cost);
+  return { store: next, ok: true, free: pr.free, cost: pr.cost };
+}

@@ -1447,3 +1447,72 @@ details.fold[open] > summary { border-bottom: 1px solid var(--line); }
 }
 .bk-part.bk-checks h3 { display: block; }
 .ck-calib { margin: 6px 0 0; font-size: 0.82rem; color: var(--muted); background: rgba(154,134,214,0.1); border-radius: 10px; padding: 6px 10px; }
+
+/* ---------- v0.46 유료 상세 풀이: 「한지와 인주」 책자 스타일 (2026-11-04 사용자 결정) ----------
+   매일 쓰는 화면은 파스텔 그대로, 돈을 내고 여는 풀이만 한지 질감·먹색 글씨·붉은 인주로 격을 다르게 */
+.hanji {
+  --hj-paper: #f5eedf; --hj-paper2: #fbf7ee; --hj-ink: #2b2420; --hj-ink2: #5b4d42; --hj-red: #b8382a; --hj-navy: #2f3e5c; --hj-gold: #b8944a; --hj-line: #d8cbb2;
+  --hj-serif: 'Gowun Batang', 'Noto Serif KR', serif;
+  background: var(--hj-paper);
+  background-image: radial-gradient(rgba(120, 90, 50, 0.07) 1px, transparent 1.2px);
+  background-size: 7px 7px;
+  color: var(--hj-ink);
+}
+.hj-offer { border: 1px solid var(--hj-gold); border-radius: 6px; padding: 18px 16px; margin-top: 18px; display: flex; flex-direction: column; gap: 10px; box-shadow: none; }
+.card.hj-offer { background-color: var(--hj-paper); }
+.hj-offer.slim { margin-top: 12px; padding: 14px; }
+.hj-offer h3 { font-family: var(--hj-serif); font-size: 1.2rem; margin: 0; color: var(--hj-ink); text-wrap: balance; }
+.hj-eyebrow { margin: 0; font-size: 0.8rem; letter-spacing: 0.08em; color: var(--hj-red); font-weight: 700; }
+.hj-desc { margin: 0; font-size: 0.92rem; color: var(--hj-ink2); }
+.hj-teaser { margin: 0; font-family: var(--hj-serif); line-height: 1.8; }
+.hj-teaser b { color: var(--hj-navy); }
+.hj-blur { filter: blur(3.5px); user-select: none; color: var(--hj-ink2); }
+.hj-toc { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--hj-line); }
+.hj-toc li { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px dashed var(--hj-line); font-size: 0.9rem; }
+.hj-toc li span:last-child { color: var(--hj-ink2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.hj-note { margin: 0; font-size: 0.8rem; color: var(--hj-ink2); }
+.hj-mini { margin: 10px 0 0; font-size: 0.82rem; }
+.hj-buy { appearance: none; border: none; border-radius: 4px; background: var(--hj-red); color: #fbf2e2; font: inherit; font-family: var(--hj-serif); font-weight: 700; font-size: 1rem; padding: 13px 16px; min-height: 48px; cursor: pointer; width: 100%; box-shadow: inset 0 0 0 2px var(--hj-red), inset 0 0 0 4px rgba(251, 242, 226, 0.35); }
+.hj-buy:hover { filter: brightness(1.06); }
+.hj-buy:focus-visible, .hj-close:focus-visible, .hj-index a:focus-visible { outline: 3px solid var(--hj-navy); outline-offset: 2px; }
+.hj-buy s { opacity: 0.7; font-weight: 400; }
+.hj-offer.owned .hj-buy { background: var(--hj-navy); box-shadow: inset 0 0 0 2px var(--hj-navy), inset 0 0 0 4px rgba(251, 242, 226, 0.3); }
+
+.hj-pay { max-width: 420px; border: 1px solid var(--hj-gold); border-radius: 6px; text-align: left; display: flex; flex-direction: column; gap: 10px; }
+.hj-pay h3 { font-family: var(--hj-serif); margin: 0; font-size: 1.25rem; color: var(--hj-ink); }
+.hj-price { margin: 0; font-family: var(--hj-serif); font-size: 1.1rem; }
+.hj-price b { font-size: 1.6rem; color: var(--hj-red); }
+.hj-price small { font-family: var(--sans); font-size: 0.8rem; color: var(--hj-ink2); }
+.hj-promise { margin: 0; padding-left: 18px; font-size: 0.85rem; color: var(--hj-ink2); display: flex; flex-direction: column; gap: 2px; }
+.pay-modal .ghost { color: var(--hj-ink2); border-color: var(--hj-line); background: transparent; }
+
+.hj-reader { position: fixed; inset: 0; z-index: 200; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: env(safe-area-inset-bottom, 0px); }
+body.hj-open { overflow: hidden; }
+.hj-bar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px; padding: calc(10px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); background: var(--hj-paper2); border-bottom: 1px solid var(--hj-ink); font-family: var(--hj-serif); font-weight: 700; }
+.hj-bar span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hj-bar small { color: var(--hj-ink2); font-weight: 400; font-family: var(--sans); }
+.hj-close { appearance: none; border: 1px solid var(--hj-line); background: transparent; color: var(--hj-ink); border-radius: 4px; width: 44px; height: 44px; font-size: 1.1rem; cursor: pointer; }
+.hj-book { max-width: 680px; margin: 0 auto; padding: 24px max(18px, env(safe-area-inset-right, 0px)) 48px max(18px, env(safe-area-inset-left, 0px)); font-size: 1.02rem; line-height: 1.9; }
+.hj-cover { position: relative; padding: 18px 0 22px; border-bottom: 3px double var(--hj-ink); margin-bottom: 18px; }
+.hj-cover h2 { font-family: var(--hj-serif); font-size: 1.6rem; margin: 6px 0 0; padding-right: 76px; text-wrap: balance; color: var(--hj-ink); }
+.hj-seal { position: absolute; right: 0; top: 14px; width: 62px; height: 62px; display: grid; place-items: center; background: var(--hj-red); color: #fbf2e2; font-family: var(--hj-serif); font-weight: 700; font-size: 1.15rem; border-radius: 6px; transform: rotate(-5deg); box-shadow: inset 0 0 0 3px var(--hj-red), inset 0 0 0 5px rgba(251, 242, 226, 0.55); }
+.hj-index { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.hj-index a { font-size: 0.82rem; padding: 4px 10px; border: 1px solid var(--hj-line); border-radius: 99px; color: var(--hj-navy); text-decoration: none; background: var(--hj-paper2); }
+.hj-sec { padding-top: 22px; scroll-margin-top: 70px; }
+.hj-sec h3 { font-family: var(--hj-serif); font-size: 1.3rem; color: var(--hj-red); margin: 0 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--hj-ink); }
+.hj-sec h4 { font-family: var(--hj-serif); font-size: 1.05rem; color: var(--hj-navy); margin: 22px 0 6px; }
+.hj-sec p { margin: 0 0 10px; color: var(--hj-ink); }
+.hj-intro { color: var(--hj-ink2) !important; font-size: 0.92rem; }
+.hj-end { text-align: center; padding-top: 30px; display: flex; flex-direction: column; gap: 12px; font-family: var(--hj-serif); color: var(--hj-ink2); }
+html.easy .hj-book { font-size: 1.15rem; }
+@media (prefers-reduced-motion: reduce) { .hj-buy { transition: none; } }
+/* v0.46.1 궁합 상세 맛보기 · 타로 이용 표시 */
+.hj-qa { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.hj-qa li { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px dashed var(--hj-line); border-radius: 4px; background: var(--hj-paper2); }
+.hj-qa b { font-family: var(--hj-serif); color: var(--hj-navy); font-size: 0.95rem; }
+.hj-qa .hj-blur { font-size: 0.88rem; }
+.tr-price { display: inline-block; margin-top: 6px; font-style: normal; font-size: 0.8rem; font-weight: 700; padding: 2px 10px; border-radius: 99px; background: var(--rose-soft); color: #b0486b; }
+.tr-price.free { background: #e3f6ee; color: #2f8a63; }
+.tr-price-note { margin: 10px 0 0; font-size: 0.85rem; }
+.tr-reveal small, [data-tarot-again] small { font-weight: 400; opacity: 0.9; }
+.tr-price-note a { color: #c45c80; font-weight: 700; }
