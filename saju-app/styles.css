@@ -1519,3 +1519,26 @@ html.easy .hj-book { font-size: 1.15rem; }
 .tr-price-note { margin: 10px 0 0; font-size: 0.85rem; }
 .tr-reveal small, [data-tarot-again] small { font-weight: 400; opacity: 0.9; }
 .tr-price-note a { color: #c45c80; font-weight: 700; }
+
+/* v0.47 타로 이야기 풀이: 카드의 대답 → 카드마다 그림·뜻·주제·내 상황 → 세 장 이야기 */
+.tr-situ { margin: 0 0 14px; text-align: center; }
+.tr-situ p { margin: 0 0 8px; }
+.tr-situ .chips { justify-content: center; }
+.tr-situ .chip { min-height: 44px; }
+.tr-answer { text-align: center; padding: 16px 14px; margin: 4px 0 14px; border-radius: 20px; background: linear-gradient(135deg, #fff0f5, #f3ecff); border: 1px solid rgba(236, 127, 160, 0.35); }
+.tr-answer small { color: var(--neon); font-weight: 700; }
+.tr-answer p { margin: 6px 0 0; font-family: var(--serif); font-size: 1.15rem; line-height: 1.6; color: var(--ink); word-break: keep-all; }
+.tr-read { padding: 14px; margin-bottom: 12px; border-radius: 18px; background: #fff; border: 1px solid rgba(200, 170, 230, 0.55); }
+.tr-read h3 { margin: 0 0 10px; font-size: 1.05rem; color: var(--ink); line-height: 1.4; }
+.tr-read p { margin: 0 0 10px; line-height: 1.8; word-break: keep-all; }
+.tr-read p:last-child { margin-bottom: 0; }
+.tr-read p b { display: block; font-size: 0.85rem; color: var(--neon); margin-bottom: 2px; }
+.tr-scene { padding: 10px 12px; border-radius: 12px; background: #fffaf3; font-style: normal; }
+.tr-situ-line { padding: 10px 12px; border-radius: 12px; background: #f3fbf7; }
+.tr-situ-line b { color: #2f8a63 !important; }
+.tr-tone { display: inline-block; margin-left: 4px; padding: 0 8px; border-radius: 99px; background: var(--rose-soft); color: #b0486b; font-size: 0.75rem; font-weight: 700; }
+.tr-rev { display: inline-block; padding: 0 8px; border-radius: 99px; background: #eef0f8; color: #5d6b94; font-size: 0.75rem; font-weight: 700; vertical-align: middle; }
+.tr-story { padding: 14px; margin-bottom: 12px; border-radius: 18px; background: #fbf7ff; border: 1px dashed rgba(156, 127, 214, 0.6); }
+.tr-story b { color: #7a5cc0; }
+.tr-story p { margin: 6px 0 0; line-height: 1.85; word-break: keep-all; }
+.tr-pos-line { display: block; margin-bottom: 2px; }

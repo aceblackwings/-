@@ -241,7 +241,7 @@ export function premiumTeaser(rep) {
  * 'day'(오늘·궁금한 일)는 분야 대신 12달 달력의 「흐름이 가장 좋은 세 달」로 잇는다.
  * @returns { field, label, sec, block, q:[{q, a}] } — sec·block은 읽기 화면에서 바로 찾아갈 자리
  */
-export const TAROT_FIELD = { love: 'love', job: 'career', money: 'wealth', day: null };
+export const TAROT_FIELD = { love: 'love', job: 'career', money: 'wealth', health: 'health', day: null };
 export function tarotBridge(rep, topic) {
   const field = TAROT_FIELD[topic] ?? null;
   const fsec = rep.sections.findIndex((s) => s.key === 'fields');
