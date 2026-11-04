@@ -5,7 +5,7 @@ import { yearOf } from '../js/period.js';
 import { analyzeGyeok } from '../js/gyeokguk.js';
 import { computeDaewoon } from '../js/luck.js';
 import { computeCompat } from '../js/compat.js';
-import { buildPremiumYear, buildLifeReport, buildCompatReport, premiumTeaser, compatTeaser, charCount, PRODUCTS } from '../js/premium.js';
+import { buildPremiumYear, buildLifeReport, buildCompatReport, premiumTeaser, compatTeaser, tarotBridge, charCount, PRODUCTS } from '../js/premium.js';
 import { josaProblems } from '../js/josa.js';
 import { toneProblems } from '../js/habit.js';
 
@@ -62,5 +62,18 @@ t('궁합 상세 990원 · 맛보기는 배우자 기운 비율까지 보이고 
   assert.match(tz.open, /%/); assert.ok(tz.blur.length > 10);
   assert.equal(tz.qa.length, 5); assert.ok(tz.qa.every((x) => x.q.endsWith('?') && x.a.length > 10));
   assert.ok(tz.months.includes('월'));
+});
+t('타로 다리: 주제마다 상세판의 맞는 분야로 잇고, 질문 2개 + 흐린 답 · 찾아갈 자리가 실제로 있음', () => {
+  for (const p of PEOPLE.slice(0, 6)) {
+    const r = yearRep(p);
+    for (const [topic, label] of [['love', '애정운'], ['job', '직장·학업운'], ['money', '재물운'], ['day', null]]) {
+      const b = tarotBridge(r, topic);
+      assert.equal(b.q.length, 2); assert.ok(b.q.every((x) => x.q.endsWith('?') && x.a.length > 15));
+      const blk = r.sections[b.sec].blocks[b.block]; assert.ok(blk, `${topic} 자리`);
+      if (label) { assert.ok(blk.h.startsWith(label)); assert.match(b.q[0].a, /두 달은 \d+월/); }
+      else assert.equal(r.sections[b.sec].key, 'months');
+      for (const x of b.q) { assert.deepEqual(josaProblems(x.q + ' ' + x.a), []); assert.deepEqual(toneProblems(x.a), []); }
+    }
+  }
 });
 console.log(`premium: ${pass} passed`);

@@ -48,7 +48,7 @@ import { fiveScores } from './todayfive.js';
 import { claimItem, PIECES_PER_ITEM } from './tteok.js';
 import { TTEOK, visit as tteokVisit, doTask as tteokDoTask, todayTasks, doneCount, isOpen as scrollOpen, spend as tteokSpend, buy as tteokBuy, SCROLLS, PACKS, TASKS as TTEOK_TASKS, ALL_BONUS } from './tteok.js';
 import { emoImage, charImage } from './assets.js';
-import { PRODUCTS, buildPremiumYear, buildLifeReport, buildCompatReport, premiumTeaser, compatTeaser } from './premium.js';
+import { PRODUCTS, buildPremiumYear, buildLifeReport, buildCompatReport, premiumTeaser, compatTeaser, tarotBridge } from './premium.js';
 import { tarotPrice, useTarot, TAROT_COST, TAROT_FREE_PER_DAY } from './tteok.js';
 import { emptyShop, owns as shopOwns, priceOf, grant as shopGrant, yearKey, compatKey } from './shop.js';
 import { preloadCharImages, itemImage, tarotImage } from './assets.js';
@@ -2018,6 +2018,22 @@ function compatOfferHTML(fr) {
   </div>`;
 }
 
+/** 타로 결과 끝: 같은 고민을 그해 상세판의 해당 분야로 잇는 다리(가장 궁금한 답은 흐림) */
+function tarotBridgeHTML(topic) {
+  const bd = bookletData(); const Y = bd.y.sajuYear; const rep = premiumYearOf(bd); const key = yearKey(Y);
+  const br = tarotBridge(rep, topic); const jump = `hj-s${br.sec}-b${br.block}`;
+  const what = br.field ? `${br.label} 전략` : '12달 달력';
+  if (shopOwns(loadShop(), key)) return `<div class="hanji hj-offer owned slim tr-bridge"><p class="hj-eyebrow">📜 ${Y}년 상세판 · 내 서재</p><button type="button" class="hj-buy" data-read="year" data-jump="${jump}">📖 이 고민, 상세판 「${esc(what)}」에서 이어 읽기</button></div>`;
+  return `<div class="hanji hj-offer tr-bridge" id="hj-tarot-offer">
+    <p class="hj-eyebrow">📜 ${Y}년 상세판</p>
+    <h3>이 고민, ${Y}년 상세판에서 더 자세히</h3>
+    <p class="hj-desc">카드는 오늘 마음을 비춰 주고, 상세판은 내 사주로 ${Y}년 ${esc(br.field ? br.label : '열두 달')}의 「언제·무엇을」을 짚어 줘요.</p>
+    <ul class="hj-qa">${br.q.map((x) => `<li><b>Q. ${esc(x.q)}</b><span class="hj-blur" aria-hidden="true">${esc(x.a)}</span></li>`).join('')}</ul>
+    <p class="hj-note">상세판 ${kChars(rep.chars)} · 12달 달력과 분야 8개 전략 · 한 번 열면 계속 보관 · 운 점수는 결제와 상관없이 같아요</p>
+    <button type="button" class="hj-buy" data-pay="${key}" data-jump="${jump}">답 보기 · ${priceTag(key)}</button>
+  </div>`;
+}
+
 /** 결제 창(체험판: 결제 없이 기록만). 정식 출시 때 이 자리에 웹 결제(PG)·스토어 결제를 붙임 */
 function openPay(key) {
   document.querySelectorAll('.pay-modal').forEach((x) => x.remove());
@@ -2045,11 +2061,12 @@ function completePay(key) {
   renderToday(); if (state.saju) { renderSaju(); }
   if (kind === 'compat') { const ph = $('[data-panel="compat"]'); if (ph) renderCompat(); }
   toast('📖 열렸어요. 내 서재에 보관했어요');
-  openReader(kind);
+  if (state.tarot?.step === 'result') renderTarot();
+  openReader(kind, state.readerJump); state.readerJump = null;
 }
 
 /** 읽기 화면: 한지 책자(전체 화면) */
-function openReader(kind) {
+function openReader(kind, jump = null) {
   const rep = kind === 'year' ? premiumYearOf(bookletData()) : kind === 'life' ? lifeReportNow() : compatReportNow();
   if (!rep) return;
   document.querySelectorAll('.hj-reader').forEach((x) => x.remove());
@@ -2059,19 +2076,20 @@ function openReader(kind) {
     <article class="hj-book" data-formal>
       <header class="hj-cover"><p class="hj-eyebrow">${PRODUCTS[rep.kind].icon} ${esc(rep.title)}</p><h2>${esc(rep.sub)}</h2><span class="hj-seal" aria-hidden="true">${esc(state.profile.name ? state.profile.name.slice(0, 2) : '符')}</span></header>
       <nav class="hj-index">${rep.sections.map((s, i) => `<a href="#hj-s${i}" data-hj-jump="hj-s${i}">${esc(s.h)}</a>`).join('')}</nav>
-      ${rep.sections.map((s, i) => `<section class="hj-sec" id="hj-s${i}"><h3>${esc(s.h)}</h3>${s.intro ? `<p class="hj-intro">${esc(s.intro)}</p>` : ''}${s.blocks.map((b) => `${b.h ? `<h4>${esc(b.h)}</h4>` : ''}${b.paras.map(P).join('')}`).join('')}</section>`).join('')}
+      ${rep.sections.map((s, i) => `<section class="hj-sec" id="hj-s${i}"><h3>${esc(s.h)}</h3>${s.intro ? `<p class="hj-intro">${esc(s.intro)}</p>` : ''}${s.blocks.map((b, j) => `<div class="hj-blk" id="hj-s${i}-b${j}">${b.h ? `<h4>${esc(b.h)}</h4>` : ''}${b.paras.map(P).join('')}</div>`).join('')}</section>`).join('')}
       <footer class="hj-end"><p>— 끝 —</p><button type="button" class="hj-buy" data-reader-close>닫기</button></footer>
     </article>`;
   document.body.appendChild(box); document.body.classList.add('hj-open');
+  if (jump) requestAnimationFrame(() => box.querySelector(`#${jump}`)?.scrollIntoView({ block: 'start' }));
   box.addEventListener('click', (e) => {
     const j = e.target.closest('[data-hj-jump]'); if (j) { e.preventDefault(); box.querySelector(`#${j.dataset.hjJump}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
     if (e.target.closest('[data-reader-close]')) { box.remove(); document.body.classList.remove('hj-open'); }
   });
 }
 document.addEventListener('click', (e) => {
-  const p = e.target.closest('[data-pay]'); if (p) { e.preventDefault(); const key = p.dataset.pay; if (shopOwns(loadShop(), key)) openReader(key.split(':')[0]); else openPay(key); return; }
+  const p = e.target.closest('[data-pay]'); if (p) { e.preventDefault(); const key = p.dataset.pay; state.readerJump = p.dataset.jump || null; if (shopOwns(loadShop(), key)) { openReader(key.split(':')[0], state.readerJump); state.readerJump = null; } else openPay(key); return; }
   const ok = e.target.closest('[data-pay-ok]'); if (ok) { completePay(ok.dataset.payOk); return; }
-  const r = e.target.closest('[data-read]'); if (r) { openReader(r.dataset.read); }
+  const r = e.target.closest('[data-read]'); if (r) { openReader(r.dataset.read, r.dataset.jump || null); }
 });
 
 // ---------- 쉬운 모드 (v0.31, easymode.js): 큰 글씨 · 쉬운 말 · 카드 3장 홈 ----------
@@ -2727,7 +2745,8 @@ function renderTarot() {
       <div class="tr-lines">${r.cards.map((c) => `<p><b>${c.pos}</b> ${esc(c.line)}</p>`).join('')}</div>
       <div class="tr-sum"><p>${esc(r.summary)}</p><p class="tr-act">☂️ 오늘 할 한 가지: <b>${esc(r.act)}</b></p></div>
       <div class="yday-btns"><button type="button" class="primary" data-tarot-again>🔀 같은 질문 다시 뽑기 <small>(${TTEOK} ${TAROT_COST[T.spread] ?? TAROT_COST.one}개)</small></button><button type="button" class="ghost" data-tarot-reset>다른 질문 보기</button></div>
-      <p class="muted tr-foot">타로는 마음을 비춰 보는 재미예요. 중요한 결정은 충분히 생각하고 정해 주세요. 결과는 기록함에 저장했어요.</p>`;
+      <p class="muted tr-foot">타로는 마음을 비춰 보는 재미예요. 중요한 결정은 충분히 생각하고 정해 주세요. 결과는 기록함에 저장했어요.</p>
+      ${tarotBridgeHTML(r.topic.key)}`;
   }
   panel.innerHTML = `<article class="card tarot-card">
     <div class="tr-head">${zodiacFace('wow', 'z-face')}<div><h2>🃏 12지신 타로</h2><p class="muted">12지신 카드 12장과 메이저 아르카나 22장, 모두 34장 중에서 마음 가는 카드를 직접 골라 보세요.</p></div></div>

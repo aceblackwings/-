@@ -1499,6 +1499,9 @@ body.hj-open { overflow: hidden; }
 .hj-index { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .hj-index a { font-size: 0.82rem; padding: 4px 10px; border: 1px solid var(--hj-line); border-radius: 99px; color: var(--hj-navy); text-decoration: none; background: var(--hj-paper2); }
 .hj-sec { padding-top: 22px; scroll-margin-top: 70px; }
+.hj-blk { scroll-margin-top: 70px; }
+.tr-bridge { margin-top: 16px; }
+.hj-offer h3, .hj-offer .hj-desc { word-break: keep-all; }
 .hj-sec h3 { font-family: var(--hj-serif); font-size: 1.3rem; color: var(--hj-red); margin: 0 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--hj-ink); }
 .hj-sec h4 { font-family: var(--hj-serif); font-size: 1.05rem; color: var(--hj-navy); margin: 22px 0 6px; }
 .hj-sec p { margin: 0 0 10px; color: var(--hj-ink); }
