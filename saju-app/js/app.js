@@ -42,8 +42,9 @@ import { tenGodProfile, pillarReadings, personSummary } from './natal.js';
 import { growEquipped, fillOf, replaceCharm, pairType, fiveDone, elementsOwned, setUnlocked, boostRarity, offerUnlocked, offerValue, offerable, removeOffered, equipLine, charmKey, GROW_FULL, RARITY_KO as CC_RARITY_KO, TYPE_KO, OFFER_UNLOCK } from './charmcare.js';
 import { buildNote, markNote, weekStamps, stampRarity, AREA_CHARM, RARITY_KO, MONTH_KEY_NEED, monthStamps, STORY_STEPS, newStoryIndex, storiesOpen, buildStories, weeklyLetter } from './note.js';
 import { ELEMENT_LUCK } from './fortune.js';
-import { TAROT_DECK, TAROT_TOPICS, TAROT_SPREADS, shuffleDeck, readTarot } from './tarot.js';
+import { TAROT_TOPICS, TAROT_SPREADS, shuffleDeck, readTarot, cardOf, ROMAN } from './tarot.js';
 import { fiveScores } from './todayfive.js';
+import { claimItem, PIECES_PER_ITEM } from './tteok.js';
 import { TTEOK, visit as tteokVisit, doTask as tteokDoTask, todayTasks, doneCount, isOpen as scrollOpen, spend as tteokSpend, buy as tteokBuy, SCROLLS, PACKS, TASKS as TTEOK_TASKS, ALL_BONUS } from './tteok.js';
 import { emoImage, charImage } from './assets.js';
 import { preloadCharImages, itemImage } from './assets.js';
@@ -2236,8 +2237,36 @@ function tteokTask(key) {
   save(TTEOK_KEY, r.store);
   const t = TTEOK_TASKS.find((x) => x.key === key);
   renderToday(); renderSaju();
-  if (r.first) showScrollsOpened(); else toast(`${TTEOK} 복떡 +${r.gained} · ${t.label} 완료 (${doneCount(r.store, state.fortune.dateKey)}/3)`);
+  if (r.first) showScrollsOpened(); else toast(`${TTEOK} 복떡 +${r.gained} · 🎀 조각 +1 · ${t.label} 완료 (${doneCount(r.store, state.fortune.dateKey)}/3)`);
+  if (r.itemReady) setTimeout(grantSeasonItem, r.first ? 400 : 0);
 }
+
+/** v0.42.1 꾸미기 조각 6개 → 계절 소품 하나(지금 시즌부터 다가오는 순서로 아직 없는 것) */
+function grantSeasonItem() {
+  const today = dateToJdn(state.fortune.date.year, state.fortune.date.month, state.fortune.date.day);
+  const y = state.fortune.date.year;
+  const list = [...seasonsAround(y), ...seasonsAround(y + 1)].filter((x, i, a) => x.endJdn >= today && a.findIndex((z) => z.id === x.id) === i).sort((a, b) => a.startJdn - b.startJdn);
+  const st = loadSeason();
+  const ownedKeys = new Set(ownedItems(st).map((it) => it.key));
+  const r = claimItem(loadTteok(), list.filter((x) => !ownedKeys.has(x.key)), new Set(Object.keys(st.owned || {}).filter((k) => st.owned[k]?.item)));
+  if (!r.item) return;
+  save(TTEOK_KEY, r.store);
+  const owned = { ...(st.owned || {}) }; owned[r.item.id] = { ...(owned[r.item.id] || {}), item: true };
+  save(SEASON_KEY, { ...st, owned, equipped: st.equipped || r.item.id });
+  renderToday(); renderHero(false);
+  const box = document.createElement('div'); box.className = 'evo-modal';
+  box.innerHTML = `<div class="evo-box scroll-pop">${itemThumb(r.item.key, 'item-big') || '<span style="font-size:3rem">🎀</span>'}
+    <h3>🎀 계절 소품을 받았어요!</h3>
+    <p>꾸미기 조각 ${PIECES_PER_ITEM}개를 모아 <b>${esc(r.item.icon || '')} ${esc(r.item.name)} 「${esc(r.item.item)}」</b>${withEul(r.item.item).slice(-1)} 받았어요. ${st.equipped ? '내 수호신에서 지신에게 입혀 줄 수 있어요.' : '지신이 바로 착용했어요!'}</p>
+    <div class="yday-btns"><button type="button" class="primary" data-go-wardrobe>🐉 지신 꾸미러 가기</button><button type="button" class="ghost" data-close-reward>고마워요</button></div></div>`;
+  document.body.appendChild(box);
+  box.addEventListener('click', (e) => { if (e.target === box || e.target.closest('[data-close-reward]')) box.remove(); });
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('[data-go-wardrobe]')) return;
+  document.querySelectorAll('.evo-modal').forEach((x) => x.remove());
+  selectTab('hero'); setTimeout(() => $('.wardrobe')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 200);
+});
 
 function showScrollsOpened() {
   const box = document.createElement('div'); box.className = 'evo-modal';
@@ -2278,8 +2307,17 @@ function todoTteokHTML() {
     <div class="todo3-head"><h3>✅ 오늘 할 일 <small>${n}/3</small></h3><button type="button" class="tteok-chip" data-tteok-shop>${TTEOK} <b>${st?.balance || 0}</b></button></div>
     <ol class="todo3-list">${tasks.map((t) => `<li class="${t.done ? 'done' : ''}"><span class="t3-ic">${t.done ? '✔' : t.icon}</span><span class="t3-l">${t.label}<small>${TTEOK} +${t.reward}</small></span>${t.done ? '<em>완료</em>' : `<button type="button" class="ghost" ${GO[t.key][0]}>${GO[t.key][1]}</button>`}</li>`).join('')}</ol>
     <div class="todo3-bar"><i style="width:${(n / 3) * 100}%"></i></div>
+    <p class="todo3-pieces">🎀 꾸미기 조각 <b>${Math.min(st?.pieces || 0, PIECES_PER_ITEM)}/${PIECES_PER_ITEM}</b> <span class="pc-dots">${Array.from({ length: PIECES_PER_ITEM }, (_, i) => `<i class="${i < (st?.pieces || 0) ? 'on' : ''}"></i>`).join('')}</span><small>할 일 하나에 1개 · 다 모으면 계절 소품(${esc(nextSeasonItemName())})</small></p>
     <p class="todo3-foot">${n === 3 ? '🎉 오늘은 2027년 운세와 내 사주가 무료로 열렸어요!' : `세 가지를 다 하면 오늘은 <b>2027년 운세</b>와 <b>내 사주</b>가 무료로 열려요 (보너스 ${TTEOK}+${ALL_BONUS}).`}</p>
   </article>`;
+}
+
+/** 다음에 받을 계절 소품 이름 */
+function nextSeasonItemName() {
+  const today = dateToJdn(state.fortune.date.year, state.fortune.date.month, state.fortune.date.day); const y = state.fortune.date.year;
+  const ownedKeys = new Set(ownedItems(loadSeason()).map((it) => it.key));
+  const n = [...seasonsAround(y), ...seasonsAround(y + 1)].filter((x) => x.endJdn >= today && !ownedKeys.has(x.key)).sort((a, b) => a.startJdn - b.startJdn)[0];
+  return n ? n.item : '모두 모았어요';
 }
 
 /** 잠긴 두루마리 */
@@ -2366,7 +2404,12 @@ document.addEventListener('click', (e) => {
 // ---------- 12지신 타로 ----------
 const TAROT_NEED = (sp) => TAROT_SPREADS[sp].positions.length;
 function tarotState() { if (!state.tarot) state.tarot = { step: 'topic' }; return state.tarot; }
-const tarotFace = (key, mood, reversed) => `<div class="tc-face ${reversed ? 'rev' : ''}">${zodiacFace(mood, 'tc-img', key)}</div>`;
+/** 카드 앞면: 지신 카드 = 지신 표정 그림, 메이저 아르카나 = 로마 숫자·상징·이름 + 내 지신이 작게 곁에 */
+const tarotFace = (key, mood, reversed) => {
+  const c = cardOf(key);
+  if (c.kind === 'major') return `<div class="tc-face major ${reversed ? 'rev' : ''}"><div class="tc-in"><small class="tc-num">${ROMAN[c.num]}</small><span class="tc-sym">${c.icon}</span><b class="tc-name">${c.name}</b></div>${zodiacFace('smile', 'tc-buddy')}</div>`;
+  return `<div class="tc-face ${reversed ? 'rev' : ''}">${zodiacFace(mood, 'tc-img', key)}</div>`;
+};
 
 function renderTarot() {
   const panel = $('[data-panel="tarot"]'); if (!panel || !state.saju) return;
@@ -2386,14 +2429,14 @@ function renderTarot() {
   } else if (T.step === 'result') {
     const r = T.result;
     body = `<p class="tr-guide">${r.topic.icon} 「${r.topic.ask}」</p>
-      <div class="tr-cards n${r.cards.length}">${r.cards.map((c) => `<div class="tr-card"><small class="tr-pos">${c.pos}</small>${tarotFace(c.card.key, c.reversed ? 'sleepy' : c.card.mood, c.reversed)}<b>${c.card.name} · ${c.card.title}</b><small class="tr-kw">${c.keyword}</small></div>`).join('')}</div>
+      <div class="tr-cards n${r.cards.length}">${r.cards.map((c) => `<div class="tr-card"><small class="tr-pos">${c.pos}</small>${tarotFace(c.card.key, c.reversed ? 'sleepy' : (c.card.mood || 'smile'), c.reversed)}<b>${c.card.kind === 'major' ? `${ROMAN[c.card.num]}. ` : ''}${c.card.name} · ${c.card.title}</b><small class="tr-kw">${c.keyword}</small></div>`).join('')}</div>
       <div class="tr-lines">${r.cards.map((c) => `<p><b>${c.pos}</b> ${esc(c.line)}</p>`).join('')}</div>
       <div class="tr-sum"><p>${esc(r.summary)}</p><p class="tr-act">☂️ 오늘 할 한 가지: <b>${esc(r.act)}</b></p></div>
       <div class="yday-btns"><button type="button" class="primary" data-tarot-again>🔀 같은 질문 다시 뽑기</button><button type="button" class="ghost" data-tarot-reset>다른 질문 보기</button></div>
       <p class="muted tr-foot">타로는 마음을 비춰 보는 재미예요. 중요한 결정은 충분히 생각하고 정해 주세요. 결과는 기록함에 저장했어요.</p>`;
   }
   panel.innerHTML = `<article class="card tarot-card">
-    <div class="tr-head">${zodiacFace('wow', 'z-face')}<div><h2>🃏 12지신 타로</h2><p class="muted">12지신 카드 12장 중에서 마음 가는 카드를 직접 골라 보세요.</p></div></div>
+    <div class="tr-head">${zodiacFace('wow', 'z-face')}<div><h2>🃏 12지신 타로</h2><p class="muted">12지신 카드 12장과 메이저 아르카나 22장, 모두 34장 중에서 마음 가는 카드를 직접 골라 보세요.</p></div></div>
     ${body}
   </article>`;
 }

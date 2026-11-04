@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { TAROT_DECK, TAROT_TOPICS, TAROT_SPREADS, shuffleDeck, seededRng, readTarot } from '../js/tarot.js';
+import { TAROT_DECK, MAJOR_ARCANA, FULL_DECK, TAROT_TOPICS, TAROT_SPREADS, shuffleDeck, seededRng, readTarot } from '../js/tarot.js';
 import { toneProblems } from '../js/habit.js';
 import { ZODIAC } from '../js/character.js';
 let pass = 0; const t = (n, fn) => { fn(); pass++; console.log('ok -', n); };
@@ -8,8 +8,13 @@ t('덱 = 12지신 12장, 띠 순서 그대로, 분야 문장 4개·조언·행�
   assert.deepEqual(TAROT_DECK.map((c) => c.key), ZODIAC.map((z) => z.key));
   TAROT_DECK.forEach((c) => { TAROT_TOPICS.forEach((tp) => assert.ok(/[.?!]$/.test(c.up[tp.key] || ''), c.key + tp.key)); assert.ok(c.rev && c.act && c.title && c.keyword); });
 });
-t('섞기: 12장 모두 한 번씩, 같은 시드면 같은 순서, 누운 카드 약 25%', () => {
-  const a = shuffleDeck(seededRng('x')); assert.equal(new Set(a.map((c) => c.key)).size, 12);
+t('메이저 아르카나 22장(0~21) + 지신 12장 = 34장, 문장·조언·행동 모두', () => {
+  assert.deepEqual(MAJOR_ARCANA.map((c) => c.num), [...Array(22).keys()]);
+  assert.equal(FULL_DECK.length, 34); assert.equal(new Set(FULL_DECK.map((c) => c.key)).size, 34);
+  MAJOR_ARCANA.forEach((c) => { TAROT_TOPICS.forEach((tp) => assert.ok(/[.?!]$/.test(c.up[tp.key] || ''), c.key + tp.key)); assert.ok(c.rev && c.act && c.icon && c.title); });
+});
+t('섞기: 34장 모두 한 번씩, 같은 시드면 같은 순서, 누운 카드 약 25%', () => {
+  const a = shuffleDeck(seededRng('x')); assert.equal(new Set(a.map((c) => c.key)).size, 34);
   assert.deepEqual(shuffleDeck(seededRng('x')), a);
   let rev = 0; let n = 0; for (let i = 0; i < 400; i++) shuffleDeck(seededRng(i)).forEach((c) => { n++; if (c.reversed) rev++; });
   assert.ok(rev / n > 0.18 && rev / n < 0.32, String(rev / n));

@@ -25,7 +25,9 @@ export const PACKS = [
   { key: 'feast', icon: '🎊', label: '지신 잔칫상', tteok: 100, bonus: 30, price: 9900 },
 ];
 
-export const emptyTteok = () => ({ balance: 0, welcomed: false, unlocked: {}, days: {}, log: [] });
+// v0.42.1 계절 소품 보상: 할 일 하나 = 꾸미기 조각 🎀 1개, 6개면 계절 소품 하나(지금·다가오는 시즌 순서로 아직 없는 것)
+export const PIECES_PER_ITEM = 6;
+export const emptyTteok = () => ({ balance: 0, welcomed: false, unlocked: {}, days: {}, log: [], pieces: 0 });
 const norm = (s) => ({ ...emptyTteok(), ...(s || {}), unlocked: { ...(s?.unlocked || {}) }, days: { ...(s?.days || {}) } });
 const addLog = (s, text, n) => ({ ...s, balance: s.balance + n, log: [{ text, n }, ...s.log].slice(0, 30) });
 
@@ -45,10 +47,10 @@ export function doTask(store, dateKey, key) {
   const day = { ...(s.days[dateKey] || {}) }; const tasks = { ...(day.tasks || {}) };
   if (!t || tasks[key]) return { store: s, gained: 0, allDone: allDoneOf(tasks), first: false };
   tasks[key] = true; day.tasks = tasks;
-  s = addLog({ ...s, days: { ...s.days, [dateKey]: day } }, t.label, t.reward); let gained = t.reward;
+  s = addLog({ ...s, pieces: (s.pieces || 0) + 1, days: { ...s.days, [dateKey]: day } }, t.label, t.reward); let gained = t.reward;
   const all = allDoneOf(tasks); let first = false;
   if (all && !day.bonus) { first = true; s = addLog({ ...s, days: { ...s.days, [dateKey]: { ...day, bonus: true } } }, '오늘 할 일 모두 완료', ALL_BONUS); gained += ALL_BONUS; }
-  return { store: s, gained, allDone: all, first };
+  return { store: s, gained, allDone: all, first, itemReady: (s.pieces || 0) >= PIECES_PER_ITEM };
 }
 const allDoneOf = (tasks) => TASKS.every((t) => tasks?.[t.key]);
 export const todayTasks = (store, dateKey) => TASKS.map((t) => ({ ...t, done: !!norm(store).days[dateKey]?.tasks?.[t.key] }));
@@ -87,4 +89,17 @@ function pruneDays(s, dateKey) {
   const keep = keys.sort((a, b) => ord(b) - ord(a)).slice(0, 40);
   if (!keep.includes(dateKey)) keep.push(dateKey);
   return { ...s, days: Object.fromEntries(keep.map((k) => [k, s.days[k]])) };
+}
+
+/**
+ * 조각 6개로 계절 소품 하나 고르기
+ * @param seasons 지금·다가오는 시즌 목록(시작 순서, {id, key}) · ownedIds 이미 가진 소품 id 집합
+ * @returns { store, item } — 줄 소품이 없으면 item null(조각은 그대로 둠)
+ */
+export function claimItem(store, seasons, ownedIds) {
+  const s = norm(store);
+  if ((s.pieces || 0) < PIECES_PER_ITEM) return { store: s, item: null };
+  const item = seasons.find((x) => !ownedIds.has(x.id)) || null;
+  if (!item) return { store: s, item: null };
+  return { store: { ...s, pieces: s.pieces - PIECES_PER_ITEM }, item };
 }
