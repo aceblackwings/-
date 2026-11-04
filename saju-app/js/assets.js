@@ -5,6 +5,7 @@
 // - 목록에 없으면 기존 SVG 그림. 승천 6~14단계는 5단계 그림 + 코드 효과
 // - 스토리 카드·PNG 저장은 외부 파일 참조가 안 되므로 미리 data URL로 불러 둔다
 import { CHAR_FILES, EMO_FILES, SCENE_FILES, CHARM_FILES, ITEM_FILES } from './asset-manifest.js';
+import { TAROT_FILES } from './tarot-manifest.js';
 
 export const EL_NAME = ['wood', 'fire', 'earth', 'metal', 'water'];
 export const CHAR_ASSETS = new Set(CHAR_FILES);
@@ -12,6 +13,7 @@ export const EMO_ASSETS = new Set(EMO_FILES);
 export const SCENE_ASSETS = new Set(SCENE_FILES || []);
 export const CHARM_ASSETS = new Set(CHARM_FILES || []); // 부적 상징 emblem_{종류} · 부적 종이 paper_{classic|neon}
 export const ITEM_ASSETS = new Set(ITEM_FILES || []);   // 계절 한정 소품 {시즌키}
+export const TAROT_ASSETS = new Set(TAROT_FILES || []); // 타로 메이저 아르카나 m0~m21 (v0.43.1)
 
 const dataCache = new Map();
 const url = (kind, key) => dataCache.get(`${kind}/${key}`) || `assets/${kind}/${key}.webp`;
@@ -31,6 +33,8 @@ export function emoImage(zodiacKey, mood, el) {
 
 /** 부적 그림 주소: 'emblem_wealth' · 'paper_classic' (없으면 null → SVG) */
 export function charmImage(name) { return CHARM_ASSETS.has(name) ? url('charm', name) : null; }
+/** 타로 메이저 아르카나 그림 주소: 'm0'~'m21' (없으면 null → 코드 카드) */
+export function tarotImage(key) { return TAROT_ASSETS.has(key) ? url('tarot', key) : null; }
 /** 계절 한정 소품 그림 주소 (없으면 null) */
 export function itemImage(seasonKey) { return ITEM_ASSETS.has(seasonKey) ? url('item', seasonKey) : null; }
 

@@ -1350,3 +1350,69 @@ button.chip[aria-pressed="true"] { color: #fff; background: var(--neon); border-
 .pc-dots i { width: 14px; height: 14px; border-radius: 50%; background: #f6e6ec; border: 1px solid #f0c9d6; }
 .pc-dots i.on { background: linear-gradient(135deg, #f4a6bd, #f7b48f); border-color: transparent; }
 .item-big { width: 120px; height: 120px; object-fit: contain; display: block; margin: 0 auto 4px; }
+
+/* ---------- v0.43 단순화: 접힌 줄 · 오늘의 기운 카드 ---------- */
+.fold-list { display: grid; gap: 10px; margin-top: 12px; }
+details.card.fold { padding: 0; margin: 0; overflow: hidden; }
+details.fold > summary { list-style: none; display: flex; align-items: center; gap: 12px; padding: 14px 16px; min-height: 56px; cursor: pointer; }
+details.fold > summary::-webkit-details-marker { display: none; }
+.fd-ic { flex: 0 0 40px; height: 40px; display: grid; place-items: center; border-radius: 14px; background: var(--rose-soft); font-size: 1.25rem; font-weight: 800; color: var(--neon); }
+.fd-t { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.fd-t b { font-size: 1rem; color: var(--ink); }
+.fd-t small { color: var(--muted); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fd-arrow { color: var(--neon); transition: transform 0.2s; }
+details.fold[open] .fd-arrow { transform: rotate(180deg); }
+details.fold[open] > summary { border-bottom: 1px solid var(--line); }
+.fold-body { padding: 4px 14px 14px; }
+.fold-body > .card, .fold-body > article.card, .fold-body > details.card { box-shadow: none; border: 0; background: transparent; padding: 10px 2px; margin: 0; }
+.fold-body > .card + .card { border-top: 1px dashed var(--line); }
+.fold-go { display: grid; gap: 8px; padding-top: 10px; }
+.fold-go button { min-height: 48px; }
+
+.ki-card { padding: 18px; background: linear-gradient(165deg, #fff 0%, #f6f0ff 100%); }
+.ki-card h3 small, .ki-gh small { color: var(--muted); font-weight: 400; font-size: 0.78rem; margin-left: 6px; }
+.ki-back { width: 100%; min-height: 180px; display: grid; place-items: center; align-content: center; gap: 6px; border-radius: 22px; border: 0; cursor: pointer;
+  background: radial-gradient(circle at 50% 35%, #fff 0%, #fde4ea 40%, #e7dcff 100%); box-shadow: inset 0 0 0 3px rgba(255,255,255,0.8), 0 8px 22px rgba(180,157,219,0.35); color: var(--ink); animation: kiPulse 2.4s ease-in-out infinite; }
+.ki-back .ki-star { font-size: 3rem; color: var(--neon); line-height: 1; }
+.ki-back b { font-size: 1.15rem; }
+.ki-back small { color: var(--muted); }
+@keyframes kiPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.015); } }
+.ki-hint { font-size: 0.86rem; color: var(--text); margin: 10px 0 0; }
+.ki-row { display: grid; grid-template-columns: 132px 1fr; gap: 14px; align-items: start; }
+.ki-face { position: relative; border-radius: 18px; padding: 12px 8px 10px; text-align: center; background: linear-gradient(170deg, #fff, color-mix(in srgb, var(--el) 22%, #fff)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--el) 55%, #fff), 0 6px 16px rgba(150,90,120,0.15); }
+.ki-face.flip { animation: kiFlip 0.8s ease-out; }
+@keyframes kiFlip { 0% { transform: rotateY(90deg) scale(0.9); opacity: 0.3; } 60% { transform: rotateY(-10deg) scale(1.04); opacity: 1; } 100% { transform: none; } }
+.ki-face .ki-img { width: 96px; height: 96px; object-fit: contain; display: block; margin: 4px auto; }
+.ki-face b { display: block; font-size: 0.92rem; color: var(--ink); line-height: 1.3; }
+.ki-face small { display: block; font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+.ki-rar { position: absolute; top: -8px; left: 50%; transform: translateX(-50%); font-style: normal; font-size: 0.72rem; font-weight: 800; color: #fff; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
+.ki-text p { margin: 0 0 8px; font-size: 0.9rem; line-height: 1.55; }
+.ki-why { font-weight: 700; color: var(--ink); }
+.ki-act { background: var(--rose-soft); border-radius: 12px; padding: 8px 10px; }
+.ki-gh { margin: 14px 0 6px; font-size: 0.95rem; }
+.ki-gauge { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.kg { display: grid; justify-items: center; gap: 4px; font-size: 0.8rem; }
+.kg > span { font-weight: 800; color: var(--ink); }
+.kg i { width: 100%; max-width: 44px; height: 64px; border-radius: 12px; background: rgba(222,160,182,0.18); display: flex; align-items: flex-end; overflow: hidden; }
+.kg i b { width: 100%; border-radius: 12px 12px 0 0; transition: height 0.6s; }
+.kg small { color: var(--muted); font-size: 0.72rem; }
+.kg.hl i { box-shadow: 0 0 0 2px var(--neon); }
+.ki-prog { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 12px 0 0; font-size: 0.86rem; }
+.ki-prog b { color: var(--neon); }
+.ki-week { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 0; }
+.ki-week small { color: var(--muted); font-size: 0.76rem; }
+.ki-dots { display: inline-flex; gap: 4px; }
+.ki-dots i { width: 14px; height: 14px; border-radius: 50%; background: rgba(222,160,182,0.25); }
+.ki-dots i.on { background: var(--neon); }
+.ki-go, .ki-hero-btn { width: 100%; min-height: 48px; margin-top: 12px; }
+.ki-done { margin: 12px 0 0; font-size: 0.88rem; background: var(--rose-soft); border-radius: 12px; padding: 10px 12px; }
+.hero-main .hero-stage { max-width: 300px; margin: 0 auto; }
+@media (max-width: 380px) { .ki-row { grid-template-columns: 1fr; } .ki-face { max-width: 180px; margin: 0 auto; } }
+.slots.two { grid-template-columns: repeat(2, 1fr); }
+/* v0.43.1 타로 아르카나 그림 카드 */
+.tc-face.major.art { padding: 0; background: #fff; }
+.tc-face.major.art .tc-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.tc-face.major.art.rev .tc-art { transform: rotate(180deg); }
+.tc-face.major.art .tc-label { position: absolute; left: 6%; right: 6%; bottom: 5%; background: rgba(255,250,245,0.92); border-radius: 999px; font-size: 0.72rem; font-weight: 700; color: var(--ink); text-align: center; padding: 2px 4px; }
+.tc-face.major.art .tc-label small { color: var(--gold); }
+.hero-main .hero-title { text-align: center !important; width: 100%; }
