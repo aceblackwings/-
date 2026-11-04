@@ -1558,3 +1558,19 @@ html.easy .hj-book { font-size: 1.15rem; }
 .hj-bundle-list small { color: var(--hj-ink2); font-size: 0.75rem; }
 .hj-buy.navy { background: var(--hj-navy); box-shadow: inset 0 0 0 2px var(--hj-navy), inset 0 0 0 4px rgba(251, 242, 226, 0.3); }
 .hj-buy small { font-weight: 400; opacity: 0.9; }
+/* v0.49 결제 노출 규칙: 처음 3일 접힌 한 줄 · 올인원 안내 한 줄 · 지신 상점 */
+.hj-quiet { margin-top: 14px; border-radius: 14px; background: #fff; border: 1px dashed rgba(200, 170, 230, 0.7); }
+.hj-quiet > summary { list-style: none; cursor: pointer; padding: 12px 14px; min-height: 48px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; color: var(--ink); font-size: 0.92rem; word-break: keep-all; }
+.hj-quiet > summary::-webkit-details-marker { display: none; }
+.hj-quiet > summary small { color: var(--muted); }
+.hj-quiet[open] > summary { border-bottom: 1px dashed rgba(200, 170, 230, 0.7); }
+.hj-quiet > .hj-offer { margin: 10px; }
+.hj-mention a { color: var(--hj-red); font-weight: 700; }
+.sh-list { display: flex; flex-direction: column; gap: 8px; }
+.sh-item { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: #fff; border: 1px solid rgba(200, 170, 230, 0.55); text-align: left; }
+.sh-ic { font-size: 1.5rem; }
+.sh-item b { display: block; color: var(--ink); font-size: 0.95rem; }
+.sh-item small { color: var(--muted); font-size: 0.78rem; line-height: 1.4; }
+.sh-btn { min-height: 44px; padding: 8px 12px; white-space: nowrap; }
+.tteok-shop h4 small.ts-bal { font-weight: 400; font-size: 0.82rem; margin-left: 6px; }
+.tteok-shop .hj-bundle { margin-top: 12px; text-align: left; }

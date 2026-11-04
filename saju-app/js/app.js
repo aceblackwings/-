@@ -50,7 +50,7 @@ import { TTEOK, visit as tteokVisit, doTask as tteokDoTask, todayTasks, doneCoun
 import { emoImage, charImage } from './assets.js';
 import { PRODUCTS, buildPremiumYear, buildLifeReport, buildCompatReport, premiumTeaser, compatTeaser, tarotBridge, bundleWorth, BUNDLE_COMPAT, BUNDLE_TTEOK } from './premium.js';
 import { tarotPrice, useTarot, TAROT_COST, TAROT_FREE_PER_DAY, gift as tteokGift } from './tteok.js';
-import { emptyShop, owns as shopOwns, priceOf, grant as shopGrant, yearKey, compatKey, bundleKey, grantBundle, useCompatCredit, compatCredits } from './shop.js';
+import { emptyShop, owns as shopOwns, priceOf, grant as shopGrant, yearKey, compatKey, bundleKey, grantBundle, useCompatCredit, compatCredits, kindOf } from './shop.js';
 import { preloadCharImages, itemImage, tarotImage } from './assets.js';
 /** 계절 한정 소품 그림 (없으면 빈칸) */
 const itemThumb = (key, cls = 'item-thumb') => { const u = itemImage(key); return u ? `<img class="${cls}" src="${u}" alt="" loading="lazy">` : ''; };
@@ -1875,6 +1875,10 @@ document.addEventListener('click', (e) => {
     document.querySelectorAll('.evo-modal').forEach((x) => x.remove());
     renderToday(); selectTab('today'); setTimeout(() => revealAndScroll('.kaiun-box', 'center'), 120);
   }
+  if (e.target.closest('[data-go-bundle]')) {
+    e.preventDefault(); document.querySelectorAll('.evo-modal').forEach((x) => x.remove());
+    selectTab('today'); setTimeout(() => { document.querySelectorAll('.hj-quiet').forEach((d) => { d.open = true; }); revealAndScroll('#hj-year-offer .hj-bundle', 'center'); }, 120);
+  }
   if (e.target.closest('[data-go-today]')) { selectTab('today'); setTimeout(() => revealAndScroll('#five-card'), 120); }
 });
 
@@ -1973,6 +1977,20 @@ function compatReportNow() {
 const tocHTML = (rep, freeKey) => `<ul class="hj-toc">${rep.toc.map((t) => `<li${t.key === freeKey ? ' class="free"' : ''}><span>${esc(t.h)}</span><span>${kChars(t.chars)}</span></li>`).join('')}</ul>`;
 const priceTag = (key) => { const p = priceOf(loadShop(), key); return `${p.was ? `<s>${won(p.was)}</s> ` : ''}${won(p.price)}`; };
 
+// v0.49 결제 노출 규칙(2026-11-04 사용자 결정 「가격이 많아 거부감이 들까 걱정」):
+// ① 화면 하나에 돈 이야기는 한 번 — 올인원 상자는 2027년 운세(상세판 상자) 한 곳에만, 내 사주·궁합에는 한 줄만
+// ② 결제 상자는 무료 풀이 맨 끝에만 ③ 처음 3일(기록된 날 FAMILIAR_DAYS 미만)은 결제 상자를 접힌 한 줄로
+// ④ 가게는 「지신 상점」 하나(openTteokShop) ⑤ 뽑기 추가권·수호 구독은 판매하지 않음(SELL_SUBSCRIPTION)
+const SELL_SUBSCRIPTION = false;
+const quietPay = () => !familiar();
+/** 처음 3일: 결제 상자를 「더 자세한 풀이가 있어요」 한 줄로 접어 둠(눌러야 펼침) */
+const quietWrap = (html, label) => (!html || !quietPay()) ? html : `<details class="hj-quiet"><summary>${label} <small>(유료 · 눌러서 보기)</small></summary>${html}</details>`;
+/** 내 사주·궁합에서 올인원을 알리는 한 줄(상자는 2027년 운세에만) */
+function bundleMentionHTML(what) {
+  const st = loadShop(); if (shopOwns(st, bundleKey(bundleYear()))) return '';
+  return `<p class="hj-note hj-mention">🎁 ${what} 올인원(${won(PRODUCTS.bundle.price)})에도 들어 있어요 · <a href="#" data-go-bundle>2027년 운세에서 보기</a></p>`;
+}
+
 /** 올인원 패키지(v0.48): 그해 상세판 + 평생 정통사주 + 궁합 3명 + 복떡 50개 = 4,900원. 이미 샀으면 아무것도 안 보임 */
 const bundleYear = () => bookletData().y.sajuYear;
 function bundleOfferHTML() {
@@ -1988,7 +2006,8 @@ function bundleOfferHTML() {
 }
 
 /** 책자 맨 아래: 상세판 열쇠(산 사람은 바로 열기) */
-function premiumYearOfferHTML(bd) {
+function premiumYearOfferHTML(bd) { return quietWrap(premiumYearOfferBox(bd), `📜 ${bd.y.sajuYear}년, 달마다·분야마다 더 자세한 풀이가 있어요`); }
+function premiumYearOfferBox(bd) {
   const rep = premiumYearOf(bd); const key = yearKey(bd.y.sajuYear);
   if (shopOwns(loadShop(), key)) return `<section class="hanji hj-offer owned"><p class="hj-eyebrow">📜 ${bd.y.sajuYear}년 상세 운세 · 내 서재</p><h3>${kChars(rep.chars)} 상세판을 가지고 있어요</h3><button type="button" class="hj-buy" data-read="year">📖 상세판 펼쳐 읽기</button></section>`;
   const t = premiumTeaser(rep); const who = state.profile.name ? `${esc(state.profile.name)} 님의` : '나의';
@@ -2003,7 +2022,8 @@ function premiumYearOfferHTML(bd) {
   </section>`;
 }
 /** 내 사주: 평생 정통사주 종합 */
-function lifeOfferHTML() {
+function lifeOfferHTML() { return quietWrap(lifeOfferBox(), '🀄 여덟 글자를 처음부터 끝까지 풀어 드리는 종합 풀이가 있어요'); }
+function lifeOfferBox() {
   const rep = lifeReportNow(); const key = 'life';
   if (shopOwns(loadShop(), key)) return `<section class="card hanji hj-offer owned"><p class="hj-eyebrow">🀄 평생 정통사주 종합 · 내 서재</p><h3>${kChars(rep.chars)} 종합 풀이를 가지고 있어요</h3><button type="button" class="hj-buy" data-read="life">📖 종합 풀이 펼쳐 읽기</button></section>`;
   return `<section class="card hanji hj-offer">
@@ -2013,11 +2033,12 @@ function lifeOfferHTML() {
     ${tocHTML(rep)}
     <p class="hj-note">한 번 열면 계속 보관 · 운 점수는 결제와 상관없이 같아요</p>
     <button type="button" class="hj-buy" data-pay="life">종합 풀이 열기 · ${priceTag(key)}</button>
-    ${bundleOfferHTML()}
+    ${bundleMentionHTML('정통사주는')}
   </section>`;
 }
 /** 궁합 결과: 궁합 상세(생일로 추가한 친구만) */
-function compatOfferHTML(fr) {
+function compatOfferHTML(fr) { const h = compatOfferBox(fr); return fr.card || !h || shopOwns(loadShop(), compatKey(fr)) ? h : quietWrap(h, '💞 둘에게 배우자 기운이 있을지, 더 자세한 궁합이 있어요'); }
+function compatOfferBox(fr) {
   if (fr.card) return `<p class="muted hj-mini">💞 궁합 상세는 생일로 추가한 친구와 볼 수 있어요. 공유 카드로 받은 친구는 생활 자리(일지)를 몰라 자세히 풀 수 없어요.</p>`;
   const key = compatKey(fr);
   if (shopOwns(loadShop(), key)) return `<div class="hanji hj-offer owned slim"><p class="hj-eyebrow">💞 궁합 상세 · 내 서재</p><button type="button" class="hj-buy" data-read="compat">📖 ${esc(fr.name || '상대')} 님과의 궁합 상세 읽기</button></div>`;
@@ -2032,7 +2053,7 @@ function compatOfferHTML(fr) {
     <p class="hj-note">궁합 상세 ${kChars(rep.chars)} · 다툼이 생기는 장면과 푸는 말까지 · 한 번 열면 계속 보관</p>
     ${compatCredits(loadShop()) > 0
       ? `<button type="button" class="hj-buy navy" data-pay="${key}">🎟️ 이용권으로 답 모두 보기 <small>(남은 ${compatCredits(loadShop())}장)</small></button>`
-      : `<button type="button" class="hj-buy" data-pay="${key}">답 모두 보기 · ${priceTag(key)}</button>${bundleOfferHTML()}`}
+      : `<button type="button" class="hj-buy" data-pay="${key}">답 모두 보기 · ${priceTag(key)}</button>${bundleMentionHTML('궁합 상세 3명이')}`}
   </div>`;
 }
 
@@ -2080,7 +2101,7 @@ function completePay(key) {
     if (!r.already) save(TTEOK_KEY, tteokGift(loadTteok(), '올인원 패키지', BUNDLE_TTEOK).store);
   } else if (pr.credit) save(SHOP_KEY, useCompatCredit(loadShop(), key).store);
   else save(SHOP_KEY, shopGrant(loadShop(), key, { paid: pr.price, via: 'trial' }).store);
-  document.querySelectorAll('.pay-modal').forEach((x) => x.remove());
+  document.querySelectorAll('.pay-modal, .tteok-modal').forEach((x) => x.remove());
   renderToday(); if (state.saju) { renderSaju(); }
   if (kind === 'compat' || kind === 'bundle') { const ph = $('[data-panel="compat"]'); if (ph) renderCompat(); }
   if (state.tarot?.step === 'result') renderTarot();
@@ -2665,7 +2686,7 @@ function scrollLockHTML(what, bd) {
       <button type="button" class="ghost" data-go-todo>✅ 오늘 할 일 하고 무료로 열기 <small>${n}/3</small></button>
       <button type="button" class="primary" data-scroll-buy="${what}">${TTEOK} 복떡 ${sc.cost}개로 계속 열기</button>
     </div>
-    <small class="sl-bal">가진 복떡 ${bal}개 · <a href="#" data-tteok-shop>떡방앗간 가기</a></small>
+    <small class="sl-bal">가진 복떡 ${bal}개 · <a href="#" data-tteok-shop>지신 상점</a></small>
   </article>`;
 }
 function scrollBadgeHTML(what) {
@@ -2680,26 +2701,41 @@ function sajuOpenHTML() {
 }
 
 /** 지신 떡방앗간 */
+/** 지신 상점(v0.49): 가게를 한 곳으로 — 풀이 단품 · 올인원 · 떡방앗간(복떡) · 계절 꾸미기 세트 · 무료로 모으기 */
 function openTteokShop(need = 0) {
   document.querySelectorAll('.tteok-modal').forEach((x) => x.remove());
-  const st = loadTteok(); const bal = st?.balance || 0;
+  const st = loadTteok(); const bal = st?.balance || 0; const shop = loadShop();
+  const bd = bookletData(); const Y = bd.y.sajuYear;
+  const item = (icon, label, sub, btn) => `<div class="sh-item"><span class="sh-ic">${icon}</span><div><b>${label}</b><small>${sub}</small></div>${btn}</div>`;
+  const payBtn = (key, own) => own ? `<button type="button" class="ghost sh-btn" data-read="${kindOf(key)}">읽기</button>` : `<button type="button" class="primary sh-btn" data-pay="${key}">${won(priceOf(shop, key).price)}</button>`;
+  const ss = seasonNow().active; const so = ss ? (loadSeason().owned?.[ss.id] || {}) : {};
   const box = document.createElement('div'); box.className = 'evo-modal tteok-modal';
   box.innerHTML = `<div class="evo-box tteok-shop">
-    <div class="ts-art">${zodiacFace('love', 'z-face big')}<span class="ts-mill">🍡</span></div>
-    <h3>${TTEOK} 지신 떡방앗간</h3>
-    <p class="muted">복떡을 지신에게 주면, 지신이 맛있게 먹고 기운을 내서 두루마리를 펼쳐 줘요. 운 점수는 그대로이고, 볼 수 있는 풀이만 열려요.</p>
-    <p class="ts-bal">가진 복떡 <b>${bal}</b>개</p>
-    ${need > 0 ? `<p class="eq-pair">두루마리를 열려면 복떡 ${need}개가 더 필요해요</p>` : ''}
-    <div class="ts-scrolls">${Object.entries(SCROLLS).map(([k, sc]) => `<button type="button" class="ts-scroll ${st?.unlocked?.[k] ? 'own' : ''}" data-scroll-buy="${k}"><span>${sc.icon}</span><b>${sc.label}</b><small>${st?.unlocked?.[k] ? '계속 열림' : `${TTEOK} ${sc.cost}개`}</small></button>`).join('')}</div>
-    <p class="muted ts-note">🃏 타로는 하루 ${TAROT_FREE_PER_DAY}번 무료, 그다음부터 한 장 ${TTEOK}${TAROT_COST.one}개 · 세 장 ${TTEOK}${TAROT_COST.three}개로 볼 수 있어요.</p>
-    <h4>복떡 받기</h4>
+    <div class="ts-art">${zodiacFace('love', 'z-face big')}<span class="ts-mill">🏮</span></div>
+    <h3>🏮 지신 상점</h3>
+    <p class="muted">무료로도 매일 충분히 즐길 수 있어요. 더 자세히 보고 싶을 때만 골라 주세요. 운 점수는 결제와 상관없이 같아요.</p>
+    ${need > 0 ? `<p class="eq-pair">복떡 ${need}개가 더 필요해요</p>` : ''}
+    <h4>📜 더 자세한 풀이</h4>
+    <div class="sh-list">
+      ${item('📜', `${Y}년 상세판`, '12달 달력 · 분야 8개 전략', payBtn(yearKey(Y), shopOwns(shop, yearKey(Y))))}
+      ${item('🀄', '평생 정통사주 종합', '여덟 글자를 처음부터 끝까지', payBtn('life', shopOwns(shop, 'life')))}
+      ${item('💞', '궁합 상세', compatCredits(shop) > 0 ? `궁합 결과 화면에서 이용권으로 열기 · 남은 ${compatCredits(shop)}장` : `궁합 결과 화면에서 한 사람씩 · ${won(PRODUCTS.compat.price)}`, `<button type="button" class="ghost sh-btn" data-go-tab="compat">궁합 가기</button>`)}
+    </div>
+    ${bundleOfferHTML()}
+    <h4>${TTEOK} 떡방앗간 <small class="ts-bal">가진 복떡 <b>${bal}</b>개</small></h4>
+    <p class="muted ts-note">🃏 타로는 하루 ${TAROT_FREE_PER_DAY}번 무료, 그다음부터 한 장 ${TTEOK}${TAROT_COST.one}개 · 세 장 ${TTEOK}${TAROT_COST.three}개.</p>
     <div class="ts-packs">${PACKS.map((p) => `<button type="button" class="ts-pack" data-pack="${p.key}"><span class="tp-ic">${p.icon}</span><b>${p.label}</b><small>${TTEOK} ${p.tteok}${p.bonus ? ` + 덤 ${p.bonus}` : ''}개</small><em>${p.price.toLocaleString('ko-KR')}원</em></button>`).join('')}</div>
-    <p class="muted ts-note">체험판이라 실제 결제 없이 바로 받아져요. 정식 앱에서는 위 가격으로 결제돼요.</p>
-    <h4>무료로 모으기</h4>
+    ${ss ? `<h4>👘 계절 꾸미기</h4><div class="sh-list">${item(ss.icon, `${ss.name} · ${ss.theme} 꾸미기 세트`, `${ss.item} · 계절 장면 · 남은 ${ss.daysLeft}일`, so.set ? '<button type="button" class="ghost sh-btn" disabled>보유 중</button>' : `<button type="button" class="primary sh-btn" data-open-season>${PACK_PRICE.toLocaleString('ko-KR')}원</button>`)}</div>` : ''}
+    <h4>🎁 무료로 모으기</h4>
     <ul class="ts-free"><li>매일 들르기 +1</li>${TTEOK_TASKS.map((t) => `<li>${t.icon} ${t.label} +${t.reward}</li>`).join('')}<li>🎉 세 가지 모두 +${ALL_BONUS}</li></ul>
+    <p class="muted ts-note">체험판이라 실제 결제 없이 열려요. 정식 출시 때 표시된 가격으로 결제돼요.</p>
     <button type="button" class="ghost" data-close-shop style="width:100%">닫기</button></div>`;
   document.body.appendChild(box);
-  box.addEventListener('click', (e) => { if (e.target === box || e.target.closest('[data-close-shop]')) box.remove(); });
+  box.addEventListener('click', (e) => {
+    if (e.target.closest('[data-open-season]')) { box.remove(); openSeasonShop(); return; }
+    if (e.target.closest('[data-go-tab]')) { box.remove(); return; }
+    if (e.target === box || e.target.closest('[data-close-shop]')) box.remove();
+  });
 }
 
 function buyScroll(what) {
@@ -2796,7 +2832,7 @@ function renderTarot() {
 /** 타로 이용 안내: 하루 1회 무료, 그다음은 복떡(가진 복떡 표시) */
 function tarotPriceNoteHTML() {
   const st = loadTteok(); const pr = tarotPrice(st, state.fortune.dateKey, 'one');
-  return `<p class="muted tr-price-note">${pr.free ? `🎁 하루 ${TAROT_FREE_PER_DAY}번은 무료예요. 그다음부터는 한 장 ${TTEOK}${TAROT_COST.one}개 · 세 장 ${TTEOK}${TAROT_COST.three}개.` : `오늘 무료 타로는 이미 봤어요. 내일 다시 무료로 볼 수 있어요.`} 가진 복떡 ${st?.balance || 0}개 · <a href="#" data-tteok-shop>떡방앗간 가기</a></p>`;
+  return `<p class="muted tr-price-note">${pr.free ? `🎁 하루 ${TAROT_FREE_PER_DAY}번은 무료예요. 그다음부터는 한 장 ${TTEOK}${TAROT_COST.one}개 · 세 장 ${TTEOK}${TAROT_COST.three}개.` : `오늘 무료 타로는 이미 봤어요. 내일 다시 무료로 볼 수 있어요.`} 가진 복떡 ${st?.balance || 0}개 · <a href="#" data-tteok-shop>지신 상점</a></p>`;
 }
 function tarotNewDeck(T) { T.deck = shuffleDeck(); T.picks = []; T.step = 'pick'; }
 document.addEventListener('click', (e) => {
@@ -3529,7 +3565,7 @@ function renderChat() {
       <div class="chat-log" id="chat-log">${hist.map((m) => m.role === 'user' ? `<div class="msg me"><p>${esc(m.text)}</p></div>` : `<div class="msg bot"><div class="av">${face}</div><p>${esc(m.text)}</p></div>`).join('')}</div>
       <div class="chips quick">${QUICK_ASKS.map((q) => `<button class="chip" type="button" data-ask="${esc(q)}">${esc(q)}</button>`).join('')}</div>
       <form id="chat-form" class="chat-form"><input name="q" type="text" maxlength="200" placeholder="${info.zodiac.name} 수호신에게 물어보기…" autocomplete="off"><button class="primary" type="submit">보내기</button></form>
-      <p class="muted" style="font-size:0.74rem;margin:8px 0 0">무료 하루 ${FREE_CHATS}회 · 👑 수호 구독 무제한. 수호신의 답은 재미와 마음가짐을 위한 것이며, 의료·법률·투자 결정은 전문가와 상의하세요. 힘든 마음이 들면 ☎ 109 (24시간)</p>
+      <p class="muted" style="font-size:0.74rem;margin:8px 0 0">무료 하루 ${FREE_CHATS}회${SELL_SUBSCRIPTION ? ' · 👑 수호 구독 무제한' : ''}. 수호신의 답은 재미와 마음가짐을 위한 것이며, 의료·법률·투자 결정은 전문가와 상의하세요. 힘든 마음이 들면 ☎ 109 (24시간)</p>
       <button class="ghost" type="button" id="btn-chat-clear" style="margin-top:6px">대화 지우기</button>
     </div>
     ${memoryCard()}`;
@@ -3546,7 +3582,7 @@ async function sendChat(text) {
   if (state.chatBusy) return;
   const c = loadChat();
   const sub = isSubscribed(loadGacha(), state.fortune.dateKey);
-  if (!sub && c.used >= FREE_CHATS && !isCrisis(text)) { toast('오늘 무료 대화를 모두 썼어요. 내일 또 만나거나 수호 구독으로 무제한 대화할 수 있어요'); openShop(); return; }
+  if (!sub && c.used >= FREE_CHATS && !isCrisis(text)) { if (SELL_SUBSCRIPTION) { toast('오늘 무료 대화를 모두 썼어요. 내일 또 만나거나 수호 구독으로 무제한 대화할 수 있어요'); openShop(); } else toast('오늘 대화는 여기까지예요. 내일 또 이야기해요'); return; }
   const ctx = chatContext();
   const mem = loadMemory();
   const fu = followUp(mem, state.fortune.dateKey);
@@ -4251,7 +4287,7 @@ function dailyCardHTML() {
 function doDraw() {
   let g = loadGacha();
   const left = drawsLeft(g, state.fortune.dateKey, freeBonus().total);
-  if (!left.free && !left.extra) { openShop(); return; }
+  if (!left.free && !left.extra) { if (SELL_SUBSCRIPTION) openShop(); else toast('오늘 뽑기는 모두 썼어요. 내일 다시 만나요'); return; }
   const isFree = left.free > 0;
   const s = state.saju;
   const c = CONCERNS.find((x) => x.key === state.profile.concern) || CONCERNS[2];
@@ -4394,7 +4430,7 @@ function renderReport() {
   const sub = isSubscribed(loadGacha(), state.fortune.dateKey);
   const sel = state.reportMonth || cur;
   const mo = r.months[sel - 1];
-  const free = sel === cur || sel === cur + 1 || sub;
+  const free = sel === cur || sel === cur + 1 || sub || !SELL_SUBSCRIPTION;
   const th = pillarTheme(state.saju, r.yp);
   panel.innerHTML = `
     <div class="card">
