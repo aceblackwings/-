@@ -82,6 +82,9 @@ export function buy(store, packKey) {
   return { store: addLog(s, `${p.label} 받기`, n), gained: n };
 }
 
+/** 상품에 딸린 복떡 받기(v0.48 올인원 패키지 복떡 50개 등) */
+export function gift(store, label, n) { return { store: addLog(norm(store), label, n), gained: n }; }
+
 /** 오래된 날 기록은 40일까지만 */
 function pruneDays(s, dateKey) {
   const keys = Object.keys(s.days); if (keys.length <= 40) return s;
