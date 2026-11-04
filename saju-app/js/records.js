@@ -18,6 +18,7 @@ export const ITEM_KIND = {
   reading: { icon: '📖', label: '운세 풀이' },
   card: { icon: '🃏', label: '신수 카드' },
   pledge: { icon: '✍️', label: '다짐' },
+  tarot: { icon: '🃏', label: '12지신 타로' },
 };
 
 export const emptyRecords = () => ({ days: {}, items: [] });

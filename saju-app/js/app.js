@@ -42,6 +42,11 @@ import { tenGodProfile, pillarReadings, personSummary } from './natal.js';
 import { growEquipped, fillOf, replaceCharm, pairType, fiveDone, elementsOwned, setUnlocked, boostRarity, offerUnlocked, offerValue, offerable, removeOffered, equipLine, charmKey, GROW_FULL, RARITY_KO as CC_RARITY_KO, TYPE_KO, OFFER_UNLOCK } from './charmcare.js';
 import { buildNote, markNote, weekStamps, stampRarity, AREA_CHARM, RARITY_KO, MONTH_KEY_NEED, monthStamps, STORY_STEPS, newStoryIndex, storiesOpen, buildStories, weeklyLetter } from './note.js';
 import { ELEMENT_LUCK } from './fortune.js';
+import { TAROT_TOPICS, TAROT_SPREADS, shuffleDeck, readTarot, cardOf, ROMAN } from './tarot.js';
+import { fiveScores } from './todayfive.js';
+import { claimItem, PIECES_PER_ITEM } from './tteok.js';
+import { TTEOK, visit as tteokVisit, doTask as tteokDoTask, todayTasks, doneCount, isOpen as scrollOpen, spend as tteokSpend, buy as tteokBuy, SCROLLS, PACKS, TASKS as TTEOK_TASKS, ALL_BONUS } from './tteok.js';
+import { emoImage, charImage } from './assets.js';
 import { preloadCharImages, itemImage } from './assets.js';
 /** 계절 한정 소품 그림 (없으면 빈칸) */
 const itemThumb = (key, cls = 'item-thumb') => { const u = itemImage(key); return u ? `<img class="${cls}" src="${u}" alt="" loading="lazy">` : ''; };
@@ -102,7 +107,7 @@ const FIVE_KEY = 'unmyeong2099.five'; // 오행 완성 칭호를 받았는지
 const DM_KEY = 'unmyeong2099.dmission';
 const PLEDGE_KEY = 'unmyeong2099.pledge';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
-const EL_COLORS = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
+const EL_COLORS = ['#4fae82', '#ef6f88', '#d99a3c', '#9690ad', '#5d9ad8']; // 파스텔 테마(2026-11-04)
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -359,6 +364,7 @@ function selectTab(name) {
     sub.innerHTML = items.map(([k, label]) => `<button type="button" data-sub="${k}" aria-current="${k === name && !(k === 'ask' && state.askOpen) ? 'page' : 'false'}">${label}</button>`).join('');
   }
   if (name === 'ask') renderAsk();
+  if (name === 'tarot') renderTarot();
   if (name === 'gallery') renderGallery();
   if (name === 'records') renderRecords();
   if (name === 'cards') renderCards();
@@ -509,7 +515,7 @@ function radarSVG(scores) {
   const max = Math.max(40, ...scores);
   let rings = '';
   for (let k = 1; k <= 4; k++) {
-    rings += `<polygon points="${[0, 1, 2, 3, 4].map((i) => pt(i, (R * k) / 4).join(',')).join(' ')}" fill="none" stroke="rgba(160,140,255,0.18)"/>`;
+    rings += `<polygon points="${[0, 1, 2, 3, 4].map((i) => pt(i, (R * k) / 4).join(',')).join(' ')}" fill="none" stroke="rgba(214,150,175,0.35)"/>`;
   }
   const poly = scores.map((s, i) => pt(i, (R * s) / max).join(',')).join(' ');
   const labels = scores.map((s, i) => {
@@ -518,13 +524,19 @@ function radarSVG(scores) {
   }).join('');
   return `<svg viewBox="0 0 280 280" role="img" aria-label="오행 분포">
     ${rings}
-    ${[0, 1, 2, 3, 4].map((i) => `<line x1="${cx}" y1="${cy}" x2="${pt(i, R)[0]}" y2="${pt(i, R)[1]}" stroke="rgba(160,140,255,0.15)"/>`).join('')}
-    <polygon points="${poly}" fill="rgba(0,229,255,0.18)" stroke="#00e5ff" stroke-width="2" style="filter:drop-shadow(0 0 6px #00e5ff)"/>
+    ${[0, 1, 2, 3, 4].map((i) => `<line x1="${cx}" y1="${cy}" x2="${pt(i, R)[0]}" y2="${pt(i, R)[1]}" stroke="rgba(214,150,175,0.3)"/>`).join('')}
+    <polygon points="${poly}" fill="rgba(236,127,160,0.2)" stroke="#ec7fa0" stroke-width="2.2" stroke-linejoin="round"/>
     ${labels}
   </svg>`;
 }
 
+/** v0.42 내 사주 풀이는 두루마리: 오늘 할 일 3가지를 하거나 복떡으로 연 사람만 */
 function renderSaju() {
+  if (!state.fortune || scrollOpenNow('saju')) { renderSajuFull(); return; }
+  $('[data-panel="saju"]').innerHTML = scrollLockHTML('saju');
+}
+
+function renderSajuFull() {
   const s = state.saju;
   const name = state.profile.name ? `${esc(state.profile.name)}님의` : '나의';
   const order = [['hour', '시주'], ['day', '일주'], ['month', '월주'], ['year', '연주']];
@@ -1824,11 +1836,17 @@ document.addEventListener('click', (e) => {
 });
 
 // ---------- 신년운세 책자 (첫 화면 개편 1단계): 게이지·별 없이 글로 읽는 한 해 ----------
-function bookletHTML() {
+/** 책자 계산은 한 번만 (총운 카드 · 분야 카드가 함께 씀) */
+function bookletData() {
   const d = timelineData(); const y = d.next || d.year; const prev = d.next ? d.year : null;
   const ageY = y.sajuYear - state.saju.input.year; const nextDw = d.dw?.pillars.find((p) => p.startAge > ageY) || null;
   const b = buildBooklet({ y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, concern: state.profile.concern, gender: state.profile.gender, nextDaewoon: nextDw });
-  const P = (t) => `<p>${esc(t)}</p>`; const kp = kaiunNow();
+  return { d, y, b };
+}
+
+/** 첫 화면 위: 표지 + 총운(펼쳐 둠). 바로 아래가 오늘의 운세 (2026-11-03 사용자 요청: 스크롤 줄이기) */
+function bookletHTML(bd = bookletData()) {
+  const { b } = bd; const P = (t) => `<p>${esc(t)}</p>`;
   return `<article class="card booklet" id="booklet" data-formal>
     <header class="bk-head">
       <small>${b.year} 신년운세</small>
@@ -1840,11 +1858,21 @@ function bookletHTML() {
     <section class="bk-part"><h3>총운</h3>
       ${b.general.map((x) => `<h4>${x.h}</h4>${x.paras.map(P).join('')}`).join('')}
     </section>
-    ${b.fields.map((f) => { const kx = f.key === 'family' ? '' : fieldKaiunSentence(kp, f.key, 'year'); return `<section class="bk-part"><h3>${f.label}${f.focus ? ' <small>내 고민</small>' : ''}</h3><h4>${esc(f.title)}</h4>${f.paras.map(P).join('')}${kx ? `<p class="bk-kaiun">${esc(kx)}</p>` : ''}</section>`; }).join('')}
-    <details class="bk-part bk-months"><summary><h3>달마다 두 줄</h3><small>입춘부터 절기월 · 눌러서 펼치기</small></summary>
+  </article>`;
+}
+
+const FIELD_ICON = { wealth: '💰', business: '🏪', career: '💼', love: '💗', family: '🏡', children: '🧸', health: '🌿', social: '🤝' };
+
+/** 첫 화면 아래: 분야별 운세(모두 접힘, 눌러서 펼치기) + 달마다 두 줄 */
+function bookletFieldsHTML(bd = bookletData()) {
+  const { d, y, b } = bd; const P = (t) => `<p>${esc(t)}</p>`; const kp = kaiunNow();
+  return `<article class="card booklet bk-fields" id="booklet-fields" data-formal>
+    <h3 class="bk-fields-h">${b.year} 분야별 운세 <small>궁금한 분야를 눌러 펼쳐 보세요</small></h3>
+    ${b.fields.map((f) => { const kx = ['family', 'business', 'children'].includes(f.key) ? '' : fieldKaiunSentence(kp, f.key, 'year'); return `<details class="bk-part bk-fold"><summary><h3>${FIELD_ICON[f.key] || ''} ${f.label}${f.focus ? ' <small>내 고민</small>' : ''}</h3><span class="bk-peek">${esc(f.title)}</span></summary>${f.paras.map(P).join('')}${kx ? `<p class="bk-kaiun">${esc(kx)}</p>` : ''}</details>`; }).join('')}
+    <details class="bk-part bk-fold bk-months"><summary><h3>🗓️ 달마다 두 줄</h3><span class="bk-peek">입춘부터 절기월</span></summary>
       ${monthLines(y).map((m) => `<div class="bk-month"><h4>${m.mark} ${m.month}월 <small>${m.range}</small></h4><p>${esc(m.flow)}</p><p class="bk-act">${esc(m.act)}</p></div>`).join('')}
     </details>
-    <div class="bk-next"><button class="primary" type="button" data-go-today>☀️ 오늘의 운세 보기 ↓</button><button class="ghost" type="button" data-tl-step="read-${d.next ? 'next' : 'year'}">📖 12달 자세히</button></div>
+    <div class="bk-next"><button class="ghost" type="button" data-tl-step="read-${d.next ? 'next' : 'year'}">📖 12달 자세히</button></div>
   </article>`;
 }
 
@@ -2135,6 +2163,7 @@ function completeNote() {
   const si = newStoryIndex(before, before + 1); const story = si >= 0 ? storyList()[si] : null;
   completeActMission();
   renderToday(); renderHero(false);
+  setTimeout(() => tteokTask('habit'), 50);
   const box = document.createElement('div'); box.className = 'evo-modal';
   box.innerHTML = `<div class="evo-box" style="text-align:center"><h3 style="margin:0 0 6px">🧧 쪽지 보상</h3>
     <div class="nt-charm">${renderTalismanSVG(t)}</div>
@@ -2156,7 +2185,7 @@ function todayCardHTML() {
   const t = todayLetter(f, { name: state.profile.name, animal: z.name, polite: z.key === 'rooster' });
   const left = FAMILIAR_DAYS - visitDays();
   return `<article class="card today-card" id="today-card">
-    <h3>오늘의 운세 <small>${t.head}</small></h3>
+    <h3>✉️ 수호신의 아침 편지 <small>${t.head}</small></h3>
     <div class="td-letter">
       <small class="td-from">✉️ ${esc(t.from)}</small>
       ${t.lines.map((l) => `<p>${esc(l)}</p>`).join('')}
@@ -2170,7 +2199,6 @@ function todayCardHTML() {
       })()}
       <p class="td-sign">${esc(t.sign)}</p>
     </div>
-    ${noteHTML(z.key === 'rooster')}
     <h4 class="td-qh">오늘의 세 가지 질문</h4>
     <dl class="td-qa">${t.qa.map((x) => `<dt>Q. ${esc(x.q)}</dt><dd>${esc(x.a)}</dd>`).join('')}</dl>
     <p class="td-why">${esc(t.why)}</p>
@@ -2179,8 +2207,10 @@ function todayCardHTML() {
   <details class="card howto" id="howto"${familiar() ? '' : ' open'}>
     <summary>처음이신가요? <b>앱 쓰는 법</b></summary>
     <ol>
-      <li><b>맨 위 신년운세</b>에서 한 해를 글로 읽어요. 내 고민 분야가 총운 바로 아래에 있어요.</li>
-      <li><b>🔮 운세 보기</b>에서 이번 주·이달·올해·10년 흐름과 궁금한 질문의 답을 볼 수 있어요.</li>
+      <li><b>맨 위 오늘의 운세</b>에서 애정·금전·건강·직장·사업 점수를 봐요.</li>
+      <li><b>☂️ 좋은 습관 하나</b>를 하고, <b>🃏 타로</b>로 궁금한 미래를 점쳐 보고, <b>🐉 지신</b>에게 받은 부적을 달아 주세요.</li>
+      <li>세 가지를 다 하면 오늘은 <b>2027년 운세</b>와 <b>내 사주</b>가 무료로 열려요. 복떡 🍡으로 계속 열어 둘 수도 있어요.</li>
+      <li><b>🔮 운세</b>에서 이번 주·이달·올해·10년 흐름과 궁금한 질문의 답을 볼 수 있어요.</li>
       <li><b>💬 상담</b>에서 수호신에게 고민을 편하게 말해 보세요.</li>
       <li><b>💞 궁합·친구</b>, <b>🐉 내 수호신</b>(기록함·부적)은 천천히 둘러보세요.</li>
       <li>${left > 0 ? `${left}일 더 들어오시면 「오늘 할 일」을 추천해 드려요.` : '이제 아래에서 「오늘 할 일」을 추천해 드려요.'}</li>
@@ -2188,7 +2218,253 @@ function todayCardHTML() {
   </details>`;
 }
 
+// ---------- v0.42 오늘 5분야 · 좋은 습관 하나 · 할 일 3가지와 복떡 · 두루마리(2027년 운세·내 사주) · 12지신 타로 ----------
+const TTEOK_KEY = 'unmyeong2099.tteok';
+const loadTteok = () => load(TTEOK_KEY, null);
+const scrollOpenNow = (what) => scrollOpen(loadTteok(), state.fortune.dateKey, what);
+const myZodiac = () => characterInfo(state.saju, state.profile).zodiac;
+/** 내 띠 표정 그림(없으면 이모지) */
+const zodiacFace = (mood, cls = 'z-face', key = myZodiac().key) => {
+  const u = emoImage(key, mood, 0) || charImage(key, 3, 0);
+  return u ? `<img class="${cls}" src="${u}" alt="" loading="lazy">` : '<span class="z-face-emoji">🐉</span>';
+};
+
+/** 오늘 할 일 완료 → 복떡. 셋 다 하면 두루마리 열림 창 */
+function tteokTask(key) {
+  if (!state.fortune) return;
+  const r = tteokDoTask(loadTteok(), state.fortune.dateKey, key);
+  if (!r.gained) return;
+  save(TTEOK_KEY, r.store);
+  const t = TTEOK_TASKS.find((x) => x.key === key);
+  renderToday(); renderSaju();
+  if (r.first) showScrollsOpened(); else toast(`${TTEOK} 복떡 +${r.gained} · 🎀 조각 +1 · ${t.label} 완료 (${doneCount(r.store, state.fortune.dateKey)}/3)`);
+  if (r.itemReady) setTimeout(grantSeasonItem, r.first ? 400 : 0);
+}
+
+/** v0.42.1 꾸미기 조각 6개 → 계절 소품 하나(지금 시즌부터 다가오는 순서로 아직 없는 것) */
+function grantSeasonItem() {
+  const today = dateToJdn(state.fortune.date.year, state.fortune.date.month, state.fortune.date.day);
+  const y = state.fortune.date.year;
+  const list = [...seasonsAround(y), ...seasonsAround(y + 1)].filter((x, i, a) => x.endJdn >= today && a.findIndex((z) => z.id === x.id) === i).sort((a, b) => a.startJdn - b.startJdn);
+  const st = loadSeason();
+  const ownedKeys = new Set(ownedItems(st).map((it) => it.key));
+  const r = claimItem(loadTteok(), list.filter((x) => !ownedKeys.has(x.key)), new Set(Object.keys(st.owned || {}).filter((k) => st.owned[k]?.item)));
+  if (!r.item) return;
+  save(TTEOK_KEY, r.store);
+  const owned = { ...(st.owned || {}) }; owned[r.item.id] = { ...(owned[r.item.id] || {}), item: true };
+  save(SEASON_KEY, { ...st, owned, equipped: st.equipped || r.item.id });
+  renderToday(); renderHero(false);
+  const box = document.createElement('div'); box.className = 'evo-modal';
+  box.innerHTML = `<div class="evo-box scroll-pop">${itemThumb(r.item.key, 'item-big') || '<span style="font-size:3rem">🎀</span>'}
+    <h3>🎀 계절 소품을 받았어요!</h3>
+    <p>꾸미기 조각 ${PIECES_PER_ITEM}개를 모아 <b>${esc(r.item.icon || '')} ${esc(r.item.name)} 「${esc(r.item.item)}」</b>${withEul(r.item.item).slice(-1)} 받았어요. ${st.equipped ? '내 수호신에서 지신에게 입혀 줄 수 있어요.' : '지신이 바로 착용했어요!'}</p>
+    <div class="yday-btns"><button type="button" class="primary" data-go-wardrobe>🐉 지신 꾸미러 가기</button><button type="button" class="ghost" data-close-reward>고마워요</button></div></div>`;
+  document.body.appendChild(box);
+  box.addEventListener('click', (e) => { if (e.target === box || e.target.closest('[data-close-reward]')) box.remove(); });
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('[data-go-wardrobe]')) return;
+  document.querySelectorAll('.evo-modal').forEach((x) => x.remove());
+  selectTab('hero'); setTimeout(() => $('.wardrobe')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 200);
+});
+
+function showScrollsOpened() {
+  const box = document.createElement('div'); box.className = 'evo-modal';
+  box.innerHTML = `<div class="evo-box scroll-pop">${zodiacFace('excited', 'z-face big')}
+    <h3>🎉 오늘 할 일 3가지 완료!</h3>
+    <p>지신이 떡을 먹고 기운이 나서 두루마리 두 개를 펼쳐 줬어요. 오늘은 <b>2027년 운세</b>와 <b>내 사주 풀이</b>를 마음껏 보세요.</p>
+    <p class="eq-pair">${TTEOK} 보너스 복떡 +${ALL_BONUS}</p>
+    <div class="yday-btns"><button type="button" class="primary" data-open-scroll="next">📜 2027년 운세 보기</button><button type="button" class="ghost" data-open-scroll="saju">🀄 내 사주 보기</button></div></div>`;
+  document.body.appendChild(box);
+  box.addEventListener('click', (e) => { if (e.target === box) box.remove(); });
+}
+
+/** ① 오늘의 운세: 5분야 점수(30~90점대) */
+function fiveCardHTML() {
+  const f = state.fortune; const v = fiveScores(f);
+  return `<article class="card five-card" id="five-card">
+    <div class="five-head">
+      <div class="five-total" style="--c:${scoreColor(v.total)}"><b>${v.total}</b><small>오늘 점수</small></div>
+      <div class="five-hi"><small>${f.date.month}월 ${f.date.day}일 ${dowOf(f.date)}요일</small><h2>오늘의 운세</h2>
+        <p>${v.best.icon} <b>${v.best.label}</b>이 가장 빛나요</p></div>
+      ${zodiacFace(v.total >= 70 ? 'excited' : v.total >= 50 ? 'smile' : 'calm', 'z-face five-z')}
+    </div>
+    <ul class="five-list">${v.list.map((x) => `<li><span class="fv-ic">${x.icon}</span><span class="fv-l">${x.label}</span><span class="fv-bar"><i style="width:${x.score}%;background:${scoreColor(x.score)}"></i></span><b class="fv-n" style="color:${scoreColor(x.score)}">${x.score}</b><small class="fv-line">${esc(x.line)}</small></li>`).join('')}</ul>
+    <p class="five-note">${v.low.icon} ${v.low.label}은 아래 「좋은 습관 하나」로 채워 주세요.</p>
+  </article>`;
+}
+
+/** ② 좋은 습관 하나(수호신의 쪽지) */
+function habitCardHTML() {
+  return `<article class="card habit-card" id="habit-card"><h3>☂️ 오늘의 좋은 습관 하나</h3>${noteHTML(myZodiac().key === 'rooster')}</article>`;
+}
+
+/** ③ 오늘 할 일 3가지 + 복떡 */
+function todoTteokHTML() {
+  const st = loadTteok(); const tasks = todayTasks(st, state.fortune.dateKey); const n = tasks.filter((t) => t.done).length;
+  const GO = { habit: ['data-go-habit', '하러 가기'], tarot: ['data-go-tarot', '타로 보기'], care: ['data-go-care', '지신에게'] };
+  return `<article class="card todo3" id="todo3">
+    <div class="todo3-head"><h3>✅ 오늘 할 일 <small>${n}/3</small></h3><button type="button" class="tteok-chip" data-tteok-shop>${TTEOK} <b>${st?.balance || 0}</b></button></div>
+    <ol class="todo3-list">${tasks.map((t) => `<li class="${t.done ? 'done' : ''}"><span class="t3-ic">${t.done ? '✔' : t.icon}</span><span class="t3-l">${t.label}<small>${TTEOK} +${t.reward}</small></span>${t.done ? '<em>완료</em>' : `<button type="button" class="ghost" ${GO[t.key][0]}>${GO[t.key][1]}</button>`}</li>`).join('')}</ol>
+    <div class="todo3-bar"><i style="width:${(n / 3) * 100}%"></i></div>
+    <p class="todo3-pieces">🎀 꾸미기 조각 <b>${Math.min(st?.pieces || 0, PIECES_PER_ITEM)}/${PIECES_PER_ITEM}</b> <span class="pc-dots">${Array.from({ length: PIECES_PER_ITEM }, (_, i) => `<i class="${i < (st?.pieces || 0) ? 'on' : ''}"></i>`).join('')}</span><small>할 일 하나에 1개 · 다 모으면 계절 소품(${esc(nextSeasonItemName())})</small></p>
+    <p class="todo3-foot">${n === 3 ? '🎉 오늘은 2027년 운세와 내 사주가 무료로 열렸어요!' : `세 가지를 다 하면 오늘은 <b>2027년 운세</b>와 <b>내 사주</b>가 무료로 열려요 (보너스 ${TTEOK}+${ALL_BONUS}).`}</p>
+  </article>`;
+}
+
+/** 다음에 받을 계절 소품 이름 */
+function nextSeasonItemName() {
+  const today = dateToJdn(state.fortune.date.year, state.fortune.date.month, state.fortune.date.day); const y = state.fortune.date.year;
+  const ownedKeys = new Set(ownedItems(loadSeason()).map((it) => it.key));
+  const n = [...seasonsAround(y), ...seasonsAround(y + 1)].filter((x) => x.endJdn >= today && !ownedKeys.has(x.key)).sort((a, b) => a.startJdn - b.startJdn)[0];
+  return n ? n.item : '모두 모았어요';
+}
+
+/** 잠긴 두루마리 */
+function scrollLockHTML(what, bd) {
+  const sc = SCROLLS[what]; const st = loadTteok(); const bal = st?.balance || 0; const n = doneCount(st, state.fortune.dateKey);
+  const tease = what === 'next' && bd ? `<p class="sl-tease">살짝 보기: 「${esc(bd.b.title)}」의 해</p>` : what === 'saju' ? `<p class="sl-tease">살짝 보기: 일간 ${STEMS[state.saju.dayMaster]}(${STEMS_KO[state.saju.dayMaster]}) · ${esc(analyzeGyeok(state.saju).name || '')}</p>` : '';
+  return `<article class="card scroll-lock" id="lock-${what}">
+    <div class="sl-art">${zodiacFace('sleepy', 'z-face')}<span class="sl-scroll">${sc.icon}</span></div>
+    <h3>${sc.icon} ${sc.label} <span class="tag">🔒 두루마리</span></h3>
+    <p class="sl-desc">${sc.desc}</p>
+    ${tease}
+    <div class="sl-ways">
+      <button type="button" class="ghost" data-go-todo>✅ 오늘 할 일 하고 무료로 열기 <small>${n}/3</small></button>
+      <button type="button" class="primary" data-scroll-buy="${what}">${TTEOK} 복떡 ${sc.cost}개로 계속 열기</button>
+    </div>
+    <small class="sl-bal">가진 복떡 ${bal}개 · <a href="#" data-tteok-shop>떡방앗간 가기</a></small>
+  </article>`;
+}
+function scrollBadgeHTML(what) {
+  const how = scrollOpenNow(what);
+  return how === 'today' ? `<p class="scroll-badge">🎉 오늘 할 일을 다 해서 <b>${SCROLLS[what].label}</b>가 오늘 무료로 열렸어요 · <a href="#" data-scroll-buy="${what}">${TTEOK}${SCROLLS[what].cost}로 계속 열기</a></p>` : '';
+}
+function sajuOpenHTML() {
+  const s = state.saju;
+  return `${scrollBadgeHTML('saju')}<article class="card scroll-open"><h3>🀄 내 사주 풀이 <span class="tag">열림</span></h3>
+    <p>일간 ${STEMS[s.dayMaster]}(${STEMS_KO[s.dayMaster]}) · ${esc(s.strengthLevel || s.strength)} · 필요한 기운 ${ELEMENT_KO[s.yongsin]}. 타고난 기질·그릇·일주까지 자세히 볼 수 있어요.</p>
+    <button type="button" class="primary" data-open-scroll="saju" style="width:100%">🀄 내 사주 풀이 보기 →</button></article>`;
+}
+
+/** 지신 떡방앗간 */
+function openTteokShop(need = 0) {
+  document.querySelectorAll('.tteok-modal').forEach((x) => x.remove());
+  const st = loadTteok(); const bal = st?.balance || 0;
+  const box = document.createElement('div'); box.className = 'evo-modal tteok-modal';
+  box.innerHTML = `<div class="evo-box tteok-shop">
+    <div class="ts-art">${zodiacFace('love', 'z-face big')}<span class="ts-mill">🍡</span></div>
+    <h3>${TTEOK} 지신 떡방앗간</h3>
+    <p class="muted">복떡을 지신에게 주면, 지신이 맛있게 먹고 기운을 내서 두루마리를 펼쳐 줘요. 운 점수는 그대로이고, 볼 수 있는 풀이만 열려요.</p>
+    <p class="ts-bal">가진 복떡 <b>${bal}</b>개</p>
+    ${need > 0 ? `<p class="eq-pair">두루마리를 열려면 복떡 ${need}개가 더 필요해요</p>` : ''}
+    <div class="ts-scrolls">${Object.entries(SCROLLS).map(([k, sc]) => `<button type="button" class="ts-scroll ${st?.unlocked?.[k] ? 'own' : ''}" data-scroll-buy="${k}"><span>${sc.icon}</span><b>${sc.label}</b><small>${st?.unlocked?.[k] ? '계속 열림' : `${TTEOK} ${sc.cost}개`}</small></button>`).join('')}</div>
+    <h4>복떡 받기</h4>
+    <div class="ts-packs">${PACKS.map((p) => `<button type="button" class="ts-pack" data-pack="${p.key}"><span class="tp-ic">${p.icon}</span><b>${p.label}</b><small>${TTEOK} ${p.tteok}${p.bonus ? ` + 덤 ${p.bonus}` : ''}개</small><em>${p.price.toLocaleString('ko-KR')}원</em></button>`).join('')}</div>
+    <p class="muted ts-note">체험판이라 실제 결제 없이 바로 받아져요. 정식 앱에서는 위 가격으로 결제돼요.</p>
+    <h4>무료로 모으기</h4>
+    <ul class="ts-free"><li>매일 들르기 +1</li>${TTEOK_TASKS.map((t) => `<li>${t.icon} ${t.label} +${t.reward}</li>`).join('')}<li>🎉 세 가지 모두 +${ALL_BONUS}</li></ul>
+    <button type="button" class="ghost" data-close-shop style="width:100%">닫기</button></div>`;
+  document.body.appendChild(box);
+  box.addEventListener('click', (e) => { if (e.target === box || e.target.closest('[data-close-shop]')) box.remove(); });
+}
+
+function buyScroll(what) {
+  const r = tteokSpend(loadTteok(), what);
+  if (r.already) { openScroll(what); return; }
+  if (!r.ok) { openTteokShop(r.need); return; }
+  save(TTEOK_KEY, r.store);
+  document.querySelectorAll('.tteok-modal').forEach((x) => x.remove());
+  renderToday(); renderSaju();
+  const box = document.createElement('div'); box.className = 'evo-modal';
+  box.innerHTML = `<div class="evo-box scroll-pop">${zodiacFace('thanks', 'z-face big')}<h3>냠냠, 고마워요!</h3>
+    <p>지신이 복떡 ${SCROLLS[what].cost}개를 맛있게 먹고 <b>${SCROLLS[what].label}</b> 두루마리를 활짝 펼쳤어요. 이제 언제든 볼 수 있어요.</p>
+    <button type="button" class="primary" data-open-scroll="${what}" style="width:100%">${SCROLLS[what].icon} 지금 보기</button></div>`;
+  document.body.appendChild(box);
+  box.addEventListener('click', (e) => { if (e.target === box) box.remove(); });
+}
+function openScroll(what) {
+  document.querySelectorAll('.evo-modal').forEach((x) => x.remove());
+  if (what === 'saju') { renderSaju(); selectTab('saju'); return; }
+  selectTab('today'); setTimeout(() => $('#booklet')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+}
+
+document.addEventListener('click', (e) => {
+  const shop = e.target.closest('[data-tteok-shop]'); if (shop) { e.preventDefault(); openTteokShop(); return; }
+  const pk = e.target.closest('[data-pack]');
+  if (pk) { const r = tteokBuy(loadTteok(), pk.dataset.pack); save(TTEOK_KEY, r.store); toast(`${TTEOK} 복떡 +${r.gained}! 지신이 신났어요`); openTteokShop(); renderToday(); return; }
+  const sb = e.target.closest('[data-scroll-buy]'); if (sb) { e.preventDefault(); buyScroll(sb.dataset.scrollBuy); return; }
+  const os = e.target.closest('[data-open-scroll]'); if (os) { openScroll(os.dataset.openScroll); return; }
+  if (e.target.closest('[data-go-todo]')) { selectTab('today'); setTimeout(() => $('#todo3')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150); return; }
+  if (e.target.closest('[data-go-habit]')) { selectTab('today'); setTimeout(() => $('#habit-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150); return; }
+  if (e.target.closest('[data-go-tarot]')) { selectTab('tarot'); return; }
+  if (e.target.closest('[data-go-care]')) { selectTab('hero'); toast('🐉 지신을 쓰다듬거나 부적을 달아 주세요'); }
+});
+
+// ---------- 12지신 타로 ----------
+const TAROT_NEED = (sp) => TAROT_SPREADS[sp].positions.length;
+function tarotState() { if (!state.tarot) state.tarot = { step: 'topic' }; return state.tarot; }
+/** 카드 앞면: 지신 카드 = 지신 표정 그림, 메이저 아르카나 = 로마 숫자·상징·이름 + 내 지신이 작게 곁에 */
+const tarotFace = (key, mood, reversed) => {
+  const c = cardOf(key);
+  if (c.kind === 'major') return `<div class="tc-face major ${reversed ? 'rev' : ''}"><div class="tc-in"><small class="tc-num">${ROMAN[c.num]}</small><span class="tc-sym">${c.icon}</span><b class="tc-name">${c.name}</b></div>${zodiacFace('smile', 'tc-buddy')}</div>`;
+  return `<div class="tc-face ${reversed ? 'rev' : ''}">${zodiacFace(mood, 'tc-img', key)}</div>`;
+};
+
+function renderTarot() {
+  const panel = $('[data-panel="tarot"]'); if (!panel || !state.saju) return;
+  const T = tarotState(); const tp = TAROT_TOPICS.find((x) => x.key === T.topic);
+  let body = '';
+  if (T.step === 'topic') {
+    body = `<p class="tr-guide">무엇이 궁금하세요?</p><div class="tr-topics">${TAROT_TOPICS.map((x) => `<button type="button" class="tr-topic" data-tarot-topic="${x.key}"><span>${x.icon}</span><b>${x.label}</b><small>${x.ask}</small></button>`).join('')}</div>`;
+  } else if (T.step === 'spread') {
+    body = `<p class="tr-guide">${tp.icon} ${tp.label} · 몇 장을 뽑을까요?</p><div class="tr-topics two">${Object.entries(TAROT_SPREADS).map(([k, sp]) => `<button type="button" class="tr-topic" data-tarot-spread="${k}"><span>${k === 'one' ? '🂠' : '🂠🂠🂠'}</span><b>${sp.label}</b><small>${sp.desc}</small></button>`).join('')}</div>
+      <button type="button" class="ghost tr-back" data-tarot-reset>← 질문 다시 고르기</button>`;
+  } else if (T.step === 'pick') {
+    const need = TAROT_NEED(T.spread);
+    body = `<p class="tr-guide">${tp.icon} 「${tp.ask}」<br>마음속으로 질문을 떠올리며 카드 <b>${need}장</b>을 골라 주세요 <small>(${T.picks.length}/${need})</small></p>
+      <div class="tr-deck">${T.deck.map((c, i) => { const n = T.picks.indexOf(i); return `<button type="button" class="tc-back ${n >= 0 ? 'on' : ''}" data-tarot-pick="${i}" aria-label="카드 ${i + 1}${n >= 0 ? ` 선택 ${n + 1}` : ''}">${n >= 0 ? `<b>${n + 1}</b>` : '<span>✦</span>'}</button>`; }).join('')}</div>
+      ${T.picks.length === need ? '<button type="button" class="primary tr-reveal" data-tarot-reveal>🔮 카드 펼치기</button>' : ''}
+      <button type="button" class="ghost tr-back" data-tarot-shuffle>🔀 다시 섞기</button>`;
+  } else if (T.step === 'result') {
+    const r = T.result;
+    body = `<p class="tr-guide">${r.topic.icon} 「${r.topic.ask}」</p>
+      <div class="tr-cards n${r.cards.length}">${r.cards.map((c) => `<div class="tr-card"><small class="tr-pos">${c.pos}</small>${tarotFace(c.card.key, c.reversed ? 'sleepy' : (c.card.mood || 'smile'), c.reversed)}<b>${c.card.kind === 'major' ? `${ROMAN[c.card.num]}. ` : ''}${c.card.name} · ${c.card.title}</b><small class="tr-kw">${c.keyword}</small></div>`).join('')}</div>
+      <div class="tr-lines">${r.cards.map((c) => `<p><b>${c.pos}</b> ${esc(c.line)}</p>`).join('')}</div>
+      <div class="tr-sum"><p>${esc(r.summary)}</p><p class="tr-act">☂️ 오늘 할 한 가지: <b>${esc(r.act)}</b></p></div>
+      <div class="yday-btns"><button type="button" class="primary" data-tarot-again>🔀 같은 질문 다시 뽑기</button><button type="button" class="ghost" data-tarot-reset>다른 질문 보기</button></div>
+      <p class="muted tr-foot">타로는 마음을 비춰 보는 재미예요. 중요한 결정은 충분히 생각하고 정해 주세요. 결과는 기록함에 저장했어요.</p>`;
+  }
+  panel.innerHTML = `<article class="card tarot-card">
+    <div class="tr-head">${zodiacFace('wow', 'z-face')}<div><h2>🃏 12지신 타로</h2><p class="muted">12지신 카드 12장과 메이저 아르카나 22장, 모두 34장 중에서 마음 가는 카드를 직접 골라 보세요.</p></div></div>
+    ${body}
+  </article>`;
+}
+
+function tarotNewDeck(T) { T.deck = shuffleDeck(); T.picks = []; T.step = 'pick'; }
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-tarot-topic],[data-tarot-spread],[data-tarot-pick],[data-tarot-reveal],[data-tarot-reset],[data-tarot-again],[data-tarot-shuffle]');
+  if (!el) return; const T = tarotState();
+  if (el.dataset.tarotTopic) { T.topic = el.dataset.tarotTopic; T.step = 'spread'; }
+  else if (el.dataset.tarotSpread) { T.spread = el.dataset.tarotSpread; tarotNewDeck(T); }
+  else if (el.dataset.tarotPick !== undefined) {
+    const i = Number(el.dataset.tarotPick); const at = T.picks.indexOf(i);
+    if (at >= 0) T.picks.splice(at, 1); else if (T.picks.length < TAROT_NEED(T.spread)) T.picks.push(i);
+  } else if (el.hasAttribute('data-tarot-reveal')) {
+    T.result = readTarot({ topic: T.topic, spread: T.spread, picks: T.picks.map((i) => T.deck[i]), name: state.profile.name });
+    T.step = 'result';
+    const dk = state.fortune.dateKey; const r = T.result;
+    save(RECORDS_KEY, addItem(loadRecords(), { kind: 'tarot', dateKey: dk, key: `${r.topic.key}-${Date.now() % 100000}`, title: `12지신 타로 · ${r.topic.label}`, summary: r.cards.map((c) => `${c.card.name}${c.reversed ? '(쉬어 가기)' : ''}`).join(' · '), lines: [...r.cards.map((c) => `${c.pos}: ${c.line}`), r.summary] }).rec);
+    renderTarot(); window.scrollTo({ top: 0, behavior: 'smooth' });
+    tteokTask('tarot');
+    return;
+  } else if (el.hasAttribute('data-tarot-again') || el.hasAttribute('data-tarot-shuffle')) tarotNewDeck(T);
+  else if (el.hasAttribute('data-tarot-reset')) { state.tarot = { step: 'topic' }; }
+  renderTarot();
+});
+
 function renderToday() {
+  { const v = tteokVisit(loadTteok(), state.fortune.dateKey); if (v.gained) { save(TTEOK_KEY, v.store); setTimeout(() => toast(`${TTEOK} 복떡 +${v.gained} · 지신이 반가워해요`), 600); } }
   logToday();
   recordKaiun();
   // 첫 화면 = 신년운세 책자 → 오늘 한 문단 → 앱 쓰는 법. 익숙해지면(3일째) 오늘 할 일·기능 구역
@@ -2197,11 +2473,16 @@ function renderToday() {
     ['todo', todoCardHTML], ['journey', journeyCardHTML], ['daily', dailyCardHTML], ['concern', concernCard],
     ['story', () => storyButton('fortune', '오늘의 운세를 스토리로 공유')],
   ];
+  const bd = bookletData();
   $('[data-panel="today"]').innerHTML = `
     ${easySuggestHTML()}
-    ${bookletHTML()}
-    ${weeklyLetterHTML()}
+    ${fiveCardHTML()}
+    ${habitCardHTML()}
+    ${todoTteokHTML()}
+    ${scrollOpenNow('next') ? `${scrollBadgeHTML('next')}${bookletHTML(bd)}${bookletFieldsHTML(bd)}` : scrollLockHTML('next', bd)}
+    ${scrollOpenNow('saju') ? sajuOpenHTML() : scrollLockHTML('saju')}
     ${todayCardHTML()}
+    ${weeklyLetterHTML()}
     ${familiar() ? `${missionCardHTML()}${sections.filter(([k]) => unlocked(k)).map(([, fn]) => fn()).join('\n')}` : ''}`;
 
   $('#btn-daily')?.addEventListener('click', claimDaily);
@@ -2217,10 +2498,11 @@ function renderToday() {
 }
 
 function scoreColor(v) {
-  if (v >= 80) return '#39FF88';
-  if (v >= 60) return '#00E5FF';
-  if (v >= 40) return '#FFC93C';
-  return '#FF2E63';
+  // 파스텔 테마(2026-11-04): 높을수록 따뜻한 로즈, 낮은 점수는 겁주지 않는 차분한 색
+  if (v >= 80) return '#e85d8a';
+  if (v >= 60) return '#ef8a5a';
+  if (v >= 40) return '#9c7fd6';
+  return '#7f8fb5';
 }
 
 // ---------- 부적 공방 ----------
@@ -2260,7 +2542,7 @@ function renderCharm(animate) {
       <div class="workshop">
         <div class="charm-stage ${animate ? 'reveal' : ''}" id="charm-stage">${renderTalismanSVG(t)}</div>
         <div>
-          <p style="margin-top:0"><span class="rarity-badge" style="color:${t.rarity.color}">${t.rarity.label}</span> ${t.purified ? '<span class="rarity-badge" style="color:#39FF88">정화됨</span>' : ''}</p>
+          <p style="margin-top:0"><span class="rarity-badge" style="color:${t.rarity.color}">${t.rarity.label}</span> ${t.purified ? '<span class="rarity-badge" style="color:#3f9c6f">정화됨</span>' : ''}</p>
           <h3 style="margin:8px 0 2px">${t.type.label} 부적 · ${t.type.hanja}</h3>
           <p class="muted" style="margin-top:0">${t.type.reading} — ${t.type.meaning}</p>
           <ul>${t.effects.map((e) => `<li><b>${esc(e.stat)}</b> ${e.value > 0 ? '+' : ''}${e.value}%</li>`).join('')}</ul>
@@ -2470,7 +2752,7 @@ function renderHero(animate) {
   const panel = $('[data-panel="hero"]');
   bindSeasonWardrobe(panel);
   // 장착하면 개운 반영이 홈 책자에도 바로 보이게 renderToday
-  const saveEquip = (next, lead = '') => { save(EQUIP_KEY, next); renderHero(false); renderToday(); grow((g) => complete(g, f.dateKey, 'equip', qBonus('equip')), lead); };
+  const saveEquip = (next, lead = '') => { save(EQUIP_KEY, next); renderHero(false); renderToday(); grow((g) => complete(g, f.dateKey, 'equip', qBonus('equip')), lead); tteokTask('care'); };
   $$('[data-equip]', panel).forEach((b) => b.addEventListener('click', () => {
     const r = candidates[Number(b.dataset.equip)];
     const next = loadEquip();
@@ -2500,6 +2782,7 @@ function renderHero(animate) {
   $('#btn-hero-png').addEventListener('click', () => downloadSVGAsPNG(svgStatic, `character-${info.zodiac.key}.png`, 3));
   bindGrowth(panel, info);
   $('#hero-stage', panel).addEventListener('click', () => {
+    tteokTask('care');
     state.heroLine = say('tap');
     const bubble = $('.hero-say', panel);
     bubble.innerHTML = `<p>${esc(state.heroLine)}</p>`;
@@ -3332,7 +3615,7 @@ function journeyCardHTML() {
   if (j.done >= JOURNEY_DAYS) return `<div class="card journey"><h3>🏆 ${c.label} 고민 해결 여정 완주!</h3><p>30일 동안 함께 걸었어요. 수호신이 당신의 ${c.label}을(를) 끝까지 응원합니다. '정보 수정'에서 새 고민을 고르면 새 여정이 시작돼요.</p></div>`;
   return `<div class="card journey">
     <h3>🧭 ${c.label} 고민 해결 여정 <span class="tag">${j.done} / ${JOURNEY_DAYS}일</span></h3>
-    <div class="exp"><div class="exp-fill" style="width:${pct}%;background:linear-gradient(90deg,#39ff88,#00e5ff)"></div><span>${chapters.map((ch, i) => (i === step.chapterIndex ? `▶ ${ch}` : ch)).join(' · ')}</span></div>
+    <div class="exp"><div class="exp-fill" style="width:${pct}%;background:linear-gradient(90deg,#8fd4b6,#f4a6bd)"></div><span>${chapters.map((ch, i) => (i === step.chapterIndex ? `▶ ${ch}` : ch)).join(' · ')}</span></div>
     <div class="j-step ${doneToday ? 'done' : ''}">
       <small class="muted">${step.chapter} · ${step.stepNo}걸음</small>
       <b>${step.title}</b>
@@ -3514,11 +3797,11 @@ function renderFeng() {
   const maxD = 2600;
   const pt = (sp) => { const r = Math.min(1, sp.distance / maxD) * 120; const a = (sp.bearing - 90) * Math.PI / 180; return [150 + Math.cos(a) * r, 150 + Math.sin(a) * r]; };
   const radar = `<svg viewBox="0 0 300 300" class="radar-map">
-    <circle cx="150" cy="150" r="140" fill="#0d0a1f" stroke="rgba(0,229,255,0.3)"/>
-    ${[40, 80, 120].map((r) => `<circle cx="150" cy="150" r="${r}" fill="none" stroke="rgba(0,229,255,0.15)" stroke-dasharray="3 5"/>`).join('')}
-    <line x1="150" y1="10" x2="150" y2="290" stroke="rgba(255,255,255,0.08)"/><line x1="10" y1="150" x2="290" y2="150" stroke="rgba(255,255,255,0.08)"/>
-    ${['북', '동', '남', '서'].map((d, i) => { const a = (i * 90 - 90) * Math.PI / 180; return `<text x="${150 + Math.cos(a) * 128}" y="${154 + Math.sin(a) * 128}" font-size="12" fill="${f.luck.direction.startsWith(d) ? '#ffc93c' : '#9a94c4'}" text-anchor="middle" font-weight="800">${d}</text>`; }).join('')}
-    <circle cx="150" cy="150" r="7" fill="#00e5ff"><animate attributeName="r" values="6;10;6" dur="1.6s" repeatCount="indefinite"/></circle>
+    <circle cx="150" cy="150" r="140" fill="#fffaf8" stroke="rgba(236,127,160,0.35)"/>
+    ${[40, 80, 120].map((r) => `<circle cx="150" cy="150" r="${r}" fill="none" stroke="rgba(236,127,160,0.25)" stroke-dasharray="3 5"/>`).join('')}
+    <line x1="150" y1="10" x2="150" y2="290" stroke="rgba(150,90,120,0.12)"/><line x1="10" y1="150" x2="290" y2="150" stroke="rgba(150,90,120,0.12)"/>
+    ${['북', '동', '남', '서'].map((d, i) => { const a = (i * 90 - 90) * Math.PI / 180; return `<text x="${150 + Math.cos(a) * 128}" y="${154 + Math.sin(a) * 128}" font-size="12" fill="${f.luck.direction.startsWith(d) ? '#d0843a' : '#9b8590'}" text-anchor="middle" font-weight="800">${d}</text>`; }).join('')}
+    <circle cx="150" cy="150" r="7" fill="#ec7fa0"><animate attributeName="r" values="6;10;6" dur="1.6s" repeatCount="indefinite"/></circle>
     ${spots.map((sp) => { const [x, y] = pt(sp); return `<g><circle cx="${x}" cy="${y}" r="16" fill="${EL_COLORS[sp.element]}" opacity="${fs.visited[sp.id] ? 0.25 : 0.85}"/><text x="${x}" y="${y + 6}" font-size="16" text-anchor="middle">${fs.visited[sp.id] ? '✅' : sp.icon}</text></g>`; }).join('')}
   </svg>`;
   panel.innerHTML = `
@@ -4153,7 +4436,7 @@ function dexHTML() {
     const fake = { pillars: { year: { branch: e.branch } }, dayMaster: (e.branch * 3) % 10 };
     const info = e.isMe ? myInfo : characterInfo(fake, { gender: e.branch % 2 ? 'female' : 'male', concern: 'people' });
     const face = faceSVG(info, e.isMe ? stage : 2, 'smile', 56);
-    const tone = { samhap: '#ff4d8d', yukhap: '#ffc93c', same: '#39ff88', normal: '#9a94c4', wonjin: '#c77dff', chung: '#00e5ff' }[e.relation.type];
+    const tone = { samhap: '#ec6f9a', yukhap: '#e0a43a', same: '#4fae82', normal: '#9b8590', wonjin: '#a77bd8', chung: '#5d9ad8' }[e.relation.type];
     const badge = e.isMe ? '<em class="me">나</em>' : `<em style="color:${tone};border-color:${tone}">${e.relation.label}</em>`;
     if (!e.unlocked) {
       return `<div class="dex-card locked">
@@ -4176,7 +4459,7 @@ function dexHTML() {
       ${m.reached && !m.claimed ? `<button class="primary" type="button" data-ms="${m.count}">받기</button>` : m.claimed ? '<i>✓</i>' : '<i>🔒</i>'}</div>`).join('');
   return `<div class="card dex">
     <h3>📖 12띠 수집 도감 <span class="tag">${r.count} / 12</span></h3>
-    <div class="exp"><div class="exp-fill" style="width:${pct}%;background:linear-gradient(90deg,#ff4d8d,#c77dff,#00e5ff)"></div><span>${r.count} / 12 띠 · 전설의 조합 ${r.legendsFound} / ${r.legendsTotal}</span></div>
+    <div class="exp"><div class="exp-fill" style="width:${pct}%;background:linear-gradient(90deg,#f4a6bd,#c9b6ec,#a9cdee)"></div><span>${r.count} / 12 띠 · 전설의 조합 ${r.legendsFound} / ${r.legendsTotal}</span></div>
     <div class="rel-badges">${r.relations.map((x) => `<span class="${x.found ? 'on' : ''}" style="--c:${x.color}">${x.found ? '●' : '○'} ${x.label}</span>`).join('')}</div>
     <p class="muted" style="font-size:0.82rem;margin:8px 0">친구를 추가하면 그 친구의 띠 칸이 열립니다. 새 띠 +20 EXP, 전설의 조합 +30 EXP!${r.nextMilestone ? ` 다음 보상까지 <b>${r.nextMilestone.count - r.count}띠</b> 남았어요.` : ' 12띠를 모두 모았습니다!'}</p>
     <div class="ms-row">${milestones}</div>

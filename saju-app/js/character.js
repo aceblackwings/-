@@ -353,18 +353,18 @@ export function stageBackdrop(stage, el, id) {
   }).join('');
   switch (stage) {
     case 1: return `<rect width="320" height="400" fill="url(#${id}-bg1)"/>${[[50, 70], [270, 90], [70, 300], [260, 320]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="20" fill="#fff" opacity="0.25"/>`).join('')}<text x="40" y="120" font-size="18" opacity="0.5">⭐</text><text x="250" y="200" font-size="16" opacity="0.5">🌙</text>`;
-    case 2: return `<rect width="320" height="400" fill="url(#${id}-bg2)"/>${stars(18, 2, '#ffffff', 300)}`;
+    case 2: return `<rect width="320" height="400" fill="url(#${id}-bg2)"/>${stars(18, 2, '#f4a6bd', 300)}`;
     case 3: return `<rect width="320" height="400" fill="url(#${id}-bg3)"/>${stars(24, 3, trim, 300)}
-      <path d="M40 330 L40 250 L70 230 L100 250 L100 330 M220 330 L220 250 L250 230 L280 250 L280 330" fill="#1a0f2e" stroke="${trim}" stroke-width="1.5" opacity="0.7"/>
+      <path d="M40 330 L40 250 L70 230 L100 250 L100 330 M220 330 L220 250 L250 230 L280 250 L280 330" fill="#fff7fb" stroke="${trim}" stroke-width="1.5" opacity="0.7"/>
       <path d="M30 252 L70 222 L110 252 M210 252 L250 222 L290 252" fill="none" stroke="${trim}" stroke-width="2" opacity="0.8"/>`;
     case 4: return `<rect width="320" height="400" fill="url(#${id}-bg4)"/>
       ${[[40, 330, 40], [110, 350, 50], [210, 345, 55], [290, 330, 40], [60, 120, 26], [270, 150, 30]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" opacity="0.35"/>`).join('')}
       <g transform="translate(160 170)" opacity="0.35"><polygon points="${Array.from({ length: 8 }, (_, i) => { const a = (i * 45 + 22.5) * Math.PI / 180; return `${Math.cos(a) * 140},${Math.sin(a) * 140}`; }).join(' ')}" fill="none" stroke="#ffd166" stroke-width="2"/><animateTransform attributeName="transform" type="rotate" from="0 160 170" to="360 160 170" dur="40s" repeatCount="indefinite" additive="sum"/></g>`;
     case 6: case 7: case 8: case 9: case 10: case 11: case 12: case 13: case 14: {
       const c = ASC_COLOR[stage];
-      return `<rect width="320" height="400" fill="#07050f"/><circle cx="160" cy="190" r="230" fill="url(#${id}-ascbg)"/>${stars(30, stage, c)}${stage === 14 ? `<rect width="320" height="400" fill="url(#${id}-rainbow)" opacity="0.15"/>` : ''}`;
+      return `<rect width="320" height="400" fill="#fff8fb"/><circle cx="160" cy="190" r="230" fill="url(#${id}-ascbg)"/>${stars(30, stage, c)}${stage === 14 ? `<rect width="320" height="400" fill="url(#${id}-rainbow)" opacity="0.15"/>` : ''}`;
     }
-    default: return `<rect width="320" height="400" fill="url(#${id}-bg5)"/>${stars(46, 5, '#ffffff')}
+    default: return `<rect width="320" height="400" fill="url(#${id}-bg5)"/>${stars(46, 5, '#c9b6ec')}
       <ellipse cx="160" cy="200" rx="170" ry="60" fill="none" stroke="url(#${id}-rainbow)" stroke-width="2" opacity="0.5" transform="rotate(-18 160 200)"/>
       <circle cx="270" cy="70" r="26" fill="#fff6c8" opacity="0.8"/><circle cx="280" cy="64" r="22" fill="url(#${id}-bg5)"/>`;
   }
@@ -372,12 +372,12 @@ export function stageBackdrop(stage, el, id) {
 
 function backdropDefs(id, stage = 2) {
   const ac = ASC_COLOR[stage] || '#7b5cff';
-  return `<radialGradient id="${id}-ascbg" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="${ac}" stop-opacity="0.55"/><stop offset="0.55" stop-color="${ac}" stop-opacity="0.15"/><stop offset="1" stop-color="#07050f" stop-opacity="0"/></radialGradient>
+  return `<radialGradient id="${id}-ascbg" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="${ac}" stop-opacity="0.55"/><stop offset="0.55" stop-color="${ac}" stop-opacity="0.15"/><stop offset="1" stop-color="#fff8fb" stop-opacity="0"/></radialGradient>
   <linearGradient id="${id}-bg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe3ef"/><stop offset="1" stop-color="#d9e8ff"/></linearGradient>
-  <linearGradient id="${id}-bg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a1240"/><stop offset="1" stop-color="#0b0820"/></linearGradient>
-  <linearGradient id="${id}-bg3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a0f3f"/><stop offset="0.7" stop-color="#140826"/><stop offset="1" stop-color="#0a0514"/></linearGradient>
+  <linearGradient id="${id}-bg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbe4f0"/><stop offset="1" stop-color="#e6ddff"/></linearGradient>
+  <linearGradient id="${id}-bg3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe6da"/><stop offset="0.7" stop-color="#f6dcf0"/><stop offset="1" stop-color="#e2d6fb"/></linearGradient>
   <linearGradient id="${id}-bg4" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffcf7a"/><stop offset="0.55" stop-color="#ff9fb0"/><stop offset="1" stop-color="#9b8cff"/></linearGradient>
-  <radialGradient id="${id}-bg5" cx="50%" cy="45%" r="75%"><stop offset="0" stop-color="#3b1a78"/><stop offset="0.6" stop-color="#140a33"/><stop offset="1" stop-color="#05030f"/></radialGradient>`;
+  <radialGradient id="${id}-bg5" cx="50%" cy="45%" r="75%"><stop offset="0" stop-color="#fff1f6"/><stop offset="0.6" stop-color="#ead9ff"/><stop offset="1" stop-color="#c9d4f7"/></radialGradient>`;
 }
 
 function eggCap() {

@@ -2,8 +2,8 @@
 // 총운을 여러 문단으로 자세히(한 해의 기운 → 내 사주와 만나는 방식 → 10년 큰 흐름 속 → 타고난 그릇과 올해 → 한 해의 모양 → 잘 풀리는 점·챙길 점 → 한 해의 열쇠)
 // 그 아래 분야별 풀이(재물·직장·애정·건강·대인). 모든 값은 period.js yearOf·saju·격국에서 나온다(같은 날짜면 같은 글)
 // 순수 로직만(테스트: tests/booklet.test.mjs)
-import { GOD_READING, partsStory, stageLine, crossLine, turnLine } from './reading.js';
-import { YEAR_HEADLINE, seasonsOf, keyMonths, monthRange, friendlyZodiac } from './yearcard.js';
+import { GOD_READING, partsStory, crossLine, turnLine } from './reading.js';
+import { YEAR_HEADLINE, seasonsOf, keyMonths, monthRange } from './yearcard.js';
 import { categoryScores } from './period.js';
 import { ELEMENT_LUCK } from './fortune.js';
 import { STEMS_KO, BRANCHES_KO, STEMS, BRANCHES, ANIMALS, ELEMENT_KO, ELEMENT_HANJA, STEM_ELEMENT, BRANCH_MAIN_STEM, tenGod } from './saju.js';
@@ -22,7 +22,23 @@ const ro = (w) => (hasBatchim(w) && (w.charCodeAt(w.length - 1) - 0xac00) % 28 !
 const sentence = (t) => { const x = String(t).trim(); return /[.!?]$/.test(x) ? x : `${x}.`; };
 
 export const FIELD_ORDER = [
-  ['wealth', '재물운'], ['career', '직장·학업운'], ['love', '애정운'], ['family', '가족운'], ['health', '건강운'], ['social', '대인운'],
+  ['wealth', '재물운'], ['business', '사업운'], ['career', '직장·학업운'], ['love', '애정운'], ['family', '가족운'], ['children', '자녀운'], ['health', '건강운'], ['social', '대인운'],
+];
+// 사업운(v0.42): 그해 십신 무리별 사업 흐름 [비겁·식상·재성·관성·인성]
+const BIZ_GROUP = [
+  { line: '함께하는 사람의 힘이 커지는 해예요. 동업·협력으로 판을 키우기 좋고, 돈과 역할은 처음부터 글로 정해 두면 오래 갑니다.', act: '함께 일하는 사람과 역할·수익 나누기를 한 장에 적기', mod: 0 },
+  { line: '아이디어가 곧 매출이 되는 해예요. 새 상품·새 서비스·온라인 판매처럼 내 솜씨를 드러내는 일이 잘 풀려요.', act: '팔고 싶은 것 하나를 사진과 한 줄 소개로 올려 보기', mod: 4 },
+  { line: '돈의 흐름이 활발해지는 해예요. 거래처를 넓히고 판로를 늘리기 좋고, 들어오는 만큼 장부 정리를 꼼꼼히 하면 더 크게 남아요.', act: '이번 달 들어온 돈·나간 돈을 한 표로 정리하기', mod: 3 },
+  { line: '틀을 갖추는 해예요. 사업자·허가·계약·규정처럼 공식적인 일을 정비하면 신뢰가 쌓여 큰 거래로 이어져요.', act: '미뤄 둔 서류·신고 하나 처리하기', mod: -1 },
+  { line: '배우고 준비하는 힘이 실리는 해예요. 자격증·교육·문서 계약이 사업의 바탕이 되고, 서두르지 않는 준비가 내년의 매출을 만들어요.', act: '사업에 도움 될 공부 하나 신청하기', mod: -1 },
+];
+// 자녀운(v0.42): 자녀 자리 = 여성은 식상, 남성은 관성. 그해 십신 무리가 자녀 자리와 어떤 관계인지
+const CHILD_GROUP = [
+  '나와 아이가 친구처럼 나란히 서는 해예요. 함께하는 취미나 운동이 사이를 가깝게 해 줘요.',
+  '아이를 챙기고 가르칠 일이 많아지는 해예요. 잔소리 대신 칭찬과 대화가 아이의 재능을 키워요.',
+  '아이의 학원·용돈·진로처럼 돈이 드는 계획이 화제가 되는 해예요. 미리 계획을 세우면 오히려 든든해요.',
+  '아이가 규칙과 책임을 배우는 해예요. 스스로 정한 약속을 지키도록 믿고 기다려 주면 한 뼘 자라요.',
+  '아이가 배우고 생각이 깊어지는 해예요. 책·공부·시험에서 좋은 소식이 오기 쉬워요.',
 ];
 const FIELD_ACT = {
   wealth: '저축 계획·지출 정리·중요한 계약은 이 달에 맞춰 보세요.',
@@ -32,7 +48,7 @@ const FIELD_ACT = {
   social: '모임·오랜만의 연락·도움 부탁은 이 달에 해 보세요.',
 };
 // 가입 때 고른 고민(character.js CONCERNS) → 분야
-const CONCERN_FIELD = { exam: 'career', job: 'career', wealth: 'wealth', business: 'wealth', love: 'love', marriage: 'love', health: 'health', people: 'social', change: 'career' };
+const CONCERN_FIELD = { exam: 'career', job: 'career', wealth: 'wealth', business: 'business', love: 'love', marriage: 'love', health: 'health', people: 'social', change: 'career' };
 
 // 가족운: 그해 십신 무리별 집안 흐름(가족 전체) + 육친(성별에 따라 그 기운이 가리키는 가족)
 const FAMILY_GROUP = [
@@ -94,7 +110,7 @@ function meetLines(y, saju) {
   const scored = new Set((y.year.parts || []).map((x) => x.kind));
   const rels = incomingRelations(saju.pillars, p, '그해')
     .filter((r) => !(r.at === 'day' && ((r.kind === 'sixCombine' && scored.has('combine')) || (r.kind === 'clash' && scored.has('clash')))))
-    .slice(0, 2);
+    .slice(0, 1);
   rels.forEach((r) => out.push(`${r.text} ${r.act}`));
   const js = saju.johu?.stems || [];
   if (js.includes(p.stem)) out.push(`게다가 그해 천간 ${stemLabel(p.stem)}(${STEM_IMAGE[p.stem]})${hasBatchim(stemLabel(p.stem)) ? '은' : '는'} 내 사주의 계절 균형을 맞춰 주는 글자(조후)라, 몸과 마음이 한결 편안해져요.`);
@@ -145,6 +161,39 @@ function familyField(y, god, inner, gender, focus, used) {
   };
 }
 
+/** 사업운: 재물·직장 점수 + 그해 십신 무리 */
+function bizField(y, god, focus, used) {
+  const g = GROUP[god]; const c = categoryScores(y.year.score, god); const v = Math.round((c.wealth + c.career) / 2 + BIZ_GROUP[g].mod);
+  const list = y.months.map((m, i) => { const x = categoryScores(m.score, m.god); return { v: x.wealth + x.career, m, i }; }).sort((a, b) => b.v - a.v || a.i - b.i);
+  const best = list.find((x) => !used.has(x.m.solarMonth) && x.v >= list[0].v - 6) || list[0]; used.add(best.m.solarMonth);
+  return {
+    key: 'business', label: '사업운', focus, title: `${toneOf(v)} 흐름`,
+    paras: [
+      BIZ_GROUP[g].line,
+      `사업에 가장 힘이 실리는 달은 ${best.m.solarMonth}월(${monthRange(y.months, best.i)})이에요. 새 거래·출시·확장은 이 달에 맞춰 보세요. 직장인이라면 부업·사이드 프로젝트로 읽어도 좋아요.`,
+      `올해의 작은 실천: ${BIZ_GROUP[g].act}.`,
+    ],
+  };
+}
+
+/** 자녀운: 자녀 자리(여성 식상·남성 관성)와 그해 기운 */
+function childField(y, god, gender, focus, used) {
+  const g = GROUP[god]; const childG = gender === 'male' ? 3 : 1; const c = categoryScores(y.year.score, god);
+  const v = Math.round((c.love + c.social) / 2 + (g === childG ? 3 : 0));
+  const list = y.months.map((m, i) => ({ v: categoryScores(m.score, m.god).love + (GROUP[m.god] === childG ? 6 : 0), m, i })).sort((a, b) => b.v - a.v || a.i - b.i);
+  const best = list.find((x) => !used.has(x.m.solarMonth) && x.v >= list[0].v - 6) || list[0]; used.add(best.m.solarMonth);
+  return {
+    key: 'children', label: '자녀운', focus, title: `${toneOf(v)} 흐름`,
+    paras: [
+      CHILD_GROUP[g],
+      g === childG
+        ? `그해 들어오는 ${god} 기운이 바로 자녀의 자리라, 아이와 관련된 일이 한 해의 중심이 되기 쉬워요. 아이에게 쓰는 시간이 곧 운을 키우는 시간이에요.`
+        : `아이와 함께하기 좋은 달은 ${best.m.solarMonth}월(${monthRange(y.months, best.i)})이에요. 여행·체험·진로 이야기는 이 달에 잡아 보세요.`,
+      '아직 자녀가 없다면 후배·제자처럼 내가 이끄는 사람이나, 내가 키우는 계획으로 읽으면 돼요.',
+    ],
+  };
+}
+
 /** 분야별 그해 가장 힘이 실리는 달 */
 function bestMonthFor(y, key, used = new Set()) {
   const list = y.months.map((m, i) => ({ v: categoryScores(m.score, m.god)[key], m, i })).sort((a, b) => b.v - a.v || a.i - b.i);
@@ -170,6 +219,8 @@ export function buildBooklet({ y, thisYear, saju, gyeok, name = '', concern = nu
   const L = ELEMENT_LUCK[saju.yongsin];
 
   const general = [
+    // v0.42 사용자 요청 「2027년 대운부터」: 10년 큰 흐름을 맨 앞에
+    ...(y.daewoon ? [{ h: '대운 · 10년 큰 흐름 속의 한 해', paras: [daewoonLine(y, who, saju, nextDaewoon)] }] : []),
     {
       h: '한 해의 기운',
       paras: [
@@ -177,13 +228,11 @@ export function buildBooklet({ y, thisYear, saju, gyeok, name = '', concern = nu
         inner === god
           ? `바탕에 깔린 지지 ${BRANCHES[p.branch]}도 같은 ${god} 기운이라, 겉과 속이 한 방향을 가리켜요. 올해의 성격이 그만큼 또렷하게 드러나요.`
           : `바탕에 깔린 지지 ${BRANCHES[p.branch]}에는 ${inner}, 「${I.keyword}」의 기운이 흘러요. ${sentence(I.core.split('. ')[0])} 겉으로는 ${R.keyword}, 속으로는 ${I.keyword}${hasBatchim(I.keyword) ? '이' : '가'} 함께 움직이는 해예요.`,
-        stageLine(me, p.branch, god, '그해에는').text,
         quoteLine(y, saju),
         `한 해를 한마디로 하면 「${H.title}」, ${toneOf(y.year.score)} 해예요. ${diff > 2 ? `올해(${thisYear.sajuYear}년)보다 흐름이 한결 나아져요.` : diff < -2 ? `올해(${thisYear.sajuYear}년)보다 속도를 조금 늦추면 더 단단해져요.` : `올해(${thisYear?.sajuYear ?? ''}년)와 비슷한 흐름을 차분히 이어 가요.`}`,
       ],
     },
     { h: '내 사주와 만나는 방식', paras: meetLines(y, saju) },
-    ...(y.daewoon ? [{ h: '10년 큰 흐름 속의 한 해', paras: [daewoonLine(y, who, saju, nextDaewoon)] }] : []),
     ...(gyeok ? [{ h: '타고난 그릇과 올해', paras: [gyeokMeet(gyeok, god)] }] : []),
     {
       h: '한 해의 모양',
@@ -195,15 +244,15 @@ export function buildBooklet({ y, thisYear, saju, gyeok, name = '', concern = nu
     {
       h: '잘 풀리는 점 · 챙길 점',
       paras: [
-        `잘 풀리는 점: ${R.good.map((t) => sentence(t)).join(' ')}`,
-        `챙길 점: ${R.watch.map((t) => sentence(t)).join(' ')} 미리 알고 있으면 충분히 다룰 수 있는 것들이에요.`,
+        `잘 풀리는 점: ${R.good.slice(0, 2).map((t) => sentence(t)).join(' ')}`,
+        `챙길 점: ${R.watch.slice(0, 2).map((t) => sentence(t)).join(' ')} 미리 알고 있으면 충분히 다룰 수 있는 것들이에요.`,
       ],
     },
     {
       h: '한 해의 열쇠',
       paras: [
-        `${who}에게 가장 필요한 기운은 ${el(saju.yongsin)}이에요. ${L.color} 계열의 물건, ${L.direction} 방향이 한 해 내내 힘이 되고, 행운의 숫자는 ${L.numbers.join('·')}예요. 힘이 되는 띠는 ${friendlyZodiac(saju.pillars.year.branch).join('·')}띠예요.`,
-        `올해의 실천: ${R.tips.map((t) => sentence(t)).join(' ')}`,
+        `${who}에게 가장 필요한 기운은 ${el(saju.yongsin)}이에요. ${L.color} 계열의 물건, ${L.direction} 방향이 한 해 내내 힘이 되고, 행운의 숫자는 ${L.numbers.join('·')}예요.`,
+        `올해의 실천: ${sentence(R.tips[0])}`,
         ageAction(y.sajuYear - saju.input.year, god),
       ],
     },
@@ -215,6 +264,8 @@ export function buildBooklet({ y, thisYear, saju, gyeok, name = '', concern = nu
   const used = new Set();
   const fields = order.map(([k, label]) => {
     if (k === 'family') return familyField(y, god, inner, gender, k === focus, used);
+    if (k === 'business') return bizField(y, god, k === focus, used);
+    if (k === 'children') return childField(y, god, gender, k === focus, used);
     const bm = bestMonthFor(y, k, used);
     const v = Math.round((cats[k] * 2 + icats[k]) / 3);
     return {
