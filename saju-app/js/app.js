@@ -102,7 +102,7 @@ const FIVE_KEY = 'unmyeong2099.five'; // 오행 완성 칭호를 받았는지
 const DM_KEY = 'unmyeong2099.dmission';
 const PLEDGE_KEY = 'unmyeong2099.pledge';
 const CONCERN_ICONS = { exam: '📝', job: '💼', wealth: '💰', business: '📈', love: '💕', marriage: '💍', health: '🌿', people: '🤝', change: '🧭' };
-const EL_COLORS = ['#39FF88', '#FF2E63', '#FFC93C', '#E0E0FF', '#00E5FF'];
+const EL_COLORS = ['#4fae82', '#ef6f88', '#d99a3c', '#9690ad', '#5d9ad8']; // 파스텔 테마(2026-11-04)
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -509,7 +509,7 @@ function radarSVG(scores) {
   const max = Math.max(40, ...scores);
   let rings = '';
   for (let k = 1; k <= 4; k++) {
-    rings += `<polygon points="${[0, 1, 2, 3, 4].map((i) => pt(i, (R * k) / 4).join(',')).join(' ')}" fill="none" stroke="rgba(160,140,255,0.18)"/>`;
+    rings += `<polygon points="${[0, 1, 2, 3, 4].map((i) => pt(i, (R * k) / 4).join(',')).join(' ')}" fill="none" stroke="rgba(214,150,175,0.35)"/>`;
   }
   const poly = scores.map((s, i) => pt(i, (R * s) / max).join(',')).join(' ');
   const labels = scores.map((s, i) => {
@@ -518,8 +518,8 @@ function radarSVG(scores) {
   }).join('');
   return `<svg viewBox="0 0 280 280" role="img" aria-label="오행 분포">
     ${rings}
-    ${[0, 1, 2, 3, 4].map((i) => `<line x1="${cx}" y1="${cy}" x2="${pt(i, R)[0]}" y2="${pt(i, R)[1]}" stroke="rgba(160,140,255,0.15)"/>`).join('')}
-    <polygon points="${poly}" fill="rgba(0,229,255,0.18)" stroke="#00e5ff" stroke-width="2" style="filter:drop-shadow(0 0 6px #00e5ff)"/>
+    ${[0, 1, 2, 3, 4].map((i) => `<line x1="${cx}" y1="${cy}" x2="${pt(i, R)[0]}" y2="${pt(i, R)[1]}" stroke="rgba(214,150,175,0.3)"/>`).join('')}
+    <polygon points="${poly}" fill="rgba(236,127,160,0.2)" stroke="#ec7fa0" stroke-width="2.2" stroke-linejoin="round"/>
     ${labels}
   </svg>`;
 }
@@ -2235,10 +2235,11 @@ function renderToday() {
 }
 
 function scoreColor(v) {
-  if (v >= 80) return '#39FF88';
-  if (v >= 60) return '#00E5FF';
-  if (v >= 40) return '#FFC93C';
-  return '#FF2E63';
+  // 파스텔 테마(2026-11-04): 높을수록 따뜻한 로즈, 낮은 점수는 겁주지 않는 차분한 색
+  if (v >= 80) return '#e85d8a';
+  if (v >= 60) return '#ef8a5a';
+  if (v >= 40) return '#9c7fd6';
+  return '#7f8fb5';
 }
 
 // ---------- 부적 공방 ----------
@@ -2278,7 +2279,7 @@ function renderCharm(animate) {
       <div class="workshop">
         <div class="charm-stage ${animate ? 'reveal' : ''}" id="charm-stage">${renderTalismanSVG(t)}</div>
         <div>
-          <p style="margin-top:0"><span class="rarity-badge" style="color:${t.rarity.color}">${t.rarity.label}</span> ${t.purified ? '<span class="rarity-badge" style="color:#39FF88">정화됨</span>' : ''}</p>
+          <p style="margin-top:0"><span class="rarity-badge" style="color:${t.rarity.color}">${t.rarity.label}</span> ${t.purified ? '<span class="rarity-badge" style="color:#3f9c6f">정화됨</span>' : ''}</p>
           <h3 style="margin:8px 0 2px">${t.type.label} 부적 · ${t.type.hanja}</h3>
           <p class="muted" style="margin-top:0">${t.type.reading} — ${t.type.meaning}</p>
           <ul>${t.effects.map((e) => `<li><b>${esc(e.stat)}</b> ${e.value > 0 ? '+' : ''}${e.value}%</li>`).join('')}</ul>
@@ -3350,7 +3351,7 @@ function journeyCardHTML() {
   if (j.done >= JOURNEY_DAYS) return `<div class="card journey"><h3>🏆 ${c.label} 고민 해결 여정 완주!</h3><p>30일 동안 함께 걸었어요. 수호신이 당신의 ${c.label}을(를) 끝까지 응원합니다. '정보 수정'에서 새 고민을 고르면 새 여정이 시작돼요.</p></div>`;
   return `<div class="card journey">
     <h3>🧭 ${c.label} 고민 해결 여정 <span class="tag">${j.done} / ${JOURNEY_DAYS}일</span></h3>
-    <div class="exp"><div class="exp-fill" style="width:${pct}%;background:linear-gradient(90deg,#39ff88,#00e5ff)"></div><span>${chapters.map((ch, i) => (i === step.chapterIndex ? `▶ ${ch}` : ch)).join(' · ')}</span></div>
+    <div class="exp"><div class="exp-fill" style="width:${pct}%;background:linear-gradient(90deg,#8fd4b6,#f4a6bd)"></div><span>${chapters.map((ch, i) => (i === step.chapterIndex ? `▶ ${ch}` : ch)).join(' · ')}</span></div>
     <div class="j-step ${doneToday ? 'done' : ''}">
       <small class="muted">${step.chapter} · ${step.stepNo}걸음</small>
       <b>${step.title}</b>
@@ -3532,11 +3533,11 @@ function renderFeng() {
   const maxD = 2600;
   const pt = (sp) => { const r = Math.min(1, sp.distance / maxD) * 120; const a = (sp.bearing - 90) * Math.PI / 180; return [150 + Math.cos(a) * r, 150 + Math.sin(a) * r]; };
   const radar = `<svg viewBox="0 0 300 300" class="radar-map">
-    <circle cx="150" cy="150" r="140" fill="#0d0a1f" stroke="rgba(0,229,255,0.3)"/>
-    ${[40, 80, 120].map((r) => `<circle cx="150" cy="150" r="${r}" fill="none" stroke="rgba(0,229,255,0.15)" stroke-dasharray="3 5"/>`).join('')}
-    <line x1="150" y1="10" x2="150" y2="290" stroke="rgba(255,255,255,0.08)"/><line x1="10" y1="150" x2="290" y2="150" stroke="rgba(255,255,255,0.08)"/>
-    ${['북', '동', '남', '서'].map((d, i) => { const a = (i * 90 - 90) * Math.PI / 180; return `<text x="${150 + Math.cos(a) * 128}" y="${154 + Math.sin(a) * 128}" font-size="12" fill="${f.luck.direction.startsWith(d) ? '#ffc93c' : '#9a94c4'}" text-anchor="middle" font-weight="800">${d}</text>`; }).join('')}
-    <circle cx="150" cy="150" r="7" fill="#00e5ff"><animate attributeName="r" values="6;10;6" dur="1.6s" repeatCount="indefinite"/></circle>
+    <circle cx="150" cy="150" r="140" fill="#fffaf8" stroke="rgba(236,127,160,0.35)"/>
+    ${[40, 80, 120].map((r) => `<circle cx="150" cy="150" r="${r}" fill="none" stroke="rgba(236,127,160,0.25)" stroke-dasharray="3 5"/>`).join('')}
+    <line x1="150" y1="10" x2="150" y2="290" stroke="rgba(150,90,120,0.12)"/><line x1="10" y1="150" x2="290" y2="150" stroke="rgba(150,90,120,0.12)"/>
+    ${['북', '동', '남', '서'].map((d, i) => { const a = (i * 90 - 90) * Math.PI / 180; return `<text x="${150 + Math.cos(a) * 128}" y="${154 + Math.sin(a) * 128}" font-size="12" fill="${f.luck.direction.startsWith(d) ? '#d0843a' : '#9b8590'}" text-anchor="middle" font-weight="800">${d}</text>`; }).join('')}
+    <circle cx="150" cy="150" r="7" fill="#ec7fa0"><animate attributeName="r" values="6;10;6" dur="1.6s" repeatCount="indefinite"/></circle>
     ${spots.map((sp) => { const [x, y] = pt(sp); return `<g><circle cx="${x}" cy="${y}" r="16" fill="${EL_COLORS[sp.element]}" opacity="${fs.visited[sp.id] ? 0.25 : 0.85}"/><text x="${x}" y="${y + 6}" font-size="16" text-anchor="middle">${fs.visited[sp.id] ? '✅' : sp.icon}</text></g>`; }).join('')}
   </svg>`;
   panel.innerHTML = `
@@ -4171,7 +4172,7 @@ function dexHTML() {
     const fake = { pillars: { year: { branch: e.branch } }, dayMaster: (e.branch * 3) % 10 };
     const info = e.isMe ? myInfo : characterInfo(fake, { gender: e.branch % 2 ? 'female' : 'male', concern: 'people' });
     const face = faceSVG(info, e.isMe ? stage : 2, 'smile', 56);
-    const tone = { samhap: '#ff4d8d', yukhap: '#ffc93c', same: '#39ff88', normal: '#9a94c4', wonjin: '#c77dff', chung: '#00e5ff' }[e.relation.type];
+    const tone = { samhap: '#ec6f9a', yukhap: '#e0a43a', same: '#4fae82', normal: '#9b8590', wonjin: '#a77bd8', chung: '#5d9ad8' }[e.relation.type];
     const badge = e.isMe ? '<em class="me">나</em>' : `<em style="color:${tone};border-color:${tone}">${e.relation.label}</em>`;
     if (!e.unlocked) {
       return `<div class="dex-card locked">
@@ -4194,7 +4195,7 @@ function dexHTML() {
       ${m.reached && !m.claimed ? `<button class="primary" type="button" data-ms="${m.count}">받기</button>` : m.claimed ? '<i>✓</i>' : '<i>🔒</i>'}</div>`).join('');
   return `<div class="card dex">
     <h3>📖 12띠 수집 도감 <span class="tag">${r.count} / 12</span></h3>
-    <div class="exp"><div class="exp-fill" style="width:${pct}%;background:linear-gradient(90deg,#ff4d8d,#c77dff,#00e5ff)"></div><span>${r.count} / 12 띠 · 전설의 조합 ${r.legendsFound} / ${r.legendsTotal}</span></div>
+    <div class="exp"><div class="exp-fill" style="width:${pct}%;background:linear-gradient(90deg,#f4a6bd,#c9b6ec,#a9cdee)"></div><span>${r.count} / 12 띠 · 전설의 조합 ${r.legendsFound} / ${r.legendsTotal}</span></div>
     <div class="rel-badges">${r.relations.map((x) => `<span class="${x.found ? 'on' : ''}" style="--c:${x.color}">${x.found ? '●' : '○'} ${x.label}</span>`).join('')}</div>
     <p class="muted" style="font-size:0.82rem;margin:8px 0">친구를 추가하면 그 친구의 띠 칸이 열립니다. 새 띠 +20 EXP, 전설의 조합 +30 EXP!${r.nextMilestone ? ` 다음 보상까지 <b>${r.nextMilestone.count - r.count}띠</b> 남았어요.` : ' 12띠를 모두 모았습니다!'}</p>
     <div class="ms-row">${milestones}</div>
