@@ -1211,3 +1211,124 @@ button.chip[aria-pressed="true"] { color: #fff; background: var(--neon); border-
 .foot { color: var(--muted); }
 ::selection { background: #ffd3df; }
 .char { font-family: 'Song Myung', var(--serif); }
+
+/* ======================================================================
+   v0.42 오늘 5분야 · 좋은 습관 · 오늘 할 일 3가지 · 복떡 · 두루마리 · 12지신 타로
+   큰 글씨·큰 버튼(60대·아이도 누르기 쉽게, 버튼 높이 48px 이상)
+   ====================================================================== */
+.z-face { width: 64px; height: 64px; object-fit: contain; flex: none; }
+.z-face.big { width: 120px; height: 120px; display: block; margin: 0 auto 4px; }
+.z-face-emoji { font-size: 2.4rem; }
+
+.five-card { padding: 20px 18px; background: linear-gradient(165deg, #fff 0%, #fff4f6 100%); }
+.five-head { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+.five-total { --c: var(--neon); width: 84px; height: 84px; flex: none; border-radius: 50%; display: grid; place-content: center; text-align: center; background: radial-gradient(circle at 50% 40%, #fff 55%, #ffeef3); border: 4px solid var(--c); box-shadow: 0 6px 16px rgba(236, 127, 160, 0.2); }
+.five-total b { font-size: 2rem; line-height: 1; color: var(--c); font-family: var(--serif); }
+.five-total small { font-size: 0.68rem; color: var(--muted); }
+.five-hi { flex: 1; min-width: 0; }
+.five-hi small { color: var(--muted); font-size: 0.8rem; }
+.five-hi h2 { margin: 2px 0; font-size: 1.45rem; color: var(--ink); }
+.five-hi p { margin: 0; font-size: 0.9rem; }
+.five-z { width: 70px; height: 70px; }
+.five-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.five-list li { display: grid; grid-template-columns: 30px 58px 1fr 38px; grid-template-rows: auto auto; align-items: center; column-gap: 8px; padding: 8px 10px; border-radius: 16px; background: #fff; border: 1px solid rgba(240, 190, 205, 0.5); }
+.fv-ic { font-size: 1.35rem; grid-row: span 2; }
+.fv-l { font-weight: 700; font-size: 0.98rem; color: var(--ink); }
+.fv-bar { height: 12px; border-radius: 999px; background: #f6e6ec; overflow: hidden; }
+.fv-bar i { display: block; height: 100%; border-radius: 999px; }
+.fv-n { font-size: 1.25rem; text-align: right; font-family: var(--serif); }
+.fv-line { grid-column: 2 / 5; color: var(--muted); font-size: 0.82rem; line-height: 1.5; }
+.five-note { margin: 10px 0 0; font-size: 0.85rem; color: var(--muted); }
+
+.habit-card h3, .todo3 h3, .scroll-lock h3, .scroll-open h3 { font-size: 1.15rem; }
+.habit-card .td-note { margin-top: 4px; }
+
+.todo3-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.todo3-head h3 { margin: 0; }
+.todo3-head h3 small { color: var(--neon); font-size: 0.9rem; }
+.tteok-chip { min-height: 44px; padding: 6px 14px; border-radius: 999px; background: #fff5e6; border: 1px solid #f3cf98; color: #9a5a17; font-size: 1rem; }
+.todo3-list { list-style: none; margin: 12px 0 8px; padding: 0; display: grid; gap: 8px; }
+.todo3-list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 16px; background: #fff; border: 1px solid rgba(240, 190, 205, 0.5); min-height: 56px; }
+.todo3-list li.done { background: #f1fbf5; border-color: #bfe6cf; }
+.t3-ic { font-size: 1.4rem; width: 32px; text-align: center; }
+.todo3-list li.done .t3-ic { color: var(--wood); }
+.t3-l { flex: 1; font-weight: 600; font-size: 0.95rem; display: grid; }
+.t3-l small { color: #b27424; font-weight: 400; font-size: 0.78rem; }
+.todo3-list li.done .t3-l { color: var(--muted); text-decoration: line-through; }
+.todo3-list li em { font-style: normal; color: var(--wood); font-weight: 700; font-size: 0.85rem; }
+.todo3-list button { min-height: 44px; white-space: nowrap; }
+.todo3-bar { height: 10px; border-radius: 999px; background: #f6e6ec; overflow: hidden; }
+.todo3-bar i { display: block; height: 100%; background: linear-gradient(90deg, #f4a6bd, #f7b48f); border-radius: 999px; transition: width 0.4s; }
+.todo3-foot { margin: 10px 0 0; font-size: 0.88rem; }
+
+.scroll-lock { text-align: center; background: linear-gradient(170deg, #fffaf3, #fff1f4); border: 1.5px dashed rgba(224, 160, 100, 0.55); }
+.scroll-lock h3 { justify-content: center; }
+.sl-art { position: relative; width: 96px; margin: 0 auto 4px; }
+.sl-art .z-face { width: 96px; height: 96px; }
+.sl-scroll { position: absolute; right: -10px; bottom: 0; font-size: 2rem; }
+.sl-desc { margin: 0 0 6px; }
+.sl-tease { margin: 0 0 12px; color: var(--gold); font-weight: 700; }
+.sl-ways { display: grid; gap: 8px; }
+.sl-ways button { min-height: 52px; width: 100%; font-size: 1rem; border-radius: 999px; }
+.sl-ways button small { color: var(--neon); margin-left: 4px; }
+.sl-bal { display: block; margin-top: 8px; color: var(--muted); }
+.sl-bal a, .scroll-badge a { color: var(--neon); }
+.scroll-badge { margin: 16px 0 -6px; padding: 10px 14px; border-radius: 16px; background: #f1fbf5; border: 1px solid #bfe6cf; font-size: 0.88rem; }
+
+.scroll-pop { text-align: center; }
+.scroll-pop h3 { margin: 4px 0 8px; }
+.tteok-shop { text-align: center; max-height: 86vh; overflow-y: auto; }
+.tteok-shop h4 { margin: 16px 0 8px; text-align: left; }
+.ts-art { position: relative; width: 120px; margin: 0 auto; }
+.ts-mill { position: absolute; right: -12px; bottom: 6px; font-size: 2rem; }
+.ts-bal { font-size: 1.05rem; } .ts-bal b { color: #b27424; font-size: 1.3rem; }
+.ts-scrolls, .ts-packs { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+.ts-scroll, .ts-pack { display: grid; justify-items: center; gap: 2px; padding: 12px 6px; border-radius: 18px; background: #fff; border: 1px solid rgba(240, 190, 205, 0.7); color: var(--text); min-height: 100px; }
+.ts-scroll span, .tp-ic { font-size: 1.8rem; }
+.ts-scroll b, .ts-pack b { font-size: 0.92rem; }
+.ts-scroll small, .ts-pack small { color: var(--muted); font-size: 0.78rem; }
+.ts-scroll.own { background: #f1fbf5; border-color: #bfe6cf; }
+.ts-pack em { font-style: normal; font-weight: 700; color: var(--neon); }
+.ts-note { font-size: 0.78rem !important; margin-top: 8px; }
+.ts-free { text-align: left; margin: 0 0 14px; padding-left: 20px; line-height: 1.9; font-size: 0.9rem; }
+
+/* 12지신 타로 */
+.tarot-card { background: linear-gradient(170deg, #fff, #f6f0ff); }
+.tr-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.tr-head h2 { margin: 0; font-size: 1.4rem; color: var(--ink); }
+.tr-head p { margin: 2px 0 0; }
+.tr-guide { font-size: 1.05rem; text-align: center; margin: 12px 0; line-height: 1.6; }
+.tr-guide small { color: var(--neon); }
+.tr-topics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tr-topic { display: grid; justify-items: center; gap: 4px; padding: 16px 8px; min-height: 120px; border-radius: 20px; background: #fff; border: 1px solid rgba(200, 170, 230, 0.6); color: var(--text); box-shadow: 0 3px 10px rgba(180, 157, 219, 0.15); }
+.tr-topic span { font-size: 2rem; letter-spacing: -0.3em; }
+.tr-topic b { font-size: 1.05rem; color: var(--ink); }
+.tr-topic small { color: var(--muted); font-size: 0.8rem; line-height: 1.4; }
+.tr-back { width: 100%; margin-top: 10px; min-height: 48px; }
+.tr-deck { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.tc-back { aspect-ratio: 2 / 3; border-radius: 14px; border: 2px solid #fff; color: #fff; font-size: 1.2rem;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.35) 0 18%, transparent 19%), repeating-linear-gradient(45deg, #c9b6ec 0 8px, #d9c8f4 8px 16px);
+  box-shadow: 0 4px 10px rgba(140, 108, 196, 0.25); transition: transform 0.15s; }
+.tc-back.on { transform: translateY(-6px) scale(1.04); background: radial-gradient(circle at 50% 50%, #fff 0 22%, transparent 23%), repeating-linear-gradient(45deg, #f4a6bd 0 8px, #f9c2d2 8px 16px); }
+.tc-back b { color: var(--neon); font-size: 1.3rem; }
+.tr-reveal { width: 100%; margin-top: 14px; min-height: 56px; font-size: 1.1rem; }
+.tr-cards { display: grid; gap: 10px; grid-template-columns: repeat(3, 1fr); margin-bottom: 12px; }
+.tr-cards.n1 { grid-template-columns: minmax(0, 200px); justify-content: center; }
+.tr-card { display: grid; justify-items: center; text-align: center; gap: 4px; animation: tcFlip 0.6s ease both; }
+.tr-card:nth-child(2) { animation-delay: 0.2s; } .tr-card:nth-child(3) { animation-delay: 0.4s; }
+@keyframes tcFlip { from { transform: rotateY(90deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.tr-pos { color: var(--neon); font-weight: 700; }
+.tc-face { width: 100%; aspect-ratio: 2 / 3; border-radius: 14px; background: linear-gradient(180deg, #fff8fb, #f0e6ff); border: 2px solid #f0d4e0; display: grid; place-items: center; overflow: hidden; }
+.tc-face.rev .tc-img { transform: rotate(180deg); }
+.tc-img { width: 92%; height: auto; }
+.tr-card b { font-size: 0.85rem; color: var(--ink); line-height: 1.35; }
+.tr-kw { color: var(--muted); font-size: 0.74rem; }
+.tr-lines p { margin: 0 0 10px; line-height: 1.8; }
+.tr-lines b { color: var(--neon); margin-right: 4px; }
+.tr-sum { padding: 12px 14px; border-radius: 16px; background: #fff; border: 1px solid rgba(200, 170, 230, 0.6); margin-bottom: 12px; }
+.tr-sum p { margin: 0 0 6px; line-height: 1.7; }
+.tr-act { color: var(--ink); }
+.tr-foot { font-size: 0.78rem !important; margin-top: 10px; }
+.main-tabs button { font-size: 0.74rem; }
+.scroll-pop .yday-btns, .tarot-card .yday-btns { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.scroll-pop .yday-btns button, .tarot-card .yday-btns button { min-height: 52px; width: 100%; }
