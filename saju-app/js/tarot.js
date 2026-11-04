@@ -1,4 +1,4 @@
-import { iyeyo } from './josa.js';
+import { iyeyo, josa } from './josa.js';
 // 12지신 타로 (v0.42, 2026-11-04 사용자 요청: 「타로는 12지신 덱으로, 내가 직접 카드를 골라 애정·취업 같은 미래를 점쳐 주기」)
 // 덱 = 12지신 12장 + 메이저 아르카나 22장(v0.42.1) × 바로/누운 카드. 누운 카드는 겁주지 않고 「잠깐 쉬어 가라」는 조언으로 읽는다(날씨→우산 문법).
 // 카드를 섞는 순서만 무작위(rng를 넘기면 테스트에서 고정), 고르는 것은 사용자. 화면과 무관한 순수 로직(테스트: tests/tarot.test.mjs)
@@ -252,4 +252,36 @@ export function readTarot({ topic = 'day', spread = 'one', picks, name = '', sit
       ? '카드가 모두 잠시 누워 있어요. 서두르지 말고 숨을 고르면 흐름이 다시 일어서요.'
       : '밝은 기운과 쉬어 가는 기운이 함께 보여요. 좋은 쪽을 살리고 쉬어 갈 곳은 천천히 가면 돼요.';
   return { topic: tp, spread: sp, situ: st, cards, answer, story, storyParts: parts, summary: `${tone} 열쇠 카드는 ${iyeyo(`「${cardLabel(key.card)}」`)}.`, act: topicActOf(tp.key, key.card, key.reversed) };
+}
+
+// ======================================================================
+// v0.47.1 다시 나온 카드(2026-11-04 사용자 요청): 같은 날 같은 카드가 또 나오면 「오늘 두 번 찾아온 카드」 문장
+// 저장 { date, seen:[{key, topic}] } — 날짜가 바뀌면 비움. 화면과 무관한 순수 로직
+// ======================================================================
+const ORDINAL = ['', '첫', '두', '세', '네', '다섯', '여섯', '일곱', '여덟', '아홉', '열'];
+const ordinal = (n) => (n <= 10 ? ORDINAL[n] : String(n));
+/**
+ * 이번에 펼친 카드를 오늘 기록에 더하고, 오늘 이미 나왔던 카드를 알려 줌
+ * @param store 저장값 · dateKey 오늘 · topic 이번 주제 · keys 이번 카드 key 목록
+ * @returns { store, repeats:[{key, count(이번이 몇 번째), sameTopic, firstTopic}] }
+ */
+export function markSeen(store, dateKey, topic, keys) {
+  const s = store?.date === dateKey ? { date: dateKey, seen: [...(store.seen || [])] } : { date: dateKey, seen: [] };
+  const repeats = [];
+  for (const key of keys) {
+    const before = s.seen.filter((x) => x.key === key);
+    if (before.length) repeats.push({ key, count: before.length + 1, sameTopic: before.some((x) => x.topic === topic), firstTopic: before[0].topic });
+  }
+  keys.forEach((key) => s.seen.push({ key, topic }));
+  if (s.seen.length > 200) s.seen = s.seen.slice(-200);
+  return { store: s, repeats };
+}
+/** 다시 나온 카드 문장: 몇 번째인지 · 같은 질문/다른 질문 · 그 카드의 핵심말 */
+export function repeatLine(rep, topicKey) {
+  const c = BY_KEY[rep.key]; const tp = TAROT_TOPICS.find((t) => t.key === topicKey);
+  const first = TAROT_TOPICS.find((t) => t.key === rep.firstTopic);
+  const where = rep.sameTopic
+    ? `같은 「${tp.label}」 질문에 또 나왔어요. 다시 섞고 다시 골랐는데도 같은 카드를 집었다는 건, 이 질문의 답이 그만큼 또렷하다는 뜻이에요.`
+    : `아까 ${josa(`「${first.label}」`, '을/를')} 물을 때도 나왔던 카드예요. 다른 질문에 같은 카드가 나왔다면, 두 고민이 사실은 한 뿌리에서 나왔을 수 있어요.`;
+  return `✨ 오늘 ${ordinal(rep.count)} 번 찾아온 카드 · ${c.name}. ${where} 카드가 같은 말을 거듭하는 날에는 「${c.core}」, 이 한마디를 오늘 마음에 꼭 담아 두세요.`;
 }

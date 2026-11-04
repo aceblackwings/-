@@ -43,7 +43,7 @@ import { tenGodProfile, pillarReadings, personSummary, natalWatch } from './nata
 import { growEquipped, fillOf, replaceCharm, pairType, fiveDone, elementsOwned, setUnlocked, boostRarity, offerUnlocked, offerValue, offerable, removeOffered, equipLine, charmKey, GROW_FULL, RARITY_KO as CC_RARITY_KO, TYPE_KO, OFFER_UNLOCK } from './charmcare.js';
 import { buildNote, markNote, weekStamps, stampRarity, AREA_CHARM, RARITY_KO, MONTH_KEY_NEED, monthStamps, STORY_STEPS, newStoryIndex, storiesOpen, buildStories, weeklyLetter } from './note.js';
 import { ELEMENT_LUCK } from './fortune.js';
-import { TAROT_TOPICS, TAROT_SPREADS, TAROT_SITU, TONE_KO, shuffleDeck, readTarot, cardOf, ROMAN } from './tarot.js';
+import { TAROT_TOPICS, TAROT_SPREADS, TAROT_SITU, TONE_KO, shuffleDeck, readTarot, cardOf, ROMAN, markSeen, repeatLine } from './tarot.js';
 import { fiveScores } from './todayfive.js';
 import { claimItem, PIECES_PER_ITEM } from './tteok.js';
 import { TTEOK, visit as tteokVisit, doTask as tteokDoTask, todayTasks, doneCount, isOpen as scrollOpen, spend as tteokSpend, buy as tteokBuy, SCROLLS, PACKS, TASKS as TTEOK_TASKS, ALL_BONUS } from './tteok.js';
@@ -2712,6 +2712,7 @@ document.addEventListener('click', (e) => {
 });
 
 // ---------- 12지신 타로 ----------
+const TAROT_SEEN_KEY = 'unmyeong2099.tarotday'; // v0.47.1 오늘 펼친 카드(다시 나온 카드 문장)
 const TAROT_NEED = (sp) => TAROT_SPREADS[sp].positions.length;
 function tarotState() { if (!state.tarot) state.tarot = { step: 'topic' }; return state.tarot; }
 /** 카드 앞면: 지신 카드 = 지신 표정 그림, 메이저 아르카나 = 로마 숫자·상징·이름 + 내 지신이 작게 곁에 */
@@ -2748,14 +2749,16 @@ function renderTarot() {
     body = `<p class="tr-guide">${r.topic.icon} 「${r.topic.ask}」${r.situ ? `<br><small>내 상황: ${r.situ.label}</small>` : ''}</p>
       <div class="tr-cards n${r.cards.length}">${r.cards.map((c) => `<div class="tr-card"><small class="tr-pos">${c.pos}</small>${tarotFace(c.card.key, c.reversed ? 'sleepy' : (c.card.mood || 'smile'), c.reversed)}<b>${cardName(c)}</b><small class="tr-kw">${c.keyword}</small></div>`).join('')}</div>
       <div class="tr-answer"><small>🔮 카드의 대답</small><p>${esc(r.answer)}</p></div>
-      ${r.cards.map((c) => `<section class="tr-read">
-        ${one ? '' : `<small class="tr-pos tr-pos-line">${c.pos}</small>`}<h3>${cardName(c)}${c.reversed ? ' <span class="tr-rev">누운 카드</span>' : ''}</h3>
+      ${(r.repeats || []).map((x) => `<p class="tr-repeat">${esc(x.line)}</p>`).join('')}
+      ${r.storyParts.length ? `<div class="tr-story"><b>📖 세 장이 이어 주는 이야기</b>${r.storyParts.map((x) => `<p>${esc(x)}</p>`).join('')}</div>` : ''}
+      <p class="muted tr-fold-guide">🃏 카드를 누르면 그림 속 이야기·카드의 뜻·내 상황 풀이가 펼쳐져요</p>
+      ${r.cards.map((c) => { const rp = (r.repeats || []).find((x) => x.key === c.card.key); return `<details class="tr-read">
+        <summary>${one ? '' : `<small class="tr-pos tr-pos-line">${c.pos}</small>`}<span class="tr-read-h">${cardName(c)}${c.reversed ? ' <span class="tr-rev">누운 카드</span>' : ''}${rp ? ` <span class="tr-again-badge">✨ 오늘 ${rp.count}번째</span>` : ''}</span><small class="tr-kw">${c.keyword}</small></summary>
         <p class="tr-scene"><b>🖼️ 그림 속 이야기</b>${esc(c.scene)}</p>
         <p><b>🔑 이 카드의 뜻</b>${esc(c.meaning)} <span class="tr-tone">${TONE_KO[c.card.tone]}</span></p>
         <p><b>${r.topic.icon} ${josa(r.topic.label, "으로/로")} 읽으면</b>${esc(c.reading)}</p>
         ${c.situLine ? `<p class="tr-situ-line"><b>💬 내 상황에 비추면</b>${esc(c.situLine)}</p>` : ''}
-      </section>`).join('')}
-      ${r.storyParts.length ? `<div class="tr-story"><b>📖 세 장이 이어 주는 이야기</b>${r.storyParts.map((x) => `<p>${esc(x)}</p>`).join('')}</div>` : ''}
+      </details>`; }).join('')}
       <div class="tr-sum"><p>${esc(r.summary)}</p><p class="tr-act">☂️ 오늘 할 한 가지: <b>${esc(r.act)}</b></p></div>
       <div class="yday-btns"><button type="button" class="primary" data-tarot-again>🔀 같은 질문 다시 뽑기 <small>(${(() => { const pr = tarotPrice(loadTteok(), state.fortune.dateKey, T.spread); return pr.free ? '오늘 무료' : `${TTEOK} ${pr.cost}개`; })()})</small></button><button type="button" class="ghost" data-tarot-reset>다른 질문 보기</button></div>
       ${tarotPriceNoteHTML()}
@@ -2790,7 +2793,8 @@ document.addEventListener('click', (e) => {
     T.result = readTarot({ topic: T.topic, spread: T.spread, situ: T.situ, picks: T.picks.map((i) => T.deck[i]), name: state.profile.name });
     T.step = 'result';
     const dk = state.fortune.dateKey; const r = T.result;
-    save(RECORDS_KEY, addItem(loadRecords(), { kind: 'tarot', dateKey: dk, key: `${r.topic.key}-${Date.now() % 100000}`, title: `12지신 타로 · ${r.topic.label}`, summary: r.cards.map((c) => `${c.card.name}${c.reversed ? '(쉬어 가기)' : ''}`).join(' · '), lines: [`카드의 대답: ${r.answer}`, ...r.cards.map((c) => `${c.pos} · ${c.card.name}: ${c.reading}${c.situLine ? ` ${c.situLine}` : ''}`), ...(r.story ? [r.story] : []), `오늘 할 한 가지: ${r.act}`] }).rec);
+    { const m = markSeen(load(TAROT_SEEN_KEY, null), dk, r.topic.key, r.cards.map((c) => c.card.key)); save(TAROT_SEEN_KEY, m.store); r.repeats = m.repeats.map((x) => ({ ...x, line: repeatLine(x, r.topic.key) })); }
+    save(RECORDS_KEY, addItem(loadRecords(), { kind: 'tarot', dateKey: dk, key: `${r.topic.key}-${Date.now() % 100000}`, title: `12지신 타로 · ${r.topic.label}`, summary: r.cards.map((c) => `${c.card.name}${c.reversed ? '(쉬어 가기)' : ''}`).join(' · '), lines: [`카드의 대답: ${r.answer}`, ...r.repeats.map((x) => x.line), ...r.cards.map((c) => `${c.pos} · ${c.card.name}: ${c.reading}${c.situLine ? ` ${c.situLine}` : ''}`), ...(r.story ? [r.story] : []), `오늘 할 한 가지: ${r.act}`] }).rec);
     renderTarot(); window.scrollTo({ top: 0, behavior: 'smooth' });
     tteokTask('tarot');
     return;

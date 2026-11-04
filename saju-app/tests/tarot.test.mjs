@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { TAROT_DECK, MAJOR_ARCANA, FULL_DECK, TAROT_TOPICS, TAROT_SPREADS, TAROT_SITU, shuffleDeck, seededRng, readTarot } from '../js/tarot.js';
+import { TAROT_DECK, MAJOR_ARCANA, FULL_DECK, TAROT_TOPICS, TAROT_SPREADS, TAROT_SITU, shuffleDeck, seededRng, readTarot, markSeen, repeatLine } from '../js/tarot.js';
 import { josaProblems } from '../js/josa.js';
 import { toneProblems } from '../js/habit.js';
 import { ZODIAC } from '../js/character.js';
@@ -51,6 +51,14 @@ t('같은 카드라도 주제·상황이 다르면 읽는 문장이 달라짐, �
   const a = readTarot({ topic: 'love', spread: 'one', picks, situ: 'some' }); const b = readTarot({ topic: 'love', spread: 'one', picks, situ: 'couple' }); const h = readTarot({ topic: 'health', spread: 'one', picks });
   assert.notEqual(a.cards[0].situLine, b.cards[0].situLine); assert.notEqual(a.cards[0].reading, h.cards[0].reading);
   assert.match(h.act, /걷기|스트레칭|스쿼트/);
+});
+t('다시 나온 카드(v0.47.1): 같은 날 두 번째부터 알려 주고, 날이 바뀌면 처음부터 · 같은/다른 질문 문장', () => {
+  let m = markSeen(null, '2026-11-4', 'love', ['rat', 'm1', 'm19']); assert.deepEqual(m.repeats, []);
+  m = markSeen(m.store, '2026-11-4', 'job', ['rat']); assert.equal(m.repeats[0].count, 2); assert.equal(m.repeats[0].sameTopic, false);
+  const a = repeatLine(m.repeats[0], 'job'); assert.match(a, /두 번 찾아온 카드 · 쥐/); assert.match(a, /「애정운」을 물을 때도/);
+  m = markSeen(m.store, '2026-11-4', 'job', ['rat']); const b = repeatLine(m.repeats[0], 'job'); assert.match(b, /세 번 찾아온/); assert.match(b, /같은 「취업·일」 질문/);
+  assert.deepEqual(markSeen(m.store, '2026-11-5', 'job', ['rat']).repeats, []);
+  for (const tp of TAROT_TOPICS) for (const f of TAROT_TOPICS) for (const same of [true, false]) { const txt = repeatLine({ key: 'm6', count: 2, sameTopic: same, firstTopic: f.key }, tp.key); assert.deepEqual(josaProblems(txt), [], txt); assert.deepEqual(toneProblems(txt), []); }
 });
 {
   const fs = await import('node:fs');
