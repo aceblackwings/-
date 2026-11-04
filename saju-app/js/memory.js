@@ -3,6 +3,7 @@
 // - 대화가 길어지면 지난 대화를 3줄 요약(온라인: AI 요약, 오프라인: 규칙 요약)
 // - 다음 대화의 지시문에 기억을 넣고, 지난 일정은 "어제 면접 어땠어?"처럼 먼저 안부를 물음
 // - 개인정보(전화번호·생년월일·주소·이메일)와 위기 신호 문장은 기억하지 않음
+import { josa } from './josa.js';
 import { isCrisis } from './chat.js';
 
 export const MEMORY_LIMIT = 12;
@@ -135,7 +136,7 @@ export function describe(item, todayKey) {
   if (item.kind !== 'event') return item.text;
   const d = daysBetween(todayKey, item.due);
   const when = d === 0 ? '오늘' : d === 1 ? '내일' : d === 2 ? '모레' : d > 0 ? `${d}일 뒤` : d === -1 ? '어제' : `${-d}일 전`;
-  return d >= 0 ? `${when} ${item.label} 예정` : `${when} ${item.label}이 있었음`;
+  return d >= 0 ? `${when} ${item.label} 예정` : `${when} ${josa(item.label, '이/가')} 있었음`;
 }
 
 /** 지시문에 넣을 기억 줄 */

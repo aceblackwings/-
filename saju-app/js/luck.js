@@ -3,6 +3,7 @@
 // 2) 오행 충전: 매일 모은 부적이 오행 게이지를 채움 → 개운 지수(0~100)
 // 3) 개운 반영 흐름: 기본 흐름 + 개운 지수·진화 단계 보너스 → 앞으로 5년이 좋아지는 곡선
 //    ※ 개운 반영 수치는 꾸준한 습관을 응원하기 위한 게임 요소이며, 기본 흐름은 정통 계산 그대로 보여 준다.
+import { josa } from './josa.js';
 import {
   STEMS, BRANCHES, STEMS_KO, BRANCHES_KO, STEM_ELEMENT, BRANCH_ELEMENT, ELEMENT_KO, ELEMENT_HANJA,
   julianDay, sunLongitude, tenGod, parentOf, childOf,
@@ -197,7 +198,7 @@ export function luckTierText(idx) {
 export function daewoonComment(saju, d, idx) {
   if (!d) return '아직 첫 대운이 시작되기 전입니다.';
   const { theme } = pillarTheme(saju, d);
-  const base = d.score >= 65 ? `${theme}의 기운이 강한 좋은 대운입니다.` : d.score >= 48 ? `${theme}을(를) 다지는 무난한 대운입니다.` : `${theme}을(를) 위해 내실을 다지는 대운입니다.`;
+  const base = d.score >= 65 ? `${theme}의 기운이 강한 좋은 대운입니다.` : d.score >= 48 ? `${josa(theme, '을/를')} 다지는 무난한 대운입니다.` : `${josa(theme, '을/를')} 위해 내실을 다지는 대운입니다.`;
   const plus = idx >= 75 ? ' 개운이 충분히 쌓여 이 대운의 장점이 크게 살아납니다.'
     : idx >= 45 ? ' 꾸준한 개운으로 아쉬운 부분이 눈에 띄게 보완되고 있습니다.'
       : idx >= 20 ? ' 개운을 시작해 흐름이 조금씩 부드러워지고 있습니다.' : '';

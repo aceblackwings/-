@@ -2,6 +2,7 @@ import {
   computeSaju, tenGod, seededRandom, BIRTH_CITIES, cityLon, STEMS, STEMS_KO, BRANCHES, BRANCHES_KO, STEM_ELEMENT, BRANCH_ELEMENT,
   BRANCH_MAIN_STEM, ELEMENT_KO, ELEMENT_HANJA, pillarLabel, pillarLabelKo,
 } from './saju.js';
+import { josa, tailJosa } from './josa.js';
 import { MOODS, LEVELS, pickUmbrella, missionById, habitDay, setMood, pickLevel, completeHabit, setAfter, weekDone, needsCare, habitStats } from './habit.js';
 import { computeFortune, CATEGORIES, DAY_MASTER_PROFILE, TEN_GOD_INFO } from './fortune.js';
 import {
@@ -450,7 +451,7 @@ function askAnswerHTML(key) {
       <div class="ask-block"><h4>📜 사주로 보면</h4><p>${a.basis}</p></div>
       <div class="ask-block"><h4>✨ 이렇게 해 보세요</h4><p>${a.tip}</p>${a.weak ? `<p class="muted" style="margin:6px 0 0;font-size:0.84rem">오늘 가장 약한 건 <b>${a.weak.label}(${a.weak.score}점)</b>이에요.</p>` : ''}</div>
       <div class="ask-block"><h4>📈 앞으로 7일 ${a.catLabel}</h4>${trendSVG(a.trend, color)}
-        <p class="muted" style="margin:0;font-size:0.84rem">가장 좋은 날은 <b style="color:var(--wood)">${a.best.full} ${a.best.score}점</b>${a.low ? `, 조심할 날은 <b style="color:var(--fire)">${a.low.full}</b>` : ''}이에요.</p></div>
+        <p class="muted" style="margin:0;font-size:0.84rem">가장 좋은 날은 <b style="color:var(--wood)">${a.best.full} ${a.best.score}점</b>${a.low ? `, 조심할 날은 <b style="color:var(--fire)">${a.low.full}</b>${tailJosa(a.low.full, '이에요/예요')}` : '이에요'}</p></div>
       <div class="ask-guardian"><div class="av">${face}</div><p>${esc(line)}</p></div>
       <button class="primary ask-cta" type="button" data-ask-cta="${key}">${a.cta.label} →</button>
       ${saveBtnHTML('ask', key)}
@@ -761,7 +762,7 @@ function strengthText(s) {
         : ` 그래서 용신은 ${el(s.yongsin)}입니다. ${j.text || ''}`;
   const table = j.table && !String(j.text).includes(j.table) ? ` ${j.table}` : ''; // v0.35 천간 단위 처방
   // v0.39 종격·통관·병약
-  const sp = s.special ? ` ${s.special.text} 그래서 용신을 ${el(s.yongsin)}, 희신을 ${el(s.heesin)}으로 봐요.` : '';
+  const sp = s.special ? ` ${s.special.text} 그래서 용신을 ${el(s.yongsin)}, 희신을 ${josa(el(s.heesin), '으로/로')} 봐요.` : '';
   const tg = s.tonggwan ? ` 또 ${el(s.tonggwan.a)}${i(s.tonggwan.a)} ${el(s.tonggwan.b)}${eul(s.tonggwan.b)} 누르며 맞서 있어, 둘 사이를 이어 주는 ${el(s.tonggwan.el)}${i(s.tonggwan.el)} 반가운 다리 역할을 해요(통관).` : '';
   const by = s.byeongyak ? ` 사주에서 가장 넘치는 ${el(s.byeongyak.byeong)}${i(s.byeongyak.byeong)} 병(病)이라면, 그것을 다스리는 ${el(s.byeongyak.yak)}${i(s.byeongyak.yak)} 약(藥)이에요${s.byeongyak.match ? ' — 용신과 같아 처방이 더 분명해요' : ''}.` : '';
   return s.special ? `${base}${sp}${tg}${by} (지장간 오행 · 강약 7단계 · 종격 판단)` : `${base}${tail}${table}${tg}${by} (지장간 오행 · 강약 7단계 · 억부 + 궁통보감 조후표 · 통관·병약)`;
@@ -1860,7 +1861,17 @@ function bookletHTML(bd = bookletData()) {
     <section class="bk-part"><h3>총운</h3>
       ${b.general.map((x) => `<h4>${x.h}</h4>${x.paras.map(P).join('')}`).join('')}
     </section>
+    ${checksHTML(b.checks)}
   </article>`;
+}
+
+/** 한 해 조심할 점 · 참고할 점(yearcheck.js): 내 원국과 그해 글자가 만나는 방식이라 사람마다 다름 */
+function checksHTML(list = []) {
+  if (!list.length) return '';
+  const ICON = { watch: '⚠️', good: '🌟', note: '📌' }; const TAG = { watch: '조심', good: '기회', note: '참고' };
+  return `<section class="bk-part bk-checks"><h3>⚠️ 조심할 점 · 참고할 점 <small>내 사주 글자와 그해 글자가 만나는 방식으로 골랐어요</small></h3>
+    <ul class="ck-list">${list.map((c) => `<li class="ck ${c.kind}"><b>${ICON[c.kind]} <em>${TAG[c.kind]}</em> ${esc(c.title)}</b><p>${esc(c.text)}</p><p class="ck-act">👉 ${esc(c.act)}${c.when ? ` <span class="ck-when">· 특히 ${esc(c.when)}</span>` : ''}</p></li>`).join('')}</ul>
+  </section>`;
 }
 
 const FIELD_ICON = { wealth: '💰', business: '🏪', career: '💼', love: '💗', family: '🏡', children: '🧸', health: '🌿', social: '🤝' };
@@ -1887,7 +1898,7 @@ function applyEasyClass() {
   const on = easyOn();
   document.documentElement.classList.toggle('easy', on);
   const b = $('#btn-easy');
-  if (b) { b.textContent = on ? '가−' : '가+'; b.setAttribute('aria-pressed', String(on)); b.title = on ? '쉬운 모드 끄기 (원래 글씨로)' : '쉬운 모드 켜기 (글씨를 크게, 말을 쉽게)'; b.setAttribute('aria-label', b.title); }
+  if (b) { b.innerHTML = `<span class="ez-ic" aria-hidden="true">🔍</span><span class="ez-t">${on ? '글씨 작게' : '글씨 크게'}</span>`; b.setAttribute('aria-pressed', String(on)); b.title = on ? '글씨 원래 크기로 돌아가기 (글씨 작게)' : '글씨 크게 보기 (어려운 말도 쉬운 말로)'; b.setAttribute('aria-label', b.title); }
   const c = $('#birth-form [name="easy"]'); if (c) c.checked = on;
 }
 
@@ -1902,7 +1913,7 @@ function setEasyMode(on, by = 'self', quiet = false) {
     renderAll();
     selectTab(tab);
   }
-  if (!quiet) toast(on ? '가+ 글씨를 크게, 말을 쉽게 바꿨어요. 위의 「가−」를 누르면 원래대로 돌아가요' : '원래 화면으로 돌아왔어요. 위의 「가+」로 언제든 다시 켤 수 있어요');
+  if (!quiet) toast(on ? '🔍 글씨를 크게, 말을 쉽게 바꿨어요. 오른쪽 위 「글씨 작게」를 누르면 돌아가요' : '원래 글씨로 돌아왔어요. 오른쪽 위 「🔍 글씨 크게」로 언제든 다시 켤 수 있어요');
 }
 const todayKeyNow = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
 
@@ -1911,7 +1922,7 @@ function easySuggestHTML() {
   if (!state.profile) return '';
   const birth = solarDateOf(state.profile); if (birth.error) return '';
   if (!suggestEasy(birth, state.fortune.date, loadEasy())) return '';
-  return `<div class="card easy-suggest" id="easy-suggest"><b>가+ 글씨를 크게 볼까요?</b><p>글씨를 크게, 어려운 사주 말은 쉬운 말로 바꿔 보여 드려요. 언제든 위의 「가−」로 되돌릴 수 있어요.</p>
+  return `<div class="card easy-suggest" id="easy-suggest"><b>🔍 글씨를 크게 볼까요?</b><p>글씨를 크게, 어려운 사주 말은 쉬운 말로 바꿔 보여 드려요. 언제든 오른쪽 위 「글씨 작게」로 되돌릴 수 있어요.</p>
     <div class="yday-btns"><button type="button" class="primary" data-easy-suggest="on">크게 보기</button><button type="button" class="ghost" data-easy-suggest="no">괜찮아요</button></div></div>`;
 }
 
@@ -1919,9 +1930,9 @@ function easySuggestHTML() {
 function easySettingsHTML() {
   const e = loadEasy();
   return `<div class="card easy-set" id="easy-set">
-    <h3>가+ 쉬운 모드 <span class="tag">${e.on ? '켜짐' : '꺼짐'}</span></h3>
+    <h3>🔍 글씨 크게 · 쉬운 말 <span class="tag">${e.on ? '켜짐' : '꺼짐'}</span></h3>
     <p class="muted" style="margin-top:0">글씨를 1.25배로 크게, 사주 용어는 쉬운 말로, 홈은 카드 3장으로 보여 드려요.</p>
-    <button type="button" class="${e.on ? 'ghost' : 'primary'}" data-easy-toggle style="width:100%">${e.on ? '가− 쉬운 모드 끄기' : '가+ 쉬운 모드 켜기'}</button>
+    <button type="button" class="${e.on ? 'ghost' : 'primary'}" data-easy-toggle style="width:100%">${e.on ? '글씨 작게 (원래 크기로)' : '🔍 글씨 크게 보기 (쉬운 모드 켜기)'}</button>
     <details class="easy-link-box"><summary>👨‍👩‍👧 부모님·아이 폰에 쉬운 모드 켜 주기</summary>
       <p class="muted">링크를 보내면, 받은 사람이 열 때 「켤까요?」를 물어봐요. 링크에는 생년월일·이름이 들어가지 않아요.</p>
       <form data-easy-link class="easy-link-form">
@@ -1936,7 +1947,7 @@ function easySettingsHTML() {
 
 document.addEventListener('click', (e) => {
   const sg = e.target.closest('[data-easy-suggest]');
-  if (sg) { if (sg.dataset.easySuggest === 'on') setEasyMode(true); else { save(EASY_KEY, dismissEasy(loadEasy())); toast('알겠어요. 위의 「가+」로 언제든 켤 수 있어요'); renderToday(); } return; }
+  if (sg) { if (sg.dataset.easySuggest === 'on') setEasyMode(true); else { save(EASY_KEY, dismissEasy(loadEasy())); toast('알겠어요. 오른쪽 위 「🔍 글씨 크게」로 언제든 켤 수 있어요'); renderToday(); } return; }
   if (e.target.closest('#btn-easy') || e.target.closest('[data-easy-toggle]')) { setEasyMode(!easyOn()); return; }
   const cp = e.target.closest('[data-easy-copy]');
   if (cp) {
@@ -1962,9 +1973,9 @@ function handleEasyLink() {
   const clean = () => { const q = new URLSearchParams(location.search); ['easy', 'remind', 'level', 'from'].forEach((k) => q.delete(k)); history.replaceState(null, '', `${location.pathname}${q.toString() ? `?${q}` : ''}${location.hash}`); };
   if (easyOn()) { clean(); return; }
   const box = document.createElement('div'); box.className = 'evo-modal'; box.id = 'easy-link-ask';
-  box.innerHTML = `<div class="evo-box"><h3 style="margin:0 0 8px">가+ 쉬운 모드</h3>
+  box.innerHTML = `<div class="evo-box"><h3 style="margin:0 0 8px">🔍 글씨 크게 · 쉬운 말</h3>
     <p style="margin:0 0 6px">${esc(linkAskText(link))}</p>
-    <p class="muted" style="margin:0 0 14px">글씨가 커지고, 어려운 말은 쉬운 말로 바뀌어요. 언제든 위의 「가−」로 되돌릴 수 있어요.</p>
+    <p class="muted" style="margin:0 0 14px">글씨가 커지고, 어려운 말은 쉬운 말로 바뀌어요. 언제든 오른쪽 위 「글씨 작게」로 되돌릴 수 있어요.</p>
     <div class="yday-btns"><button type="button" class="primary" data-link-yes>네, 켤게요</button><button type="button" class="ghost" data-link-no>아니요</button></div></div>`;
   document.body.appendChild(box);
   box.addEventListener('click', (ev) => {
@@ -1972,7 +1983,7 @@ function handleEasyLink() {
       save(EASY_KEY, acceptLink(loadEasy(), link, state.fortune?.dateKey || todayKeyNow()));
       box.remove(); clean(); applyEasyClass();
       if (state.saju) { setupPlainTerms(); renderAll(); selectTab('today'); }
-      toast('가+ 쉬운 모드를 켰어요');
+      toast('🔍 글씨를 크게 바꿨어요');
       return;
     }
     if (ev.target.closest('[data-link-no]')) { box.remove(); clean(); }
@@ -2159,7 +2170,7 @@ function completeNote() {
     save(COLLECTION_KEY, replaceCharm(load(COLLECTION_KEY, []), u.from, u.to));
     const e2 = loadEquip(); save(EQUIP_KEY, { ...e2, charms: replaceCharm(e2.charms, u.from, u.to) });
   }
-  const grownLines = g.upgrades.map((u) => `🌟 장착한 ${labelForRec(u.from)}가 다 자라 ${labelForRec(u.to)}로 올라갔어요!`);
+  const grownLines = g.upgrades.map((u) => `🌟 장착한 ${josa(labelForRec(u.from), '이/가')} 다 자라 ${josa(labelForRec(u.to), '으로/로')} 올라갔어요!`);
   const fedLines = g.upgrades.length ? [] : eqNow.charms.filter(Boolean).map((r) => `🌱 장착한 ${labelForRec(r)}에 기운 한 칸 (${fillOf(g.store, r)}/${GROW_FULL})`);
   checkFive(); const slotOpened = checkPairSlot();
   const si = newStoryIndex(before, before + 1); const story = si >= 0 ? storyList()[si] : null;
@@ -3394,7 +3405,7 @@ function teamCardHTML() {
     const nm = (k) => t.mem[k].name;
     return `<div class="team-map">${teamSVG(t)}</div>
     <ul class="reasons">
-      <li><b>👑 오늘의 행운 멤버</b> ${esc(nm(t.lucky))} — 오늘 점심 메뉴는 ${esc(nm(t.lucky))}가 정해!</li>
+      <li><b>👑 오늘의 행운 멤버</b> ${esc(nm(t.lucky))} — 오늘 점심 메뉴는 ${esc(josa(nm(t.lucky), '이/가'))} 정해!</li>
       <li><b>💗 찰떡 듀오</b> ${esc(nm(t.best.i))} × ${esc(nm(t.best.j))} <em>${t.best.score}점</em></li>
       ${t.pairs.length > 1 ? `<li><b>⚡ 티격태격 듀오</b> ${esc(nm(t.worst.i))} × ${esc(nm(t.worst.j))} <em>${t.worst.score}점</em></li>` : ''}
       <li><b>☯ 팀에 부족한 기운</b> ${ELEMENT_HANJA[t.teamWeak]} ${ELEMENT_KO[t.teamWeak]} → 팀 부적으로 채워요</li>
@@ -3588,7 +3599,7 @@ function doCheer(idx) {
     return;
   }
   grow((g) => complete(g, state.fortune.dateKey, 'social', qBonus('social')), `📣 ${fr.name}에게 응원을 보냈어요!`);
-  setTimeout(() => charge(state.saju.weakest, 3, `cheer-${fr.name}`, `💞 ${fr.name}의 ${ZODIAC[fs.pillars.year.branch].name}가 답례 응원`), 2300);
+  setTimeout(() => charge(state.saju.weakest, 3, `cheer-${fr.name}`, `💞 ${fr.name}의 ${josa(ZODIAC[fs.pillars.year.branch].name, '이/가')} 답례 응원`), 2300);
   renderCompat();
 }
 
@@ -3674,7 +3685,7 @@ function journeyCardHTML() {
   const step = journeyStep(c.key, Math.max(0, doneToday ? j.done - 1 : j.done), state.saju.yongsin);
   const pct = Math.round((j.done / JOURNEY_DAYS) * 100);
   const chapters = JOURNEYS[c.key].chapters;
-  if (j.done >= JOURNEY_DAYS) return `<div class="card journey"><h3>🏆 ${c.label} 고민 해결 여정 완주!</h3><p>30일 동안 함께 걸었어요. 수호신이 당신의 ${c.label}을(를) 끝까지 응원합니다. '정보 수정'에서 새 고민을 고르면 새 여정이 시작돼요.</p></div>`;
+  if (j.done >= JOURNEY_DAYS) return `<div class="card journey"><h3>🏆 ${c.label} 고민 해결 여정 완주!</h3><p>30일 동안 함께 걸었어요. 수호신이 당신의 ${josa(c.label, '을/를')} 끝까지 응원합니다. '정보 수정'에서 새 고민을 고르면 새 여정이 시작돼요.</p></div>`;
   return `<div class="card journey">
     <h3>🧭 ${c.label} 고민 해결 여정 <span class="tag">${j.done} / ${JOURNEY_DAYS}일</span></h3>
     <div class="exp"><div class="exp-fill" style="width:${pct}%;background:linear-gradient(90deg,#8fd4b6,#f4a6bd)"></div><span>${chapters.map((ch, i) => (i === step.chapterIndex ? `▶ ${ch}` : ch)).join(' · ')}</span></div>
@@ -3683,7 +3694,7 @@ function journeyCardHTML() {
       <b>${step.title}</b>
       <p class="muted" style="margin:4px 0 0;font-size:0.84rem">💡 ${step.why}</p>
     </div>
-    ${doneToday ? `<p class="muted" style="margin:8px 0 0;text-align:center">✅ 오늘 한 걸음 완료! ${info.zodiac.name}가 내일 다음 걸음을 준비해 둘게요.</p>` : '<button class="primary" type="button" id="btn-journey" style="width:100%;margin-top:10px">했어요! 한 걸음 완료 ✓</button>'}
+    ${doneToday ? `<p class="muted" style="margin:8px 0 0;text-align:center">✅ 오늘 한 걸음 완료! ${josa(info.zodiac.name, '이/가')} 내일 다음 걸음을 준비해 둘게요.</p>` : '<button class="primary" type="button" id="btn-journey" style="width:100%;margin-top:10px">했어요! 한 걸음 완료 ✓</button>'}
   </div>`;
 }
 
@@ -3869,7 +3880,7 @@ function renderFeng() {
   panel.innerHTML = `
     <div class="card">
       <h3>🗺️ 오늘의 풍수 기운 스팟 <span class="tag">행운 방향 ${f.luck.direction}</span></h3>
-      <p class="muted" style="margin-top:0;font-size:0.85rem">오늘은 <b style="color:var(--gold)">${f.luck.direction}</b>이 길하고, 나에게 필요한 기운은 <b class="el-${s.yongsin}">${ELEMENT_HANJA[s.yongsin]} ${ELEMENT_KO[s.yongsin]}</b>이에요. 그 방향의 ${ELEMENT_KO[s.yongsin]} 기운 장소로 가면 <b>보물 상자</b>가 기다려요. 멀수록 좋은 보물!</p>
+      <p class="muted" style="margin-top:0;font-size:0.85rem">오늘은 <b style="color:var(--gold)">${f.luck.direction}</b>이 길하고, 나에게 필요한 기운은 <b class="el-${s.yongsin}">${ELEMENT_HANJA[s.yongsin]} ${ELEMENT_KO[s.yongsin]}</b>${tailJosa(ELEMENT_KO[s.yongsin], '이에요/예요')}. 그 방향의 ${ELEMENT_KO[s.yongsin]} 기운 장소로 가면 <b>보물 상자</b>가 기다려요. 멀수록 좋은 보물!</p>
       <div class="feng-wrap">${radar}
         <div class="feng-loc"><small class="muted">${real ? '📍 내 위치 기준' : `📍 ${DEMO_CENTER.label}`}</small>
           <button class="ghost" type="button" id="btn-geo">${real ? '위치 새로고침' : '내 위치로 찾기'}</button>

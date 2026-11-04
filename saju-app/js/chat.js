@@ -2,6 +2,7 @@
 // - 온라인: Claude(sample)에 "띠 말투 + 내 사주·오늘 운세·고민 여정" 맥락과 안전 규칙을 함께 보냄
 // - 오프라인: 같은 맥락으로 규칙 기반 답변 (말버릇·사주 근거·작은 행동 1개)
 // - 위기 신호(자해·자살 등)에는 AI 호출 없이 고정 안내 + 상담 전화
+import { josa } from './josa.js';
 import { ELEMENT_KO, ELEMENT_HANJA } from './saju.js';
 import { meSubject } from './personality.js';
 
@@ -115,7 +116,7 @@ export function offlineReply(ctx, text) {
   const growLine = !g ? '' : g.charms.length && g.bestField && (intent.cat === g.bestField || intent.cat === 'total')
     ? ` ${P ? '달아 주신' : '달아 준'} ${g.charms[0]} 덕분에 이달 ${FIELD_OF[g.bestField]} 기운에 개운 +${g.bestPlus}${[2, 4, 5, 9].includes(g.bestPlus % 10) ? '가' : '이'} 붙어 있어${P ? '요' : ''}.`
     : !g.noteToday ? ` 오늘 쪽지 할 일도 하나 해 보면 ${P ? '부적을 드릴게요' : '부적 줄게'}.` : '';
-  return `${recall}${empathy} 오늘 ${intent.label}은 ${score}점, ${tone}.${growLine} ${ctx.pers.key === 'rooster' ? '제가 보기엔' : '내가 보기엔'} ${f.tenGod}의 날이라 "${f.info.title}"의 기운이 흐르고, 너한테 필요한 건 ${el} 기운이야. ${actions[intent.key]}. ${ctx.pers.key === 'rooster' ? '언제나 곁에서 응원할게요.' : '언제나 곁에서 응원할게.'}`;
+  return `${recall}${empathy} 오늘 ${josa(intent.label, '은/는')} ${score}점, ${tone}.${growLine} ${ctx.pers.key === 'rooster' ? '제가 보기엔' : '내가 보기엔'} ${f.tenGod}의 날이라 "${f.info.title}"의 기운이 흐르고, 너한테 필요한 건 ${el} 기운이야. ${actions[intent.key]}. ${ctx.pers.key === 'rooster' ? '언제나 곁에서 응원할게요.' : '언제나 곁에서 응원할게.'}`;
 }
 
 export const QUICK_ASKS = ['오늘 운세 자세히 알려 줘', '요즘 고민 상담해 줘', '오늘 뭐 입을까?', '연애운 어때?', '나한테 맞는 부적 추천해 줘'];

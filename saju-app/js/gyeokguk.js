@@ -2,6 +2,7 @@
 // 자평진전 기본 규칙: 월지 본기가 천간에 드러나면 그 십신 → 아니면 중기·여기 중 드러난 것 → 아무것도 없으면 본기.
 // 월지가 나와 같은 기운(비견·겁재)이면 건록격·양인격(음간은 월겁격). 종격·화격 같은 특수격은 다루지 않고 안내만.
 // 순수 로직만(테스트: tests/gyeokguk.test.mjs)
+import { josa } from './josa.js';
 import { tenGod } from './saju.js';
 import { HIDDEN_STEMS } from './expert.js';
 
@@ -128,5 +129,5 @@ export function strengthMission(gyeok, dateKey) {
 /** 화면용 한 문단 요약 */
 export function gyeokSummary(g) {
   const p = GYEOK_PROFILE[g.name];
-  return `${g.name} · ${p.title}. ${p.strengths.slice(0, 2).join(', ')}이 타고난 강점이에요. ${g.note}`;
+  return `${g.name} · ${p.title}. ${josa(p.strengths.slice(0, 2).join(', '), '이/가')} 타고난 강점이에요. ${g.note}`;
 }
