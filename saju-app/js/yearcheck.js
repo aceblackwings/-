@@ -8,7 +8,8 @@
 //  - 건강: 그해 넘치는 오행이 누르는 장부(의료 단정 금지, 「검진 때 한 번 더」로만)
 // 모든 문장 = 근거 → 무엇이 생기기 쉬운지(구체적 장면) → 이렇게 대비(5분 행동) → 언제(달). 순수 로직(테스트 tests/yearcheck.test.mjs)
 import { tenGod, STEMS, BRANCHES, BRANCH_MAIN_STEM, STEM_ELEMENT, BRANCH_ELEMENT, ELEMENT_KO, ELEMENT_HANJA, ANIMALS } from './saju.js';
-import { branchPair } from './relations.js';
+import { branchPair, groupCompletions } from './relations.js';
+import { gongmangOf } from './luck.js';
 import { tenGodProfile } from './natal.js';
 import { monthRange } from './yearcard.js';
 import { josa } from './josa.js';
@@ -132,6 +133,46 @@ export function yearChecks(y, saju, { gender = 'female' } = {}) {
     });
   }
 
+  // ── 3자 작용(2026-11-04 정확도 2단계 ③④): 대운 × 그해 × 원국 ──
+  const dwp = y.daewoon?.pillar;
+  const POS_SHORT = { year: '연지', month: '월지', day: '일지', hour: '시지' };
+  for (const g of groupCompletions(saju.pillars, dwp ? dwp.branch : -1, p.branch).slice(0, 1)) {
+    const name = g.kind === 'triple' ? '삼합' : '방합';
+    const src = [...g.natal.map((k) => `내 ${POS_SHORT[k]}`), ...(g.daewoon ? ['지금 대운'] : []), '그해'].join(' + ');
+    const fit = g.el === saju.yongsin ? 'good' : g.el === saju.heesin ? 'good' : g.el === saju.gisin ? 'watch' : 'note';
+    add({
+      kind: fit, key: `group-${g.kind}`, rank: fit === 'watch' ? 8 : 7,
+      title: `${g.branches.map((b) => BRANCHES[b]).join('')} ${name} ${el(g.el)} 국이 완성돼요`,
+      text: `${src}의 글자가 모여 ${name}을 이뤄 ${el(g.el)} 기운이 한 해 동안 크게 뭉쳐요. ${fit === 'good' ? '내게 필요한 기운이 뭉치는 거라, 오래 준비한 일이 한꺼번에 풀리거나 큰 기회가 들어오기 쉬운 해예요.' : fit === 'watch' ? '내게 부담이 되는 기운이 뭉치는 거라, 일이 커지는 만큼 그 무게도 커지기 쉬운 해예요.' : '한 방향의 기운이 강해져 생활의 무게중심이 그쪽으로 크게 옮겨 가기 쉬운 해예요.'}${g.daewoon ? ' 10년 큰 흐름이 함께 거들어 그 힘이 더 커요.' : ''}`,
+      act: fit === 'good' ? '미뤄 둔 큰 목표 하나를 이 해에 꺼내 일정표에 넣기' : fit === 'watch' ? '새 일은 하나씩만 받고, 큰 결정은 한 달 두고 다시 보기' : '그 기운에 맞는 일(오행별 행운 방향·색)을 하나 정해 꾸준히 해 보기', when: '',
+    });
+  }
+  if (dwp) {
+    const stemClash = Math.abs(dwp.stem - p.stem) === 6 && dwp.stem % 2 === p.stem % 2; // 甲庚 乙辛 丙壬 丁癸
+    const brClash = Math.abs(dwp.branch - p.branch) === 6;
+    if (stemClash && brClash) add({
+      kind: 'watch', key: 'dwClash', rank: 10, title: '10년 흐름과 그해가 정면으로 부딪혀요 (천충지충)',
+      text: `지금 대운 ${josa(STEMS[dwp.stem] + BRANCHES[dwp.branch], '과/와')} 그해 ${josa(STEMS[p.stem] + BRANCHES[p.branch], '이/가')} 천간·지지 모두 충을 이뤄요. 직장·집·관계 가운데 한 곳에서 판이 크게 바뀌기 쉬운, 몇 년에 한 번 오는 해예요. 준비한 사람에게는 도약의 해가 되기도 해요.`,
+      act: '바꾸고 싶은 것과 지키고 싶은 것을 각각 세 가지씩 적어 두고, 큰 결정은 좋은 달에 맞추기', when: '',
+    });
+    else if (brClash) add({
+      kind: 'note', key: 'dwBrClash', rank: 5, title: '10년 흐름과 그해의 지지가 부딪혀요',
+      text: `지금 대운의 ${josa(BRANCHES[dwp.branch], '과/와')} 그해의 ${josa(BRANCHES[p.branch], '이/가')} 충을 이뤄요. 큰 흐름은 그대로인데 생활 리듬(이동·일정·사람)이 자주 흔들리기 쉬워요.`,
+      act: '한 달에 한 번 일정과 지출을 다시 정리하는 날 정하기', when: '',
+    });
+    if (dwp.stem === p.stem && dwp.branch === p.branch) add({
+      kind: 'note', key: 'dwSame', rank: 6, title: '10년 흐름과 그해가 같은 글자예요 (복음)',
+      text: `그해 ${josa(STEMS[p.stem] + BRANCHES[p.branch], '이/가')} 지금 대운과 똑같아, 이 10년의 성격이 한 해에 가장 진하게 드러나요. 좋은 점도 챙길 점도 두 배로 느껴지기 쉬워요.`,
+      act: '지금 대운에서 잘되고 있는 것 하나를 골라 올해 더 키우기', when: '',
+    });
+  }
+  // ── 공망(2026-11-04 정확도 2단계 ⑤): 그해 지지가 내 일주의 공망 ──
+  if (gongmangOf(saju.pillars.day.stem, saju.pillars.day.branch).includes(p.branch)) add({
+    kind: 'note', key: 'gongmang', rank: 6, title: '그해 지지가 내 공망 자리예요',
+    text: `그해 지지 ${josa(BRANCHES[p.branch], '은/는')} 내 일주의 공망(空亡, 비어 있는 자리)이에요. 들어오는 힘이 반쯤 비어 있어 기대한 결과·약속이 늦어지거나 생각보다 작게 손에 잡히기 쉬워요. 대신 욕심을 내려놓고 공부·수련·봉사처럼 「채우는 일」에는 잘 맞는 해예요.`,
+    act: '큰 계약·투자는 서류와 조건을 두 번 확인하고, 올해는 결과보다 실력 쌓기에 목표 두기', when: '',
+  });
+
   // ── 좋은 작용(참고: 기회를 놓치지 않게) ──
   if (inYear('식신') && has('편관')) add({ kind: 'good', key: 'sikJeSal', rank: 5, title: '어려운 문제를 실력으로 풀어요 (식신제살)', text: '그해의 식신(실력·꾸준함)이 내 사주의 편관(압박·어려운 일)을 다스려요. 오래 끌던 골치 아픈 일이 내 솜씨로 풀리기 쉬운 해예요.', act: '미뤄 둔 어려운 일 하나를 골라 이번 달 안에 끝낼 계획 세우기', when: mOf(1, false) });
   if (inYear('정관', '편관') && pct[4] >= 20 && !out.some((x) => x.key === 'sanggwan')) add({ kind: 'good', key: 'gwanIn', rank: 5, title: '승진·합격·자격에 힘이 실려요 (관인상생)', text: `그해의 관성(자리·평가)이 내 사주에 넉넉한 인성(배움 ${pct[4]}%)과 이어져요. 시험·자격·승진 심사처럼 공식적으로 인정받는 일에 유리한 해예요.`, act: '올해 따고 싶은 자격·평가 하나를 정해 접수 날짜를 달력에 적기', when: mOf(3, false) });
@@ -150,9 +191,9 @@ export function yearChecks(y, saju, { gender = 'female' } = {}) {
   // ── 그해 신살(역마·도화·화개): 연지·일지 기준 ──
   const bases = [saju.pillars.year.branch, saju.pillars.day.branch].map(TRIAD);
   const star = (table) => bases.some((t) => table[t] === p.branch);
-  if (star(YEOKMA)) add({ kind: 'note', key: 'yeokma', rank: 4, title: '움직임의 별(역마)이 들어와요', text: `그해 지지 ${BRANCHES[p.branch]}는 내 사주의 역마 자리예요. 이사·출장·여행·이직처럼 몸이 움직이는 일이 늘고, 멀리서 기회가 오기 쉬워요.`, act: '가 보고 싶던 곳·일자리 정보를 하나 찾아 저장해 두기', when: '' });
-  if (star(DOHWA)) add({ kind: 'note', key: 'dohwa', rank: 4, title: '사람을 끄는 별(도화)이 들어와요', text: `그해 지지 ${BRANCHES[p.branch]}는 내 사주의 도화 자리예요. 인기·호감이 오르고 새 인연이 생기기 쉬운 해예요. 반대로 말 한마디·사진 한 장이 소문이 되기도 쉬워요.`, act: 'SNS에 올리기 전에 한 번 더 읽어 보고, 좋은 인연에는 먼저 연락하기', when: '' });
-  if (star(HWAGAE)) add({ kind: 'note', key: 'hwagae', rank: 3, title: '깊이 파고드는 별(화개)이 들어와요', text: `그해 지지 ${BRANCHES[p.branch]}는 내 사주의 화개 자리예요. 공부·종교·예술처럼 혼자 깊이 들어가는 일에 집중이 잘되고, 사람 만남은 조금 줄기 쉬워요.`, act: '하루 30분 혼자 몰입하는 시간을 정해 두기', when: '' });
+  if (star(YEOKMA)) add({ kind: 'note', key: 'yeokma', rank: 4, title: '움직임의 별(역마)이 들어와요', text: `그해 지지 ${josa(BRANCHES[p.branch], '은/는')} 내 사주의 역마 자리예요. 이사·출장·여행·이직처럼 몸이 움직이는 일이 늘고, 멀리서 기회가 오기 쉬워요.`, act: '가 보고 싶던 곳·일자리 정보를 하나 찾아 저장해 두기', when: '' });
+  if (star(DOHWA)) add({ kind: 'note', key: 'dohwa', rank: 4, title: '사람을 끄는 별(도화)이 들어와요', text: `그해 지지 ${josa(BRANCHES[p.branch], '은/는')} 내 사주의 도화 자리예요. 인기·호감이 오르고 새 인연이 생기기 쉬운 해예요. 반대로 말 한마디·사진 한 장이 소문이 되기도 쉬워요.`, act: 'SNS에 올리기 전에 한 번 더 읽어 보고, 좋은 인연에는 먼저 연락하기', when: '' });
+  if (star(HWAGAE)) add({ kind: 'note', key: 'hwagae', rank: 3, title: '깊이 파고드는 별(화개)이 들어와요', text: `그해 지지 ${josa(BRANCHES[p.branch], '은/는')} 내 사주의 화개 자리예요. 공부·종교·예술처럼 혼자 깊이 들어가는 일에 집중이 잘되고, 사람 만남은 조금 줄기 쉬워요.`, act: '하루 30분 혼자 몰입하는 시간을 정해 두기', when: '' });
 
   // ── 건강: 그해 넘치는 오행이 누르는 곳 ──
   const yEls = [STEM_ELEMENT[p.stem], BRANCH_ELEMENT[p.branch]];

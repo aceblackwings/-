@@ -235,6 +235,7 @@ export function partsStory(parts, saju) {
     }
     if (p.kind === 'combine') out.push('내 일지와 합(合)을 이뤄 손발이 맞는 사람·일이 찾아오기 쉬워요. 협력과 인연에 좋은 신호예요.');
     if (p.kind === 'clash') out.push('내 일지와 충(沖)이 생겨 이사·이직·관계 변화처럼 움직임이 생기기 쉬워요. 변화는 준비하면 기회가 돼요.');
+    if (p.kind === 'gongmang') out.push('이 시기의 지지는 내 일주의 공망(空亡) 자리라 들어오는 힘이 반쯤 비어 있어요. 기대한 결과가 늦게 손에 잡히기 쉬우니, 결과보다 준비·공부에 힘을 두고 계약은 한 번 더 확인하면 좋아요.');
   }
   if (!out.length && !parts.length && !st) out.push(`원국과 크게 돕거나 부딪히는 글자가 없어, 평소의 나답게 흐름을 이어 가는 때예요. 필요한 기운인 ${josa(`${ELEMENT_HANJA[saju.yongsin]}(${ELEMENT_KO[saju.yongsin]})`, '을/를')} 생활에서 채우면 좋아요.`);
   return out;

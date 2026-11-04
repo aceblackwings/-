@@ -80,6 +80,14 @@ const pairKey = (a, b) => (a < b ? `${a}-${b}` : `${b}-${a}`);
 export const SCORE_BASE = 59;
 export const GISIN_DELTA = -7;
 export const CLASH_DELTA = -5;
+/** 일주의 공망 두 지지 (expert.js gongmang과 같은 계산, 순환 import를 피해 여기 둠) */
+export function gongmangOf(dayStem, dayBranch) {
+  let idx = 0;
+  while (!(idx % 10 === dayStem && idx % 12 === dayBranch)) idx++;
+  const startBranch = (idx - (idx % 10)) % 12;
+  return [mod(startBranch + 10, 12), mod(startBranch + 11, 12)];
+}
+
 export function scoreParts(saju, p) {
   const parts = [];
   const fitOf = (e) => {
@@ -92,10 +100,14 @@ export function scoreParts(saju, p) {
   const [fs, ls] = fitOf(STEM_ELEMENT[p.stem]);
   if (ls) parts.push({ kind: 'stem', element: STEM_ELEMENT[p.stem], delta: fs, label: `천간 ${ls}` });
   const [fb, lb] = fitOf(BRANCH_ELEMENT[p.branch]);
-  if (lb) parts.push({ kind: 'branch', element: BRANCH_ELEMENT[p.branch], delta: Math.round(fb * 0.8 * 10) / 10, label: `지지 ${lb}` });
   const dayBranch = saju.pillars.day.branch;
-  if (COMBINE.has(pairKey(p.branch, dayBranch))) parts.push({ kind: 'combine', delta: 6, label: '내 일지와 합(合) — 손발이 맞음' });
-  if (Math.abs(p.branch - dayBranch) === 6) parts.push({ kind: 'clash', delta: CLASH_DELTA, label: '내 일지와 충(沖) — 변화·마찰' });
+  // 2026-11-04 정확도 2단계 ⑤ 공망: 들어오는 지지가 내 일주의 공망이면 그 지지의 도움·부담·합충을 절반으로(비어 있는 자리)
+  const gm = gongmangOf(saju.pillars.day.stem, dayBranch).includes(p.branch);
+  const half = (v) => (gm ? Math.round(v * 5) / 10 : v);
+  if (lb) parts.push({ kind: 'branch', element: BRANCH_ELEMENT[p.branch], delta: half(Math.round(fb * 0.8 * 10) / 10), label: `지지 ${lb}${gm ? '(공망이라 절반)' : ''}` });
+  if (COMBINE.has(pairKey(p.branch, dayBranch))) parts.push({ kind: 'combine', delta: half(6), label: `내 일지와 합(合) — 손발이 맞음${gm ? '(공망이라 절반)' : ''}` });
+  if (Math.abs(p.branch - dayBranch) === 6) parts.push({ kind: 'clash', delta: half(CLASH_DELTA), label: `내 일지와 충(沖) — 변화·마찰${gm ? '(공망이라 절반)' : ''}` });
+  if (gm) parts.push({ kind: 'gongmang', delta: 0, label: '공망(空亡) — 그 지지의 힘이 반쯤 비어 있음' });
   const raw = SCORE_BASE + parts.reduce((a, b) => a + b.delta, 0);
   return { score: Math.round(clamp(raw, 30, 95)), parts };
 }

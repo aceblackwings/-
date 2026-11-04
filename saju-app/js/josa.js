@@ -70,5 +70,11 @@ export function josaProblems(text) {
     if (m[2] === '를' && b) push(m.index, '받침 뒤에는 「을」');
     if (m[2] === '으로' && (!b || isRieul(m[1]))) push(m.index, '받침 없는 글자·ㄹ 받침 뒤에는 「로」');
   }
+  // 한자 바로 뒤 조사(한자는 낱말 끝이라 「는·가·와·로」도 검사할 수 있음): 申는 → 申은
+  const PAIRS = { 은: true, 는: false, 이: true, 가: false, 을: true, 를: false, 과: true, 와: false };
+  for (const m of T.matchAll(/([木火土金水甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥])(은|는|이|가|을|를|과|와)(?=[\s,.!?·」』)]|$)/gu)) {
+    const b = batchimOfChar(m[1]);
+    if (PAIRS[m[2]] !== b) push(m.index, `「${m[1]}(${HANJA_READ[m[1]]})」 뒤 조사`);
+  }
   return out;
 }
