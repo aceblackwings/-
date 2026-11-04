@@ -48,7 +48,8 @@ import { fiveScores } from './todayfive.js';
 import { claimItem, PIECES_PER_ITEM } from './tteok.js';
 import { TTEOK, visit as tteokVisit, doTask as tteokDoTask, todayTasks, doneCount, isOpen as scrollOpen, spend as tteokSpend, buy as tteokBuy, SCROLLS, PACKS, TASKS as TTEOK_TASKS, ALL_BONUS } from './tteok.js';
 import { emoImage, charImage } from './assets.js';
-import { PRODUCTS, buildPremiumYear, buildLifeReport, buildCompatReport, premiumTeaser } from './premium.js';
+import { PRODUCTS, buildPremiumYear, buildLifeReport, buildCompatReport, premiumTeaser, compatTeaser } from './premium.js';
+import { tarotPrice, useTarot, TAROT_COST, TAROT_FREE_PER_DAY } from './tteok.js';
 import { emptyShop, owns as shopOwns, priceOf, grant as shopGrant, yearKey, compatKey } from './shop.js';
 import { preloadCharImages, itemImage, tarotImage } from './assets.js';
 /** 계절 한정 소품 그림 (없으면 빈칸) */
@@ -2004,10 +2005,16 @@ function compatOfferHTML(fr) {
   if (fr.card) return `<p class="muted hj-mini">💞 궁합 상세는 생일로 추가한 친구와 볼 수 있어요. 공유 카드로 받은 친구는 생활 자리(일지)를 몰라 자세히 풀 수 없어요.</p>`;
   const key = compatKey(fr);
   if (shopOwns(loadShop(), key)) return `<div class="hanji hj-offer owned slim"><p class="hj-eyebrow">💞 궁합 상세 · 내 서재</p><button type="button" class="hj-buy" data-read="compat">📖 ${esc(fr.name || '상대')} 님과의 궁합 상세 읽기</button></div>`;
-  return `<div class="hanji hj-offer slim">
-    <p class="hj-eyebrow">💞 궁합 상세</p>
-    <p class="hj-desc">${PRODUCTS.compat.desc}. 궁합 묻고 답하기 5가지까지.</p>
-    <button type="button" class="hj-buy" data-pay="${key}">궁합 상세 열기 · ${priceTag(key)}</button>
+  const rep = compatReportNow(); if (!rep) return '';
+  const tz = compatTeaser(rep); const nm = esc(fr.name || '상대');
+  return `<div class="hanji hj-offer" id="hj-compat-offer">
+    <p class="hj-eyebrow">💞 궁합 상세 · ${nm} 님과 나</p>
+    <h3>서로에게 배우자 기운이 있을까?</h3>
+    <p class="hj-teaser">${esc(tz.open)} <span class="hj-blur" aria-hidden="true">${esc(tz.blur)}</span></p>
+    <ul class="hj-qa">${tz.qa.map((x) => `<li><b>Q. ${esc(x.q)}</b><span class="hj-blur" aria-hidden="true">${esc(x.a)}</span></li>`).join('')}</ul>
+    ${tz.months ? `<p class="hj-teaser"><b>함께하기 가장 좋은 달</b><br><span class="hj-blur" aria-hidden="true">${esc(tz.months)}</span></p>` : ''}
+    <p class="hj-note">궁합 상세 ${kChars(rep.chars)} · 다툼이 생기는 장면과 푸는 말까지 · 한 번 열면 계속 보관</p>
+    <button type="button" class="hj-buy" data-pay="${key}">답 모두 보기 · ${priceTag(key)}</button>
   </div>`;
 }
 
@@ -2642,6 +2649,7 @@ function openTteokShop(need = 0) {
     <p class="ts-bal">가진 복떡 <b>${bal}</b>개</p>
     ${need > 0 ? `<p class="eq-pair">두루마리를 열려면 복떡 ${need}개가 더 필요해요</p>` : ''}
     <div class="ts-scrolls">${Object.entries(SCROLLS).map(([k, sc]) => `<button type="button" class="ts-scroll ${st?.unlocked?.[k] ? 'own' : ''}" data-scroll-buy="${k}"><span>${sc.icon}</span><b>${sc.label}</b><small>${st?.unlocked?.[k] ? '계속 열림' : `${TTEOK} ${sc.cost}개`}</small></button>`).join('')}</div>
+    <p class="muted ts-note">🃏 타로는 하루 ${TAROT_FREE_PER_DAY}번 무료, 그다음부터 한 장 ${TTEOK}${TAROT_COST.one}개 · 세 장 ${TTEOK}${TAROT_COST.three}개로 볼 수 있어요.</p>
     <h4>복떡 받기</h4>
     <div class="ts-packs">${PACKS.map((p) => `<button type="button" class="ts-pack" data-pack="${p.key}"><span class="tp-ic">${p.icon}</span><b>${p.label}</b><small>${TTEOK} ${p.tteok}${p.bonus ? ` + 덤 ${p.bonus}` : ''}개</small><em>${p.price.toLocaleString('ko-KR')}원</em></button>`).join('')}</div>
     <p class="muted ts-note">체험판이라 실제 결제 없이 바로 받아져요. 정식 앱에서는 위 가격으로 결제돼요.</p>
@@ -2703,13 +2711,14 @@ function renderTarot() {
   if (T.step === 'topic') {
     body = `<p class="tr-guide">무엇이 궁금하세요?</p><div class="tr-topics">${TAROT_TOPICS.map((x) => `<button type="button" class="tr-topic" data-tarot-topic="${x.key}"><span>${x.icon}</span><b>${x.label}</b><small>${x.ask}</small></button>`).join('')}</div>`;
   } else if (T.step === 'spread') {
-    body = `<p class="tr-guide">${tp.icon} ${tp.label} · 몇 장을 뽑을까요?</p><div class="tr-topics two">${Object.entries(TAROT_SPREADS).map(([k, sp]) => `<button type="button" class="tr-topic" data-tarot-spread="${k}"><span>${k === 'one' ? '🂠' : '🂠🂠🂠'}</span><b>${sp.label}</b><small>${sp.desc}</small></button>`).join('')}</div>
+    body = `<p class="tr-guide">${tp.icon} ${tp.label} · 몇 장을 뽑을까요?</p><div class="tr-topics two">${Object.entries(TAROT_SPREADS).map(([k, sp]) => { const pr = tarotPrice(loadTteok(), state.fortune.dateKey, k); return `<button type="button" class="tr-topic" data-tarot-spread="${k}"><span>${k === 'one' ? '🂠' : '🂠🂠🂠'}</span><b>${sp.label}</b><small>${sp.desc}</small><em class="tr-price ${pr.free ? 'free' : ''}">${pr.free ? '오늘 무료' : `${TTEOK} ${pr.cost}개`}</em></button>`; }).join('')}</div>
+      ${tarotPriceNoteHTML()}
       <button type="button" class="ghost tr-back" data-tarot-reset>← 질문 다시 고르기</button>`;
   } else if (T.step === 'pick') {
     const need = TAROT_NEED(T.spread);
     body = `<p class="tr-guide">${tp.icon} 「${tp.ask}」<br>마음속으로 질문을 떠올리며 카드 <b>${need}장</b>을 골라 주세요 <small>(${T.picks.length}/${need})</small></p>
       <div class="tr-deck">${T.deck.map((c, i) => { const n = T.picks.indexOf(i); return `<button type="button" class="tc-back ${n >= 0 ? 'on' : ''}" data-tarot-pick="${i}" aria-label="카드 ${i + 1}${n >= 0 ? ` 선택 ${n + 1}` : ''}">${n >= 0 ? `<b>${n + 1}</b>` : '<span>✦</span>'}</button>`; }).join('')}</div>
-      ${T.picks.length === need ? '<button type="button" class="primary tr-reveal" data-tarot-reveal>🔮 카드 펼치기</button>' : ''}
+      ${T.picks.length === need ? (() => { const pr = tarotPrice(loadTteok(), state.fortune.dateKey, T.spread); return `<button type="button" class="primary tr-reveal" data-tarot-reveal>🔮 카드 펼치기 <small>${pr.free ? '(오늘 무료)' : `(${TTEOK} ${pr.cost}개)`}</small></button>`; })() : ''}
       <button type="button" class="ghost tr-back" data-tarot-shuffle>🔀 다시 섞기</button>`;
   } else if (T.step === 'result') {
     const r = T.result;
@@ -2717,7 +2726,7 @@ function renderTarot() {
       <div class="tr-cards n${r.cards.length}">${r.cards.map((c) => `<div class="tr-card"><small class="tr-pos">${c.pos}</small>${tarotFace(c.card.key, c.reversed ? 'sleepy' : (c.card.mood || 'smile'), c.reversed)}<b>${c.card.kind === 'major' ? `${ROMAN[c.card.num]}. ` : ''}${c.card.name} · ${c.card.title}</b><small class="tr-kw">${c.keyword}</small></div>`).join('')}</div>
       <div class="tr-lines">${r.cards.map((c) => `<p><b>${c.pos}</b> ${esc(c.line)}</p>`).join('')}</div>
       <div class="tr-sum"><p>${esc(r.summary)}</p><p class="tr-act">☂️ 오늘 할 한 가지: <b>${esc(r.act)}</b></p></div>
-      <div class="yday-btns"><button type="button" class="primary" data-tarot-again>🔀 같은 질문 다시 뽑기</button><button type="button" class="ghost" data-tarot-reset>다른 질문 보기</button></div>
+      <div class="yday-btns"><button type="button" class="primary" data-tarot-again>🔀 같은 질문 다시 뽑기 <small>(${TTEOK} ${TAROT_COST[T.spread] ?? TAROT_COST.one}개)</small></button><button type="button" class="ghost" data-tarot-reset>다른 질문 보기</button></div>
       <p class="muted tr-foot">타로는 마음을 비춰 보는 재미예요. 중요한 결정은 충분히 생각하고 정해 주세요. 결과는 기록함에 저장했어요.</p>`;
   }
   panel.innerHTML = `<article class="card tarot-card">
@@ -2726,6 +2735,11 @@ function renderTarot() {
   </article>`;
 }
 
+/** 타로 이용 안내: 하루 1회 무료, 그다음은 복떡(가진 복떡 표시) */
+function tarotPriceNoteHTML() {
+  const st = loadTteok(); const pr = tarotPrice(st, state.fortune.dateKey, 'one');
+  return `<p class="muted tr-price-note">${pr.free ? `🎁 하루 ${TAROT_FREE_PER_DAY}번은 무료예요. 그다음부터는 한 장 ${TTEOK}${TAROT_COST.one}개 · 세 장 ${TTEOK}${TAROT_COST.three}개.` : `오늘 무료 타로는 이미 봤어요. 내일 다시 무료로 볼 수 있어요.`} 가진 복떡 ${st?.balance || 0}개 · <a href="#" data-tteok-shop>떡방앗간 가기</a></p>`;
+}
 function tarotNewDeck(T) { T.deck = shuffleDeck(); T.picks = []; T.step = 'pick'; }
 document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-tarot-topic],[data-tarot-spread],[data-tarot-pick],[data-tarot-reveal],[data-tarot-reset],[data-tarot-again],[data-tarot-shuffle]');
@@ -2736,6 +2750,10 @@ document.addEventListener('click', (e) => {
     const i = Number(el.dataset.tarotPick); const at = T.picks.indexOf(i);
     if (at >= 0) T.picks.splice(at, 1); else if (T.picks.length < TAROT_NEED(T.spread)) T.picks.push(i);
   } else if (el.hasAttribute('data-tarot-reveal')) {
+    const u = useTarot(loadTteok(), state.fortune.dateKey, T.spread);
+    if (!u.ok) { toast(`오늘 무료 타로는 이미 봤어요. ${TTEOK} 복떡 ${u.cost}개가 필요해요 (${u.need}개 부족)`); openTteokShop(u.need); return; }
+    save(TTEOK_KEY, u.store);
+    if (!u.free) toast(`${TTEOK} 복떡 ${u.cost}개를 지신에게 줬어요. 카드를 펼칠게요`);
     T.result = readTarot({ topic: T.topic, spread: T.spread, picks: T.picks.map((i) => T.deck[i]), name: state.profile.name });
     T.step = 'result';
     const dk = state.fortune.dateKey; const r = T.result;

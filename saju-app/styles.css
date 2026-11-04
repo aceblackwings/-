@@ -1506,3 +1506,13 @@ body.hj-open { overflow: hidden; }
 .hj-end { text-align: center; padding-top: 30px; display: flex; flex-direction: column; gap: 12px; font-family: var(--hj-serif); color: var(--hj-ink2); }
 html.easy .hj-book { font-size: 1.15rem; }
 @media (prefers-reduced-motion: reduce) { .hj-buy { transition: none; } }
+/* v0.46.1 궁합 상세 맛보기 · 타로 이용 표시 */
+.hj-qa { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.hj-qa li { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px dashed var(--hj-line); border-radius: 4px; background: var(--hj-paper2); }
+.hj-qa b { font-family: var(--hj-serif); color: var(--hj-navy); font-size: 0.95rem; }
+.hj-qa .hj-blur { font-size: 0.88rem; }
+.tr-price { display: inline-block; margin-top: 6px; font-style: normal; font-size: 0.8rem; font-weight: 700; padding: 2px 10px; border-radius: 99px; background: var(--rose-soft); color: #b0486b; }
+.tr-price.free { background: #e3f6ee; color: #2f8a63; }
+.tr-price-note { margin: 10px 0 0; font-size: 0.85rem; }
+.tr-reveal small, [data-tarot-again] small { font-weight: 400; opacity: 0.9; }
+.tr-price-note a { color: #c45c80; font-weight: 700; }

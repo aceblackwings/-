@@ -23,7 +23,7 @@ import { dateToJdn, jdnToDate } from './lunar.js';
 export const PRODUCTS = {
   year: { kind: 'year', icon: '📜', label: '상세 운세', price: 990, desc: '12달 풀이 · 분야 8개 전략 · 조심할 달 대비 · 나만의 보정' },
   life: { kind: 'life', icon: '🀄', label: '평생 정통사주 종합', price: 4900, desc: '여덟 글자 지도 · 일간·일주 · 오행·용신 · 격국 · 십성 · 신살 · 대운 10년마다' },
-  compat: { kind: 'compat', icon: '💞', label: '궁합 상세', price: 4900, desc: '두 사람의 본바탕 · 일간·일지 관계 · 서로 채우는 기운 · 다툼과 푸는 말 · 함께할 달' },
+  compat: { kind: 'compat', icon: '💞', label: '궁합 상세', price: 990, desc: '두 사람의 본바탕 · 일간·일지 관계 · 서로 채우는 기운 · 다툼과 푸는 말 · 함께할 달' },
 };
 // 990원 상세판을 산 사람은 평생 정통사주를 1,000원 싸게(사다리 2단계로 올라오게)
 export const LIFE_DISCOUNT = 1000;
@@ -214,6 +214,19 @@ export function buildPremiumYear(ctx) {
   const rep = { kind: 'year', year: y.sajuYear, title: `${y.sajuYear}년 상세 운세`, sub: `${yearName(y.year.pillar)} · ${who}`, sections };
   rep.toc = tocOf(rep); rep.chars = charCount(rep);
   return rep;
+}
+
+/**
+ * 궁합 상세 맛보기(2026-11-04 사용자 요청 「가장 궁금한 지점에서 끊기」):
+ * 배우자 기운 — 「상대 사주에 내 배우자 기운이 ○% 있어요」까지 보여 주고 그 뜻(결론)은 흐림,
+ * 묻고 답하기 5개는 질문만 보이고 답은 흐림, 함께하기 좋은 달도 흐림
+ */
+export function compatTeaser(rep) {
+  const sp = rep.sections.find((s) => s.key === 'spouse')?.blocks[0].paras[0] || '';
+  const ss = sp.split(/(?<=[.])\s+/);
+  const qa = rep.sections.find((s) => s.key === 'qa')?.blocks.map((b) => ({ q: b.h, a: b.paras[0] })) || [];
+  const mo = rep.sections.find((s) => s.key === 'months')?.blocks[0].paras[0] || '';
+  return { open: ss.slice(1, 2).join(' '), blur: ss.slice(2).join(' '), qa, months: mo };
 }
 
 /** 무료 책자 끝에서 보여 줄 맛보기: 첫 달 풀이 첫 두 문장(나머지는 흐리게) */

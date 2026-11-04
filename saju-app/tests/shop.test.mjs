@@ -3,11 +3,11 @@ import { emptyShop, owns, priceOf, grant, yearKey, compatKey } from '../js/shop.
 
 let pass = 0;
 const t = (name, fn) => { fn(); pass++; console.log('ok -', name); };
-t('가격: 상세판 990 · 평생 4,900 · 궁합 4,900', () => {
+t('가격: 상세판 990 · 평생 4,900 · 궁합 990', () => {
   const s = emptyShop();
   assert.equal(priceOf(s, yearKey(2027)).price, 990);
   assert.equal(priceOf(s, 'life').price, 4900);
-  assert.equal(priceOf(s, compatKey({ year: 1990, month: 1, day: 2 })).price, 4900);
+  assert.equal(priceOf(s, compatKey({ year: 1990, month: 1, day: 2 })).price, 990);
   assert.equal(priceOf(s, 'nothing'), null);
 });
 t('상세판을 산 사람은 평생 정통사주 1,000원 할인', () => {

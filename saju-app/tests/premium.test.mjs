@@ -5,7 +5,7 @@ import { yearOf } from '../js/period.js';
 import { analyzeGyeok } from '../js/gyeokguk.js';
 import { computeDaewoon } from '../js/luck.js';
 import { computeCompat } from '../js/compat.js';
-import { buildPremiumYear, buildLifeReport, buildCompatReport, premiumTeaser, charCount } from '../js/premium.js';
+import { buildPremiumYear, buildLifeReport, buildCompatReport, premiumTeaser, compatTeaser, charCount, PRODUCTS } from '../js/premium.js';
 import { josaProblems } from '../js/josa.js';
 import { toneProblems } from '../js/habit.js';
 
@@ -55,5 +55,12 @@ t('같은 입력이면 같은 글, 점수는 그대로', () => {
 t('맛보기: 첫 문장은 보이고 다음 문장은 흐리게', () => {
   const tz = premiumTeaser(yearRep(PEOPLE[1]));
   assert.ok(tz.h && tz.open.length > 30 && tz.blur.length > 20);
+});
+t('궁합 상세 990원 · 맛보기는 배우자 기운 비율까지 보이고 결론·답 5개·좋은 달은 흐리게', () => {
+  assert.equal(PRODUCTS.compat.price, 990);
+  const tz = compatTeaser(compatRep(PEOPLE[0], PEOPLE[3]));
+  assert.match(tz.open, /%/); assert.ok(tz.blur.length > 10);
+  assert.equal(tz.qa.length, 5); assert.ok(tz.qa.every((x) => x.q.endsWith('?') && x.a.length > 10));
+  assert.ok(tz.months.includes('월'));
 });
 console.log(`premium: ${pass} passed`);
