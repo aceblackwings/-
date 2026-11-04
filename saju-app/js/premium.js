@@ -22,11 +22,16 @@ import { dateToJdn, jdnToDate } from './lunar.js';
 // ---------- 상품 ----------
 export const PRODUCTS = {
   year: { kind: 'year', icon: '📜', label: '상세 운세', price: 990, desc: '12달 풀이 · 분야 8개 전략 · 조심할 달 대비 · 나만의 보정' },
-  life: { kind: 'life', icon: '🀄', label: '평생 정통사주 종합', price: 4900, desc: '여덟 글자 지도 · 일간·일주 · 오행·용신 · 격국 · 십성 · 신살 · 대운 10년마다' },
+  life: { kind: 'life', icon: '🀄', label: '평생 정통사주 종합', price: 2900, desc: '여덟 글자 지도 · 일간·일주 · 오행·용신 · 격국 · 십성 · 신살 · 대운 10년마다' },
   compat: { kind: 'compat', icon: '💞', label: '궁합 상세', price: 990, desc: '두 사람의 본바탕 · 일간·일지 관계 · 서로 채우는 기운 · 다툼과 푸는 말 · 함께할 달' },
+  bundle: { kind: 'bundle', icon: '🎁', label: '올인원 패키지', price: 4900, desc: '그해 상세판 + 평생 정통사주 + 궁합 상세 3명 + 복떡 50개' },
 };
-// 990원 상세판을 산 사람은 평생 정통사주를 1,000원 싸게(사다리 2단계로 올라오게)
-export const LIFE_DISCOUNT = 1000;
+// v0.48 가격(2026-11-04 사용자 결정): 단품 3개(상세판 990 · 정통사주 2,900 · 궁합 990) + 올인원 4,900
+// 옛 「상세판 산 사람 정통사주 1,000원 할인」은 없앰(정통사주가 2,900원으로 내려가 계단이 990 → 2,900 → 4,900으로 고름)
+export const BUNDLE_COMPAT = 3;   // 올인원에 든 궁합 상세 이용권
+export const BUNDLE_TTEOK = 50;   // 올인원에 든 복떡
+/** 올인원을 따로 사면 얼마인지(복떡은 「떡 한 상자」 35개 3,300원 값으로 셈, 100원 단위 반올림) */
+export const bundleWorth = (tteokUnit = 3300 / 35) => Math.round((PRODUCTS.year.price + PRODUCTS.life.price + PRODUCTS.compat.price * BUNDLE_COMPAT + BUNDLE_TTEOK * tteokUnit) / 100) * 100;
 
 const GROUP = { 비견: 0, 겁재: 0, 식신: 1, 상관: 1, 편재: 2, 정재: 2, 편관: 3, 정관: 3, 편인: 4, 정인: 4 };
 const GROUP_WORD = ['나를 세우는 기운(비겁)', '재능을 펼치는 기운(식상)', '결실을 거두는 기운(재성)', '책임과 자리의 기운(관성)', '배움과 도움의 기운(인성)'];

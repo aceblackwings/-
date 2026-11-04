@@ -48,9 +48,9 @@ import { fiveScores } from './todayfive.js';
 import { claimItem, PIECES_PER_ITEM } from './tteok.js';
 import { TTEOK, visit as tteokVisit, doTask as tteokDoTask, todayTasks, doneCount, isOpen as scrollOpen, spend as tteokSpend, buy as tteokBuy, SCROLLS, PACKS, TASKS as TTEOK_TASKS, ALL_BONUS } from './tteok.js';
 import { emoImage, charImage } from './assets.js';
-import { PRODUCTS, buildPremiumYear, buildLifeReport, buildCompatReport, premiumTeaser, compatTeaser, tarotBridge } from './premium.js';
-import { tarotPrice, useTarot, TAROT_COST, TAROT_FREE_PER_DAY } from './tteok.js';
-import { emptyShop, owns as shopOwns, priceOf, grant as shopGrant, yearKey, compatKey } from './shop.js';
+import { PRODUCTS, buildPremiumYear, buildLifeReport, buildCompatReport, premiumTeaser, compatTeaser, tarotBridge, bundleWorth, BUNDLE_COMPAT, BUNDLE_TTEOK } from './premium.js';
+import { tarotPrice, useTarot, TAROT_COST, TAROT_FREE_PER_DAY, gift as tteokGift } from './tteok.js';
+import { emptyShop, owns as shopOwns, priceOf, grant as shopGrant, yearKey, compatKey, bundleKey, grantBundle, useCompatCredit, compatCredits } from './shop.js';
 import { preloadCharImages, itemImage, tarotImage } from './assets.js';
 /** 계절 한정 소품 그림 (없으면 빈칸) */
 const itemThumb = (key, cls = 'item-thumb') => { const u = itemImage(key); return u ? `<img class="${cls}" src="${u}" alt="" loading="lazy">` : ''; };
@@ -1973,6 +1973,20 @@ function compatReportNow() {
 const tocHTML = (rep, freeKey) => `<ul class="hj-toc">${rep.toc.map((t) => `<li${t.key === freeKey ? ' class="free"' : ''}><span>${esc(t.h)}</span><span>${kChars(t.chars)}</span></li>`).join('')}</ul>`;
 const priceTag = (key) => { const p = priceOf(loadShop(), key); return `${p.was ? `<s>${won(p.was)}</s> ` : ''}${won(p.price)}`; };
 
+/** 올인원 패키지(v0.48): 그해 상세판 + 평생 정통사주 + 궁합 3명 + 복떡 50개 = 4,900원. 이미 샀으면 아무것도 안 보임 */
+const bundleYear = () => bookletData().y.sajuYear;
+function bundleOfferHTML() {
+  const Y = bundleYear(); const key = bundleKey(Y); const st = loadShop();
+  if (shopOwns(st, key)) return '';
+  const have = [shopOwns(st, yearKey(Y)) && `${Y}년 상세판`, shopOwns(st, 'life') && '정통사주'].filter(Boolean);
+  return `<div class="hj-bundle">
+    <p class="hj-eyebrow">🎁 올인원 패키지 · 따로 사면 약 ${won(bundleWorth())}</p>
+    <ul class="hj-bundle-list"><li>📜 ${Y}년 상세판</li><li>🀄 평생 정통사주 종합</li><li>💞 궁합 상세 ${BUNDLE_COMPAT}명</li><li>${TTEOK} 복떡 ${BUNDLE_TTEOK}개 <small>(타로 세 장 10번)</small></li></ul>
+    ${have.length ? `<p class="hj-note">이미 가진 ${have.join('·')}은 그대로 두고 나머지가 열려요</p>` : ''}
+    <button type="button" class="hj-buy navy" data-pay="${key}">올인원으로 모두 열기 · ${won(PRODUCTS.bundle.price)}</button>
+  </div>`;
+}
+
 /** 책자 맨 아래: 상세판 열쇠(산 사람은 바로 열기) */
 function premiumYearOfferHTML(bd) {
   const rep = premiumYearOf(bd); const key = yearKey(bd.y.sajuYear);
@@ -1985,6 +1999,7 @@ function premiumYearOfferHTML(bd) {
     ${tocHTML(rep)}
     <p class="hj-note">상세판 ${kChars(rep.chars)} · 한 번 열면 계속 보관 · 다시 열어도 같은 내용 · 운 점수는 결제와 상관없이 같아요</p>
     <button type="button" class="hj-buy" data-pay="${key}">상세판 열기 · ${priceTag(key)}</button>
+    ${bundleOfferHTML()}
   </section>`;
 }
 /** 내 사주: 평생 정통사주 종합 */
@@ -1996,8 +2011,9 @@ function lifeOfferHTML() {
     <h3>여덟 글자를 처음부터 끝까지</h3>
     <p class="hj-desc">${PRODUCTS.life.desc}. 이 화면의 요약을 ${kChars(rep.chars)} 분량의 책으로 풀어 드려요.</p>
     ${tocHTML(rep)}
-    <p class="hj-note">${priceOf(loadShop(), key).note ? `${priceOf(loadShop(), key).note} · ` : '상세판을 사신 분은 1,000원 할인 · '}한 번 열면 계속 보관 · 운 점수는 결제와 상관없이 같아요</p>
+    <p class="hj-note">한 번 열면 계속 보관 · 운 점수는 결제와 상관없이 같아요</p>
     <button type="button" class="hj-buy" data-pay="life">종합 풀이 열기 · ${priceTag(key)}</button>
+    ${bundleOfferHTML()}
   </section>`;
 }
 /** 궁합 결과: 궁합 상세(생일로 추가한 친구만) */
@@ -2014,7 +2030,9 @@ function compatOfferHTML(fr) {
     <ul class="hj-qa">${tz.qa.map((x) => `<li><b>Q. ${esc(x.q)}</b><span class="hj-blur" aria-hidden="true">${esc(x.a)}</span></li>`).join('')}</ul>
     ${tz.months ? `<p class="hj-teaser"><b>함께하기 가장 좋은 달</b><br><span class="hj-blur" aria-hidden="true">${esc(tz.months)}</span></p>` : ''}
     <p class="hj-note">궁합 상세 ${kChars(rep.chars)} · 다툼이 생기는 장면과 푸는 말까지 · 한 번 열면 계속 보관</p>
-    <button type="button" class="hj-buy" data-pay="${key}">답 모두 보기 · ${priceTag(key)}</button>
+    ${compatCredits(loadShop()) > 0
+      ? `<button type="button" class="hj-buy navy" data-pay="${key}">🎟️ 이용권으로 답 모두 보기 <small>(남은 ${compatCredits(loadShop())}장)</small></button>`
+      : `<button type="button" class="hj-buy" data-pay="${key}">답 모두 보기 · ${priceTag(key)}</button>${bundleOfferHTML()}`}
   </div>`;
 }
 
@@ -2039,15 +2057,16 @@ function tarotBridgeHTML(topic) {
 function openPay(key) {
   document.querySelectorAll('.pay-modal').forEach((x) => x.remove());
   const kind = key.split(':')[0]; const P = PRODUCTS[kind]; const pr = priceOf(loadShop(), key);
-  const label = kind === 'year' ? `${key.split(':')[1]}년 ${P.label}` : kind === 'compat' ? `${state.compat?.fr?.name || '상대'} 님과의 ${P.label}` : P.label;
+  const label = kind === 'year' || kind === 'bundle' ? `${key.split(':')[1]}년 ${P.label}` : kind === 'compat' ? `${state.compat?.fr?.name || '상대'} 님과의 ${P.label}` : P.label;
   const box = document.createElement('div'); box.className = 'evo-modal pay-modal';
   box.innerHTML = `<div class="evo-box hanji hj-pay" role="dialog" aria-label="${esc(label)} 결제">
     <p class="hj-eyebrow">${P.icon} 결제</p>
     <h3>${esc(label)}</h3>
     <p class="hj-desc">${P.desc}</p>
-    <p class="hj-price">${pr.was ? `<s>${won(pr.was)}</s> ` : ''}<b>${won(pr.price)}</b>${pr.note ? ` <small>${pr.note}</small>` : ''}</p>
+    <p class="hj-price">${pr.credit ? `<b>🎟️ 이용권 1장</b> <small>${pr.note}</small>` : `${pr.was ? `<s>${won(pr.was)}</s> ` : ''}<b>${won(pr.price)}</b>${pr.note ? ` <small>${pr.note}</small>` : ''}`}</p>
+    ${kind === 'bundle' ? `<p class="hj-note">따로 사면 약 ${won(bundleWorth())} · 상세판·정통사주는 바로 열리고, 궁합 이용권 ${BUNDLE_COMPAT}장과 복떡 ${BUNDLE_TTEOK}개가 들어와요</p>` : ''}
     <ul class="hj-promise"><li>한 번 결제하면 이 기기에서 계속 볼 수 있어요</li><li>운 점수·부적·지신 성장은 결제와 상관없이 같아요</li><li>풀이는 확률적 해석이에요. 의료·법률·투자 판단은 전문가와 함께 하세요</li></ul>
-    <button type="button" class="hj-buy" data-pay-ok="${key}">체험판으로 열기 (결제 없음)</button>
+    <button type="button" class="hj-buy" data-pay-ok="${key}">${pr.credit ? '이용권으로 열기' : '체험판으로 열기 (결제 없음)'}</button>
     <p class="hj-note">지금은 체험판이라 실제 결제 없이 열려요. 정식 출시 때 이 자리에서 ${won(pr.price)}이 결제돼요.</p>
     <button type="button" class="ghost" data-pay-close style="width:100%">닫기</button>
   </div>`;
@@ -2055,14 +2074,18 @@ function openPay(key) {
   box.addEventListener('click', (e) => { if (e.target === box || e.target.closest('[data-pay-close]')) box.remove(); });
 }
 function completePay(key) {
-  const pr = priceOf(loadShop(), key);
-  const r = shopGrant(loadShop(), key, { paid: pr.price, via: 'trial' }); save(SHOP_KEY, r.store);
+  const pr = priceOf(loadShop(), key); const kind = key.split(':')[0];
+  if (kind === 'bundle') {
+    const r = grantBundle(loadShop(), Number(key.split(':')[1]), { paid: pr.price, via: 'trial' }); save(SHOP_KEY, r.store);
+    if (!r.already) save(TTEOK_KEY, tteokGift(loadTteok(), '올인원 패키지', BUNDLE_TTEOK).store);
+  } else if (pr.credit) save(SHOP_KEY, useCompatCredit(loadShop(), key).store);
+  else save(SHOP_KEY, shopGrant(loadShop(), key, { paid: pr.price, via: 'trial' }).store);
   document.querySelectorAll('.pay-modal').forEach((x) => x.remove());
-  const kind = key.split(':')[0];
   renderToday(); if (state.saju) { renderSaju(); }
-  if (kind === 'compat') { const ph = $('[data-panel="compat"]'); if (ph) renderCompat(); }
-  toast('📖 열렸어요. 내 서재에 보관했어요');
+  if (kind === 'compat' || kind === 'bundle') { const ph = $('[data-panel="compat"]'); if (ph) renderCompat(); }
   if (state.tarot?.step === 'result') renderTarot();
+  if (kind === 'bundle') { toast(`🎁 올인원이 열렸어요. 상세판·정통사주는 내 서재에, 궁합 이용권 ${BUNDLE_COMPAT}장·복떡 ${BUNDLE_TTEOK}개를 받았어요`); openReader('year'); return; }
+  toast(pr.credit ? `🎟️ 이용권 1장을 썼어요. 남은 이용권 ${compatCredits(loadShop())}장` : '📖 열렸어요. 내 서재에 보관했어요');
   openReader(kind, state.readerJump); state.readerJump = null;
 }
 
@@ -2088,7 +2111,7 @@ function openReader(kind, jump = null) {
   });
 }
 document.addEventListener('click', (e) => {
-  const p = e.target.closest('[data-pay]'); if (p) { e.preventDefault(); const key = p.dataset.pay; state.readerJump = p.dataset.jump || null; if (shopOwns(loadShop(), key)) { openReader(key.split(':')[0], state.readerJump); state.readerJump = null; } else openPay(key); return; }
+  const p = e.target.closest('[data-pay]'); if (p) { e.preventDefault(); const key = p.dataset.pay; state.readerJump = p.dataset.jump || null; if (shopOwns(loadShop(), key)) { openReader(key.startsWith('bundle') ? 'year' : key.split(':')[0], state.readerJump); state.readerJump = null; } else openPay(key); return; }
   const ok = e.target.closest('[data-pay-ok]'); if (ok) { completePay(ok.dataset.payOk); return; }
   const r = e.target.closest('[data-read]'); if (r) { openReader(r.dataset.read, r.dataset.jump || null); }
 });
