@@ -25,7 +25,7 @@ t('가족운: 성별에 따라 육친 자리가 다름, 고민 「인간관계�
   const f = make(inp, 'people', 'female'); const m = make(inp, 'people', 'male');
   assert.equal(f.fields[0].key, 'social');
   const ff = f.fields.find((x) => x.key === 'family'); const mf = m.fields.find((x) => x.key === 'family');
-  assert.ok(ff && mf); assert.equal(ff.paras.length, 3);
+  assert.ok(ff && mf); assert.equal(ff.paras.length, 4); assert.ok(/^⚠️ 조심할 점/.test(ff.paras[3]));
   assert.ok(/육친으로 보면/.test(ff.paras[1]));
 });
 

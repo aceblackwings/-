@@ -1,6 +1,7 @@
 // 운세 풀이 (대운·올해·이달): 읽을거리가 있는 해석
 // 재료는 모두 정통 엔진(period.js / luck.js)에서 나온 값 — 그 기간 간지의 십신(천간), 속 기운(지지 본기의 십신),
 // 용신·기신 적합도, 일지와의 합·충, 점수. 여기에 십신별 해설·좋은 점·조심할 점·분야별 풀이·실천 팁을 엮는다.
+import { josa } from './josa.js';
 import { tenGod, BRANCH_MAIN_STEM, ELEMENT_KO, ELEMENT_HANJA, STEM_ELEMENT, BRANCH_ELEMENT } from './saju.js';
 import { twelveStage } from './expert.js';
 
@@ -187,7 +188,7 @@ const G5 = { 비견: 0, 겁재: 0, 식신: 1, 상관: 1, 편재: 2, 정재: 2, �
 export function crossLine(daewoonGod, yearGod) {
   const d = G5[daewoonGod]; const y = G5[yearGod]; const m = (n) => ((n % 5) + 5) % 5;
   const dk = GOD_READING[daewoonGod].keyword; const yk = GOD_READING[yearGod].keyword;
-  if (d === y) return `10년 큰 흐름(「${dk}」)과 그해(「${yk}」)가 같은 방향이라, 그 성격이 한 해 내내 크게 드러나요. 잘하는 것을 밀고 나가기 좋아요.`;
+  if (d === y) return `${dk === yk ? `10년 큰 흐름과 그해가 똑같이 「${dk}」의 기운이라` : `10년 큰 흐름(「${dk}」)과 그해(「${yk}」)가 같은 방향이라`}, 그 성격이 한 해 내내 크게 드러나요. 잘하는 것은 밀고 나가되, 같은 기운이 겹치는 만큼 지나치지 않게 속도를 조절하세요.`;
   if (m(y - d) === 1) return `10년 큰 흐름(「${dk}」)의 힘이 그해(「${yk}」)로 흘러들어, 그동안 쌓은 것이 결실로 이어지기 좋은 해예요.`;
   if (m(d - y) === 1) return `그해(「${yk}」)의 경험이 10년 큰 흐름(「${dk}」)을 키우는 거름이 돼요. 당장의 결과보다 쌓이는 것에 의미가 있는 해예요.`;
   return `10년 큰 흐름(「${dk}」)과 그해(「${yk}」)가 서로 다른 방향을 가리켜요. 둘 사이 균형을 잡는 게 한 해의 숙제라, 큰 결정은 한 박자 쉬어 가면 좋아요.`;
@@ -196,8 +197,11 @@ export function crossLine(daewoonGod, yearGod) {
 /** ⑨ 교운기: 대운이 바뀌는 해(그해 나이 = 새 대운 시작 나이)·바뀌기 전 해 */
 export function turnLine(age, daewoon, nextDaewoon) {
   if (!daewoon) return '';
-  if (age === daewoon.startAge) return `이 해는 10년 큰 흐름이 새로 바뀌는 해(교운기)예요. 환경·관계·마음가짐이 바뀌기 쉬우니, 새 흐름에 맞춰 계획을 다시 세우면 좋아요.`;
-  if (nextDaewoon && nextDaewoon.startAge - age === 1) return `다음 해에 10년 큰 흐름이 바뀌어요(교운기). 이 해에 정리할 것은 정리하고, 다음 10년의 준비를 시작해 보세요.`;
+  const turnOf = (d) => d.turnAge ?? d.startAge;
+  const when = daewoon.startDate ? ` (${daewoon.startDate.year}년 ${daewoon.startDate.month}월쯤부터)` : '';
+  if (age === turnOf(daewoon)) return `이 해는 10년 큰 흐름이 새로 바뀌는 해(교운기)${when}예요. 환경·관계·마음가짐이 바뀌기 쉬우니, 새 흐름에 맞춰 계획을 다시 세우면 좋아요.`;
+  if (nextDaewoon && turnOf(nextDaewoon) === age) return `이 해 ${nextDaewoon.startDate?.month ?? ''}월쯤 10년 큰 흐름이 새로 바뀌어요(교운기). 그 전까지는 지금 흐름을 마무리하고, 그 뒤로는 새 흐름에 맞춰 계획을 다시 세우면 좋아요.`.replace('이 해 월쯤', '이 해');
+  if (nextDaewoon && turnOf(nextDaewoon) - age === 1) return `다음 해${nextDaewoon.startDate ? ` ${nextDaewoon.startDate.month}월쯤` : ''}에 10년 큰 흐름이 바뀌어요(교운기). 이 해에 정리할 것은 정리하고, 다음 10년의 준비를 시작해 보세요.`;
   return '';
 }
 
@@ -231,8 +235,9 @@ export function partsStory(parts, saju) {
     }
     if (p.kind === 'combine') out.push('내 일지와 합(合)을 이뤄 손발이 맞는 사람·일이 찾아오기 쉬워요. 협력과 인연에 좋은 신호예요.');
     if (p.kind === 'clash') out.push('내 일지와 충(沖)이 생겨 이사·이직·관계 변화처럼 움직임이 생기기 쉬워요. 변화는 준비하면 기회가 돼요.');
+    if (p.kind === 'gongmang') out.push('이 시기의 지지는 내 일주의 공망(空亡) 자리라 들어오는 힘이 반쯤 비어 있어요. 기대한 결과가 늦게 손에 잡히기 쉬우니, 결과보다 준비·공부에 힘을 두고 계약은 한 번 더 확인하면 좋아요.');
   }
-  if (!out.length && !parts.length && !st) out.push(`원국과 크게 돕거나 부딪히는 글자가 없어, 평소의 나답게 흐름을 이어 가는 때예요. 필요한 기운인 ${ELEMENT_HANJA[saju.yongsin]}(${ELEMENT_KO[saju.yongsin]})을 생활에서 채우면 좋아요.`);
+  if (!out.length && !parts.length && !st) out.push(`원국과 크게 돕거나 부딪히는 글자가 없어, 평소의 나답게 흐름을 이어 가는 때예요. 필요한 기운인 ${josa(`${ELEMENT_HANJA[saju.yongsin]}(${ELEMENT_KO[saju.yongsin]})`, '을/를')} 생활에서 채우면 좋아요.`);
   return out;
 }
 
@@ -240,10 +245,10 @@ export function partsStory(parts, saju) {
 export function closingLine(kind, score, polite = false) {
   const when = kind === 'daewoon' ? '이 10년' : kind === 'year' ? '올해' : '이달';
   const lines = score >= 65
-    ? [`${when}은 흐름이 좋아. 마음에 품은 일을 시작하기 좋은 때야.`, `${when}은 흐름이 좋아요. 마음에 품은 일을 시작하기 좋은 때예요.`]
+    ? [`${josa(when, '은/는')} 흐름이 좋아. 마음에 품은 일을 시작하기 좋은 때야.`, `${josa(when, '은/는')} 흐름이 좋아요. 마음에 품은 일을 시작하기 좋은 때예요.`]
     : score >= 50
-      ? [`${when}은 무난해. 작은 습관 하나가 큰 차이를 만들 거야.`, `${when}은 무난해요. 작은 습관 하나가 큰 차이를 만들 거예요.`]
-      : [`${when}은 쉬어 가며 다지는 때야. 내가 옆에서 같이 챙길게.`, `${when}은 쉬어 가며 다지는 때예요. 제가 옆에서 같이 챙길게요.`];
+      ? [`${josa(when, '은/는')} 무난해. 작은 습관 하나가 큰 차이를 만들 거야.`, `${josa(when, '은/는')} 무난해요. 작은 습관 하나가 큰 차이를 만들 거예요.`]
+      : [`${josa(when, '은/는')} 쉬어 가며 다지는 때야. 내가 옆에서 같이 챙길게.`, `${josa(when, '은/는')} 쉬어 가며 다지는 때예요. 제가 옆에서 같이 챙길게요.`];
   return lines[polite ? 1 : 0];
 }
 

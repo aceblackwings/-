@@ -2,6 +2,7 @@ import {
   computeSaju, tenGod, seededRandom, BIRTH_CITIES, cityLon, STEMS, STEMS_KO, BRANCHES, BRANCHES_KO, STEM_ELEMENT, BRANCH_ELEMENT,
   BRANCH_MAIN_STEM, ELEMENT_KO, ELEMENT_HANJA, pillarLabel, pillarLabelKo,
 } from './saju.js';
+import { josa, tailJosa } from './josa.js';
 import { MOODS, LEVELS, pickUmbrella, missionById, habitDay, setMood, pickLevel, completeHabit, setAfter, weekDone, needsCare, habitStats } from './habit.js';
 import { computeFortune, CATEGORIES, DAY_MASTER_PROFILE, TEN_GOD_INFO } from './fortune.js';
 import {
@@ -34,11 +35,11 @@ import { analyzeGyeok, GYEOK_PROFILE, strengthMission } from './gyeokguk.js';
 import { buildBooklet, todayLetter, monthLines } from './booklet.js';
 import { natalRelations } from './relations.js';
 import { buildIlju } from './ilju.js';
-import { retroQuestions, retroSummary, RETRO_ANSWERS } from './retro.js';
+import { retroQuestions, retroSummary, RETRO_ANSWERS, retroCalib } from './retro.js';
 import { HOUR_QUESTIONS, guessHours } from './hourguess.js';
 import { formal, hasPoliteYo } from './formal.js';
 import { kaiunPower, kaiunFor, kaiunLine, fieldKaiunSentence, withKaiun, logKaiun, kaiunTrend, capState } from './kaiun.js';
-import { tenGodProfile, pillarReadings, personSummary } from './natal.js';
+import { tenGodProfile, pillarReadings, personSummary, natalWatch } from './natal.js';
 import { growEquipped, fillOf, replaceCharm, pairType, fiveDone, elementsOwned, setUnlocked, boostRarity, offerUnlocked, offerValue, offerable, removeOffered, equipLine, charmKey, GROW_FULL, RARITY_KO as CC_RARITY_KO, TYPE_KO, OFFER_UNLOCK } from './charmcare.js';
 import { buildNote, markNote, weekStamps, stampRarity, AREA_CHARM, RARITY_KO, MONTH_KEY_NEED, monthStamps, STORY_STEPS, newStoryIndex, storiesOpen, buildStories, weeklyLetter } from './note.js';
 import { ELEMENT_LUCK } from './fortune.js';
@@ -57,7 +58,7 @@ import { yearCard, monthRange, savePledge, pledgeReviewDue, reviewPledge, PLEDGE
 import { buildMissions, markDone as dmMarkDone, allDone as dmAllDone, claimBonus as dmClaimBonus, DM_BONUS_EXP } from './daymission.js';
 import { ensureStart, inFirstWeek, plainTerms, hasGameTerms } from './firstweek.js';
 import { emptyEasy, setEasy, dismissEasy, suggestEasy, easyTerms, hasEasyTerms, parseEasyLink, acceptLink, linkAskText, easyLinkQuery, FROM_MAX } from './easymode.js';
-import { expertTable, sinsalOf, calcBasis, STAGE_NOTE, twelveStage, makeChart, addChart, removeChart, emptyCharts, RELATIONS } from './expert.js';
+import { expertTable, sinsalOf, calcBasis, STAGE_NOTE, twelveStage, makeChart, addChart, removeChart, emptyCharts, RELATIONS , sinsal12Of, SINSAL12_NOTE } from './expert.js';
 import { CARD_AREAS, SPREADS, drawReading } from './cards.js';
 import { weekWealth, SAFETY_LINES } from './wealthweek.js';
 import { makeBackup, parseBackup, backupText, backupFileName, PREFIX as BACKUP_PREFIX } from './backup.js';
@@ -132,12 +133,12 @@ function save(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* 저장 불가 환경 */ }
 }
 
-function toast(msg) {
+function toast(msg, ms) {
   document.querySelectorAll('.toast').forEach((t) => t.remove());
   const el = document.createElement('div');
   el.className = 'toast'; el.textContent = msg;
   document.body.appendChild(el);
-  setTimeout(() => el.remove(), Math.min(5200, 2000 + msg.length * 35));
+  setTimeout(() => el.remove(), ms || Math.min(5200, 2000 + msg.length * 35));
 }
 
 // ---------- 입력 ----------
@@ -158,6 +159,17 @@ function solarDateOf(p) {
   return { year: p.year, month: p.month, day: p.day };
 }
 
+/** 균시차(2026-11-04)로 기존 사용자의 시주·일주가 바뀌었으면 한 번만 알림(되돌리는 방법 포함) */
+function eotNotice(profile, mode) {
+  if (mode === 'summon' || profile.eotSeen || profile.timeUnknown || profile.eot === false || profile.lonCorr === false) return;
+  const old = computeSaju({ ...profileToInput(profile), eot: false });
+  state.profile = { ...profile, eotSeen: true }; save(STORE_KEY, state.profile);
+  const P = (x) => (x ? pillarLabel(x) : '');
+  if (P(old.pillars.hour) === P(state.saju.pillars.hour) && P(old.pillars.day) === P(state.saju.pillars.day)) return;
+  const e = state.saju.eotMinutes;
+  setTimeout(() => toast(`🕰️ 계산이 더 정밀해졌어요. 태어난 날 해의 실제 위치(균시차 ${e > 0 ? '+' : ''}${e}분)까지 반영해 ${P(old.pillars.day) !== P(state.saju.pillars.day) ? `일주가 ${P(old.pillars.day)} → ${P(state.saju.pillars.day)}, ` : ''}시주가 ${P(old.pillars.hour)} → ${P(state.saju.pillars.hour)}로 바뀌었어요. 예전 방식으로 보려면 정보 수정 > 고급 설정에서 「균시차 반영」을 꺼 주세요.`, 10000), 1500);
+}
+
 function profileToInput(p) {
   const solar = solarDateOf(p);
   const [hour, minute] = (p.time || '12:00').split(':').map(Number);
@@ -168,6 +180,7 @@ function profileToInput(p) {
     zasiMode: p.zasi,
     birthLon: cityLon(p.city || ''),
     dst: p.dstAuto === false ? 'off' : 'auto',
+    eot: p.eot !== false, // 균시차(2026-11-04, 기본 켬)
   };
 }
 
@@ -200,6 +213,7 @@ function start(profile, mode = 'today') {
   save(FW_KEY, ensureStart(load(FW_KEY, null), state.fortune.dateKey, loadGrowth().exp));
   setupPlainTerms();
   setupFormal();
+  eotNotice(profile, mode);
   renderToday();
   setTimeout(() => { processDexRewards(); renderCompat(); }, 2600);
   setTimeout(initRealtime, 900);
@@ -287,6 +301,7 @@ function initForm() {
     form.zasi.value = saved.zasi || 'early';
     form.city.value = saved.city || '';
     form.dstAuto.checked = saved.dstAuto !== false;
+    if (form.eot) form.eot.checked = saved.eot !== false;
     if (saved.gender) form.gender.value = saved.gender;
     if (saved.concern) form.concern.value = saved.concern;
   }
@@ -316,6 +331,7 @@ function initForm() {
       zasi: form.zasi.value,
       city: form.city.value,
       dstAuto: form.dstAuto.checked,
+      eot: form.eot ? form.eot.checked : true,
       gender: form.gender.value,
       concern: form.concern.value,
     };
@@ -450,7 +466,7 @@ function askAnswerHTML(key) {
       <div class="ask-block"><h4>📜 사주로 보면</h4><p>${a.basis}</p></div>
       <div class="ask-block"><h4>✨ 이렇게 해 보세요</h4><p>${a.tip}</p>${a.weak ? `<p class="muted" style="margin:6px 0 0;font-size:0.84rem">오늘 가장 약한 건 <b>${a.weak.label}(${a.weak.score}점)</b>이에요.</p>` : ''}</div>
       <div class="ask-block"><h4>📈 앞으로 7일 ${a.catLabel}</h4>${trendSVG(a.trend, color)}
-        <p class="muted" style="margin:0;font-size:0.84rem">가장 좋은 날은 <b style="color:var(--wood)">${a.best.full} ${a.best.score}점</b>${a.low ? `, 조심할 날은 <b style="color:var(--fire)">${a.low.full}</b>` : ''}이에요.</p></div>
+        <p class="muted" style="margin:0;font-size:0.84rem">가장 좋은 날은 <b style="color:var(--wood)">${a.best.full} ${a.best.score}점</b>${a.low ? `, 조심할 날은 <b style="color:var(--fire)">${a.low.full}</b>${tailJosa(a.low.full, '이에요/예요')}` : '이에요'}</p></div>
       <div class="ask-guardian"><div class="av">${face}</div><p>${esc(line)}</p></div>
       <button class="primary ask-cta" type="button" data-ask-cta="${key}">${a.cta.label} →</button>
       ${saveBtnHTML('ask', key)}
@@ -577,6 +593,7 @@ function renderSajuFull() {
     </div>
 
     ${personCardHTML()}
+    ${natalWatchHTML()}
     ${hourGuessCardHTML()}
     ${retroCardHTML()}
     ${iljuCardHTML()}
@@ -615,6 +632,13 @@ function personCardHTML() {
   return `<div class="card person-card"><h3>나라는 사람 <span class="tag">한 장 요약</span></h3><p class="gk-title"><b>${esc(ps.headline)}</b></p>${ps.lines.map((l) => `<p>${esc(l)}</p>`).join('')}<small class="muted">아래 카드에서 일주·그릇·성향을 하나씩 더 자세히 볼 수 있어요.</small></div>`;
 }
 
+/** 타고난 사주에서 조심할 습관(natal.js natalWatch): 근거 → 장면 → 행동 */
+function natalWatchHTML() {
+  const list = natalWatch(state.saju); if (!list.length) return '';
+  return `<div class="card bk-part bk-checks nw-card"><h3>🧭 타고난 사주에서 조심할 습관 <small>강점의 뒷면이라, 알고 있으면 충분히 다룰 수 있어요</small></h3>
+    <ul class="ck-list">${list.map((c) => `<li class="ck watch"><b>⚠️ <em>${esc(c.basis)}</em> ${esc(c.title)}</b><p>${esc(c.text)}</p><p class="ck-act">👉 ${esc(c.act)}</p></li>`).join('')}</ul></div>`;
+}
+
 /** A6 시간 모름: 성향 질문 3개로 시주 후보 */
 function hourGuessCardHTML() {
   if (state.saju.pillars.hour) return state.profile.guessedTime ? '<p class="muted" style="margin:-4px 0 12px;font-size:0.8rem">🕰️ 지금 사주는 성향 질문으로 추정한 태어난 시간으로 보고 있어요. 정확한 시간을 알게 되면 정보 수정에서 바꿔 주세요.</p>' : '';
@@ -645,6 +669,7 @@ function retroCardHTML() {
     <p class="muted" style="margin-top:0">사주로 보면 아래 해에 큰 흐름이 들어왔어요. 기억나는 대로 눌러 주세요.</p>
     ${qs.map((q) => `<div class="rt-q"><p><b>${esc(q.q)}</b><small>${esc(q.why)}</small></p><div class="yday-btns">${RETRO_ANSWERS.map(([k, l]) => `<button type="button" class="${ans[q.year] === k ? 'primary' : 'ghost'}" data-retro="${q.year}:${k}">${l}</button>`).join('')}</div></div>`).join('')}
     ${sum ? `<p class="rt-sum">🔎 ${esc(sum.text)}</p>` : ''}
+    ${(() => { if (!sum || sum.done < sum.total) return ''; const c = retroCalibNow(d.dw); return c?.n ? `<p class="rt-sum">🧭 ${esc(c.text)} 이 답은 2027년 「조심할 점」을 고르는 순서에 반영돼요.</p>` : ''; })()}
   </div>`;
 }
 document.addEventListener('click', (e) => {
@@ -654,6 +679,7 @@ document.addEventListener('click', (e) => {
   a[y] = k; save(RETRO_KEY, a);
   const el = $('#retro'); if (el) { const t = document.createElement('div'); t.innerHTML = retroCardHTML(); el.replaceWith(t.firstElementChild); }
   if (first) grow((g) => addExp(g, 1));
+  renderToday(); // 2026-11-04 답이 바뀌면 2027년 「조심할 점」 순서(개인 보정)도 바로 반영
 });
 
 /** ③ 나의 일주(60일주론) + 공유(모습·한마디만, 생일·간지 없음) */
@@ -698,9 +724,12 @@ function pillarCardHTML() {
 /** ⑤ 사주에 숨은 별(신살) — 뜻은 「이렇게 쓰면 힘이 돼요」 */
 function sinsalCardHTML() {
   const list = sinsalOf(state.saju);
-  if (!list.length) return '';
-  return `<div class="card ss-card"><h3>사주에 숨은 별 <span class="tag">신살 ${list.length}개</span></h3>
-    <ul class="rel-list">${list.map((x) => `<li><p><b>${x.name}</b> <small class="muted">${x.where.join('·')} ${x.branch}</small></p><small>✨ ${esc(x.note)}</small></li>`).join('')}</ul>
+  const POSK = { year: '연지', month: '월지', day: '일지', hour: '시지' };
+  const s12 = sinsal12Of(state.saju);
+  return `<div class="card ss-card"><h3>사주에 숨은 별 <span class="tag">신살 ${list.length}개 · 12신살</span></h3>
+    ${list.length ? `<ul class="rel-list">${list.map((x) => `<li><p><b>${x.name}</b> <small class="muted">${x.where.join('·')} ${x.branch}</small></p><small>✨ ${esc(x.note)}</small></li>`).join('')}</ul>` : ''}
+    <h4 style="margin:12px 0 6px">12신살 <small class="muted">띠(연지) 기준</small></h4>
+    <ul class="rel-list">${s12.map((x) => `<li><p><b>${POSK[x.k]} ${BRANCHES[x.branch]} · ${x.name}</b></p><small>✨ ${esc(SINSAL12_NOTE[x.name].mean)} — 💡 ${esc(SINSAL12_NOTE[x.name].act)}</small></li>`).join('')}</ul>
   </div>`;
 }
 
@@ -732,6 +761,12 @@ function gyeokCardHTML() {
   </div>`;
 }
 
+/** 대운 첫 교운 시점: 만 ○세 ○개월(YYYY년 M월) */
+function dwExact(dw) {
+  const e = dw.startExact; const sd = dw.pillars[0]?.startDate;
+  return e && sd ? `만 ${e.years}세${e.months ? ` ${e.months}개월` : ''}(${sd.year}년 ${sd.month}월)` : `${dw.startAge}세`;
+}
+
 function birthDatesText(p, i) {
   const lunar = solarToLunar(i.year, i.month, i.day);
   const solarText = `양력 ${i.year}년 ${i.month}월 ${i.day}일`;
@@ -744,10 +779,12 @@ function birthDatesText(p, i) {
 function strengthText(s) {
   const me = ELEMENT_KO[STEM_ELEMENT[s.dayMaster]];
   // v0.37: 지장간까지 센 오행 비율 + 득령·득지·통근으로 강약 7단계
-  const F = { 득령: '태어난 달이 나를 도와요(득령)', 실령: '태어난 달은 나를 직접 돕지 않아요(실령)', 득지: '태어난 날의 지지가 나를 받쳐요(득지)', 실지: '태어난 날의 지지는 다른 기운이에요(실지)', 통근: '지지 속에 내 뿌리가 있어요(통근)', '뿌리 없음': '지지 속에 내 뿌리가 없어 바람을 타기 쉬워요', 득세: '천간에 도와주는 글자가 많아요(득세)', 실세: '' };
-  const why = (s.strengthFactors || []).map((k) => F[k]).filter(Boolean).join(', ');
+  const F = { 득령: '태어난 달이 나를 도움(득령)', 실령: '태어난 달은 나를 직접 돕지 않음(실령)', 득지: '태어난 날의 지지가 나를 받침(득지)', 실지: '태어난 날의 지지는 다른 기운(실지)', 통근: '지지 속에 내 뿌리가 있음(통근)', '뿌리 없음': '지지 속에 내 뿌리가 없음(바람을 타기 쉬움)', 득세: '천간에 도와주는 글자가 많음(득세)', 실세: '' };
+  // 2026-11-04 사용자 의견 「이해하기 어려운 문장」: 한 줄로 이어 붙이지 않고 「비율 → 근거 번호 → 결론」 세 토막으로
+  const NUM = '①②③④⑤';
+  const why = (s.strengthFactors || []).map((k) => F[k]).filter(Boolean).map((t, n) => `${NUM[n] || '·'} ${t}`).join(' ');
   const lv = s.strengthLevel || s.strength;
-  const base = `${me} 기운과 이를 돕는 기운이 지장간까지 합쳐 ${s.support}%, ${why ? `${why}. ` : ''}강약 점수 ${s.strengthScore}점으로 7단계 중 「${lv}」입니다. ${s.strength === '신강' ? '힘을 밖으로 써 주는 기운이 균형을 잡아 줍니다.' : s.strength === '신약' ? '나를 북돋아 주는 기운이 힘이 됩니다.' : lv === '중화신약' ? '균형에 가깝지만 조금 여린 쪽이라, 나를 받쳐 주는 기운이 반가워요.' : lv === '중화신강' ? '균형에 가깝지만 조금 센 쪽이라, 힘을 써 줄 기운이 반가워요.' : '가장 부족한 기운을 채우면 더 좋아집니다.'}`;
+  const base = `나(${me})와 나를 돕는 기운이 사주 전체(속 글자인 지장간 포함)의 ${s.support}%를 차지합니다. ${why ? `여기에 ${why}. ` : ''}이를 합친 강약 점수는 ${s.strengthScore}점, 7단계 중 「${lv}」입니다. ${s.strength === '신강' ? '힘을 밖으로 써 주는 기운이 균형을 잡아 줍니다.' : s.strength === '신약' ? '나를 북돋아 주는 기운이 힘이 됩니다.' : lv === '중화신약' ? '균형에 가깝지만 조금 여린 쪽이라, 나를 받쳐 주는 기운이 반가워요.' : lv === '중화신강' ? '균형에 가깝지만 조금 센 쪽이라, 힘을 써 줄 기운이 반가워요.' : '가장 부족한 기운을 채우면 더 좋아집니다.'}`;
   const el = (e) => `${ELEMENT_KO[e]}(${ELEMENT_HANJA[e]})`;
   const eul = (e) => ['을', '를', '를', '을', '를'][e]; // 목·금은 받침 있음
   const i = (e) => ['이', '가', '가', '이', '가'][e];
@@ -761,7 +798,7 @@ function strengthText(s) {
         : ` 그래서 용신은 ${el(s.yongsin)}입니다. ${j.text || ''}`;
   const table = j.table && !String(j.text).includes(j.table) ? ` ${j.table}` : ''; // v0.35 천간 단위 처방
   // v0.39 종격·통관·병약
-  const sp = s.special ? ` ${s.special.text} 그래서 용신을 ${el(s.yongsin)}, 희신을 ${el(s.heesin)}으로 봐요.` : '';
+  const sp = s.special ? ` ${s.special.text} 그래서 용신을 ${el(s.yongsin)}, 희신을 ${josa(el(s.heesin), '으로/로')} 봐요.` : '';
   const tg = s.tonggwan ? ` 또 ${el(s.tonggwan.a)}${i(s.tonggwan.a)} ${el(s.tonggwan.b)}${eul(s.tonggwan.b)} 누르며 맞서 있어, 둘 사이를 이어 주는 ${el(s.tonggwan.el)}${i(s.tonggwan.el)} 반가운 다리 역할을 해요(통관).` : '';
   const by = s.byeongyak ? ` 사주에서 가장 넘치는 ${el(s.byeongyak.byeong)}${i(s.byeongyak.byeong)} 병(病)이라면, 그것을 다스리는 ${el(s.byeongyak.yak)}${i(s.byeongyak.yak)} 약(藥)이에요${s.byeongyak.match ? ' — 용신과 같아 처방이 더 분명해요' : ''}.` : '';
   return s.special ? `${base}${sp}${tg}${by} (지장간 오행 · 강약 7단계 · 종격 판단)` : `${base}${tail}${table}${tg}${by} (지장간 오행 · 강약 7단계 · 억부 + 궁통보감 조후표 · 통관·병약)`;
@@ -1054,7 +1091,7 @@ function tlDaewoon(d) {
   const s = state.saju;
   if (!d.dw) return tlCard('daewoon', '<small>성별을 입력하면 대운을 계산해요</small>', '<p class="muted">대운은 성별에 따라 순행·역행이 달라져요. 정보 수정에서 성별을 넣어 주세요.</p>');
   const age = state.fortune.date.year - s.input.year;
-  const cur = daewoonAt(d.dw, age);
+  const cur = daewoonAt(d.dw, age, state.fortune.date);
   const nextStart = cur ? cur.endAge + 1 : d.dw.startAge;
   const sum = cur ? `<small>${plKo(cur)} · ${cur.startAge}~${cur.endAge}세 · 다음 대운까지 ${nextStart - age}년</small>${scoreChip(cur.score)}` : `<small>첫 대운은 ${d.dw.startAge}세부터</small>`;
   const chips = d.dw.pillars.map((p) => `<span class="dw-chip ${cur && p.startAge === cur.startAge ? 'now' : ''}"><b>${p.startAge}세</b>${STEMS[p.stem]}${BRANCHES[p.branch]}<i style="color:${scoreColor(p.score)}">${p.score}</i></span>`).join('');
@@ -1062,7 +1099,7 @@ function tlDaewoon(d) {
   const body = `
     ${cur ? `<p class="tl-lead"><b>지금은 「${th.god} · ${th.theme}」의 10년</b>이에요. ${daewoonComment(s, cur, 0)}</p>` : '<p class="tl-lead">아직 첫 대운이 시작되기 전이에요. 타고난 원국의 흐름대로 자라는 시기입니다.</p>'}
     <div class="dw-chips">${chips}</div>
-    <p class="why-calc">${d.dw.forward ? '순행' : '역행'} 대운 · ${d.dw.startAge}세 시작 (태어난 날부터 절기까지 ${d.dw.days}일 ÷ 3)${cur ? ` · 근거: ${explainParts(layersAt(s, state.fortune.date, state.profile.gender).daewoon.parts)}` : ''}</p>
+    <p class="why-calc">${d.dw.forward ? '순행' : '역행'} 대운 · ${d.dw.startAge}세 시작 (태어난 날부터 절기까지 ${d.dw.days}일 ÷ 3 · 정확히는 ${dwExact(d.dw)}부터)${cur ? ` · 근거: ${explainParts(layersAt(s, state.fortune.date, state.profile.gender).daewoon.parts)}` : ''}</p>
     <button class="ghost tl-read" type="button" data-tl-step="read-daewoon">📖 대운 풀이 자세히 읽기</button>
     ${stepBtn('앞으로 5년 흐름 보기', 'five')}`;
   return tlCard('daewoon', sum, body);
@@ -1839,10 +1876,24 @@ document.addEventListener('click', (e) => {
 
 // ---------- 신년운세 책자 (첫 화면 개편 1단계): 게이지·별 없이 글로 읽는 한 해 ----------
 /** 책자 계산은 한 번만 (총운 카드 · 분야 카드가 함께 씀) */
+/** 지난 일 맞히기 답 → 개인 보정(retro.js retroCalib). 다른 계산 후보: 균시차 끔·자시 처리 반대·시간 ±1시간 */
+function retroCalibNow(dw) {
+  const ans = load(RETRO_KEY, {}); if (!Object.keys(ans).length) return null;
+  const p = state.profile; const g = p.gender; const alt = [];
+  if (!p.timeUnknown) {
+    const base = profileToInput(p);
+    const mk = (label, inp) => { const s = computeSaju(inp); alt.push({ label, saju: s, daewoon: computeDaewoon(s, g) }); };
+    if (base.eot !== false) mk('균시차 반영 끔', { ...base, eot: false });
+    mk(base.zasiMode === 'late' ? '자시 23시 날짜 변경' : '야자시(0시 날짜 변경)', { ...base, zasiMode: base.zasiMode === 'late' ? 'early' : 'late' });
+    for (const dh of [-1, 1]) { const h = (base.hour + dh + 24) % 24; mk(`태어난 시간 ${String(h).padStart(2, '0')}:${String(base.minute).padStart(2, '0')}`, { ...base, hour: h }); }
+  }
+  return retroCalib(state.saju, dw, ans, alt);
+}
+
 function bookletData() {
   const d = timelineData(); const y = d.next || d.year; const prev = d.next ? d.year : null;
-  const ageY = y.sajuYear - state.saju.input.year; const nextDw = d.dw?.pillars.find((p) => p.startAge > ageY) || null;
-  const b = buildBooklet({ y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, concern: state.profile.concern, gender: state.profile.gender, nextDaewoon: nextDw });
+  const ageY = y.sajuYear - state.saju.input.year; const nextDw = d.dw?.pillars.find((p) => (p.turnAge ?? p.startAge) >= ageY && (!y.daewoon || p.startAge > y.daewoon.startAge)) || null;
+  const b = buildBooklet({ y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, concern: state.profile.concern, gender: state.profile.gender, nextDaewoon: nextDw, calib: retroCalibNow(d.dw) });
   return { d, y, b };
 }
 
@@ -1860,7 +1911,17 @@ function bookletHTML(bd = bookletData()) {
     <section class="bk-part"><h3>총운</h3>
       ${b.general.map((x) => `<h4>${x.h}</h4>${x.paras.map(P).join('')}`).join('')}
     </section>
+    ${checksHTML(b.checks, b.calibText)}
   </article>`;
+}
+
+/** 한 해 조심할 점 · 참고할 점(yearcheck.js): 내 원국과 그해 글자가 만나는 방식이라 사람마다 다름 */
+function checksHTML(list = [], calibText = '') {
+  if (!list.length) return '';
+  const ICON = { watch: '⚠️', good: '🌟', note: '📌' }; const TAG = { watch: '조심', good: '기회', note: '참고' };
+  return `<section class="bk-part bk-checks"><h3>⚠️ 조심할 점 · 참고할 점 <small>내 사주 글자와 그해 글자가 만나는 방식으로 골랐어요</small></h3>${calibText ? `<p class="ck-calib">🔎 ${esc(calibText)}</p>` : ''}
+    <ul class="ck-list">${list.map((c) => `<li class="ck ${c.kind}"><b>${ICON[c.kind]} <em>${TAG[c.kind]}</em> ${esc(c.title)}</b><p>${esc(c.text)}</p><p class="ck-act">👉 ${esc(c.act)}${c.when ? ` <span class="ck-when">· 특히 ${esc(c.when)}</span>` : ''}</p></li>`).join('')}</ul>
+  </section>`;
 }
 
 const FIELD_ICON = { wealth: '💰', business: '🏪', career: '💼', love: '💗', family: '🏡', children: '🧸', health: '🌿', social: '🤝' };
@@ -1887,7 +1948,7 @@ function applyEasyClass() {
   const on = easyOn();
   document.documentElement.classList.toggle('easy', on);
   const b = $('#btn-easy');
-  if (b) { b.textContent = on ? '가−' : '가+'; b.setAttribute('aria-pressed', String(on)); b.title = on ? '쉬운 모드 끄기 (원래 글씨로)' : '쉬운 모드 켜기 (글씨를 크게, 말을 쉽게)'; b.setAttribute('aria-label', b.title); }
+  if (b) { b.innerHTML = `<span class="ez-ic" aria-hidden="true">🔍</span><span class="ez-t">${on ? '글씨 작게' : '글씨 크게'}</span>`; b.setAttribute('aria-pressed', String(on)); b.title = on ? '글씨 원래 크기로 돌아가기 (글씨 작게)' : '글씨 크게 보기 (어려운 말도 쉬운 말로)'; b.setAttribute('aria-label', b.title); }
   const c = $('#birth-form [name="easy"]'); if (c) c.checked = on;
 }
 
@@ -1902,7 +1963,7 @@ function setEasyMode(on, by = 'self', quiet = false) {
     renderAll();
     selectTab(tab);
   }
-  if (!quiet) toast(on ? '가+ 글씨를 크게, 말을 쉽게 바꿨어요. 위의 「가−」를 누르면 원래대로 돌아가요' : '원래 화면으로 돌아왔어요. 위의 「가+」로 언제든 다시 켤 수 있어요');
+  if (!quiet) toast(on ? '🔍 글씨를 크게, 말을 쉽게 바꿨어요. 오른쪽 위 「글씨 작게」를 누르면 돌아가요' : '원래 글씨로 돌아왔어요. 오른쪽 위 「🔍 글씨 크게」로 언제든 다시 켤 수 있어요');
 }
 const todayKeyNow = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
 
@@ -1911,7 +1972,7 @@ function easySuggestHTML() {
   if (!state.profile) return '';
   const birth = solarDateOf(state.profile); if (birth.error) return '';
   if (!suggestEasy(birth, state.fortune.date, loadEasy())) return '';
-  return `<div class="card easy-suggest" id="easy-suggest"><b>가+ 글씨를 크게 볼까요?</b><p>글씨를 크게, 어려운 사주 말은 쉬운 말로 바꿔 보여 드려요. 언제든 위의 「가−」로 되돌릴 수 있어요.</p>
+  return `<div class="card easy-suggest" id="easy-suggest"><b>🔍 글씨를 크게 볼까요?</b><p>글씨를 크게, 어려운 사주 말은 쉬운 말로 바꿔 보여 드려요. 언제든 오른쪽 위 「글씨 작게」로 되돌릴 수 있어요.</p>
     <div class="yday-btns"><button type="button" class="primary" data-easy-suggest="on">크게 보기</button><button type="button" class="ghost" data-easy-suggest="no">괜찮아요</button></div></div>`;
 }
 
@@ -1919,9 +1980,9 @@ function easySuggestHTML() {
 function easySettingsHTML() {
   const e = loadEasy();
   return `<div class="card easy-set" id="easy-set">
-    <h3>가+ 쉬운 모드 <span class="tag">${e.on ? '켜짐' : '꺼짐'}</span></h3>
+    <h3>🔍 글씨 크게 · 쉬운 말 <span class="tag">${e.on ? '켜짐' : '꺼짐'}</span></h3>
     <p class="muted" style="margin-top:0">글씨를 1.25배로 크게, 사주 용어는 쉬운 말로, 홈은 카드 3장으로 보여 드려요.</p>
-    <button type="button" class="${e.on ? 'ghost' : 'primary'}" data-easy-toggle style="width:100%">${e.on ? '가− 쉬운 모드 끄기' : '가+ 쉬운 모드 켜기'}</button>
+    <button type="button" class="${e.on ? 'ghost' : 'primary'}" data-easy-toggle style="width:100%">${e.on ? '글씨 작게 (원래 크기로)' : '🔍 글씨 크게 보기 (쉬운 모드 켜기)'}</button>
     <details class="easy-link-box"><summary>👨‍👩‍👧 부모님·아이 폰에 쉬운 모드 켜 주기</summary>
       <p class="muted">링크를 보내면, 받은 사람이 열 때 「켤까요?」를 물어봐요. 링크에는 생년월일·이름이 들어가지 않아요.</p>
       <form data-easy-link class="easy-link-form">
@@ -1936,7 +1997,7 @@ function easySettingsHTML() {
 
 document.addEventListener('click', (e) => {
   const sg = e.target.closest('[data-easy-suggest]');
-  if (sg) { if (sg.dataset.easySuggest === 'on') setEasyMode(true); else { save(EASY_KEY, dismissEasy(loadEasy())); toast('알겠어요. 위의 「가+」로 언제든 켤 수 있어요'); renderToday(); } return; }
+  if (sg) { if (sg.dataset.easySuggest === 'on') setEasyMode(true); else { save(EASY_KEY, dismissEasy(loadEasy())); toast('알겠어요. 오른쪽 위 「🔍 글씨 크게」로 언제든 켤 수 있어요'); renderToday(); } return; }
   if (e.target.closest('#btn-easy') || e.target.closest('[data-easy-toggle]')) { setEasyMode(!easyOn()); return; }
   const cp = e.target.closest('[data-easy-copy]');
   if (cp) {
@@ -1962,9 +2023,9 @@ function handleEasyLink() {
   const clean = () => { const q = new URLSearchParams(location.search); ['easy', 'remind', 'level', 'from'].forEach((k) => q.delete(k)); history.replaceState(null, '', `${location.pathname}${q.toString() ? `?${q}` : ''}${location.hash}`); };
   if (easyOn()) { clean(); return; }
   const box = document.createElement('div'); box.className = 'evo-modal'; box.id = 'easy-link-ask';
-  box.innerHTML = `<div class="evo-box"><h3 style="margin:0 0 8px">가+ 쉬운 모드</h3>
+  box.innerHTML = `<div class="evo-box"><h3 style="margin:0 0 8px">🔍 글씨 크게 · 쉬운 말</h3>
     <p style="margin:0 0 6px">${esc(linkAskText(link))}</p>
-    <p class="muted" style="margin:0 0 14px">글씨가 커지고, 어려운 말은 쉬운 말로 바뀌어요. 언제든 위의 「가−」로 되돌릴 수 있어요.</p>
+    <p class="muted" style="margin:0 0 14px">글씨가 커지고, 어려운 말은 쉬운 말로 바뀌어요. 언제든 오른쪽 위 「글씨 작게」로 되돌릴 수 있어요.</p>
     <div class="yday-btns"><button type="button" class="primary" data-link-yes>네, 켤게요</button><button type="button" class="ghost" data-link-no>아니요</button></div></div>`;
   document.body.appendChild(box);
   box.addEventListener('click', (ev) => {
@@ -1972,7 +2033,7 @@ function handleEasyLink() {
       save(EASY_KEY, acceptLink(loadEasy(), link, state.fortune?.dateKey || todayKeyNow()));
       box.remove(); clean(); applyEasyClass();
       if (state.saju) { setupPlainTerms(); renderAll(); selectTab('today'); }
-      toast('가+ 쉬운 모드를 켰어요');
+      toast('🔍 글씨를 크게 바꿨어요');
       return;
     }
     if (ev.target.closest('[data-link-no]')) { box.remove(); clean(); }
@@ -2159,7 +2220,7 @@ function completeNote() {
     save(COLLECTION_KEY, replaceCharm(load(COLLECTION_KEY, []), u.from, u.to));
     const e2 = loadEquip(); save(EQUIP_KEY, { ...e2, charms: replaceCharm(e2.charms, u.from, u.to) });
   }
-  const grownLines = g.upgrades.map((u) => `🌟 장착한 ${labelForRec(u.from)}가 다 자라 ${labelForRec(u.to)}로 올라갔어요!`);
+  const grownLines = g.upgrades.map((u) => `🌟 장착한 ${josa(labelForRec(u.from), '이/가')} 다 자라 ${josa(labelForRec(u.to), '으로/로')} 올라갔어요!`);
   const fedLines = g.upgrades.length ? [] : eqNow.charms.filter(Boolean).map((r) => `🌱 장착한 ${labelForRec(r)}에 기운 한 칸 (${fillOf(g.store, r)}/${GROW_FULL})`);
   checkFive(); const slotOpened = checkPairSlot();
   const si = newStoryIndex(before, before + 1); const story = si >= 0 ? storyList()[si] : null;
@@ -2964,7 +3025,7 @@ function daewoonCardHTML() {
   if (!p.gender) return '';
   const dw = computeDaewoon(s, p.gender);
   const age = state.fortune.date.year - s.input.year;
-  const cur = daewoonAt(dw, age);
+  const cur = daewoonAt(dw, age, state.fortune.date);
   const { index } = luckNow();
   const fc = forecastNow();
   const cells = dw.pillars.map((d) => {
@@ -2977,7 +3038,7 @@ function daewoonCardHTML() {
   }).join('');
   return `<div class="card">
     <h3>📜 대운 · 앞으로 5년 <span class="tag">정통 사주 + 개운</span></h3>
-    <p class="muted" style="margin-top:0;font-size:0.84rem">${dw.forward ? '순행' : '역행'} 대운 · ${dw.startAge}세 시작 (태어난 날부터 절기까지 ${dw.days}일 ÷ 3) · 지금 ${age}세${cur ? `, ${cur.startAge}~${cur.endAge}세 대운 진행 중` : ''}</p>
+    <p class="muted" style="margin-top:0;font-size:0.84rem">${dw.forward ? '순행' : '역행'} 대운 · ${dw.startAge}세 시작 (태어난 날부터 절기까지 ${dw.days}일 ÷ 3 · 정확히는 ${dwExact(dw)}부터) · 지금 ${age}세${cur ? `, ${cur.startAge}~${cur.endAge}세 대운 진행 중` : ''}</p>
     <div class="dw-row">${cells}</div>
     ${cur ? `<p class="concern-card" style="margin:10px 0 0">🧭 <b>지금의 대운 ${pillarLabelFull(cur)}</b> — ${daewoonComment(s, cur, index)}</p>` : ''}
     <h4 style="margin:14px 0 4px">앞으로 5년의 흐름</h4>
@@ -3165,7 +3226,7 @@ function chatContext() {
   const s = state.saju; const info = characterInfo(s, state.profile);
   const stage = heroOptions().stage;
   const dw = state.profile.gender ? computeDaewoon(s, state.profile.gender) : null;
-  const d = dw ? daewoonAt(dw, state.fortune.date.year - s.input.year) : null;
+  const d = dw ? daewoonAt(dw, state.fortune.date.year - s.input.year, state.fortune.date) : null;
   const j = loadJourney();
   return {
     pers: personalityOf(zIdx()), zodiacName: info.zodiac.name, stage, stageName: stageName(stage, info.female),
@@ -3394,7 +3455,7 @@ function teamCardHTML() {
     const nm = (k) => t.mem[k].name;
     return `<div class="team-map">${teamSVG(t)}</div>
     <ul class="reasons">
-      <li><b>👑 오늘의 행운 멤버</b> ${esc(nm(t.lucky))} — 오늘 점심 메뉴는 ${esc(nm(t.lucky))}가 정해!</li>
+      <li><b>👑 오늘의 행운 멤버</b> ${esc(nm(t.lucky))} — 오늘 점심 메뉴는 ${esc(josa(nm(t.lucky), '이/가'))} 정해!</li>
       <li><b>💗 찰떡 듀오</b> ${esc(nm(t.best.i))} × ${esc(nm(t.best.j))} <em>${t.best.score}점</em></li>
       ${t.pairs.length > 1 ? `<li><b>⚡ 티격태격 듀오</b> ${esc(nm(t.worst.i))} × ${esc(nm(t.worst.j))} <em>${t.worst.score}점</em></li>` : ''}
       <li><b>☯ 팀에 부족한 기운</b> ${ELEMENT_HANJA[t.teamWeak]} ${ELEMENT_KO[t.teamWeak]} → 팀 부적으로 채워요</li>
@@ -3588,7 +3649,7 @@ function doCheer(idx) {
     return;
   }
   grow((g) => complete(g, state.fortune.dateKey, 'social', qBonus('social')), `📣 ${fr.name}에게 응원을 보냈어요!`);
-  setTimeout(() => charge(state.saju.weakest, 3, `cheer-${fr.name}`, `💞 ${fr.name}의 ${ZODIAC[fs.pillars.year.branch].name}가 답례 응원`), 2300);
+  setTimeout(() => charge(state.saju.weakest, 3, `cheer-${fr.name}`, `💞 ${fr.name}의 ${josa(ZODIAC[fs.pillars.year.branch].name, '이/가')} 답례 응원`), 2300);
   renderCompat();
 }
 
@@ -3674,7 +3735,7 @@ function journeyCardHTML() {
   const step = journeyStep(c.key, Math.max(0, doneToday ? j.done - 1 : j.done), state.saju.yongsin);
   const pct = Math.round((j.done / JOURNEY_DAYS) * 100);
   const chapters = JOURNEYS[c.key].chapters;
-  if (j.done >= JOURNEY_DAYS) return `<div class="card journey"><h3>🏆 ${c.label} 고민 해결 여정 완주!</h3><p>30일 동안 함께 걸었어요. 수호신이 당신의 ${c.label}을(를) 끝까지 응원합니다. '정보 수정'에서 새 고민을 고르면 새 여정이 시작돼요.</p></div>`;
+  if (j.done >= JOURNEY_DAYS) return `<div class="card journey"><h3>🏆 ${c.label} 고민 해결 여정 완주!</h3><p>30일 동안 함께 걸었어요. 수호신이 당신의 ${josa(c.label, '을/를')} 끝까지 응원합니다. '정보 수정'에서 새 고민을 고르면 새 여정이 시작돼요.</p></div>`;
   return `<div class="card journey">
     <h3>🧭 ${c.label} 고민 해결 여정 <span class="tag">${j.done} / ${JOURNEY_DAYS}일</span></h3>
     <div class="exp"><div class="exp-fill" style="width:${pct}%;background:linear-gradient(90deg,#8fd4b6,#f4a6bd)"></div><span>${chapters.map((ch, i) => (i === step.chapterIndex ? `▶ ${ch}` : ch)).join(' · ')}</span></div>
@@ -3683,7 +3744,7 @@ function journeyCardHTML() {
       <b>${step.title}</b>
       <p class="muted" style="margin:4px 0 0;font-size:0.84rem">💡 ${step.why}</p>
     </div>
-    ${doneToday ? `<p class="muted" style="margin:8px 0 0;text-align:center">✅ 오늘 한 걸음 완료! ${info.zodiac.name}가 내일 다음 걸음을 준비해 둘게요.</p>` : '<button class="primary" type="button" id="btn-journey" style="width:100%;margin-top:10px">했어요! 한 걸음 완료 ✓</button>'}
+    ${doneToday ? `<p class="muted" style="margin:8px 0 0;text-align:center">✅ 오늘 한 걸음 완료! ${josa(info.zodiac.name, '이/가')} 내일 다음 걸음을 준비해 둘게요.</p>` : '<button class="primary" type="button" id="btn-journey" style="width:100%;margin-top:10px">했어요! 한 걸음 완료 ✓</button>'}
   </div>`;
 }
 
@@ -3869,7 +3930,7 @@ function renderFeng() {
   panel.innerHTML = `
     <div class="card">
       <h3>🗺️ 오늘의 풍수 기운 스팟 <span class="tag">행운 방향 ${f.luck.direction}</span></h3>
-      <p class="muted" style="margin-top:0;font-size:0.85rem">오늘은 <b style="color:var(--gold)">${f.luck.direction}</b>이 길하고, 나에게 필요한 기운은 <b class="el-${s.yongsin}">${ELEMENT_HANJA[s.yongsin]} ${ELEMENT_KO[s.yongsin]}</b>이에요. 그 방향의 ${ELEMENT_KO[s.yongsin]} 기운 장소로 가면 <b>보물 상자</b>가 기다려요. 멀수록 좋은 보물!</p>
+      <p class="muted" style="margin-top:0;font-size:0.85rem">오늘은 <b style="color:var(--gold)">${f.luck.direction}</b>이 길하고, 나에게 필요한 기운은 <b class="el-${s.yongsin}">${ELEMENT_HANJA[s.yongsin]} ${ELEMENT_KO[s.yongsin]}</b>${tailJosa(ELEMENT_KO[s.yongsin], '이에요/예요')}. 그 방향의 ${ELEMENT_KO[s.yongsin]} 기운 장소로 가면 <b>보물 상자</b>가 기다려요. 멀수록 좋은 보물!</p>
       <div class="feng-wrap">${radar}
         <div class="feng-loc"><small class="muted">${real ? '📍 내 위치 기준' : `📍 ${DEMO_CENTER.label}`}</small>
           <button class="ghost" type="button" id="btn-geo">${real ? '위치 새로고침' : '내 위치로 찾기'}</button>

@@ -24,6 +24,8 @@ const STEM_CLASH = [[0, 6], [1, 7], [2, 8], [3, 9]];
 // 지지
 const SIX_COMBINE = [[0, 1, 2], [2, 11, 0], [3, 10, 1], [4, 9, 3], [5, 8, 4], [6, 7, 1]];
 const TRIPLE = [[8, 0, 4, 4], [2, 6, 10, 1], [5, 9, 1, 3], [11, 3, 7, 0]]; // [생지, 왕지, 고지, 오행]
+export const DIRECTION = [[2, 3, 4, 0], [5, 6, 7, 1], [8, 9, 10, 3], [11, 0, 1, 4]]; // 방합(2026-11-04): 寅卯辰 목 · 巳午未 화 · 申酉戌 금 · 亥子丑 수
+export const TRIPLE_GROUPS = [[8, 0, 4, 4], [2, 6, 10, 1], [5, 9, 1, 3], [11, 3, 7, 0]];
 const PUNISH3 = [[2, 5, 8], [1, 10, 7]]; // 寅巳申 · 丑戌未
 const SELF_PUNISH = [4, 6, 9, 11]; // 辰午酉亥
 const BREAK = [[0, 9], [1, 4], [2, 11], [3, 6], [5, 8], [7, 10]];
@@ -36,6 +38,7 @@ export const REL_INFO = {
   stemCombine: { name: '천간합', mark: '🤝', mean: '마음이 묶이는 약속과 인연이 생기기 쉬워요', act: '함께할 사람에게 먼저 손을 내밀어 보세요' },
   stemClash: { name: '천간충', mark: '⚡', mean: '생각과 생각이 부딪혀 고민이 깊어지기 쉬워요', act: '결정 전에 좋은 점·걱정되는 점을 두 줄씩 적어 보면 길이 보여요' },
   sixCombine: { name: '육합', mark: '🤝', mean: '손발이 맞는 사람과 일이 붙기 쉬워요', act: '협력이나 제안을 먼저 꺼내 보세요' },
+  direction: { name: '방합', mark: '🧭', mean: '한 계절의 기운이 한 방향으로 크게 뭉쳐요', act: '뭉친 기운이 내게 필요한 것인지 보고, 그 힘을 한 가지 목표에 모아 써 보세요' },
   triple: { name: '삼합', mark: '✨', mean: '같은 방향으로 힘이 크게 모여요', act: '오래 미뤄 둔 큰 목표 하나를 꺼내 보세요' },
   half: { name: '반합', mark: '✨', mean: '뜻이 맞는 기운이 하나로 모이기 시작해요', act: '함께할 모임이나 팀을 하나 정해 보세요' },
   clash: { name: '충', mark: '🌊', mean: '이사·이직·관계처럼 움직임과 변화가 생기기 쉬워요', act: '큰 변화는 계획표를 먼저 써 두면 좋은 기회로 바뀌어요' },
@@ -45,7 +48,7 @@ export const REL_INFO = {
   harm: { name: '해', mark: '💬', mean: '작은 말이 오해로 번지기 쉬워요', act: '중요한 말은 글로 한 번 더 확인해 보세요' },
   wonjin: { name: '원진', mark: '🌫️', mean: '괜히 서운한 마음이 들기 쉬워요', act: '서운함은 하루 지나 부드럽게 전하면 오히려 가까워져요' },
 };
-const RANK = ['triple', 'sixCombine', 'stemCombine', 'half', 'clash', 'punish', 'selfPunish', 'stemClash', 'break', 'harm', 'wonjin'];
+const RANK = ['triple', 'direction', 'sixCombine', 'stemCombine', 'half', 'clash', 'punish', 'selfPunish', 'stemClash', 'break', 'harm', 'wonjin'];
 
 /** 두 지지 사이 관계 종류들 */
 export function branchPair(a, b) {
@@ -114,6 +117,11 @@ export function natalRelations(pillars) {
     const pos = [x, y, z].map((br) => keys.find((k) => pillars[k].branch === br));
     if (pos.every(Boolean)) out.push({ kind: 'triple', name: '삼합', mark: '✨', text: `${pos.map((k) => POS[k]).join('·')}의 ${BRANCHES[x]}${BRANCHES[y]}${bJ(z, '이', '가')} 삼합 ${EL_KO[el]} 국을 이뤄요 — ${REL_INFO.triple.mean}.`, act: `${REL_INFO.triple.act}.`, near: true });
   });
+  // 방합 세 글자 모두(2026-11-04)
+  DIRECTION.forEach(([x, y, z, el]) => {
+    const pos = [x, y, z].map((br) => keys.find((k) => pillars[k].branch === br));
+    if (pos.every(Boolean)) out.push({ kind: 'direction', name: '방합', mark: '🧭', text: `${pos.map((k) => POS[k]).join('·')}의 ${BRANCHES[x]}${BRANCHES[y]}${bJ(z, '이', '가')} 방합 ${EL_KO[el]} 국을 이뤄요 — ${REL_INFO.direction.mean}.`, act: `${REL_INFO.direction.act}.`, near: true });
+  });
   // 삼합이 완성되면 그 안의 반합은 겹치므로 뺌
   const full = TRIPLE.filter(([x, y, z]) => [x, y, z].every((br) => keys.some((k) => pillars[k].branch === br)));
   const dup = (r) => r.kind === 'half' && full.some((g) => g.slice(0, 3).includes(pillars[r.a].branch) && g.slice(0, 3).includes(pillars[r.b].branch));
@@ -162,4 +170,26 @@ export function incomingRelations(pillars, incoming, label = '그해') {
     stemPair(incoming.stem, P.stem).forEach((r) => out.push({ ...relText(r, `${label}의 ${sJ(incoming.stem, '이', '가')} 내 ${POS[k]} ${sJ(P.stem, '과', '와')}`), at: k }));
   }
   return out.sort((p, q) => (p.at === 'day' ? -1 : 0) - (q.at === 'day' ? -1 : 0) || RANK.indexOf(p.kind) - RANK.indexOf(q.kind));
+}
+
+/**
+ * 3자 작용(2026-11-04 정확도 2단계 ③): 원국 지지 + 대운 지지 + 그해 지지가 함께 삼합·방합을 완성하는지
+ * 원국만으로 이미 완성된 국은 빼고, 「그해 글자가 들어와야 완성되는」 국만 돌려준다
+ * @returns [{ kind:'triple'|'direction', el, branches:[3], from:{ natal:[자리], daewoon:bool, year:true } }]
+ */
+export function groupCompletions(pillars, daewoonBranch, yearBranch) {
+  const natal = ORDER.filter((k) => pillars[k]).map((k) => ({ k, b: pillars[k].branch }));
+  const out = [];
+  for (const [kind, groups] of [['triple', TRIPLE_GROUPS], ['direction', DIRECTION]]) {
+    for (const [x, y, z, el] of groups) {
+      const need = [x, y, z];
+      if (need.every((br) => natal.some((n) => n.b === br))) continue; // 원국만으로 이미 완성
+      if (!need.includes(yearBranch)) continue;
+      const have = (br) => br === yearBranch || natal.some((n) => n.b === br) || br === daewoonBranch;
+      if (!need.every(have)) continue;
+      const usesDw = need.some((br) => br === daewoonBranch && br !== yearBranch && !natal.some((n) => n.b === br));
+      out.push({ kind, el, branches: need, daewoon: usesDw, natal: natal.filter((n) => need.includes(n.b) && n.b !== yearBranch).map((n) => n.k) });
+    }
+  }
+  return out;
 }

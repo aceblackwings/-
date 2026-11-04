@@ -22,7 +22,7 @@
       </div>
     </div>
     <div class="top-btns">
-      <button id="btn-easy" class="ghost" type="button" aria-pressed="false" title="쉬운 모드 켜기 (글씨를 크게, 말을 쉽게)" aria-label="쉬운 모드 켜기 (글씨를 크게, 말을 쉽게)">가+</button>
+      <button id="btn-easy" class="ghost" type="button" aria-pressed="false" title="글씨 크게 보기 (어려운 말도 쉬운 말로)" aria-label="글씨 크게 보기 (어려운 말도 쉬운 말로)"><span class="ez-ic" aria-hidden="true">🔍</span><span class="ez-t">글씨 크게</span></button>
       <button id="btn-edit" class="ghost hidden" type="button">정보 수정</button>
     </div>
   </header>
@@ -52,7 +52,7 @@
           <label>이름 (선택 · 캐릭터가 불러 줄 이름)
             <input name="name" type="text" maxlength="12" placeholder="예: 은하">
           </label>
-          <label class="check easy-check"><input name="easy" type="checkbox"> <span>가+ 글씨를 크게, 말을 쉽게 볼래요</span></label>
+          <label class="check easy-check"><input name="easy" type="checkbox"> <span>🔍 글씨를 크게, 말을 쉽게 볼래요</span></label>
           <button class="primary" type="button" data-next="2">다음 →</button>
         </div>
 
@@ -88,6 +88,7 @@
             <select name="city"></select>
           </label>
           <label class="check"><input name="lonCorr" type="checkbox" checked> 경도 보정 (출생지 경도로 진태양시 근사, 모르면 -30분)</label>
+          <label class="check"><input name="eot" type="checkbox" checked> 균시차 반영 (계절마다 해가 최대 16분 빠르거나 늦는 것까지 맞춰 진태양시로)</label>
           <label class="check"><input name="dstAuto" type="checkbox" checked> 서머타임 자동 반영 (1948~1960·1987~1988년 여름 출생이면 1시간 빼기)</label>
           <label>자시(23~01시) 처리
             <select name="zasi">
@@ -133,7 +134,7 @@
 
   <footer class="foot" data-raw>
     <p>※ 운세와 부적의 효과 수치는 재미를 위한 게임 요소입니다.</p>
-    <p>12지신 강림 프로토타입 v0.43.1 · 쉬워진 화면(탭 4개 · 꼭 볼 것만 펼침 · 지신 탭 정리) · 오늘의 기운 카드로 매일 지신 키우기 · 12지신 타로 · 궁합</p>
+    <p>12지신 강림 프로토타입 v0.45 · 사주 정확도: 균시차(진태양시) · 대운 개월 단위 · 대운×그해×원국 3자 작용 · 방합 · 공망 · 12신살 · 지난 일 답으로 개인 보정</p>
   </footer>
 
   <script type="module" src="js/app.js"></script>

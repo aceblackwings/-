@@ -1,5 +1,6 @@
 // 고민 해결 여정: 처음 고른 고민을 30일(3장 × 10걸음) 동안 매일 한 걸음씩 함께 해결
 // 매 걸음은 "작은 행동 + 사주 근거(용신 오행 팁)"로 구성 → "내 고민을 돕고 있다"는 체감
+import { josa } from './josa.js';
 import { ELEMENT_KO, ELEMENT_HANJA } from './saju.js';
 
 export const JOURNEYS = {
@@ -46,7 +47,7 @@ export function journeyStep(concern, n, yongsin) {
     `용신 ${ELEMENT_HANJA[yongsin]}(${ELEMENT_KO[yongsin]}) 기운을 살리려면 ${tip.place}에서 해 보세요.`,
     `${tip.time}에 하면 ${ELEMENT_KO[yongsin]} 기운이 가장 잘 받쳐 줍니다.`,
     `${tip.color}색 소품을 곁에 두면 ${ELEMENT_HANJA[yongsin]} 기운이 함께 차올라요.`,
-    `${tip.thing}을(를) 가까이 두고 하면 마음이 한결 안정됩니다.`,
+    `${josa(tip.thing, '을/를')} 가까이 두고 하면 마음이 한결 안정됩니다.`,
   ];
   return { chapter: j.chapters[ci], chapterIndex: ci, stepNo: n + 1, title, why: whys[n % whys.length], goal: j.goal };
 }

@@ -2,6 +2,7 @@
 // 말투 원칙(v0.21): 다정한 친구 같은 부드러운 반말(닭띠는 상냥한 존댓말). 문장마다 붙는 의성어·과장된 자기 호칭은 쓰지 않고,
 // 의성어는 쓰다듬기(tap) 같은 가벼운 순간에만. 성격 차이는 말의 '내용'(정리·응원·공감·큰 그림…)으로 드러낸다.
 // 자리표시자: {score} 점수, {cat} 분야, {stat} 고민 운, {friend} 친구 이름, {name} 사용자 이름, {grade} 궁합 등급
+import { josa } from './josa.js';
 
 export const PERSONALITIES = [
   {
@@ -165,7 +166,9 @@ export const PERSONALITIES = [
 /** 자기 호칭 + 주격 조사: 나 → 내가, 저 → 제가 */
 export const meSubject = (me) => (me === '나' ? '내가' : me === '저' ? '제가' : `${me}가`);
 
-const fill = (s, vars = {}) => s.replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? ''));
+// 자리표시자 뒤 조사는 넣는 말의 받침에 맞춤({friend}랑은 → 용이랑은, 토끼랑은)
+const JOSA_PAIR = { 랑: '이랑/랑', 은: '은/는', 는: '은/는', 이: '이/가', 가: '이/가', 을: '을/를', 를: '을/를', 과: '과/와', 와: '과/와' };
+const fill = (s, vars = {}) => s.replace(/\{(\w+)\}(랑|은|는|이|가|을|를|과|와)?/g, (_, k, j) => { const v = String(vars[k] ?? ''); return j && v ? josa(v, JOSA_PAIR[j]) : v + (j || ''); });
 
 /** 진화 단계에 따라 말투가 자란다: 1단계는 문장 앞에 아기(🍼), 5단계부터 끝에 위엄(✦) */
 function stageVoice(text, stage) {

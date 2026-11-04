@@ -3,6 +3,7 @@
 // 2) 오행 충전: 매일 모은 부적이 오행 게이지를 채움 → 개운 지수(0~100)
 // 3) 개운 반영 흐름: 기본 흐름 + 개운 지수·진화 단계 보너스 → 앞으로 5년이 좋아지는 곡선
 //    ※ 개운 반영 수치는 꾸준한 습관을 응원하기 위한 게임 요소이며, 기본 흐름은 정통 계산 그대로 보여 준다.
+import { josa } from './josa.js';
 import {
   STEMS, BRANCHES, STEMS_KO, BRANCHES_KO, STEM_ELEMENT, BRANCH_ELEMENT, ELEMENT_KO, ELEMENT_HANJA,
   julianDay, sunLongitude, tenGod, parentOf, childOf,
@@ -32,20 +33,30 @@ export function computeDaewoon(saju, gender) {
   if (!forward) diff -= 360;
   const jdTerm = solarTermJDE(targetLon, jdBirth + (diff / 360) * 365.2422);
   const days = Math.abs(jdTerm - jdBirth);
-  const startAge = clamp(Math.round(days / 3), 1, 10);
+  const startAge = clamp(Math.round(days / 3), 1, 10); // 전통 대운수(3일 = 1년, 반올림) — 화면의 「○세」 표기
+  // 2026-11-04 정확도 1단계 ②: 1일 = 4개월로 개월까지 계산 → 대운이 실제로 바뀌는 해·달(startDate)
+  const startMonths = clamp(Math.round(days * 4), 1, 124);
+  const addMonths = (n) => { const t = i.year * 12 + (i.month - 1) + n; return { year: Math.floor(t / 12), month: (t % 12) + 1, day: i.day }; };
 
   const m = saju.pillars.month;
   const pillars = Array.from({ length: 8 }, (_, n) => {
     const step = (n + 1) * (forward ? 1 : -1);
     const p = { stem: mod(m.stem + step, 10), branch: mod(m.branch + step, 12) };
     const age = startAge + n * 10;
-    return { ...p, startAge: age, endAge: age + 9, startYear: i.year + age, score: pillarScore(saju, p) };
+    const startDate = addMonths(startMonths + n * 120);
+    return { ...p, startAge: age, endAge: age + 9, startYear: startDate.year, startDate, turnAge: startDate.year - i.year, score: pillarScore(saju, p) };
   });
-  return { forward, startAge, days: Math.round(days), pillars };
+  return { forward, startAge, startMonths, startExact: { years: Math.floor(startMonths / 12), months: startMonths % 12 }, days: Math.round(days * 10) / 10, pillars };
 }
 
 /** 나이(만 나이 기준 근사)에 해당하는 대운 */
-export function daewoonAt(daewoon, age) {
+export function daewoonAt(daewoon, age, date = null) {
+  // 날짜가 있으면 실제 교운 시점(startDate, 개월 단위)으로 고른다
+  if (date && daewoon.pillars[0]?.startDate) {
+    const v = (d) => d.year * 12 + d.month;
+    const cur = [...daewoon.pillars].reverse().find((p) => v(p.startDate) <= v(date));
+    return cur || null;
+  }
   if (age < daewoon.startAge) return null;
   return daewoon.pillars.find((p) => age >= p.startAge && age <= p.endAge) || daewoon.pillars[daewoon.pillars.length - 1];
 }
@@ -69,6 +80,14 @@ const pairKey = (a, b) => (a < b ? `${a}-${b}` : `${b}-${a}`);
 export const SCORE_BASE = 59;
 export const GISIN_DELTA = -7;
 export const CLASH_DELTA = -5;
+/** 일주의 공망 두 지지 (expert.js gongmang과 같은 계산, 순환 import를 피해 여기 둠) */
+export function gongmangOf(dayStem, dayBranch) {
+  let idx = 0;
+  while (!(idx % 10 === dayStem && idx % 12 === dayBranch)) idx++;
+  const startBranch = (idx - (idx % 10)) % 12;
+  return [mod(startBranch + 10, 12), mod(startBranch + 11, 12)];
+}
+
 export function scoreParts(saju, p) {
   const parts = [];
   const fitOf = (e) => {
@@ -81,10 +100,14 @@ export function scoreParts(saju, p) {
   const [fs, ls] = fitOf(STEM_ELEMENT[p.stem]);
   if (ls) parts.push({ kind: 'stem', element: STEM_ELEMENT[p.stem], delta: fs, label: `천간 ${ls}` });
   const [fb, lb] = fitOf(BRANCH_ELEMENT[p.branch]);
-  if (lb) parts.push({ kind: 'branch', element: BRANCH_ELEMENT[p.branch], delta: Math.round(fb * 0.8 * 10) / 10, label: `지지 ${lb}` });
   const dayBranch = saju.pillars.day.branch;
-  if (COMBINE.has(pairKey(p.branch, dayBranch))) parts.push({ kind: 'combine', delta: 6, label: '내 일지와 합(合) — 손발이 맞음' });
-  if (Math.abs(p.branch - dayBranch) === 6) parts.push({ kind: 'clash', delta: CLASH_DELTA, label: '내 일지와 충(沖) — 변화·마찰' });
+  // 2026-11-04 정확도 2단계 ⑤ 공망: 들어오는 지지가 내 일주의 공망이면 그 지지의 도움·부담·합충을 절반으로(비어 있는 자리)
+  const gm = gongmangOf(saju.pillars.day.stem, dayBranch).includes(p.branch);
+  const half = (v) => (gm ? Math.round(v * 5) / 10 : v);
+  if (lb) parts.push({ kind: 'branch', element: BRANCH_ELEMENT[p.branch], delta: half(Math.round(fb * 0.8 * 10) / 10), label: `지지 ${lb}${gm ? '(공망이라 절반)' : ''}` });
+  if (COMBINE.has(pairKey(p.branch, dayBranch))) parts.push({ kind: 'combine', delta: half(6), label: `내 일지와 합(合) — 손발이 맞음${gm ? '(공망이라 절반)' : ''}` });
+  if (Math.abs(p.branch - dayBranch) === 6) parts.push({ kind: 'clash', delta: half(CLASH_DELTA), label: `내 일지와 충(沖) — 변화·마찰${gm ? '(공망이라 절반)' : ''}` });
+  if (gm) parts.push({ kind: 'gongmang', delta: 0, label: '공망(空亡) — 그 지지의 힘이 반쯤 비어 있음' });
   const raw = SCORE_BASE + parts.reduce((a, b) => a + b.delta, 0);
   return { score: Math.round(clamp(raw, 30, 95)), parts };
 }
@@ -174,7 +197,7 @@ export function fiveYearForecast(saju, gender, now, idx, stage, extra = 0, yearB
     const year = now.year + n;
     const age = year - birthYear;
     const yp = yearPillar(year);
-    const d = daewoonAt(dw, age);
+    const d = daewoonAt(dw, age, { year, month: 8, day: 1 }); // 그해 한가운데 기준(period.js daewoonFor와 같게)
     // 오늘 운세·월별 리포트와 같은 규칙(period.js): 올해 = 세운 70% + 대운 30%
     const base = d ? Math.round((7 * pillarScore(saju, yp) + 3 * d.score) / 10) : pillarScore(saju, yp);
     // 개운 누적 효과: 꾸준히 채운 기운이 해마다 조금씩 더 쌓이는 곡선
@@ -197,7 +220,7 @@ export function luckTierText(idx) {
 export function daewoonComment(saju, d, idx) {
   if (!d) return '아직 첫 대운이 시작되기 전입니다.';
   const { theme } = pillarTheme(saju, d);
-  const base = d.score >= 65 ? `${theme}의 기운이 강한 좋은 대운입니다.` : d.score >= 48 ? `${theme}을(를) 다지는 무난한 대운입니다.` : `${theme}을(를) 위해 내실을 다지는 대운입니다.`;
+  const base = d.score >= 65 ? `${theme}의 기운이 강한 좋은 대운입니다.` : d.score >= 48 ? `${josa(theme, '을/를')} 다지는 무난한 대운입니다.` : `${josa(theme, '을/를')} 위해 내실을 다지는 대운입니다.`;
   const plus = idx >= 75 ? ' 개운이 충분히 쌓여 이 대운의 장점이 크게 살아납니다.'
     : idx >= 45 ? ' 꾸준한 개운으로 아쉬운 부분이 눈에 띄게 보완되고 있습니다.'
       : idx >= 20 ? ' 개운을 시작해 흐름이 조금씩 부드러워지고 있습니다.' : '';

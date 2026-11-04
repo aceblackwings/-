@@ -59,3 +59,24 @@ t('들어오는 기운: 일지 관계가 맨 앞, 모든 관계에 행동 문장
 });
 
 console.log(`\nrelations: ${pass} passed`);
+import { groupCompletions as GC, natalRelations as NR } from '../js/relations.js';
+import { gongmangOf, scoreParts } from '../js/luck.js';
+import { computeSaju as CS } from '../js/saju.js';
+{
+  const P = (y, m, d, h) => ({ year: { stem: 0, branch: y }, month: { stem: 1, branch: m }, day: { stem: 2, branch: d }, hour: h == null ? null : { stem: 3, branch: h } });
+  // 방합: 원국에 寅卯辰
+  const r = NR(P(2, 3, 4, 0)); console.assert(r.some((x) => x.kind === 'direction'), '원국 방합'); if (!r.some((x) => x.kind === 'direction')) throw new Error('방합 없음');
+  // 3자: 원국 申 + 대운 子 + 그해 辰 → 申子辰 삼합 수국(대운이 거듦)
+  const g = GC(P(8, 1, 7, 11), 0, 4); if (!(g.length === 1 && g[0].kind === 'triple' && g[0].el === 4 && g[0].daewoon)) throw new Error('3자 삼합');
+  // 원국만으로 이미 완성된 국은 빼기
+  if (GC(P(8, 0, 4, 1), 5, 0).some((x) => x.kind === 'triple' && x.el === 4)) throw new Error('이미 완성');
+  // 그해 글자가 없으면 3자 작용 아님
+  if (GC(P(8, 1, 7, 11), 0, 6).some((x) => x.el === 4)) throw new Error('그해 없음');
+  // 공망: 甲子일 → 戌亥 공망, 그 지지의 점수 몫은 절반
+  if (gongmangOf(0, 0).join() !== '10,11') throw new Error('공망');
+  const s = CS({ year: 1984, month: 2, day: 2, hour: 12, minute: 0 });
+  const [a, b] = gongmangOf(s.pillars.day.stem, s.pillars.day.branch);
+  const sp = scoreParts(s, { stem: 0, branch: a });
+  if (!sp.parts.some((x) => x.kind === 'gongmang')) throw new Error('공망 표시');
+  console.log('ok - 방합 · 3자 작용(대운×그해×원국) · 공망 점수 절반');
+}
