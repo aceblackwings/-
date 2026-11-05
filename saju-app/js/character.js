@@ -1,8 +1,8 @@
 // 12지신 수호 캐릭터 생성기 (SVG)
 // 띠(연지) → 동물 / 일간 오행 → 한복 색 / 성별 → 한복 스타일 / 고민 → 소품
 // 장착: 부적 2칸(허리·머리 옆), 이모티콘 1칸(표정 + 말풍선)
-import { charImage, sceneImage, coordiImage } from './assets.js';
-import { coordiRect } from './coordi-anchors.js';
+import { charImage, charImageNoCrown, sceneImage, coordiImage } from './assets.js';
+import { coordiRect, NECK_SCALE } from './coordi-anchors.js';
 import { seasonAccessorySVG, seasonEffectSVG, seasonSceneSVG, SEASON_PACKS } from './season.js';
 
 export const CONCERNS = [
@@ -536,7 +536,7 @@ export function characterMarkup(info, opts = {}) {
 
   const figure = img ? `
     <ellipse cx="160" cy="384" rx="76" ry="10" fill="#000" opacity="0.28"/>
-    <image href="${img}" x="-15" y="63" width="350" height="350" preserveAspectRatio="xMidYMid meet"/>
+    <image href="${(headImage(opts.coordi) && charImageNoCrown(z.key, stage)) || img}" x="-15" y="63" width="350" height="350" preserveAspectRatio="xMidYMid meet"/>
     ${coordiLayer(z.key, stage, opts.coordi)}
     ${elementBadge(el, 252, 364)}
     ${miniCharm(charms[0], 112, 352, -10)}
@@ -592,12 +592,14 @@ export function characterMarkup(info, opts = {}) {
   return { id, defs, body };
 }
 
+/** 머리 소품 그림을 쓰는지 */
+const headImage = (outfit) => !!(outfit?.head && coordiImage(outfit.head));
 /** v0.58 코디 소품 그림을 몸에 입힘(그림 캐릭터만, 그림이 있는 소품만 — 없는 소품은 app.js가 이모지로 얹음). 몸과 같은 묶음이라 함께 통통 튐 */
 function coordiLayer(zodiacKey, stage, outfit) {
   if (!outfit) return '';
   return ['neck', 'head', 'hand'].map((slot) => {
     const im = outfit[slot] && coordiImage(outfit[slot]); if (!im) return '';
-    const r = coordiRect(zodiacKey, stage, slot, im.ratio); if (!r) return '';
+    const r = coordiRect(zodiacKey, stage, slot, im.ratio, slot === 'neck' ? NECK_SCALE[outfit[slot]] || 1 : 1); if (!r) return '';
     // 보이는 범위만 남기려고 안쪽 svg의 viewBox로 자름(clipPath id 없이 — 같은 화면에 여러 지신이 있어도 안전)
     const y0 = r.y + r.h * r.top; const vh = r.h * (r.bottom - r.top);
     const cx = r.x + r.w / 2; const cy = y0 + vh / 2;

@@ -26,6 +26,12 @@ export function charImage(zodiacKey, stage, el) {
   return null;
 }
 
+/** 왕관 없는 5단계 그림(머리 코디 소품을 쓴 날, 5단계 이상) — tools/crownless.py가 만듦. 없으면 null */
+export function charImageNoCrown(zodiacKey, stage) {
+  const key = `${zodiacKey}_s5_nocrown`;
+  return stage >= 5 && CHAR_ASSETS.has(key) ? url('char', key) : null;
+}
+
 /** 표정 그림 주소 (없으면 null) */
 export function emoImage(zodiacKey, mood, el) {
   for (const key of [`${zodiacKey}_${mood}_${EL_NAME[el]}`, `${zodiacKey}_${mood}`]) if (EMO_ASSETS.has(key)) return url('emo', key);

@@ -16,6 +16,15 @@ export const COORDI_ANCHORS = {
   dog: [A([50, 13, 40], [50, 50, 26], [58, 68]), A([50, 12, 36], [50, 50, 24], [69, 72]), A([50, 12, 36], [50, 50, 24], [69, 72]), A([50, 13, 36], [50, 50, 24], [69, 72]), A([50, 13, 36], [50, 50, 24], [69, 72])],
   pig: [A([50, 15, 44], [50, 53, 28], [58, 68]), A([50, 18, 44], [50, 55, 26], [67, 73]), A([50, 18, 44], [50, 55, 26], [67, 73]), A([50, 18, 44], [50, 55, 26], [67, 73]), A([50, 18, 44], [50, 55, 26], [68, 73])],
 };
+// 진화 5단계 그림에 그려진 왕관 대략 자리 [x0, y0, x1, y1](백분율). tools/crownless.py가 이 칸 둘레에서 금빛 왕관을 찾아 지우고
+// 주변 색으로 메워 {띠}_s5_nocrown.webp를 만든다(머리 코디 소품을 쓴 날 5단계 이상에서 사용)
+export const COORDI_CROWN = {
+  rat: [42.5, 14, 56.5, 22.5], ox: [42.5, 7, 56.5, 15.5], tiger: [40.5, 2, 58.5, 12.5], rabbit: [43.5, 18, 56.5, 26.5],
+  dragon: [40.5, 11, 56.5, 19.5], snake: [43.5, 10, 55.5, 17.5], horse: [42.5, 7, 56.5, 15.5], sheep: [43.5, 5, 57.5, 15.5],
+  monkey: [37.5, 6, 56.5, 14.5], rooster: [44.5, 12, 56.5, 19], dog: [45.5, 2, 60.5, 11.5], pig: [40.5, 8, 57.5, 15.5],
+};
+/** 목걸이는 목도리·스카프보다 작게 */
+export const NECK_SCALE = { n2: 0.75, n3: 0.72, n4: 0.75 };
 // 그림 안 백분율 → 캐릭터 SVG 좌표 (character.js: <image x=-15 y=63 width=350 height=350>)
 const IMG = { x: -15, y: 63, s: 3.5 };
 const X = (p) => IMG.x + p * IMG.s; const Y = (p) => IMG.y + p * IMG.s; const L = (p) => p * IMG.s;
@@ -27,10 +36,10 @@ const X = (p) => IMG.x + p * IMG.s; const Y = (p) => IMG.y + p * IMG.s; const L 
  * 손: 쥐는 곳(그림 왼쪽 아래)이 손 위치
  * 돌려주는 값: {x, y, w, h(그림 전체 크기), top, bottom(보이는 세로 범위 0~1), rot}
  */
-export function coordiRect(zodiacKey, stage, slot, ratio) {
+export function coordiRect(zodiacKey, stage, slot, ratio, scale = 1) {
   const a = COORDI_ANCHORS[zodiacKey]?.[Math.min(5, Math.max(1, stage)) - 1]; if (!a) return null;
   if (slot === 'head') { const [cx, top, hw] = a.head; const w = L(hw) * 1.1; const h = w / ratio; return { x: X(cx) - w / 2, y: Y(top) - h * 0.1, w, h, top: 0, bottom: 0.55, rot: 0 }; }
-  if (slot === 'neck') { const [cx, ny, nw] = a.neck; const w = L(nw) * 1.5; const h = w / ratio; return { x: X(cx) - w / 2, y: Y(ny) - h * 0.3, w, h, top: 0.26, bottom: 1, rot: 0 }; }
+  if (slot === 'neck') { const [cx, ny, nw] = a.neck; const w = L(nw) * 1.5 * scale; const h = w / ratio; return { x: X(cx) - w / 2, y: Y(ny) - h * 0.3, w, h, top: 0.26, bottom: 1, rot: 0 }; }
   if (slot === 'hand') { const [hx, hy] = a.hand; const h = L(stage <= 1 ? 18 : 22); const w = h * ratio; return { x: X(hx) - w * 0.2, y: Y(hy) - h * 0.8, w, h, top: 0, bottom: 1, rot: -6 }; }
   return null;
 }
