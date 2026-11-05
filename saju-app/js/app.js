@@ -46,7 +46,7 @@ import { ELEMENT_LUCK } from './fortune.js';
 import { TAROT_TOPICS, TAROT_SPREADS, TAROT_SITU, TONE_KO, shuffleDeck, readTarot, cardOf, ROMAN, markSeen, repeatLine } from './tarot.js';
 import { fiveScores } from './todayfive.js';
 import { todayStory, setEmpathy, empathyReply } from './todaystory.js';
-import { plainText } from './storybook.js';
+import { plainText, yearize } from './storybook.js';
 import { bookletStory, sajuStory } from './storyreport.js';
 import { kiStory, tarotTale } from './funstory.js';
 import { claimItem, PIECES_PER_ITEM } from './tteok.js';
@@ -1922,12 +1922,15 @@ function retroCalibNow(dw) {
 function bookletData() {
   const d = timelineData(); const y = d.next || d.year; const prev = d.next ? d.year : null;
   const ageY = y.sajuYear - state.saju.input.year; const nextDw = d.dw?.pillars.find((p) => (p.turnAge ?? p.startAge) >= ageY && (!y.daewoon || p.startAge > y.daewoon.startAge)) || null;
+  bkYear = { Y: y.sajuYear, now: sajuYearOf(state.fortune.date) };
   const b = buildBooklet({ y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, concern: state.profile.concern, gender: state.profile.gender, nextDaewoon: nextDw, calib: retroCalibNow(d.dw) });
   return { d, y, b };
 }
 
 /** 첫 화면 위: 표지 + 총운(펼쳐 둠). 바로 아래가 오늘의 운세 (2026-11-03 사용자 요청: 스크롤 줄이기) */
-const PT = (t) => plainText(t);
+// 신년운세 책자에서는 「그해」·(내년을 미리 볼 때) 「올해」를 실제 연도로 — bookletData()가 bkYear를 정함
+let bkYear = { Y: null, now: null };
+const PT = (t) => (bkYear.Y ? yearize(plainText(t), bkYear.Y, bkYear.now) : plainText(t));
 function bookletHTML(bd = bookletData()) {
   const { b } = bd; const P = (t) => `<p>${esc(PT(t))}</p>`;
   const st = bookletStory({ y: bd.y, thisYear: bd.d.next ? bd.d.year : null, saju: state.saju, name: state.profile.name, gender: state.profile.gender });
@@ -1956,7 +1959,7 @@ function bookletHTML(bd = bookletData()) {
 function checksHTML(list = [], calibText = '') {
   if (!list.length) return '';
   const ICON = { watch: '⚠️', good: '🌟', note: '📌' }; const TAG = { watch: '조심', good: '기회', note: '참고' };
-  return `<section class="bk-part bk-checks"><h3>⚠️ 조심할 점 · 참고할 점 <small>내 사주 글자와 그해 글자가 만나는 방식으로 골랐어요</small></h3>${calibText ? `<p class="ck-calib">🔎 ${esc(PT(calibText))}</p>` : ''}
+  return `<section class="bk-part bk-checks"><h3>⚠️ 조심할 점 · 참고할 점 <small>내 사주 글자와 ${bkYear.Y ? `${bkYear.Y}년` : '그해'} 글자가 만나는 방식으로 골랐어요</small></h3>${calibText ? `<p class="ck-calib">🔎 ${esc(PT(calibText))}</p>` : ''}
     <ul class="ck-list">${list.map((c) => `<li class="ck ${c.kind}"><b>${ICON[c.kind]} <em>${TAG[c.kind]}</em> ${esc(PT(c.title.replace(/\s*\([^)]*\)$/, '')))}</b><p>${esc(PT(c.text))}</p><p class="ck-act">👉 ${esc(PT(c.act))}${c.when ? ` <span class="ck-when">· 특히 ${esc(c.when)}</span>` : ''}</p></li>`).join('')}</ul>
   </section>`;
 }
@@ -1987,7 +1990,7 @@ function premiumYearOf(bd) {
   if (state.pyear?.key === key) return state.pyear.rep;
   const d = bd.d; const prev = d.next ? d.year : null; const ageY = bd.y.sajuYear - state.saju.input.year;
   const nextDw = d.dw?.pillars.find((p) => (p.turnAge ?? p.startAge) >= ageY && (!bd.y.daewoon || p.startAge > bd.y.daewoon.startAge)) || null;
-  const rep = buildPremiumYear({ y: bd.y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, gender: state.profile.gender, concern: state.profile.concern, nextDaewoon: nextDw, calib: retroCalibNow(d.dw) });
+  const rep = buildPremiumYear({ y: bd.y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, gender: state.profile.gender, concern: state.profile.concern, nextDaewoon: nextDw, calib: retroCalibNow(d.dw), nowYear: sajuYearOf(state.fortune.date) });
   state.pyear = { key, rep }; return rep;
 }
 function lifeReportNow() {

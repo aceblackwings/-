@@ -244,7 +244,8 @@ export function plainText(text, opts = {}) {
   t = t.replace(new RegExp(`([${STEMS.join('')}])([목화토금수])`, 'g'), (m, h, e) => HANJA_KO[h] + e);
   t = t.replace(/\s?\([^()]*[\u3400-\u9fff][^()]*\)/g, '');
   // 기둥(壬寅) → 임인 · 지지 한 글자(寅) → 호랑이 · 천간 한 글자(壬) → 임 · 오행 한 글자(土) → 흙
-  t = replaceWithJosa(t, new RegExp(`[${ALL_HANJA}]{2,}`, 'g'), (m) => [...m[0]].map((c) => HANJA_KO[c]).join(''));
+  // 지지 두 글자(未丑 = 띠 두 개)는 「양·소」, 기둥(壬寅)은 「임인」
+  t = replaceWithJosa(t, new RegExp(`[${ALL_HANJA}]{2,}`, 'g'), (m) => ([...m[0]].every((c) => BRANCHES.includes(c)) ? [...m[0]].map((c) => ANIMALS[BRANCHES.indexOf(c)]).join('·') : [...m[0]].map((c) => HANJA_KO[c]).join('')));
   t = replaceWithJosa(t, new RegExp(`[${ALL_HANJA}]`, 'g'), (m) => { const c = m[0]; const bi = BRANCHES.indexOf(c); if (bi >= 0) return opts.terms === false ? `${BRANCHES_KO[bi]}(${ANIMALS[bi]})` : ANIMALS[bi]; const ei = EL_HANJA.indexOf(c); if (ei >= 0) return EL_NAME[ei]; const si = STEMS.indexOf(c); if (si >= 0 && opts.terms !== false) return `${HANJA_KO[c]}(${EL_NAME[[0, 0, 1, 1, 2, 2, 3, 3, 4, 4][si]]})`; return HANJA_KO[c]; });
   t = t.replace(/([가-힣]+)\(\1\)/g, '$1');
   if (opts.terms !== false) {
@@ -264,6 +265,17 @@ export function plainText(text, opts = {}) {
     t = t.replace(/([0-9가-힣][0-9가-힣 ]{2,}?)\(\1\)/g, '$1');
   }
   return t;
+}
+
+/**
+ * 「그해」를 실제 연도로(v0.50.6 사용자 요청 「2027년 운세에 그해라고만 나와 헷갈린다」): 그해 → 2027년(조사도 맞춤).
+ * 보는 해가 지금 해가 아니면(내년 운세를 미리 볼 때) 「올해」도 그 연도로 바꿈. 「그해·그달」(일반 설명)은 그대로
+ */
+export function yearize(text, Y, nowY = null) {
+  if (!text || !Y) return text;
+  let t = replaceWithJosa(String(text), /그해(?!·그달)/g, () => `${Y}년`);
+  if (nowY != null && Number(Y) !== Number(nowY)) t = replaceWithJosa(t, /올해/g, () => `${Y}년`);
+  return t.replace(new RegExp(`${Y}년 ${Y}년`, 'g'), `${Y}년`);
 }
 
 /** 리포트 전체(sections → blocks → paras·h)에 plainText 적용 */

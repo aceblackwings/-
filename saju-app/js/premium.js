@@ -18,7 +18,7 @@ import { tenGodProfile, pillarReadings, natalWatch } from './natal.js';
 import { buildIlju } from './ilju.js';
 import { twelveStage, HIDDEN_STEMS, sinsalOf, sinsal12Of, SINSAL12_NOTE } from './expert.js';
 import { dateToJdn, jdnToDate } from './lunar.js';
-import { plainText, dedupeReport, PLAIN_GOD, EL_NAME } from './storybook.js';
+import { plainText, dedupeReport, PLAIN_GOD, EL_NAME, yearize } from './storybook.js';
 import { yearStoryChapters, yearClosing, monthStory, seasonStory, lifeStoryChapters, lifeOpening, lifeClosing } from './storyreport.js';
 
 // ---------- 상품 ----------
@@ -59,8 +59,8 @@ const plusDays = (d, n) => jdnToDate(dateToJdn(d.year, d.month, d.day) + n);
 const dayText = (d) => `${d.month}월 ${d.day}일`;
 
 /** 마무리: 본문은 쉬운 말로(한자·용어 → 사람 말), 부록은 한자만 한글로 · 겹친 문장 정리 · 목차·글자 수 */
-function finish(rep) {
-  const P = (t, o) => (t ? plainText(t, o) : t);
+function finish(rep, yr = null) {
+  const P = (t, o) => (t ? (yr ? yearize(plainText(t, o), yr.year, yr.now) : plainText(t, o)) : t);
   const sec = (s) => { const o = s.appendix ? { terms: false } : {}; return { ...s, h: P(s.h, o), intro: P(s.intro, o), blocks: s.blocks.map((b) => ({ ...b, h: P(b.h, o), paras: b.paras.map((x) => P(x, o)) })) }; };
   const out = dedupeReport({ ...rep, sub: P(rep.sub), sections: rep.sections.map(sec) });
   out.toc = tocOf(out); out.chars = charCount(out);
@@ -200,7 +200,7 @@ export function buildPremiumYear(ctx) {
   void km; void seasons;
   sections.push(yearClosing(ctx), appendix);
 
-  return finish({ kind: 'year', year: y.sajuYear, title: `${y.sajuYear}년 상세 운세`, sub: `${yearName(y.year.pillar)} · ${who}`, sections });
+  return finish({ kind: 'year', year: y.sajuYear, title: `${y.sajuYear}년 상세 운세`, sub: `${yearName(y.year.pillar)} · ${who}`, sections }, { year: y.sajuYear, now: ctx.nowYear ?? null });
 }
 
 /**
@@ -559,9 +559,9 @@ const EL_ACTIVITY = ['숲길 산책·식물 기르기·새 강의 함께 듣기'
 const COMPAT_QA = [
   ['오래 갈 수 있을까요?', ['처음엔 맞춰 가는 시간이 필요해요. 서로의 속도를 인정하는 순간부터 관계가 단단해져요.', '편안함이 큰 사이라 오래 갈 힘이 있어요. 익숙함 속에서도 고마움을 표현하면 더 오래가요.', '서로를 끌어당기는 힘이 큰 사이예요. 다툼이 생겨도 금세 다시 찾게 되는 인연이에요.']],
   ['다투면 누가 먼저 다가가야 할까요?', ['둘 다 고집이 있는 편이라, 「먼저 사과하는 사람이 이긴다」는 규칙을 정해 두면 좋아요.', '말하는 속도가 빠른 쪽이 먼저 한 발 물러나면 대화가 금세 풀려요.', '누가 먼저든 금세 풀리는 사이예요. 다만 서운함을 쌓아 두지만 않으면 돼요.']],
-  ['돈 관리는 누가 하면 좋을까요?', ['돈에 대한 생각이 다를 수 있어요. 공동 통장과 각자 통장을 나눠 두면 다툼이 줄어요.', '토·금 기운이 더 많은 쪽이 살림을, 목·화 기운이 더 많은 쪽이 계획과 경험을 맡으면 자연스러워요.', '돈 이야기를 편하게 나눌 수 있는 사이예요. 한 해 목표 금액을 함께 정해 보세요.']],
+  ['돈 관리는 누가 하면 좋을까요?', ['돈에 대한 생각이 다를 수 있어요. 공동 통장과 각자 통장을 나눠 두면 다툼이 줄어들어요.', '토·금 기운이 더 많은 쪽이 살림을, 목·화 기운이 더 많은 쪽이 계획과 경험을 맡으면 자연스러워요.', '돈 이야기를 편하게 나눌 수 있는 사이예요. 한 해 목표 금액을 함께 정해 보세요.']],
   ['함께 일하거나 사업해도 될까요?', ['역할이 겹치면 부딪히기 쉬워요. 시작 전에 역할·수익·결정권을 글로 정해 두면 가능해요.', '손발이 맞는 편이라 작은 일부터 함께 해 보면 좋아요. 성과 나누기는 처음부터 정해 두세요.', '서로의 강점이 맞물려 결과가 커지는 사이예요. 공동 목표를 숫자로 정하면 더 멀리 가요.']],
-  ['결혼이나 동거처럼 함께 사는 건 어떨까요?', ['생활 방식이 다른 편이라 각자의 시간과 공간을 정해 두면 오히려 편안해요.', '생활 리듬이 무난하게 맞는 편이에요. 집안일을 미리 나눠 두면 다툼이 크게 줄어요.', '생활 리듬이 잘 맞물리는 사이예요. 함께 사는 시간이 길수록 서로를 더 닮아 가요.']],
+  ['결혼이나 동거처럼 함께 사는 건 어떨까요?', ['생활 방식이 다른 편이라 각자의 시간과 공간을 정해 두면 오히려 편안해요.', '생활 리듬이 무난하게 맞는 편이에요. 집안일을 미리 나눠 두면 다툼이 크게 줄어들어요.', '생활 리듬이 잘 맞물리는 사이예요. 함께 사는 시간이 길수록 서로를 더 닮아 가요.']],
 ];
 const SPOUSE_LIKE = ['대등하게 어깨를 나란히 하는', '즐겁게 표현하며 챙겨 주는', '현실적으로 생활을 꾸리는', '믿음직하게 약속을 지키는', '따뜻하게 품어 주는'];
 // 일간 오행별 말하는 방식
@@ -594,7 +594,7 @@ export function buildCompatReport(ctx) {
     { h: `${A} · ${DA.name}, ${DA.image}`, paras: [DA.text] },
     { h: `${B} · ${DB.name}, ${DB.image}`, paras: [DB.text] },
     ...[[A, me], [B, friend]].map(([n, sj]) => { const il = buildIlju(sj); return { h: `${n}의 일주 · ${il.name}, ${il.image}`, paras: [il.paras.personality, `사랑: ${il.paras.love}`] }; }),
-    { h: '말하는 방식이 다를 때', paras: [`${A}: ${TALK[STEM_ELEMENT[me.dayMaster]]}`, `${B}: ${TALK[STEM_ELEMENT[friend.dayMaster]]}`, STEM_ELEMENT[me.dayMaster] === STEM_ELEMENT[friend.dayMaster] ? '말하는 방식이 닮아 대화가 편해요. 다만 둘 다 같은 순간에 같은 것을 원할 때가 있으니, 순서를 번갈아 양보해 보세요.' : '말하는 방식이 달라, 상대의 속도를 알아 두는 것만으로 오해가 크게 줄어요.'] },
+    { h: '말하는 방식이 다를 때', paras: [`${A}: ${TALK[STEM_ELEMENT[me.dayMaster]]}`, `${B}: ${TALK[STEM_ELEMENT[friend.dayMaster]]}`, STEM_ELEMENT[me.dayMaster] === STEM_ELEMENT[friend.dayMaster] ? '말하는 방식이 닮아 대화가 편해요. 다만 둘 다 같은 순간에 같은 것을 원할 때가 있으니, 순서를 번갈아 양보해 보세요.' : '말하는 방식이 달라, 상대의 속도를 알아 두는 것만으로 오해가 크게 줄어들어요.'] },
   ] });
 
   sections.push({ key: 'stem', h: `타고난 기운(일간) · ${c.stem.label}`, blocks: [{ paras: [`${STEMS[me.dayMaster]} × ${STEMS[friend.dayMaster]}: ${sentence(c.stem.text)}`, ...STEM_REL_DETAIL[c.stem.type]] }] });
