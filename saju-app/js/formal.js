@@ -21,7 +21,7 @@ const B_IRREG = ['쉬', '반가', '뜨거', '날카로', '풍요로', '가벼', 
 /** 「~요」로 끝나는 한 단어(구두점 앞) → 합니다체. 바꿀 수 없으면 null */
 export function formalWord(w) {
   if (!w.endsWith('요') || w.length < 2) return null;
-  for (const [k, v] of Object.entries(WHOLE)) if (w.endsWith(k)) return w.slice(0, -k.length) + v;
+  for (const [k, v] of Object.entries(WHOLE)) if (w.endsWith(k) && (k !== '거예요' || w === k)) return w.slice(0, -k.length) + v; // 근거예요·증거예요는 「거」가 낱말 끝이라 아래 「예요 → 입니다」로
   const body = w.slice(0, -1); // 「요」를 뗀 부분
   if (body.endsWith('세')) return null; // ~세요(권유)는 그대로
   if (body.endsWith('이에')) return `${body.slice(0, -2)}입니다`;

@@ -28,6 +28,14 @@ export const STORY4 = {
   정인: ['오늘은 윗사람이나 주변 사람에게 도움을 받기 쉬운 날이에요.', '막혀 있던 일이 누군가의 조언으로 풀리기 쉬워요.', '오늘 할 일: 도와준 사람에게 오늘 안에 고맙다는 메시지를 보내세요.', '저녁에 오늘 배운 것 하나를 다시 떠올려 보세요.'],
 };
 
+// v0.51.1 이야기와 직설 섞기: 「🎬 오늘의 한 장면」(비유 한 문장) 바로 아래에 「쉽게 말하면」(story) — 비유는 늘 직설과 짝으로만
+export const SCENE = {
+  비견: '거울 속 나와 똑 닮은 사람이 옆자리에 앉는 날.', 겁재: '지갑이 저 혼자 열리려고 들썩이는 날.', 식신: '손끝에서 꿀이 뚝뚝 떨어지는 날.',
+  상관: '입이 마음보다 한 발 먼저 달려 나가는 날.', 편재: '평소 안 가던 골목에서 행운이 손짓하는 날.', 정재: '작은 벽돌을 하나씩 쌓아 올리는 날.',
+  편관: '누군가 내 어깨에 무거운 가방을 하나 더 얹는 날.', 정관: '누군가 나를 조용히 지켜보고 있는 날.', 편인: '머릿속에 작은 탐정이 한 명 들어와 사는 날.',
+  정인: '보이지 않는 손이 등을 살짝 밀어 주는 날.',
+};
+
 const MOOD = [
   [80, '흐름이 좋은 하루예요. 미뤄 둔 일을 오늘 시작하세요.'],
   [64, '무난한 하루예요. 하던 일을 그대로 이어 가면 좋아요.'],
@@ -62,7 +70,7 @@ export function todayStory(f, saju, five) {
     : clash ? `오늘 ${PLAIN_GOD[god]}이 들어오고, 오늘의 ${animal} 기운이 내 사주와 살짝 부딪혀서 그래요.`
       : `오늘 ${PLAIN_GOD[god]}이 들어와서 그래요.`;
   const story = [hook, `${body} ${cause}`, spell, night].join(' ');
-  return { head: T.head, mood, story, why, good, watch, dont: [...T.dont], think: T.think, act: [...T.do], lucky, low };
+  return { head: T.head, mood, scene: SCENE[god], story, why, good, watch, dont: [...T.dont], think: T.think, act: [...T.do], lucky, low };
 }
 
 /** 공감 기록: { dateKey: 'yes'|'meh' } (40일만) */

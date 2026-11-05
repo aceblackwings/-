@@ -301,7 +301,7 @@ export function lifeStoryChapters(ctx) {
   const RG = GOD_TALE[GROUP_REP_HARD[gi]];
   out.push({ key: 'risk', h: '3장 · 평생 조심할 일과 피할 일', intro: '타고난 성질의 단점이에요. 미리 알면 피할 수 있어요.', blocks: [
     { h: '⚠️ 빠지기 쉬운 실수', paras: RG.risk.map(sentence) },
-    { h: '🚫 평생 피하면 좋은 일', paras: [list([...RG.avoid, low.pct <= 8 ? `「${low.mean}」이 적으니 ${low.fill.replace(/[.]$/, '')}` : '내 기분이 가장 들뜬 날 큰 결정 내리기']) + '.'] },
+    { h: '🚫 평생 피하면 좋은 일', paras: [list([...RG.avoid, '내 기분이 가장 들뜬 날 큰 결정 내리기']) + '.', ...(low.pct <= 8 ? [`그리고 ${who}의 사주에는 「${low.mean}」이 적은 편이에요(${low.pct}%). ${low.fill}`] : [])] },
   ] });
 
   const myB = saju.pillars.year.branch; const dB = saju.pillars.day.branch;
@@ -448,7 +448,8 @@ export function bookletStory(ctx) {
   const best = [...y.months].sort((a, b) => b.score - a.score)[0];
   const trapN = (ch.find((s) => s.key === 'risk')?.blocks.filter((b) => !b.cliff && b.h?.startsWith('🔎')).length || 0) + GOD_TALE[y.year.god].risk.length;
   return {
-    hook: `${y.sajuYear}년 한 줄 요약: ${PLAIN_GOD[y.year.god]}이 들어오는 해예요. 가장 좋은 달은 ${best.solarMonth}월이에요.`,
+    scene: `${y.sajuYear}년 12월의 어느 저녁, ${josa(who, '은/는')} 달력을 넘기다 ${best.solarMonth}월 칸의 메모를 보고 웃게 될지도 몰라요. 「그때 시작하길 정말 잘했다.」`,
+    hook: `${y.sajuYear}년은 ${PLAIN_GOD[y.year.god]}이 들어오는 해예요. 가장 좋은 달은 ${best.solarMonth}월이니, 미뤄 둔 일은 이 달에 시작하세요.`,
     brief: ch.find((s) => s.key === 'brief'),
     chapters: [
       { h: wind.h, paras: [...wind.blocks[0].paras, ...(wind.blocks.find((b) => b.h?.startsWith('👀'))?.paras || [])] },

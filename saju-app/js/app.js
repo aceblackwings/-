@@ -48,7 +48,7 @@ import { fiveScores } from './todayfive.js';
 import { todayStory, setEmpathy, empathyReply } from './todaystory.js';
 import { plainText, yearize } from './storybook.js';
 import { bookletStory, sajuStory } from './storyreport.js';
-import { kiStory, tarotTale } from './funstory.js';
+import { kiStory, kiQuote, tarotTale } from './funstory.js';
 import { claimItem, PIECES_PER_ITEM } from './tteok.js';
 import { TTEOK, visit as tteokVisit, doTask as tteokDoTask, todayTasks, doneCount, isOpen as scrollOpen, spend as tteokSpend, buy as tteokBuy, SCROLLS, PACKS, TASKS as TTEOK_TASKS, ALL_BONUS } from './tteok.js';
 import { emoImage, charImage } from './assets.js';
@@ -1947,7 +1947,8 @@ function bookletHTML(bd = bookletData()) {
       <p class="bk-sub">${esc(PT(b.name))}${state.profile.name ? ` · ${esc(state.profile.name)} 님` : ''}</p>
     </header>
     <section class="bk-story">
-      <p class="bk-hook">${esc(PT(st.hook))}</p>
+      ${st.scene ? `<p class="bk-scene">🎬 ${esc(PT(st.scene))}</p>` : ''}
+      <p class="bk-hook"><b>쉽게 말하면,</b> ${esc(PT(st.hook))}</p>
       ${briefHTML(st.brief)}
       ${st.chapters.map((c) => `<h3>${esc(PT(c.h))}</h3>${c.paras.map(P).join('')}`).join('')}
       <p class="bk-cliff">${esc(PT(st.cliff))}</p>
@@ -2578,7 +2579,7 @@ function fiveCardHTML() {
       <div class="five-hi"><small>${f.date.month}월 ${f.date.day}일 ${dowOf(f.date)}요일 · 오늘의 운세</small><h2>${esc(t.head)}</h2>
         <p>${esc(t.mood)}</p></div>
     </div>
-    <p class="ts-why">${zodiacFace(v.total >= 70 ? 'excited' : v.total >= 50 ? 'smile' : 'calm', 'z-face ts-z')}<span>${esc(t.story)}</span></p>
+    <p class="ts-why">${zodiacFace(v.total >= 70 ? 'excited' : v.total >= 50 ? 'smile' : 'calm', 'z-face ts-z')}<span>${t.scene ? `<em class="ts-scene">🎬 오늘의 한 장면 · ${esc(t.scene)}</em>` : ''}<b class="ts-plain">쉽게 말하면,</b> ${esc(t.story)}</span></p>
     <div class="ts-grid">
       <section class="ts-tile good"><h4>👍 오늘 좋은 점</h4><p>${esc(t.good)}</p></section>
       <section class="ts-tile watch"><h4>⚠️ 오늘 조심할 점</h4><p>${esc(t.watch)}</p>${t.dont?.length ? `<p class="ts-dont-h">⛔ 오늘 하지 말 것</p><ul class="ts-dont">${t.dont.map((a) => `<li>${esc(a)}</li>`).join('')}</ul>` : ''}</section>
@@ -2662,6 +2663,7 @@ function kiCardHTML() {
       </div>
     </div>
     <p class="ki-story">${esc(kiStory(c, s, state.profile.name))}</p>
+    <p class="ki-quote" data-casual>💬 ${esc(Z.name)} 지신의 한마디 ${esc(kiQuote(c))}</p>
     <h4 class="ki-gh">🐉 지신 기운 게이지 <small>★ 부족한 기운 · 채울수록 개운이 올라요</small></h4>
     ${kiGaugeHTML(c.element)}
     ${kiProgressHTML(st)}

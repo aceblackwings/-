@@ -1656,3 +1656,8 @@ html.easy .top h1 { font-size: 20px; }
 .brief-row ul { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; }
 .brief-row li { line-height: 1.7; font-size: 0.96rem; color: var(--text); word-break: keep-all; }
 .brief-row p { margin: 0; line-height: 1.7; font-size: 0.96rem; color: var(--text); word-break: keep-all; }
+/* v0.51.1 이야기 한 장면 + 쉽게 말하면 */
+.ts-scene, .bk-scene { display: block; margin: 0 0 8px; font-style: italic; color: #7a5a8c; line-height: 1.7; }
+.bk-scene { padding: 10px 14px; border-radius: 14px; background: #faf6ff; }
+.ts-plain, .bk-hook b { color: var(--ink); }
+.ki-quote { margin: 10px 0 0; padding: 10px 14px; border-radius: 14px; background: #fff8f0; color: #7a5a3c; line-height: 1.7; font-size: 0.95rem; }

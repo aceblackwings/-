@@ -134,11 +134,11 @@ t('v0.51 직설 문장: 한눈에 정리(할 일·피할 일·언제)가 맨 앞
       for (const x of mainText(r)) assert.ok(!MET.test(x), `${r.kind} 비유: ${x.match(MET)?.[0]} | ${x}`);
     }
     const st = bookletStory({ y: yearOf(p.s, 2027, p.g), thisYear: yearOf(p.s, 2026, p.g), saju: p.s, name: '은하', gender: p.g });
-    assert.ok(st.brief?.blocks.some((x) => x.h.startsWith('📅')));
+    assert.ok(st.brief?.blocks.some((x) => x.h.startsWith('📅'))); assert.ok(st.scene && /시작하세요/.test(st.hook), '장면 다음에 쉽게 말하면');
     for (const x of [st.hook, st.cliff, ...st.chapters.flatMap((c) => [c.h, ...c.paras])]) assert.ok(!MET.test(x), `책자 비유: ${x}`);
     for (let d = 1; d <= 20; d++) {
       const f = computeFortune(p.s, { year: 2026, month: 12, day: d }, { gender: p.g }); const x = todayStory(f, p.s, fiveScores(f));
-      assert.equal(x.dont.length, 2); assert.match(x.story, /오늘 할 일:/);
+      assert.equal(x.dont.length, 2); assert.match(x.story, /오늘 할 일:/); assert.ok(x.scene, '이야기 한 장면은 직설 문장과 짝으로 있음');
       for (const z of [x.head, x.mood, x.story, x.watch, ...x.dont]) assert.ok(!MET.test(z), `오늘 비유: ${z}`);
     }
     for (let e = 0; e < 5; e++) { const k = kiStory({ zodiac: e, element: e, rarity: 'rare', lack: true }, p.s, ''); assert.match(k, /오늘 할 일:.*피할 일:/); }

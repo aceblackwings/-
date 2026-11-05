@@ -6,7 +6,7 @@ import { twelveStage, STAGE_NOTE } from './expert.js';
 import { STAGE_PERIOD } from './reading.js';
 
 export const GOD_GROUPS = [
-  { key: 'bigeop', label: '비겁', gods: ['비견', '겁재'], type: '주체형', icon: '🧭', mean: '나를 세우는 힘', strong: '자기 뜻이 분명하고 독립심이 강해요. 스스로 결정하고 밀고 나가는 힘이 있어요.', fill: '혼자 짊어지기 쉬우니, 믿는 동료 한 명과 나눠 보세요.' },
+  { key: 'bigeop', label: '비겁', gods: ['비견', '겁재'], type: '주체형', icon: '🧭', mean: '나를 세우는 힘', strong: '자기 뜻이 분명하고 독립심이 강해요. 스스로 결정하고 밀고 나가는 힘이 있어요.', fill: '하루 한 번 「나는 이게 좋아/싫어」를 분명히 말하고, 내 몫을 먼저 챙겨 보세요.' },
   { key: 'siksang', label: '식상', gods: ['식신', '상관'], type: '표현형', icon: '🎨', mean: '재능을 펼치는 힘', strong: '아이디어와 표현력이 풍부해요. 만들고 말하고 보여 주는 일에서 빛나요.', fill: '떠오른 생각을 글이나 작품으로 꺼내 보면 기운이 살아나요.' },
   { key: 'jaeseong', label: '재성', gods: ['편재', '정재'], type: '실속형', icon: '💼', mean: '결실을 거두는 힘', strong: '현실 감각과 관리 능력이 좋아요. 돈과 사람, 일의 흐름을 잘 다뤄요.', fill: '작은 예산 하나를 정해 관리해 보면 결실의 감각이 자라요.' },
   { key: 'gwanseong', label: '관성', gods: ['편관', '정관'], type: '원칙형', icon: '⚖️', mean: '책임과 자리의 힘', strong: '책임감과 원칙이 분명해요. 조직 안에서 믿고 맡길 수 있는 사람이에요.', fill: '작은 약속 하나를 정해 꾸준히 지키면 신뢰의 힘이 붙어요.' },
