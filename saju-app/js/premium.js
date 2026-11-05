@@ -149,10 +149,10 @@ export function buildPremiumYear(ctx) {
   sections.push({
     key: 'open', h: `${who}께 · ${y.sajuYear}년을 여는 편지`,
     blocks: [{ paras: [
-      `${y.sajuYear}년 12월의 어느 저녁, ${josa(who, '은/는')} 달력을 넘겨 보다가 ${best[0]}월 칸에 적어 둔 메모 한 줄을 보고 피식 웃게 될지도 몰라요. 「그때 시작하길 정말 잘했다.」 이 책은 그 장면까지 가는 길을 따라가는, ${who}가 주인공인 이야기예요.`.replace(`${who}가 주인공`, `${josa(who, '이/가')} 주인공`),
-      `${who}, ${y.sajuYear}년은 ${PLAIN_GOD[god]}이 들어오는 해예요. 한 줄로 말하면 「${GOD_READING[god].keyword}」의 해. 이 책은 점수 대신 이야기로, 왜 그런 흐름이 오는지, 무엇을 피하고 무엇을 붙잡으면 되는지 차근차근 들려드려요.`,
+      `🎬 ${y.sajuYear}년 12월의 어느 저녁, ${josa(who, '은/는')} 달력을 넘기다 ${best[0]}월 칸의 메모를 보고 웃게 될지도 몰라요. 「그때 시작하길 정말 잘했다.」 쉽게 말하면, ${best[0]}월은 올해 가장 좋은 달이니 미뤄 둔 일은 이 달에 시작하세요.`,
+      `${who}, ${y.sajuYear}년은 ${PLAIN_GOD[god]}이 들어오는 해예요. 한 줄로 말하면 「${GOD_READING[god].keyword}」의 해예요. 이 책은 올해 무엇을 하고 무엇을 피하면 되는지, 그리고 그 이유를 차례로 알려 드려요.`,
       `흐름이 가장 좋은 세 달은 ${best.join('·')}월, 속도를 늦추고 다지기 좋은 두 달은 ${slow.join('·')}월이에요.${yong.length ? ` 그리고 ${yong.join('·')}월은 ${who}에게 가장 필요한 ${EL_NAME[saju.yongsin]} 기운이 하늘에서 내려오는 달이라, 몸과 마음이 한결 편해요.` : ''}`,
-      '1장부터 6장까지는 한 해의 이야기, 7장은 열두 달, 8장은 분야별 전략이에요. 어려운 계산 근거는 맨 뒤 부록에 모아 두었어요. 점수는 무료 화면과 같은 값이에요.',
+      '바로 다음 「한눈에 정리」에 올해 할 일·피할 일·좋은 달을 모아 두었어요. 1장부터 6장까지는 그 이유와 방법, 7장은 열두 달, 8장은 분야별 전략이에요. 어려운 계산 근거는 맨 뒤 부록에 있어요. 점수는 무료 화면과 같은 값이에요.',
     ] }],
   });
 
@@ -160,7 +160,7 @@ export function buildPremiumYear(ctx) {
   sections.push(...yearStoryChapters({ ...ctx, checks }));
 
   sections.push({
-    key: 'months', h: '7장 · 열두 달 이야기', intro: '절기가 바뀌는 날(입춘·경칩…)을 달의 시작으로 봐요. 🌟는 바람이 시원한 달, 🍵는 쉬어 가는 달이에요.',
+    key: 'months', h: '7장 · 열두 달 이야기', intro: '절기가 바뀌는 날(입춘·경칩…)을 달의 시작으로 봐요. 🌟는 흐름이 좋은 달, 🍵는 새 일을 미루고 쉬어 갈 달이에요.',
     blocks: [seasonStory(y), ...y.months.map((m, i) => monthStory(y, i, ctx, rankOf(i), monthDaysText(saju, m, ctx.gender)))],
   });
 
@@ -500,20 +500,20 @@ export function buildLifeReport(ctx) {
     const ps = daewoon.pillars.slice(0, 9); const hiD = [...ps].sort((a, b) => b.score - a.score)[0]; const loD = [...ps].sort((a, b) => a.score - b.score)[0];
     sections.push({ key: 'graph', h: '인생의 계절 · 대운 그래프', blocks: [{ paras: [
       `10년마다의 점수를 이어 보면 ${ps.map((d) => `${d.startAge}세 ${d.score}점`).join(' → ')}이에요.`,
-      `가장 바람이 시원한 때는 ${hiD.startAge}~${hiD.endAge}세(${pillarName(hiD)} 대운)예요. 이때는 미뤄 둔 큰 목표를 꺼내 돛을 활짝 펴세요. 가장 차분한 때는 ${loD.startAge}~${loD.endAge}세(${pillarName(loD)} 대운)로, 새로 벌이기보다 안을 다지고 다음 바람을 준비하면 그 10년이 오히려 가장 단단한 밑천이 돼요.`,
+      `가장 좋은 때는 ${hiD.startAge}~${hiD.endAge}세(${pillarName(hiD)} 대운)예요. 이때 미뤄 둔 큰 목표를 시작하세요. 점수가 가장 낮은 때는 ${loD.startAge}~${loD.endAge}세(${pillarName(loD)} 대운)로, 이때는 새 일을 줄이고 실력·건강·저축을 다지세요.`,
       `지금(${curAge}세 무렵)은 ${(ps.find((d) => curAge >= d.startAge && curAge <= d.endAge) || ps[0]).startAge}세부터 이어지는 대운 안에 있어요. 다음 대운으로 넘어가는 해(교운기) 앞뒤 1년은 이사·이직·관계의 변화가 생기기 쉬우니, 큰 결정은 계획표를 먼저 써 두세요.`,
     ] }] });
   }
 
-  sections.push({ key: 'close', h: '맺음', blocks: [{ paras: [`사주는 정해진 운명표가 아니라 타고난 바람의 방향이에요. ${who}에게 맞는 바람은 ${el(saju.yongsin)}에서 불어오고, ${gyeok ? `「${GP.title}」의 그릇` : '고른 그릇'}에 「${ilju.keyword}」의 힘이 담겨 있어요. 좋은 대운에는 돛을 활짝 펴고, 차분한 대운에는 배를 손보며 가면 돼요. 이 풀이가 그 항해의 지도가 되기를 바라요.`] }] });
+  sections.push({ key: 'close', h: '맺음', blocks: [{ paras: [`${who}에게 가장 필요한 기운은 ${el(saju.yongsin)}이고, 타고난 그릇은 ${gyeok ? `「${GP.title}」` : '고른 편'}, 일주의 힘은 「${ilju.keyword}」예요. 점수가 좋은 대운에는 큰 목표를 시작하고, 점수가 낮은 대운에는 새 일을 줄이고 다지세요.`] }] });
 
   // v0.50: 본문 = 쉬운 이야기 7장, 사주 용어로 된 풀이는 「부록」으로(접혀서 보임)
   const story = lifeStoryChapters({ saju, gyeok, gp: GP, daewoon, name, gender: ctx.gender, curAge, watch: natalWatch(saju) });
   const open = { key: 'open', h: `${who}께 · 나를 읽는 편지`, blocks: [{ paras: [
     lifeOpening(saju, who),
-    `${who}, 이 책은 ${who}가 어떤 사람으로 태어났는지, 왜 비슷한 고비가 반복되는지, 누구와 어떤 일을 할 때 가장 빛나는지를 이야기로 풀어요.`.replace(`${who}가`, josa(who, '이/가')),
+    `${who}, 이 책은 ${who}가 어떤 사람인지, 왜 비슷한 고비가 반복되는지, 누구와 어떤 일을 할 때 잘 풀리는지, 그리고 무엇을 하고 무엇을 피하면 되는지를 알려 드려요.`.replace(`${who}가`, josa(who, '이/가')),
     `한 줄로 줄이면, ${josa(who, '은/는')} 「${DP.image}」의 바탕에 「${ilju.image}」의 모습을 가진 사람이에요. 가장 필요한 기운은 ${EL_NAME[saju.yongsin]} 기운이에요.`,
-    `이 책은 주인공인 ${who}의 이야기예요. 1장부터 8장까지는 쉬운 이야기, 그 뒤 부록에는 여덟 글자 하나하나를 사주 용어로 짚은 풀이가 있어요. 궁금한 부분만 펼쳐 보세요.`,
+    `바로 다음 「한눈에 정리」에 평생 할 일·피할 일·맞는 일을 모아 두었어요. 1장부터 8장까지는 그 이유와 방법, 그 뒤 부록에는 여덟 글자 하나하나를 사주 용어로 짚은 풀이가 있어요.`,
   ] }] };
   const appendix = sections.filter((x) => !['open', 'close'].includes(x.key)).map((x) => ({ ...x, key: `ap-${x.key}`, appendix: true, h: `부록 · ${x.h}` }));
   const close = lifeClosing(saju, who);

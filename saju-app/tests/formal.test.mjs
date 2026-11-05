@@ -27,4 +27,8 @@ const t = formal('좋은 해예요. 기운이 실려요!');
 assert.equal(formal(t), t);
 assert.equal(hasPoliteYo(t), false);
 assert.equal(formalWord('사과'), null);
+// v0.51.1 사용자 제보 「계산 근것입니다」: 낱말 끝 「거」는 「것」이 아님
+assert.equal(formal('사주 용어로 된 계산 근거예요.'), '사주 용어로 된 계산 근거입니다.');
+assert.equal(formal('좋은 증거예요.'), '좋은 증거입니다.');
+assert.equal(formal('잘 풀릴 거예요.'), '잘 풀릴 것입니다.');
 console.log('formal: 모든 테스트 통과');

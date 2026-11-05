@@ -48,7 +48,7 @@ import { fiveScores } from './todayfive.js';
 import { todayStory, setEmpathy, empathyReply } from './todaystory.js';
 import { plainText, yearize } from './storybook.js';
 import { bookletStory, sajuStory } from './storyreport.js';
-import { kiStory, tarotTale } from './funstory.js';
+import { kiStory, kiQuote, tarotTale } from './funstory.js';
 import { claimItem, PIECES_PER_ITEM } from './tteok.js';
 import { TTEOK, visit as tteokVisit, doTask as tteokDoTask, todayTasks, doneCount, isOpen as scrollOpen, spend as tteokSpend, buy as tteokBuy, SCROLLS, PACKS, TASKS as TTEOK_TASKS, ALL_BONUS } from './tteok.js';
 import { emoImage, charImage } from './assets.js';
@@ -77,6 +77,7 @@ import {
   QUESTS, STAGES, STREAK_REWARDS, emptyGrowth, checkIn, complete, addExp, evolve, claimStreakReward, summary, stageName,
 } from './growth.js';
 import { drawKiCard, todayKiCard, stageForDays, nextStage, kiCardText, rarityLabel, CARD_RARITY, LACK_RATE } from './dailycard.js';
+import { BOWLS, STAGE_POINTS, DECOR, EMO_ORDER, EMO_KO, seedFood, feed, todayBowls, fedDays, stageForPoints, growthOf, daysLeft, heightCm, decorCount, emotesUnlocked, conditionOf, feedLine } from './jisin.js';
 import {
   lunarToSolar, solarToLunar, leapMonthOf, lunarMonthDays, formatLunar,
 } from './lunar.js';
@@ -642,8 +643,9 @@ function sajuStoryHTML() {
   const s = state.saju; const g = analyzeGyeok(s);
   const st = sajuStory({ saju: s, gyeok: g, gp: GYEOK_PROFILE[g.name], name: state.profile.name, gender: state.profile.gender, curAge: sajuYearOf(state.fortune.date) - s.input.year, watch: natalWatch(s) });
   const P = (t) => `<p>${esc(PT(t))}</p>`;
-  return `<article class="card sj-story"><h3>📖 이야기로 읽는 나 <span class="tag">주인공 소개</span></h3>
+  return `<article class="card sj-story"><h3>📖 쉽게 읽는 나 <span class="tag">한눈에 정리</span></h3>
     <p class="bk-hook">${esc(PT(st.hook))}</p>
+    ${briefHTML(st.brief)}
     ${st.blocks.map((b) => `<h4>${esc(PT(b.h))}</h4>${b.paras.map(P).join('')}`).join('')}
     <h4>${esc(PT(st.hard.h))}</h4>${st.hard.paras.map(P).join('')}
     <p class="bk-cliff">${esc(PT(st.cliff))}</p>
@@ -1927,6 +1929,11 @@ function bookletData() {
   return { d, y, b };
 }
 
+/** v0.51 「한눈에 정리」 상자: 할 일·피할 일·언제를 맨 앞에 그대로(테스터 의견 「무엇을 해야 할지 헷갈린다」) */
+function briefHTML(br) {
+  if (!br) return '';
+  return `<section class="brief-box"><h3>${esc(PT(br.h))}</h3>${br.blocks.map((b) => `<div class="brief-row"><h4>${esc(PT(b.h))}</h4>${b.paras.some((x) => x.startsWith('·')) ? `<ul>${b.paras.map((x) => `<li>${esc(PT(x.replace(/^·\s*/, '')))}</li>`).join('')}</ul>` : b.paras.map((x) => `<p>${esc(PT(x))}</p>`).join('')}</div>`).join('')}</section>`;
+}
 /** 첫 화면 위: 표지 + 총운(펼쳐 둠). 바로 아래가 오늘의 운세 (2026-11-03 사용자 요청: 스크롤 줄이기) */
 // 신년운세 책자에서는 「그해」·(내년을 미리 볼 때) 「올해」를 실제 연도로 — bookletData()가 bkYear를 정함
 let bkYear = { Y: null, now: null };
@@ -1941,7 +1948,9 @@ function bookletHTML(bd = bookletData()) {
       <p class="bk-sub">${esc(PT(b.name))}${state.profile.name ? ` · ${esc(state.profile.name)} 님` : ''}</p>
     </header>
     <section class="bk-story">
-      <p class="bk-hook">${esc(PT(st.hook))}</p>
+      ${st.scene ? `<p class="bk-scene">🎬 ${esc(PT(st.scene))}</p>` : ''}
+      <p class="bk-hook"><b>쉽게 말하면,</b> ${esc(PT(st.hook))}</p>
+      ${briefHTML(st.brief)}
       ${st.chapters.map((c) => `<h3>${esc(PT(c.h))}</h3>${c.paras.map(P).join('')}`).join('')}
       <p class="bk-cliff">${esc(PT(st.cliff))}</p>
     </section>
@@ -2437,6 +2446,7 @@ function weeklyLetterHTML() {
 function completeNote() {
   const f = state.fortune; const store = load(NOTE_KEY, {});
   if (store[f.dateKey]?.done) return;
+  setTimeout(() => feedJisin('dinner'), 600);
   const { u } = todayUmbrella();
   const eqNow = loadEquip(); const pair = pairType(eqNow.charms);
   const rarity = boostRarity(stampRarity(weekStamps(store, timelineData().week) + 1), pair); // D: 쌍부적이면 한 등급 위
@@ -2571,10 +2581,10 @@ function fiveCardHTML() {
       <div class="five-hi"><small>${f.date.month}월 ${f.date.day}일 ${dowOf(f.date)}요일 · 오늘의 운세</small><h2>${esc(t.head)}</h2>
         <p>${esc(t.mood)}</p></div>
     </div>
-    <p class="ts-why">${zodiacFace(v.total >= 70 ? 'excited' : v.total >= 50 ? 'smile' : 'calm', 'z-face ts-z')}<span>${esc(t.story)}</span></p>
+    <p class="ts-why">${zodiacFace(v.total >= 70 ? 'excited' : v.total >= 50 ? 'smile' : 'calm', 'z-face ts-z')}<span>${t.scene ? `<em class="ts-scene">🎬 오늘의 한 장면 · ${esc(t.scene)}</em>` : ''}<b class="ts-plain">쉽게 말하면,</b> ${esc(t.story)}</span></p>
     <div class="ts-grid">
       <section class="ts-tile good"><h4>👍 오늘 좋은 점</h4><p>${esc(t.good)}</p></section>
-      <section class="ts-tile watch"><h4>⚠️ 오늘 조심할 점</h4><p>${esc(t.watch)}</p></section>
+      <section class="ts-tile watch"><h4>⚠️ 오늘 조심할 점</h4><p>${esc(t.watch)}</p>${t.dont?.length ? `<p class="ts-dont-h">⛔ 오늘 하지 말 것</p><ul class="ts-dont">${t.dont.map((a) => `<li>${esc(a)}</li>`).join('')}</ul>` : ''}</section>
       <section class="ts-tile think"><h4>🤔 생각해 볼 것</h4><p>${esc(t.think)}</p></section>
       <section class="ts-tile act"><h4>✅ 이렇게 해 보세요</h4><ul>${t.act.map((a) => `<li>${esc(a)}</li>`).join('')}</ul></section>
     </div>
@@ -2613,6 +2623,98 @@ function revealAndScroll(sel, block = 'start') {
 const KI_RAR_COLOR = { common: '#9aa3b2', rare: '#5aa9e6', epic: '#a77be0', legend: '#e0a02c', myth: '#ec7fa0' };
 const loadKi = () => load(KICARD_KEY, null);
 
+// ---------- v0.52 지신 밥 주기: 오늘 운세(아침밥)·타로(간식)·습관 체크/기운 카드(저녁밥) → 누적 밥 점수로 진화 ----------
+const FOOD_KEY = 'unmyeong2099.food';
+function loadFood() {
+  const raw = load(FOOD_KEY, null);
+  if (raw?.seeded) return raw;
+  const s = seedFood(raw, loadKi()?.total || 0); save(FOOD_KEY, s); return s; // 예전 사용자는 기운 카드 누적 일수 × 4점
+}
+const foodPoints = () => loadFood().points || 0;
+/** 지금 진화 단계(예전에 이미 진화한 단계보다 내려가지 않음) */
+const jisinStage = () => Math.max(loadGrowth().evolved, stageForPoints(foodPoints()));
+let evoQueue = null;
+function flushEvolution() {
+  if (!evoQueue) return;
+  if (document.querySelector('.evo-modal, .hj-reader')) { setTimeout(flushEvolution, 1200); return; }
+  const { from, to } = evoQueue; evoQueue = null;
+  showEvolution(characterInfo(state.saju, state.profile), from, to);
+}
+/** 그릇 하나 채우기 → 지신 반응 → 진화 확인 */
+function feedJisin(key, { quiet = false } = {}) {
+  if (!state.saju || !state.fortune) return;
+  const r = feed(loadFood(), state.fortune.dateKey, key);
+  if (r.already) return;
+  save(FOOD_KEY, r.store);
+  const b = BOWLS.find((x) => x.key === key);
+  if (!quiet) toast(`${b.icon} ${b.label} 냠냠 · 지신이 +${r.gained} 자랐어요${r.full ? ' · 🎉 오늘 세 그릇 완료!' : ''}`);
+  state.heroLine = feedLine(key, r.bowls);
+  const g = loadGrowth(); const to = stageForPoints(r.store.points);
+  if (to > g.evolved) {
+    save(GROWTH_KEY, { ...g, evolved: to });
+    state.fortune = applyAbilities(computeFortune(state.saju, undefined, { gender: state.profile.gender }));
+    evoQueue = { from: evoQueue?.from ?? g.evolved, to };
+    setTimeout(flushEvolution, 900);
+  }
+  if ($('#jisin-grow')) $('#jisin-grow').outerHTML = jisinGrowHTML();
+  if ($('#jg-bowls-home')) $('#jg-bowls-home').outerHTML = bowlsHTML(true);
+}
+/** 오늘 세 그릇 */
+function bowlsHTML(compact = false) {
+  const bw = todayBowls(loadFood(), state.fortune.dateKey); const n = bw.filter((b) => b.done).length;
+  const GO = { morning: 'data-go-tab="today"', snack: 'data-go-tab="tarot"', dinner: 'data-ki-hero' };
+  return `<div class="jg-bowls ${compact ? 'compact' : ''}" id="${compact ? 'jg-bowls-home' : 'jg-bowls'}">
+    <p class="jg-bh">🍽️ 오늘 지신 밥 <b>${n}/3</b>${n === 3 ? ' · 배불러요!' : ''}</p>
+    <div class="jg-row">${bw.map((b) => `<button type="button" class="jg-bowl ${b.done ? 'done' : ''}" ${b.done ? 'disabled' : GO[b.key]} title="${b.how}"><span>${b.done ? b.icon : '🥣'}</span><b>${b.label}</b><small>${b.done ? '먹었어요' : b.how}</small></button>`).join('')}</div>
+  </div>`;
+}
+/** 성장 막대 · 키 · 다음 진화 · 오늘 컨디션 */
+function jisinGrowHTML() {
+  const fd = loadFood(); const p = fd.points || 0; const stage = jisinStage(); const go = growthOf(p, stage);
+  const female = state.profile.gender === 'female';
+  const today = fd.days?.[state.fortune.dateKey]; const todayPts = today ? [0, 2, 3, 4][BOWLS.filter((b) => today[b.key]).length] : 0;
+  const cond = conditionOf(fiveScores(state.fortune).total);
+  const dc = decorCount(go.ratio);
+  return `<section class="jisin-grow" id="jisin-grow">
+    ${bowlsHTML()}
+    <div class="jg-bar-h"><span>${go.next ? `✨ <b>${stageName(go.next, female)}</b>까지` : '✨ 최종 진화 완료'}</span><span>${go.next ? `밥 <b>${go.left}</b>점 · 세 그릇씩이면 약 <b>${daysLeft(go.left)}</b>일` : ''}</span></div>
+    <div class="jg-bar"><i style="width:${Math.round(go.ratio * 100)}%"></i>${[1, 2, 3, 4].map((i) => `<em class="${i <= dc ? 'on' : ''}" style="left:${i * 20}%">${DECOR[i - 1].icon}</em>`).join('')}</div>
+    <p class="jg-meta">📏 키 <b>${heightCm(p)}cm</b>${todayPts ? ` <span class="jg-up">오늘 +${Math.round(todayPts * 0.35 * 10) / 10}cm</span>` : ''} · 🎀 꾸밈 ${dc}/4${dc < 4 && go.next ? ` <small>(다음: ${DECOR[dc].label})</small>` : ''}</p>
+    <p class="jg-cond">${zodiacFace(cond.mood, 'jg-face')} 오늘 컨디션 <b>${cond.label}</b> · ${cond.line}</p>
+  </section>`;
+}
+/** 지신 무대 꾸밈(진화 사이 하루하루 붙는 것): 볼 터치 · 리본 · 오행 빛 1·2겹 */
+function decorWrap(svg) {
+  const go = growthOf(foodPoints(), jisinStage()); const dc = decorCount(go.ratio); const el = EL_COLORS[state.saju.yongsin];
+  return `<div class="jg-decor d${dc}" style="--el:${el}">${svg}${dc >= 1 ? '<span class="jd jd1">🌸</span>' : ''}${dc >= 2 ? '<span class="jd jd2">🎀</span>' : ''}</div>`;
+}
+/** 지신을 누르면: 성장 단계 미리 보기(실제 모습) + 표정 해금 */
+function openGrowthPreview() {
+  const info = characterInfo(state.saju, state.profile); const female = state.profile.gender === 'female';
+  const p = foodPoints(); const cur = jisinStage(); const { season } = heroOptions();
+  const shows = [1, 2, 3, 4, 5, 8, 11, 14];
+  const card = (st) => {
+    const need = st === 1 ? 0 : STAGE_POINTS[st]; const done = st <= cur; const left = Math.max(0, need - p);
+    return `<div class="gp-item ${st === cur ? 'now' : done ? 'done' : 'locked'}">
+      <div class="gp-pic">${renderCharacterSVG({ ...info, stage: st }, { stage: st, width: 120, mood: st === cur ? 'smile' : 'calm', season: st === cur ? season : null, backdrop: true })}</div>
+      <b>${st}단계 · ${stageName(st, female)}</b>
+      <small>${st === cur ? '👈 지금 모습' : done ? '지나온 모습' : `밥 ${left}점 더 · 약 ${daysLeft(left)}일`}</small>
+    </div>`;
+  };
+  const days = fedDays(loadFood()); const open = emotesUnlocked(days);
+  const el = document.createElement('div'); el.className = 'evo-modal gp-modal';
+  el.innerHTML = `<div class="evo-box gp-box">
+    <h3>🐉 ${info.zodiac.name}띠 지신의 성장 단계</h3>
+    <p class="muted" style="margin:0 0 10px">하루 세 그릇(오늘의 운세·타로·좋은 습관 또는 기운 카드)을 채우면 2주 만에 5단계 완성 모습이 돼요. 6단계부터는 승천 단계예요.</p>
+    <div class="gp-grid">${shows.map(card).join('')}</div>
+    <h4 style="margin:14px 0 6px">😊 표정 모으기 <small class="muted">밥 준 날 3일마다 하나 · ${open}/8</small></h4>
+    <div class="gp-emo">${EMO_ORDER.map((m, i) => `<div class="${i < open ? 'on' : 'off'}">${zodiacFace(m, 'gp-face', info.zodiac.key)}<small>${i < open ? EMO_KO[m] : `${(i) * 3}일째`}</small></div>`).join('')}</div>
+    <button type="button" class="primary" data-gp-close style="width:100%;margin-top:12px">닫기</button>
+  </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', (e) => { if (e.target === el || e.target.closest('[data-gp-close]')) el.remove(); });
+}
+
 /** 지신 기운 게이지: 오행 다섯 칸(오행 충전과 같은 값). 부족한 칸은 ★ */
 function kiGaugeHTML(hl = -1) {
   const { fills } = luckNow(); const s = state.saju; const need = new Set([s.yongsin, s.weakest]);
@@ -2621,12 +2723,12 @@ function kiGaugeHTML(hl = -1) {
 
 function kiProgressHTML(st) {
   const total = st?.total || 0; const streak = st?.streak?.count || 0;
-  const stage = Math.max(loadGrowth().evolved, stageForDays(total));
-  const nx = nextStage(total, stage); const female = state.profile.gender === 'female';
+  const stage = jisinStage(); const go = growthOf(foodPoints(), stage); const female = state.profile.gender === 'female';
+  const nx = go.next ? { stage: go.next, left: go.left } : null;
   const dots = Array.from({ length: 7 }, (_, i) => `<i class="${i < (streak % 7 || (streak ? 7 : 0)) ? 'on' : ''}"></i>`).join('');
   return `<div class="ki-prog">
     <span>🔥 연속 <b>${streak}</b>일</span><span>📅 누적 <b>${total}</b>일</span>
-    <span>${nx ? `✨ <b>${stageName(nx.stage, female)}</b>까지 <b>${nx.left}</b>일` : '✨ 최종 진화 완료'}</span>
+    <span>${nx ? `✨ <b>${stageName(nx.stage, female)}</b>까지 밥 <b>${nx.left}</b>점` : '✨ 최종 진화 완료'}</span>
   </div>
   <p class="ki-week"><span class="ki-dots">${dots}</span><small>7일 연속이면 부적 1장 · 3일 연속부터 카드 등급 한 단계 위</small></p>`;
 }
@@ -2639,6 +2741,7 @@ function kiCardHTML() {
       <button type="button" class="ki-back" data-ki-draw aria-label="오늘의 기운 카드 뽑기"><span class="ki-star">✦</span><b>눌러서 한 장 뽑기</b><small>지신이 오늘 필요한 기운을 골라 왔어요</small></button>
       <p class="ki-hint">부족한 <b>${ELEMENT_HANJA[s.yongsin]}(${ELEMENT_KO[s.yongsin]})</b> 기운이 나올 확률이 높아요 (부족한 기운 약 ${Math.round(LACK_RATE * 100)}% · 다른 기운 약 ${100 - Math.round(LACK_RATE * 100)}%). 뽑은 기운은 지신에게 바로 쌓여요.</p>
       ${kiProgressHTML(st)}
+      ${bowlsHTML(true)}
     </article>`;
   }
   const x = kiCardText(c, s); const Z = ZODIAC[c.zodiac];
@@ -2655,9 +2758,11 @@ function kiCardHTML() {
       </div>
     </div>
     <p class="ki-story">${esc(kiStory(c, s, state.profile.name))}</p>
+    <p class="ki-quote" data-casual>💬 ${esc(Z.name)} 지신의 한마디 ${esc(kiQuote(c))}</p>
     <h4 class="ki-gh">🐉 지신 기운 게이지 <small>★ 부족한 기운 · 채울수록 개운이 올라요</small></h4>
     ${kiGaugeHTML(c.element)}
     ${kiProgressHTML(st)}
+    ${bowlsHTML(true)}
     <button type="button" class="ghost ki-go" data-go-tab="hero">🐉 지신 보러 가기</button>
   </article>`;
 }
@@ -2681,15 +2786,10 @@ function drawKi() {
   }
   if (lost > 1) notes.push(`쉬어 간 날이 있었지만 누적 ${r.store.total}일은 그대로예요`);
   state.kiFlip = true;
-  const g = loadGrowth(); const to = stageForDays(r.store.total);
+  feedJisin('dinner', { quiet: true });
   renderToday();
   setTimeout(() => { state.kiFlip = false; }, 1200);
-  toast(`🎴 ${rarityLabel(c.rarity)} 카드 · ${notes.join(' · ')}`);
-  if (to > g.evolved) {
-    save(GROWTH_KEY, { ...g, evolved: to });
-    state.fortune = applyAbilities(computeFortune(state.saju, undefined, { gender: state.profile.gender }));
-    setTimeout(() => showEvolution(characterInfo(state.saju, state.profile), g.evolved, to), 900);
-  }
+  toast(`🎴 ${rarityLabel(c.rarity)} 카드 · ${notes.join(' · ')} · 🍲 저녁밥 냠냠`);
 }
 document.addEventListener('click', (e) => {
   if (e.target.closest('[data-ki-draw]')) drawKi();
@@ -2905,7 +3005,7 @@ document.addEventListener('click', (e) => {
     { const m = markSeen(load(TAROT_SEEN_KEY, null), dk, r.topic.key, r.cards.map((c) => c.card.key)); save(TAROT_SEEN_KEY, m.store); r.repeats = m.repeats.map((x) => ({ ...x, line: repeatLine(x, r.topic.key) })); }
     save(RECORDS_KEY, addItem(loadRecords(), { kind: 'tarot', dateKey: dk, key: `${r.topic.key}-${Date.now() % 100000}`, title: `12지신 타로 · ${r.topic.label}`, summary: r.cards.map((c) => `${c.card.name}${c.reversed ? '(쉬어 가기)' : ''}`).join(' · '), lines: [tarotTale(r), `카드의 대답: ${r.answer}`, ...r.repeats.map((x) => x.line), ...r.cards.map((c) => `${c.pos} · ${c.card.name}: ${c.reading}${c.situLine ? ` ${c.situLine}` : ''}`), ...(r.story ? [r.story] : []), `오늘 할 한 가지: ${r.act}`] }).rec);
     renderTarot(); window.scrollTo({ top: 0, behavior: 'smooth' });
-    tteokTask('tarot');
+    tteokTask('tarot'); feedJisin('snack');
     return;
   } else if (el.hasAttribute('data-tarot-again') || el.hasAttribute('data-tarot-shuffle')) tarotNewDeck(T);
   else if (el.hasAttribute('data-tarot-reset')) { state.tarot = { step: 'topic' }; }
@@ -2914,6 +3014,7 @@ document.addEventListener('click', (e) => {
 
 function renderToday() {
   { const v = tteokVisit(loadTteok(), state.fortune.dateKey); if (v.gained) save(TTEOK_KEY, v.store); }
+  if (!todayBowls(loadFood(), state.fortune.dateKey)[0].done) setTimeout(() => feedJisin('morning'), 0); // 오늘 운세를 본 것 = 아침밥
   logToday();
   recordKaiun();
   // v0.43 단순화: 펼친 것은 오늘 운세 점수 + 오늘의 기운 카드 두 개뿐, 나머지는 한 줄 제목으로 접힘
@@ -3149,10 +3250,11 @@ function renderHero(animate) {
   $('[data-panel="hero"]').innerHTML = `
     <div class="card hero-main">
       ${speechBubble(state.heroLine ? [state.heroLine] : todayLines().slice(0, 2), 'hero-say')}
-      <div class="hero-stage ${animate ? 'reveal' : ''}" id="hero-stage" title="눌러 보세요">${svg}</div>
-      <p class="muted" style="font-size:0.75rem;text-align:center;margin:6px 0 0">👆 지신을 눌러 보세요</p>
+      <div class="hero-stage ${animate ? 'reveal' : ''}" id="hero-stage" title="눌러서 성장 단계 보기">${decorWrap(svg)}</div>
+      <p class="muted" style="font-size:0.8rem;text-align:center;margin:6px 0 0">👆 지신을 누르면 앞으로 자랄 모습을 미리 볼 수 있어요</p>
       <h3 class="hero-title" style="text-align:center">${info.title}</h3>
       <p style="margin:0 0 10px;text-align:center"><span class="rarity-badge" style="color:var(--gold)">${stageName(gs.stage, info.female)} · 진화 ${gs.stage}단계</span>${currentDex().title ? ` <span class="rarity-badge" style="color:#ff8fb3">📖 ${currentDex().title}</span>` : ''}${seasonTitle() ? ` <span class="rarity-badge season-title">🏮 ${esc(seasonTitle())}</span>` : ''}</p>
+      ${jisinGrowHTML()}
       <h4 class="ki-gh">🐉 지신 기운 게이지 <small>★ 부족한 기운</small></h4>
       ${kiGaugeHTML(kc ? kc.element : -1)}
       ${kiProgressHTML(kst)}
@@ -3204,6 +3306,7 @@ function renderHero(animate) {
     bubble.classList.remove('pop'); void bubble.offsetWidth; bubble.classList.add('pop');
     const st = $('#hero-stage', panel);
     st.classList.remove('jump'); void st.offsetWidth; st.classList.add('jump');
+    setTimeout(openGrowthPreview, 350);
   });
 }
 
@@ -4608,7 +4711,7 @@ function growthCard(info, gs) {
       <div class="streak" title="연속 출석">🔥 <b>${gs.streak.count}</b>일 연속${gs.freeze ? ` · 🛡️${gs.freeze}` : ''}</div>
     </div>
     <div class="exp"><div class="exp-fill" style="width:${pct}%"></div><span>${gs.into} / ${gs.need} EXP</span></div>
-    ${(() => { const kt = loadKi()?.total || 0; const nx = nextStage(kt, gs.stage); return `<p class="muted" style="margin:8px 0 0;font-size:0.85rem">${nx ? `다음 진화 <b>${stageName(nx.stage, info.female)}</b>까지 기운 카드 <b>${nx.left}</b>일 더 — ${STAGES[nx.stage - 1].desc}` : '최종 진화 완료! 전설의 신수가 되었습니다.'}</p>`; })()}
+    ${(() => { const go = growthOf(foodPoints(), gs.stage); return `<p class="muted" style="margin:8px 0 0;font-size:0.85rem">${go.next ? `다음 진화 <b>${stageName(go.next, info.female)}</b>까지 밥 <b>${go.left}</b>점 더(세 그릇씩이면 약 ${daysLeft(go.left)}일) — ${STAGES[go.next - 1].desc}` : '최종 진화 완료! 전설의 신수가 되었습니다.'}</p>`; })()}
     ${gs.next ? `<div class="perks"><span class="muted">다음 진화 보상</span>${STAGE_UNLOCKS[gs.next.stage - 1].perks.map((x) => `<em>🎁 ${x}</em>`).join('')}</div>` : ''}
     ${rewards ? `<div class="actions" style="margin-top:10px">${rewards}</div>` : ''}
     <div class="evo-road">${thumbs}</div>
