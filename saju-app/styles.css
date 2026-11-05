@@ -1786,6 +1786,27 @@ html.easy .top h1 { font-size: 20px; }
 .sc-foil.gone { opacity: 0; }
 .sc-all { display: block; margin: 6px auto 0; }
 
-/* v0.55 지신 라디오 */
-.radio-btn { display: block; width: 100%; margin: 4px 0 12px; min-height: 46px; padding: 8px 14px; font-size: 0.92rem; }
-.radio-btn.on { background: #fff1f5; border-color: var(--neon); color: var(--neon); }
+
+/* v0.56 내 오행 · 모자란 기운 채우기 */
+.oh-hint { margin: -4px 0 10px; font-size: 0.84rem; }
+.oh-rows { display: flex; flex-direction: column; gap: 6px; }
+.oh-row { display: grid; grid-template-columns: 58px 1fr 40px auto; align-items: center; gap: 8px; min-height: 46px; padding: 6px 10px; border-radius: 14px; border: 1.5px solid var(--line); background: #fff; font: inherit; color: var(--text); cursor: pointer; text-align: left; }
+.oh-row.on { border-color: var(--neon); background: #fff4f7; box-shadow: 0 2px 8px rgba(236, 127, 160, 0.15); }
+.oh-n { display: flex; flex-direction: column; font-weight: 700; line-height: 1.2; }
+.oh-n small { font-weight: normal; font-size: 0.72rem; color: var(--muted); }
+.oh-track { height: 10px; border-radius: 6px; background: #f3ecef; overflow: hidden; }
+.oh-track i { display: block; height: 100%; border-radius: 6px; }
+.oh-v { font-size: 0.85rem; text-align: right; }
+.oh-tag { font-style: normal; font-size: 0.72rem; padding: 2px 7px; border-radius: 10px; background: #ffe3ee; color: #b2456b; white-space: nowrap; }
+.oh-row.need .oh-tag { background: #fff0d9; color: #a5601c; }
+.oh-panel { margin-top: 12px; padding: 14px 16px; border-radius: 16px; background: #fffaf6; border-left: 5px solid var(--el); }
+.oh-panel h4 { margin: 0 0 8px; font-size: 1.02rem; }
+.oh-panel h4 small { font-weight: normal; color: var(--muted); font-size: 0.8rem; margin-left: 4px; }
+.oh-panel p { margin: 0 0 8px; line-height: 1.75; font-size: 0.92rem; }
+.oh-status { color: #5d4d55; }
+.oh-bh { font-weight: 700; margin-top: 10px !important; }
+.oh-bring { margin: 0 0 10px; padding-left: 20px; line-height: 1.8; font-size: 0.92rem; }
+.oh-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+.oh-chips span { display: flex; flex-direction: column; padding: 8px 10px; border-radius: 12px; background: #fff; border: 1px solid var(--line); font-size: 0.85rem; line-height: 1.45; }
+.oh-chips b { font-size: 0.74rem; color: var(--muted); font-weight: 600; }
+.oh-go { width: 100%; }
