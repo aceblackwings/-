@@ -1634,3 +1634,9 @@ html.easy .hj-book { font-size: 1.15rem; }
 .bk-cliff { font-style: italic; color: var(--lav, #8a6fc9); border-left: 3px solid var(--neon); padding-left: 12px; margin-top: 18px; }
 .sj-story { padding: 24px 20px; }
 .sj-expert > summary { min-height: 56px; }
+/* v0.50.3 기운 카드 한 편 · 타로 이야기 */
+.ki-story { line-height: 1.8; word-break: keep-all; margin: 0 0 12px; }
+.tr-tale { margin: 16px 0 12px; padding: 16px 18px; border-radius: 18px; background: #fff8f0; border: 1px solid rgba(240, 190, 205, 0.5); }
+.tr-tale small { display: block; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
+.tr-tale p { margin: 0; line-height: 1.85; word-break: keep-all; }
+.ki-story { margin: 16px 0 4px; padding: 14px 16px; border-radius: 16px; background: #fff8f0; border: 1px solid rgba(240, 190, 205, 0.45); }

@@ -11,6 +11,8 @@ import { plainText, GOD_TALE, TODAY_TALE, EL_TALE } from '../js/storybook.js';
 import { todayStory, setEmpathy, empathyRate } from '../js/todaystory.js';
 import { bookletStory, sajuStory } from '../js/storyreport.js';
 import { buildBooklet } from '../js/booklet.js';
+import { kiStory, tarotTale } from '../js/funstory.js';
+import { readTarot, FULL_DECK, TAROT_TOPICS, TAROT_SPREADS } from '../js/tarot.js';
 import { josaProblems } from '../js/josa.js';
 import { toneProblems } from '../js/habit.js';
 
@@ -105,6 +107,21 @@ t('무료 화면(신년 책자 앞머리·총운·분야, 내 사주 이야기):
     for (const x of lines) assert.ok(!HANJA.test(x), `한자: ${x}`);
     for (const x of [st.hook, ...st.chapters.flatMap((c) => c.paras), st.cliff, sj.hook, ...sj.blocks.flatMap((x) => x.paras), sj.cliff].map((x) => plainText(x))) assert.ok(!JARGON.test(clean(x)), `용어: ${x}`);
     assert.deepEqual(josaProblems(lines.join('\n')).map((x) => `${x.why} | ${x.text}`), []);
+  }
+});
+t('기운 카드 한 편 · 타로 이야기: 4~6문장 · 한자 없음 · 조사·금지어 맞음 (전 조합)', () => {
+  const sens = (x) => x.split(/(?<=[.!?])\s+/).length;
+  for (const p of PEOPLE.slice(0, 3)) for (let z = 0; z < 12; z++) for (let e = 0; e < 5; e++) for (const rarity of ['common', 'rare', 'myth']) for (const lack of [true, false]) {
+    const x = kiStory({ zodiac: z, element: e, rarity, lack }, p.s, z % 2 ? '은하' : '');
+    const n = sens(x); assert.ok(n >= 4 && n <= 6, `기운 카드 ${n}문장: ${x}`);
+    assert.ok(!HANJA.test(x)); assert.deepEqual(josaProblems(x), [], x); assert.deepEqual(toneProblems(x), []);
+  }
+  for (const tp of TAROT_TOPICS) for (const sp of Object.keys(TAROT_SPREADS)) for (let i = 0; i < FULL_DECK.length; i += 1) {
+    const n = TAROT_SPREADS[sp].positions.length;
+    const picks = Array.from({ length: n }, (_, j) => ({ key: FULL_DECK[(i + j * 7) % FULL_DECK.length].key, reversed: (i + j) % 4 === 0 }));
+    const x = tarotTale(readTarot({ topic: tp.key, spread: sp, picks }));
+    assert.ok(!HANJA.test(x), x); assert.deepEqual(josaProblems(x), [], x); assert.deepEqual(toneProblems(x), []);
+    assert.ok(x.endsWith('?'), x);
   }
 });
 console.log(`storybook: ${pass} passed`);

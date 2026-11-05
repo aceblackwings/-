@@ -48,6 +48,7 @@ import { fiveScores } from './todayfive.js';
 import { todayStory, setEmpathy, empathyReply } from './todaystory.js';
 import { plainText } from './storybook.js';
 import { bookletStory, sajuStory } from './storyreport.js';
+import { kiStory, tarotTale } from './funstory.js';
 import { claimItem, PIECES_PER_ITEM } from './tteok.js';
 import { TTEOK, visit as tteokVisit, doTask as tteokDoTask, todayTasks, doneCount, isOpen as scrollOpen, spend as tteokSpend, buy as tteokBuy, SCROLLS, PACKS, TASKS as TTEOK_TASKS, ALL_BONUS } from './tteok.js';
 import { emoImage, charImage } from './assets.js';
@@ -2647,11 +2648,10 @@ function kiCardHTML() {
         <b>${esc(x.name)}</b><small>${Z.hanja} · ${ELEMENT_HANJA[c.element]} · ${esc(x.keyword)}</small>
       </div>
       <div class="ki-text">
-        <p class="ki-why">${c.lack ? '💧' : '🌈'} ${esc(x.why)}</p>
-        <p>${esc(x.message)}</p>
         <p class="ki-act">☂️ 오늘 할 한 가지<br><b>${esc(x.action)}</b></p>
       </div>
     </div>
+    <p class="ki-story">${esc(kiStory(c, s, state.profile.name))}</p>
     <h4 class="ki-gh">🐉 지신 기운 게이지 <small>★ 부족한 기운 · 채울수록 개운이 올라요</small></h4>
     ${kiGaugeHTML(c.element)}
     ${kiProgressHTML(st)}
@@ -2853,6 +2853,7 @@ function renderTarot() {
     const cardName = (c) => `${c.card.kind === 'major' ? `${ROMAN[c.card.num]}. ` : ''}${c.card.name} · ${c.card.title}`;
     body = `<p class="tr-guide">${r.topic.icon} 「${r.topic.ask}」${r.situ ? `<br><small>내 상황: ${r.situ.label}</small>` : ''}</p>
       <div class="tr-cards n${r.cards.length}">${r.cards.map((c) => `<div class="tr-card"><small class="tr-pos">${c.pos}</small>${tarotFace(c.card.key, c.reversed ? 'sleepy' : (c.card.mood || 'smile'), c.reversed)}<b>${cardName(c)}</b><small class="tr-kw">${c.keyword}</small></div>`).join('')}</div>
+      <div class="tr-tale"><small>🎬 카드가 들려주는 이야기</small><p>${esc(tarotTale(r))}</p></div>
       <div class="tr-answer"><small>🔮 카드의 대답</small><p>${esc(r.answer)}</p></div>
       ${(r.repeats || []).map((x) => `<p class="tr-repeat">${esc(x.line)}</p>`).join('')}
       ${r.storyParts.length ? `<div class="tr-story"><b>📖 세 장이 이어 주는 이야기</b>${r.storyParts.map((x) => `<p>${esc(x)}</p>`).join('')}</div>` : ''}
@@ -2899,7 +2900,7 @@ document.addEventListener('click', (e) => {
     T.step = 'result';
     const dk = state.fortune.dateKey; const r = T.result;
     { const m = markSeen(load(TAROT_SEEN_KEY, null), dk, r.topic.key, r.cards.map((c) => c.card.key)); save(TAROT_SEEN_KEY, m.store); r.repeats = m.repeats.map((x) => ({ ...x, line: repeatLine(x, r.topic.key) })); }
-    save(RECORDS_KEY, addItem(loadRecords(), { kind: 'tarot', dateKey: dk, key: `${r.topic.key}-${Date.now() % 100000}`, title: `12지신 타로 · ${r.topic.label}`, summary: r.cards.map((c) => `${c.card.name}${c.reversed ? '(쉬어 가기)' : ''}`).join(' · '), lines: [`카드의 대답: ${r.answer}`, ...r.repeats.map((x) => x.line), ...r.cards.map((c) => `${c.pos} · ${c.card.name}: ${c.reading}${c.situLine ? ` ${c.situLine}` : ''}`), ...(r.story ? [r.story] : []), `오늘 할 한 가지: ${r.act}`] }).rec);
+    save(RECORDS_KEY, addItem(loadRecords(), { kind: 'tarot', dateKey: dk, key: `${r.topic.key}-${Date.now() % 100000}`, title: `12지신 타로 · ${r.topic.label}`, summary: r.cards.map((c) => `${c.card.name}${c.reversed ? '(쉬어 가기)' : ''}`).join(' · '), lines: [tarotTale(r), `카드의 대답: ${r.answer}`, ...r.repeats.map((x) => x.line), ...r.cards.map((c) => `${c.pos} · ${c.card.name}: ${c.reading}${c.situLine ? ` ${c.situLine}` : ''}`), ...(r.story ? [r.story] : []), `오늘 할 한 가지: ${r.act}`] }).rec);
     renderTarot(); window.scrollTo({ top: 0, behavior: 'smooth' });
     tteokTask('tarot');
     return;
