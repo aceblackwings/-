@@ -1640,3 +1640,8 @@ html.easy .hj-book { font-size: 1.15rem; }
 .tr-tale small { display: block; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
 .tr-tale p { margin: 0; line-height: 1.85; word-break: keep-all; }
 .ki-story { margin: 16px 0 4px; padding: 14px 16px; border-radius: 16px; background: #fff8f0; border: 1px solid rgba(240, 190, 205, 0.45); }
+/* v0.50.5 글씨 버튼: 돋보기 + 「크게/작게」 두 글자, 쉬운 모드에서도 머리줄 버튼은 같은 크기(자리 차지 줄임) */
+#btn-easy, html.easy #btn-easy { font-size: 14px; padding: 6px 10px; gap: 3px; min-width: 0; min-height: 40px; }
+#btn-easy .ez-ic, html.easy #btn-easy .ez-ic { font-size: 15px; }
+html.easy #btn-edit { font-size: 14px; padding: 6px 10px; min-height: 40px; }
+html.easy .top h1 { font-size: 20px; }

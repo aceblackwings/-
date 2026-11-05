@@ -2176,7 +2176,7 @@ function applyEasyClass() {
   const on = easyOn();
   document.documentElement.classList.toggle('easy', on);
   const b = $('#btn-easy');
-  if (b) { b.innerHTML = `<span class="ez-ic" aria-hidden="true">🔍</span><span class="ez-t">${on ? '글씨 작게' : '글씨 크게'}</span>`; b.setAttribute('aria-pressed', String(on)); b.title = on ? '글씨 원래 크기로 돌아가기 (글씨 작게)' : '글씨 크게 보기 (어려운 말도 쉬운 말로)'; b.setAttribute('aria-label', b.title); }
+  if (b) { b.innerHTML = `<span class="ez-ic" aria-hidden="true">🔍</span><span class="ez-t">${on ? '작게' : '크게'}</span>`; b.setAttribute('aria-pressed', String(on)); b.title = on ? '글씨 원래 크기로 돌아가기 (글씨 작게)' : '글씨 크게 보기 (어려운 말도 쉬운 말로)'; b.setAttribute('aria-label', b.title); }
   const c = $('#birth-form [name="easy"]'); if (c) c.checked = on;
 }
 
@@ -2191,7 +2191,7 @@ function setEasyMode(on, by = 'self', quiet = false) {
     renderAll();
     selectTab(tab);
   }
-  if (!quiet) toast(on ? '🔍 글씨를 크게, 말을 쉽게 바꿨어요. 오른쪽 위 「글씨 작게」를 누르면 돌아가요' : '원래 글씨로 돌아왔어요. 오른쪽 위 「🔍 글씨 크게」로 언제든 다시 켤 수 있어요');
+  if (!quiet) toast(on ? '🔍 글씨를 크게, 말을 쉽게 바꿨어요. 오른쪽 위 「🔍 작게」를 누르면 돌아가요' : '원래 글씨로 돌아왔어요. 오른쪽 위 「🔍 크게」로 언제든 다시 켤 수 있어요');
 }
 const todayKeyNow = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
 
@@ -2200,7 +2200,7 @@ function easySuggestHTML() {
   if (!state.profile) return '';
   const birth = solarDateOf(state.profile); if (birth.error) return '';
   if (!suggestEasy(birth, state.fortune.date, loadEasy())) return '';
-  return `<div class="card easy-suggest" id="easy-suggest"><b>🔍 글씨를 크게 볼까요?</b><p>글씨를 크게, 어려운 사주 말은 쉬운 말로 바꿔 보여 드려요. 언제든 오른쪽 위 「글씨 작게」로 되돌릴 수 있어요.</p>
+  return `<div class="card easy-suggest" id="easy-suggest"><b>🔍 글씨를 크게 볼까요?</b><p>글씨를 크게, 어려운 사주 말은 쉬운 말로 바꿔 보여 드려요. 언제든 오른쪽 위 「🔍 작게」로 되돌릴 수 있어요.</p>
     <div class="yday-btns"><button type="button" class="primary" data-easy-suggest="on">크게 보기</button><button type="button" class="ghost" data-easy-suggest="no">괜찮아요</button></div></div>`;
 }
 
@@ -2225,7 +2225,7 @@ function easySettingsHTML() {
 
 document.addEventListener('click', (e) => {
   const sg = e.target.closest('[data-easy-suggest]');
-  if (sg) { if (sg.dataset.easySuggest === 'on') setEasyMode(true); else { save(EASY_KEY, dismissEasy(loadEasy())); toast('알겠어요. 오른쪽 위 「🔍 글씨 크게」로 언제든 켤 수 있어요'); renderToday(); } return; }
+  if (sg) { if (sg.dataset.easySuggest === 'on') setEasyMode(true); else { save(EASY_KEY, dismissEasy(loadEasy())); toast('알겠어요. 오른쪽 위 「🔍 크게」로 언제든 켤 수 있어요'); renderToday(); } return; }
   if (e.target.closest('#btn-easy') || e.target.closest('[data-easy-toggle]')) { setEasyMode(!easyOn()); return; }
   const cp = e.target.closest('[data-easy-copy]');
   if (cp) {
@@ -2253,7 +2253,7 @@ function handleEasyLink() {
   const box = document.createElement('div'); box.className = 'evo-modal'; box.id = 'easy-link-ask';
   box.innerHTML = `<div class="evo-box"><h3 style="margin:0 0 8px">🔍 글씨 크게 · 쉬운 말</h3>
     <p style="margin:0 0 6px">${esc(linkAskText(link))}</p>
-    <p class="muted" style="margin:0 0 14px">글씨가 커지고, 어려운 말은 쉬운 말로 바뀌어요. 언제든 오른쪽 위 「글씨 작게」로 되돌릴 수 있어요.</p>
+    <p class="muted" style="margin:0 0 14px">글씨가 커지고, 어려운 말은 쉬운 말로 바뀌어요. 언제든 오른쪽 위 「🔍 작게」로 되돌릴 수 있어요.</p>
     <div class="yday-btns"><button type="button" class="primary" data-link-yes>네, 켤게요</button><button type="button" class="ghost" data-link-no>아니요</button></div></div>`;
   document.body.appendChild(box);
   box.addEventListener('click', (ev) => {
