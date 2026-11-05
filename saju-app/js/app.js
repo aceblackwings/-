@@ -46,7 +46,7 @@ import { ELEMENT_LUCK } from './fortune.js';
 import { TAROT_TOPICS, TAROT_SPREADS, TAROT_SITU, TONE_KO, shuffleDeck, readTarot, cardOf, ROMAN, markSeen, repeatLine } from './tarot.js';
 import { fiveScores } from './todayfive.js';
 import { todayStory, setEmpathy, empathyReply } from './todaystory.js';
-import { plainText, yearize } from './storybook.js';
+import { plainText, yearize, EL_NAME } from './storybook.js';
 import { bookletStory, sajuStory } from './storyreport.js';
 import { kiStory, kiQuote, tarotTale } from './funstory.js';
 import { claimItem, PIECES_PER_ITEM } from './tteok.js';
@@ -79,7 +79,7 @@ import {
 import { drawKiCard, todayKiCard, stageForDays, nextStage, kiCardText, rarityLabel, CARD_RARITY, LACK_RATE } from './dailycard.js';
 import { buildDiary, logVisit, markRead, isRead } from './diary.js';
 import { scratchTiles, scratchedOn, markScratched, clearedRatio } from './scratch.js';
-import { radioScript, speechChunks } from './radio.js';
+import { ohengGuide, roleOf, defaultOheng } from './oheng.js';
 import { omenOf, checkable, markOmen, markShown, omenStats, markPeek, peekedFor, tomorrowTeaser, shiftDay, dateOfKey, CHECK_HOUR, OMEN_REWARD } from './omen.js';
 import { BOWLS, STAGE_POINTS, DECOR, EMO_ORDER, EMO_KO, seedFood, feed, todayBowls, fedDays, stageForPoints, growthOf, daysLeft, heightCm, decorCount, emotesUnlocked, conditionOf, feedLine,
   secondUnlocked, recommendSecond, adoptSecond, secondPoints, secondStage, duoScene, cleanName, SECOND_UNLOCK, SECOND_RATE, NAME_MAX } from './jisin.js';
@@ -568,6 +568,37 @@ function renderSaju() {
   $('[data-panel="saju"]').innerHTML = scrollLockHTML('saju');
 }
 
+/** v0.56 내 오행 · 모자란 기운 채우기: 막대를 누르면 그 기운이 하는 일과 채우는 법 */
+function ohengCardHTML() {
+  const s = state.saju; const sel = state.ohengSel ?? defaultOheng(s); const g = ohengGuide(sel, s);
+  const row = (e) => {
+    const r = roleOf(e, s); const v = s.elements[e];
+    return `<button type="button" class="oh-row ${e === sel ? 'on' : ''} ${r}" data-oheng="${e}" aria-pressed="${e === sel}">
+      <span class="oh-n">${EL_NAME[e]}<small>${ELEMENT_KO[e]}</small></span>
+      <span class="oh-track"><i style="width:${Math.max(3, v)}%;background:${EL_COLORS[e]}"></i></span>
+      <span class="oh-v">${v}%</span>${r === 'need' || r === 'weak' || r === 'low' ? `<em class="oh-tag">${r === 'need' ? '★ 필요' : '부족'}</em>` : ''}</button>`;
+  };
+  return `<article class="card oh-card" id="oh-card">
+    <h3>🌈 내 오행 · 모자란 기운 채우기</h3>
+    <p class="muted oh-hint">기운을 누르면 그 기운이 하는 일과 채우는 법이 나와요. ★는 나에게 가장 필요한 기운이에요.</p>
+    <div class="oh-rows">${[0, 1, 2, 3, 4].map(row).join('')}</div>
+    <section class="oh-panel" style="--el:${EL_COLORS[sel]}">
+      <h4>${g.name} 기운 <small>${g.value}% · ${g.tag}</small></h4>
+      <p><b>이 기운이 하는 일</b> ${esc(g.nature)}</p>
+      <p class="oh-status">${esc(g.status)}</p>
+      <p class="oh-bh">✅ ${g.fill ? '이렇게 채워 보세요' : '기운이 처질 때 이렇게'}</p>
+      <ul class="oh-bring">${g.bring.map((b) => `<li>${esc(b)}</li>`).join('')}</ul>
+      <div class="oh-chips">${g.chips.map(([k, v]) => `<span><b>${k}</b>${esc(v)}</span>`).join('')}</div>
+      ${g.fill ? `<button type="button" class="primary oh-go" data-go="charm">🧧 ${g.name} 기운 부적 만들러 가기</button>` : ''}
+    </section>
+  </article>`;
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-oheng]'); if (!b) return;
+  state.ohengSel = Number(b.dataset.oheng);
+  if ($('#oh-card')) $('#oh-card').outerHTML = ohengCardHTML();
+});
+
 function renderSajuFull() {
   const s = state.saju;
   const name = state.profile.name ? `${esc(state.profile.name)}님의` : '나의';
@@ -600,6 +631,7 @@ function renderSajuFull() {
       <p class="muted" style="margin-bottom:0">${s.animal}띠 · 일주 ${pillarLabel(s.pillars.day)}(${pillarLabelKo(s.pillars.day)}) · 사주 연도 ${s.sajuYear}년 기준</p>
     </div>
 
+    ${ohengCardHTML()}
     ${sajuStoryHTML()}
     ${lifeOfferHTML()}
     ${hourGuessCardHTML()}
@@ -2740,37 +2772,6 @@ function initScratch() {
 document.addEventListener('click', (e) => { if (e.target.closest('[data-sc-all]')) $$('.sc-tile:not(.open)').forEach(revealScratch); });
 document.addEventListener('keydown', (e) => { const t = e.target.closest?.('.sc-tile'); if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); revealScratch(t); } });
 
-/** 📻 지신 라디오: 오늘 운세를 소리로 */
-const canSpeak = () => typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
-let radioOn = false;
-function radioBtnHTML() {
-  // v0.55.1 기기가 소리 읽기를 못 해도 버튼은 늘 보이게(누르면 이유 안내)
-  return `<button type="button" class="ghost radio-btn ${radioOn ? 'on' : ''}" data-radio aria-pressed="${radioOn}">${radioOn ? '⏹ 라디오 멈추기' : '📻 지신 라디오로 오늘 운세 듣기'}</button>`;
-}
-function setRadio(on) {
-  radioOn = on; $$('[data-radio]').forEach((b) => { b.outerHTML = radioBtnHTML(); });
-}
-function playRadio() {
-  if (!canSpeak()) { toast('지금 보고 있는 화면은 소리 읽기를 지원하지 않아요. 휴대폰의 크롬·사파리나 컴퓨터 브라우저에서 열면 들을 수 있어요'); return; }
-  const syn = window.speechSynthesis;
-  if (radioOn) { syn.cancel(); setRadio(false); return; }
-  const f = state.fortune; const t = todayStory(f, state.saju, fiveScores(f));
-  const text = radioScript({ month: f.date.month, day: f.date.day, dow: dowOf(f.date), name: state.profile.name, zodiac: myZodiac().name,
-    head: t.head, mood: t.mood, story: t.story, good: t.good, watch: t.watch, dont: t.dont, act: t.act, omen: omenOf(f, omenSeedKey()).text });
-  const voices = syn.getVoices(); const ko = voices.find((v) => /^ko/i.test(v.lang));
-  if (voices.length && !ko) { toast('이 기기에는 한국어 목소리가 없어 읽어 드리기 어려워요'); return; }
-  syn.cancel();
-  const chunks = speechChunks(text); const easy = document.documentElement.classList.contains('easy');
-  chunks.forEach((c, i) => {
-    const u = new SpeechSynthesisUtterance(c); u.lang = 'ko-KR'; if (ko) u.voice = ko; u.rate = easy ? 0.88 : 0.98; u.pitch = 1;
-    if (i === chunks.length - 1) u.onend = () => setRadio(false);
-    u.onerror = () => setRadio(false);
-    syn.speak(u);
-  });
-  setRadio(true);
-}
-document.addEventListener('click', (e) => { if (e.target.closest('[data-radio]')) playRadio(); });
-document.addEventListener('visibilitychange', () => { if (document.hidden && radioOn) { window.speechSynthesis.cancel(); setRadio(false); } });
 
 /** ① 오늘의 운세(v0.50): 한 줄 제목 → 왜 그런지 → 좋은 점·조심할 점·생각해 볼 것·하면 좋은 것 → 공감 묻기 → 5분야 점수(작게) */
 function fiveCardHTML() {
@@ -2783,7 +2784,6 @@ function fiveCardHTML() {
         <p>${esc(t.mood)}</p></div>
     </div>
     <p class="ts-why">${zodiacFace(v.total >= 70 ? 'excited' : v.total >= 50 ? 'smile' : 'calm', 'z-face ts-z')}<span>${t.scene ? `<em class="ts-scene">🎬 오늘의 한 장면 · ${esc(t.scene)}</em>` : ''}<b class="ts-plain">쉽게 말하면,</b> ${esc(t.story)}</span></p>
-    ${radioBtnHTML()}
     <div class="ts-grid">
       <section class="ts-tile good"><h4>👍 오늘 좋은 점</h4><p>${esc(t.good)}</p></section>
       <section class="ts-tile watch"><h4>⚠️ 오늘 조심할 점</h4><p>${esc(t.watch)}</p>${t.dont?.length ? `<p class="ts-dont-h">⛔ 오늘 하지 말 것</p><ul class="ts-dont">${t.dont.map((a) => `<li>${esc(a)}</li>`).join('')}</ul>` : ''}</section>
@@ -3042,15 +3042,14 @@ function kiProgressHTML(st) {
   <p class="ki-week"><span class="ki-dots">${dots}</span><small>7일 연속이면 부적 1장 · 3일 연속부터 카드 등급 한 단계 위</small></p>`;
 }
 
-function kiCardHTML() {
+function kiCardHTML({ inHero = false } = {}) {
   const s = state.saju; const st = loadKi(); const c = todayKiCard(st, state.fortune.dateKey);
   if (!c) {
     return `<article class="card ki-card" id="ki-card">
       <h3>🎴 오늘의 기운 카드 <small>하루 한 장</small></h3>
       <button type="button" class="ki-back" data-ki-draw aria-label="오늘의 기운 카드 뽑기"><span class="ki-star">✦</span><b>눌러서 한 장 뽑기</b><small>지신이 오늘 필요한 기운을 골라 왔어요</small></button>
       <p class="ki-hint">부족한 <b>${ELEMENT_HANJA[s.yongsin]}(${ELEMENT_KO[s.yongsin]})</b> 기운이 나올 확률이 높아요 (부족한 기운 약 ${Math.round(LACK_RATE * 100)}% · 다른 기운 약 ${100 - Math.round(LACK_RATE * 100)}%). 뽑은 기운은 지신에게 바로 쌓여요.</p>
-      ${kiProgressHTML(st)}
-      ${bowlsHTML(true)}
+      ${inHero ? '' : `${kiProgressHTML(st)}${bowlsHTML(true)}`}
     </article>`;
   }
   const x = kiCardText(c, s); const Z = ZODIAC[c.zodiac];
@@ -3068,11 +3067,11 @@ function kiCardHTML() {
     </div>
     <p class="ki-story">${esc(kiStory(c, s, state.profile.name))}</p>
     <p class="ki-quote" data-casual>💬 ${esc(Z.name)} 지신의 한마디 ${esc(kiQuote(c))}</p>
-    <h4 class="ki-gh">🐉 지신 기운 게이지 <small>★ 부족한 기운 · 채울수록 개운이 올라요</small></h4>
+    ${inHero ? '' : `<h4 class="ki-gh">🐉 지신 기운 게이지 <small>★ 부족한 기운 · 채울수록 개운이 올라요</small></h4>
     ${kiGaugeHTML(c.element)}
     ${kiProgressHTML(st)}
     ${bowlsHTML(true)}
-    <button type="button" class="ghost ki-go" data-go-tab="hero">🐉 지신 보러 가기</button>
+    <button type="button" class="ghost ki-go" data-go-tab="hero">🐉 지신 보러 가기</button>`}
   </article>`;
 }
 
@@ -3097,12 +3096,13 @@ function drawKi() {
   state.kiFlip = true;
   feedJisin('dinner', { quiet: true });
   renderToday();
+  if (!$('[data-panel="hero"]').classList.contains('hidden')) renderHero(false);
   setTimeout(() => { state.kiFlip = false; }, 1200);
   toast(`🎴 ${rarityLabel(c.rarity)} 카드 · ${notes.join(' · ')} · 🍲 저녁밥 냠냠`);
 }
 document.addEventListener('click', (e) => {
   if (e.target.closest('[data-ki-draw]')) drawKi();
-  if (e.target.closest('[data-ki-hero]')) { selectTab('today'); setTimeout(() => revealAndScroll('#ki-card', 'center'), 150); }
+  if (e.target.closest('[data-ki-hero]')) { selectTab('hero'); setTimeout(() => revealAndScroll('#ki-card', 'center'), 150); }
 });
 
 /** ② 좋은 습관 하나(수호신의 쪽지) */
@@ -3222,7 +3222,7 @@ document.addEventListener('click', (e) => {
   if (pk) { const r = tteokBuy(loadTteok(), pk.dataset.pack); save(TTEOK_KEY, r.store); toast(`${TTEOK} 복떡 +${r.gained}! 지신이 신났어요`); openTteokShop(); renderToday(); return; }
   const sb = e.target.closest('[data-scroll-buy]'); if (sb) { e.preventDefault(); buyScroll(sb.dataset.scrollBuy); return; }
   const os = e.target.closest('[data-open-scroll]'); if (os) { openScroll(os.dataset.openScroll); return; }
-  if (e.target.closest('[data-go-todo]')) { selectTab('today'); setTimeout(() => revealAndScroll('#ki-card', 'center'), 150); return; }
+  if (e.target.closest('[data-go-todo]')) { selectTab('hero'); setTimeout(() => revealAndScroll('#ki-card', 'center'), 150); return; }
   if (e.target.closest('[data-go-habit]')) { selectTab('today'); setTimeout(() => revealAndScroll('#habit-card'), 150); return; }
   if (e.target.closest('[data-go-tarot]')) { selectTab('tarot'); return; }
   if (e.target.closest('[data-go-care]')) { selectTab('hero'); toast('🐉 지신을 쓰다듬거나 부적을 달아 주세요'); }
@@ -3334,7 +3334,6 @@ function renderToday() {
     ${easySuggestHTML()}
     ${diaryHTML()}
     ${fiveCardHTML()}
-    ${kiCardHTML()}
     <div class="fold-list">
       ${foldHTML('habit', '☂️', '오늘의 좋은 습관 하나', '5분이면 끝나는 오늘의 한 걸음', habitCardHTML())}
       ${foldHTML('next', '📜', `${bd.y.sajuYear}년 운세`, `「${bd.b.title}」의 해 · 총운·분야별`, `${bookletHTML(bd)}${bookletFieldsHTML(bd)}`)}
@@ -3570,7 +3569,7 @@ function renderHero(animate) {
       <h4 class="ki-gh">🐉 지신 기운 게이지 <small>★ 부족한 기운</small></h4>
       ${kiGaugeHTML(kc ? kc.element : -1)}
       ${kiProgressHTML(kst)}
-      ${kc ? `<p class="ki-done">🎴 오늘은 <b>${esc(kiCardText(kc, s).name)}</b> 카드로 ${ELEMENT_HANJA[kc.element]} 기운을 채웠어요. 내일 또 만나요!</p>` : '<button type="button" class="primary ki-hero-btn" data-ki-hero>🎴 오늘의 기운 카드 뽑으러 가기</button>'}
+      ${kiCardHTML({ inHero: true })}
       <div class="slots two">${slot(0)}${slot(1)}</div>
       <button type="button" class="ghost ki-go" data-go-tab="chat">💬 지신과 이야기하기</button>
     </div>

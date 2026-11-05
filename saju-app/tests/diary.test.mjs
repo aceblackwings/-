@@ -2,7 +2,6 @@
 import assert from 'node:assert/strict';
 import { buildDiary, logVisit, markRead, isRead, hourWord } from '../js/diary.js';
 import { scratchTiles, scratchedOn, markScratched, clearedRatio } from '../js/scratch.js';
-import { radioScript, cleanForSpeech, speechChunks } from '../js/radio.js';
 import { josaProblems } from '../js/josa.js';
 let pass = 0; const t = (n, f) => { f(); pass++; console.log('ok -', n); };
 const CUTE = /냠|뀨|헤헤|히히|으쌍|룰루|ㅎㅎ|ㅋㅋ|♡|~~|이 몸|해쪄|했쪄/;
@@ -62,14 +61,5 @@ t('행운 긁기: 4칸 · 그날 저장 · 지워진 비율', () => {
   assert.equal(scratchedOn(s, '2026-11-6').size, 0);
   const a = new Uint8ClampedArray(4 * 100).fill(255); assert.equal(clearedRatio(a, 1), 0);
   for (let i = 3; i < a.length; i += 4) a[i] = 0; assert.equal(clearedRatio(a, 1), 1);
-});
-t('라디오 대본: 그림 글자·괄호 없이 · 행운은 긁기로 남김 · 덩어리 120자 안쪽', () => {
-  const text = radioScript({ month: 11, day: 5, dow: '목', name: '민지', zodiac: '말', head: '평가받고 인정받기 좋은 날', mood: '무난한 하루예요.', story: '오늘은 윗사람에게 인정받기 쉬워요.', good: '칭찬이 들어와요.', watch: '체면 때문에 무리하지 마세요.', dont: ['큰 약속은 하지 마세요.'], act: ['약속 시간보다 10분 먼저 가세요.'], omen: '숫자 6이 보이면 좋은 신호예요. 바로 시작해 보세요.' });
-  assert.match(text, /^말띠 지신의 아침 라디오입니다\. 11월 5일 목요일, 민지 님의 오늘은 평가받고 인정받기 좋은 날입니다\./);
-  assert.match(text, /직접 긁어서 확인/);
-  const ch = speechChunks(`🍀 ${text} (참고) 「따옴표」 오후 1시~3시`);
-  assert.ok(ch.length >= 3); assert.ok(ch.every((c) => c.length <= 140));
-  const joined = ch.join(' '); assert.ok(!/[「」🍀()]/u.test(joined)); assert.match(joined, /오후 1시에서 3시/);
-  assert.equal(cleanForSpeech('😀 안녕 ✨'), '안녕');
 });
 console.log(`diary: ${pass} passed (문장 ${all.length}개 검사)`);
