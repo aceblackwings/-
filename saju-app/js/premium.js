@@ -19,7 +19,7 @@ import { buildIlju } from './ilju.js';
 import { twelveStage, HIDDEN_STEMS, sinsalOf, sinsal12Of, SINSAL12_NOTE } from './expert.js';
 import { dateToJdn, jdnToDate } from './lunar.js';
 import { plainText, dedupeReport, PLAIN_GOD, EL_NAME } from './storybook.js';
-import { yearStoryChapters, yearClosing, monthStory, seasonStory, lifeStoryChapters } from './storyreport.js';
+import { yearStoryChapters, yearClosing, monthStory, seasonStory, lifeStoryChapters, lifeOpening, lifeClosing } from './storyreport.js';
 
 // ---------- 상품 ----------
 export const PRODUCTS = {
@@ -149,6 +149,7 @@ export function buildPremiumYear(ctx) {
   sections.push({
     key: 'open', h: `${who}께 · ${y.sajuYear}년을 여는 편지`,
     blocks: [{ paras: [
+      `${y.sajuYear}년 12월의 어느 저녁, ${josa(who, '은/는')} 달력을 넘겨 보다가 ${best[0]}월 칸에 적어 둔 메모 한 줄을 보고 피식 웃게 될지도 몰라요. 「그때 시작하길 정말 잘했다.」 이 책은 그 장면까지 가는 길을 따라가는, ${who}가 주인공인 이야기예요.`.replace(`${who}가 주인공`, `${josa(who, '이/가')} 주인공`),
       `${who}, ${y.sajuYear}년은 ${PLAIN_GOD[god]}이 들어오는 해예요. 한 줄로 말하면 「${GOD_READING[god].keyword}」의 해. 이 책은 점수 대신 이야기로, 왜 그런 흐름이 오는지, 무엇을 피하고 무엇을 붙잡으면 되는지 차근차근 들려드려요.`,
       `흐름이 가장 좋은 세 달은 ${best.join('·')}월, 속도를 늦추고 다지기 좋은 두 달은 ${slow.join('·')}월이에요.${yong.length ? ` 그리고 ${yong.join('·')}월은 ${who}에게 가장 필요한 ${EL_NAME[saju.yongsin]} 기운이 하늘에서 내려오는 달이라, 몸과 마음이 한결 편해요.` : ''}`,
       '1장부터 6장까지는 한 해의 이야기, 7장은 열두 달, 8장은 분야별 전략이에요. 어려운 계산 근거는 맨 뒤 부록에 모아 두었어요. 점수는 무료 화면과 같은 값이에요.',
@@ -242,7 +243,7 @@ export function tarotBridge(rep, topic) {
       { q: `${label}에서 조심할 장면 두 가지는?`, a: watch },
     ] };
   }
-  const open = rep.sections.find((s) => s.key === 'open').blocks[0].paras[1];
+  const ops = rep.sections.find((s) => s.key === 'open').blocks[0].paras; const open = ops.find((x) => x.includes('세 달은')) || ops[1];
   const msec = rep.sections.findIndex((s) => s.key === 'months');
   const mb = Math.max(0, rep.sections[msec].blocks.findIndex((b) => b.h.includes('🌟')));
   return { field: null, label: '12달 흐름', sec: msec, block: mb, q: [
@@ -508,12 +509,13 @@ export function buildLifeReport(ctx) {
   // v0.50: 본문 = 쉬운 이야기 7장, 사주 용어로 된 풀이는 「부록」으로(접혀서 보임)
   const story = lifeStoryChapters({ saju, gyeok, gp: GP, daewoon, name, gender: ctx.gender, curAge, watch: natalWatch(saju) });
   const open = { key: 'open', h: `${who}께 · 나를 읽는 편지`, blocks: [{ paras: [
+    lifeOpening(saju, who),
     `${who}, 이 책은 ${who}가 어떤 사람으로 태어났는지, 왜 비슷한 고비가 반복되는지, 누구와 어떤 일을 할 때 가장 빛나는지를 이야기로 풀어요.`.replace(`${who}가`, josa(who, '이/가')),
     `한 줄로 줄이면, ${josa(who, '은/는')} 「${DP.image}」의 바탕에 「${ilju.image}」의 모습을 가진 사람이에요. 가장 필요한 기운은 ${EL_NAME[saju.yongsin]} 기운이에요.`,
-    '1장부터 8장까지는 쉬운 이야기, 그 뒤 부록에는 여덟 글자 하나하나를 사주 용어로 짚은 풀이가 있어요. 궁금한 부분만 펼쳐 보세요.',
+    `이 책은 주인공인 ${who}의 이야기예요. 1장부터 8장까지는 쉬운 이야기, 그 뒤 부록에는 여덟 글자 하나하나를 사주 용어로 짚은 풀이가 있어요. 궁금한 부분만 펼쳐 보세요.`,
   ] }] };
   const appendix = sections.filter((x) => !['open', 'close'].includes(x.key)).map((x) => ({ ...x, key: `ap-${x.key}`, appendix: true, h: `부록 · ${x.h}` }));
-  const close = sections.find((x) => x.key === 'close');
+  const close = lifeClosing(saju, who);
   return finish({ kind: 'life', title: '평생 정통사주 종합', sub: `${ilju.name} · ${who}`, sections: [open, ...story, close, ...appendix] });
 }
 

@@ -80,7 +80,8 @@ t('오늘의 이야기: 좋은 점·조심할 점·생각해 볼 것·할 일 2�
     const date = { year: 2026, month: 11 + Math.floor(d / 30), day: (d % 30) + 1 }; if (date.month > 12) { date.year++; date.month -= 12; }
     const f = computeFortune(p.s, date, { gender: p.g }); const x = todayStory(f, p.s, fiveScores(f));
     assert.ok(x.head && x.why && x.good && x.watch && x.think && x.act.length === 2 && x.lucky);
-    const all = [x.head, x.mood, x.why, x.good, x.watch, x.think, ...x.act, x.lucky, x.low].join(' ');
+    const n = x.story.split(/(?<=[.!?요])\s+/).length; assert.ok(n >= 4 && n <= 6, `오늘의 한 편 ${n}문장`);
+    const all = [x.head, x.mood, x.story, x.why, x.good, x.watch, x.think, ...x.act, x.lucky, x.low].join(' ');
     assert.ok(!HANJA.test(all), all); assert.ok(!JARGON.test(clean(all)), all);
     assert.deepEqual(josaProblems(all), []); assert.deepEqual(toneProblems(all), []);
   }
