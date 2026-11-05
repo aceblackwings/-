@@ -83,12 +83,17 @@ import { ohengGuide, roleOf, defaultOheng } from './oheng.js';
 import { omenOf, checkable, markOmen, markShown, omenStats, markPeek, peekedFor, tomorrowTeaser, shiftDay, dateOfKey, CHECK_HOUR, OMEN_REWARD } from './omen.js';
 import { BOWLS, STAGE_POINTS, DECOR, EMO_ORDER, EMO_KO, seedFood, feed, todayBowls, fedDays, stageForPoints, growthOf, daysLeft, heightCm, decorCount, emotesUnlocked, conditionOf, feedLine,
   secondUnlocked, recommendSecond, adoptSecond, secondPoints, secondStage, duoScene, cleanName, SECOND_UNLOCK, SECOND_RATE, NAME_MAX } from './jisin.js';
+import { emptyTteok } from './tteok.js';
+import { WISH_MAX, WISH_DAYS_DEFAULT, WISH_LATER, cleanWish, dueFromInput, inputOf as wishInputOf, dueLabel as wishDueLabel, attachWish, dueWish, fulfill as wishFulfill, postpone as wishPostpone, wallOf as wishWall, waitingOf as wishWaiting, trimCollection, askLine as wishAskLine, doneLine as wishDoneLine, laterLine as wishLaterLine, madeLine as wishMadeLine } from './wish.js';
+import { SLOTS as COORDI_SLOTS, WARDROBE as COORDI_WARDROBE, SEASON_HAND as COORDI_SEASON, STREAK_NEED as COORDI_NEED, itemOf as coordiItemOf, itemHearts as coordiItemHearts, coordiHearts, MOOD_BY_HEARTS as COORDI_MOOD, coordiLine, suggestOutfit as coordiSuggest, emptyCoordi, saveDay as coordiSaveDay, streakOf as coordiStreakOf, claimStreak as coordiClaim } from './coordi.js';
+import { WORRY_MAX, BURN_DONE, cleanWorry, burnable as burnableCharms, needsCare as burnNeedsCare, CARE_LINES as BURN_CARE, burnResult, takeLine as burnTakeLine, makeGrid, ignite, stepFire, burntShare, isBurning, rekindle } from './burn.js';
 import {
   lunarToSolar, solarToLunar, leapMonthOf, lunarMonthDays, formatLunar,
 } from './lunar.js';
 
 const STORE_KEY = 'unmyeong2099.profile';
 const COLLECTION_KEY = 'unmyeong2099.collection';
+const COORDI_KEY = 'unmyeong2099.coordi'; // v0.57 지신 데일리 코디
 const MISSION_KEY = 'unmyeong2099.missions';
 const HABIT_KEY = 'unmyeong2099.habit'; // v0.30 마음 날씨 + 오늘의 우산
 const EQUIP_KEY = 'unmyeong2099.equip';
@@ -2393,7 +2398,7 @@ function charmCareHTML(eq, collection) {
 /** E: 바치기 창 */
 function openOffer() {
   const col = load(COLLECTION_KEY, []); const eq = loadEquip(); const gs = load(CHARMGROW_KEY, {});
-  const list = offerable(col, eq.charms);
+  const list = offerable(col, eq.charms).filter(({ r }) => !r.wish); // 소원 부적은 지켜 둠
   const box = document.createElement('div'); box.className = 'evo-modal';
   box.innerHTML = `<div class="evo-box"><h3 style="margin:0 0 6px">🔥 부적 바치기</h3>
     <p class="muted" style="margin:0 0 10px;font-size:0.86rem">고른 부적은 도감에서 사라지고 수호신 성장 점수가 돼요. 등급이 높고 기운을 많이 키운 부적일수록 많이 올라요. 장착한 부적은 바칠 수 없어요.</p>
@@ -2489,7 +2494,7 @@ function completeNote() {
   const rarity = boostRarity(stampRarity(weekStamps(store, timelineData().week) + 1), pair); // D: 쌍부적이면 한 등급 위
   const t = createTalisman(state.saju, f, { type: AREA_CHARM[u.area] || 'luck', element: state.saju.yongsin, rarity });
   const label = `${t.rarity.label} ${t.type.label}부`;
-  const list = load(COLLECTION_KEY, []); list.unshift({ ...recordOf(t), label: `쪽지 보상 ${label}` }); save(COLLECTION_KEY, list.slice(0, 80));
+  const list = load(COLLECTION_KEY, []); list.unshift({ ...recordOf(t), label: `쪽지 보상 ${label}` }); save(COLLECTION_KEY, trimCollection(list, 80));
   save(NOTE_KEY, markNote(store, f.dateKey, label).store);
   const before = load(NOTESTAT_KEY, {}).total || 0; save(NOTESTAT_KEY, { total: before + 1 });
   // C: 장착한 부적에 기운 1칸, 다 차면 등급 +1 (도감·장착 모두 바꿔 끼움)
@@ -3089,7 +3094,7 @@ function drawKi() {
   if (c.charm) {
     const cc = CONCERNS.find((x) => x.key === state.profile.concern) || CONCERNS[2];
     const t = createTalisman(state.saju, state.fortune, { type: cc.talisman, theme: 'classic', element: c.element, rarity: 'epic' });
-    const list = load(COLLECTION_KEY, []); list.unshift(recordOf(t)); save(COLLECTION_KEY, list.slice(0, 60));
+    const list = load(COLLECTION_KEY, []); list.unshift(recordOf(t)); save(COLLECTION_KEY, trimCollection(list, 60));
     notes.push(`🎁 ${c.streak}일 연속! ${t.rarity.label} ${t.type.label}부 도착`);
   }
   if (lost > 1) notes.push(`쉬어 간 날이 있었지만 누적 ${r.store.total}일은 그대로예요`);
@@ -3333,6 +3338,7 @@ function renderToday() {
   $('[data-panel="today"]').innerHTML = `
     ${easySuggestHTML()}
     ${diaryHTML()}
+    ${wishDueHTML()}
     ${fiveCardHTML()}
     <div class="fold-list">
       ${foldHTML('habit', '☂️', '오늘의 좋은 습관 하나', '5분이면 끝나는 오늘의 한 걸음', habitCardHTML())}
@@ -3404,6 +3410,7 @@ function renderCharm(animate) {
           <p class="muted" style="margin-top:0">${t.type.reading} — ${t.type.meaning}</p>
           <ul>${t.effects.map((e) => `<li><b>${esc(e.stat)}</b> ${e.value > 0 ? '+' : ''}${e.value}%</li>`).join('')}</ul>
           <div class="formula">효과 = 등급 ${t.rarity.base}% × 부족 보정 ${t.calc.deficit.toFixed(2)} × 오늘 보정 ${t.calc.todayMul.toFixed(1)}<br>= ${t.calc.value}% (${ELEMENT_KO[t.element]} 기운 ${s.elements[t.element]}점 기준)</div>
+          ${wishFormHTML()}
           <div class="actions" style="margin-top:12px">
             <button class="primary" type="button" id="btn-reroll">다시 뽑기 ✦</button>
             <button class="ghost" type="button" id="btn-save">도감에 저장</button>
@@ -3431,16 +3438,20 @@ function renderCharm(animate) {
     const r = c.current.rarity;
     if (r.key === 'legend' || r.key === 'myth') toast(`✨ ${r.label} 등급 획득!`);
   });
+  bindWishForm(panel);
   $('#btn-save').addEventListener('click', () => {
-    const list = load(COLLECTION_KEY, []);
-    list.unshift({
+    const w = withWish({
       type: t.type.key, theme: t.theme, element: t.element, rarity: t.rarity.key,
       dateKey: t.dateKey, todayElement: state.fortune.todayElement, label: `${t.rarity.label} ${t.type.label}부`,
     });
-    save(COLLECTION_KEY, list.slice(0, 60));
+    if (w.stop) return;
+    const list = load(COLLECTION_KEY, []);
+    list.unshift(w.rec);
+    save(COLLECTION_KEY, trimCollection(list, 60));
     renderCharm(false);
-    toast('도감에 저장했습니다');
-    grow((g) => complete(g, state.fortune.dateKey, 'charm', qBonus('charm')));
+    const lead = w.wish ? `🌠 ${wishMadeLine(w.wish, wishDueLabel(w.due, state.fortune.dateKey), politeNow())}` : '';
+    if (!lead) toast('도감에 저장했습니다');
+    grow((g) => complete(g, state.fortune.dateKey, 'charm', qBonus('charm')), lead);
   });
   $('#btn-png').addEventListener('click', () => downloadSVGAsPNG(renderTalismanSVG(t), `talisman-${t.type.key}-${t.dateKey}.png`, 3));
   $$('.collection .mini', panel).forEach((m) => m.addEventListener('click', () => {
@@ -3523,7 +3534,8 @@ function heroOptions() {
   const unlock = { ...base, charmSlots: Math.max(base.charmSlots, setUnlocked(load(COLLECTION_KEY, [])) ? 2 : 1) };
   const charms = eq.charms.map((r, i) => (i < unlock.charmSlots ? charmFromRecord(r) : null));
   const emote = unlock.emote ? eq.emote : null;
-  return { eq, charms, mood: emote || todayEmote(state.fortune), emote, stage, unlock, season: seasonLook(loadSeason()) };
+  const cd = state.fortune && load(COORDI_KEY, {}).days?.[state.fortune.dateKey]; // 오늘 코디했으면 하트에 맞는 표정
+  return { eq, charms, mood: emote || (cd ? COORDI_MOOD[cd.hearts - 1] : todayEmote(state.fortune)), emote, stage, unlock, season: seasonLook(loadSeason()) };
 }
 
 function renderHero(animate) {
@@ -3560,7 +3572,7 @@ function renderHero(animate) {
   $('[data-panel="hero"]').innerHTML = `
     <div class="card hero-main">
       ${speechBubble(state.heroLine ? [state.heroLine] : todayLines().slice(0, 2), 'hero-say')}
-      <div class="hero-stage ${animate ? 'reveal' : ''}" id="hero-stage" title="눌러서 성장 단계 보기">${decorWrap(svg)}</div>
+      <div class="hero-stage ${animate ? 'reveal' : ''}" id="hero-stage" title="눌러서 성장 단계 보기">${coordiWrap(decorWrap(svg), loadCoordi().days[f.dateKey]?.outfit)}</div>
       <p class="muted" style="font-size:0.8rem;text-align:center;margin:6px 0 0">👆 지신을 누르면 앞으로 자랄 모습을 미리 볼 수 있어요</p>
       <h3 class="hero-title" style="text-align:center">${info.title}</h3>
       <p style="margin:0 0 10px;text-align:center"><span class="rarity-badge" style="color:var(--gold)">${stageName(gs.stage, info.female)} · 진화 ${gs.stage}단계</span>${currentDex().title ? ` <span class="rarity-badge" style="color:#ff8fb3">📖 ${currentDex().title}</span>` : ''}${seasonTitle() ? ` <span class="rarity-badge season-title">🏮 ${esc(seasonTitle())}</span>` : ''}</p>
@@ -3575,7 +3587,10 @@ function renderHero(animate) {
     </div>
     <div class="fold-list">
       ${foldHTML('equip', '🧧', '부적 달아 주기', `${candidates.length}장 보유 · 달면 올해·이달 개운이 올라요`, equipBody)}
+      ${foldHTML('coordi', '👗', '오늘의 코디', coordiSub(), coordiHTML())}
       ${foldHTML('wardrobe', '🎀', '지신 꾸미기', '계절 소품 · 꾸미기 세트', seasonWardrobeHTML())}
+      ${foldHTML('wish', '🖼️', '이룬 소원 벽', wishSub(), wishWallHTML())}
+      ${foldHTML('burn', '🔥', '걱정 태우기', '걱정 한 줄을 부적과 함께 태워 날려 보내요', burnHTML())}
     </div>`;
 
   const panel = $('[data-panel="hero"]');
@@ -4465,7 +4480,7 @@ function doJourneyStep() {
   if (res.chapterDone) {
     const rarity = res.finished ? 'legend' : res.journey.done >= 20 ? 'epic' : 'rare';
     const t = createTalisman(state.saju, state.fortune, { type: c.talisman, theme: 'classic', element: state.saju.yongsin, rarity });
-    const list = load(COLLECTION_KEY, []); list.unshift({ ...recordOf(t), label: `여정 보상 ${t.rarity.label} ${t.type.label}부` }); save(COLLECTION_KEY, list.slice(0, 80));
+    const list = load(COLLECTION_KEY, []); list.unshift({ ...recordOf(t), label: `여정 보상 ${t.rarity.label} ${t.type.label}부` }); save(COLLECTION_KEY, trimCollection(list, 80));
   }
   renderToday();
 }
@@ -4680,7 +4695,7 @@ function openTreasure(sp) {
   const rarity = treasureRarity(Math.random(), sp.tier);
   const types = ['luck', 'wealth', 'protect', 'love', 'exam', 'health'];
   const t = createTalisman(state.saju, state.fortune, { type: types[sp.element % types.length], theme: 'classic', element: sp.element, rarity, reroll: Math.random() });
-  const list = load(COLLECTION_KEY, []); list.unshift({ ...recordOf(t), label: `풍수 보물 ${t.rarity.label} ${t.type.label}부` }); save(COLLECTION_KEY, list.slice(0, 80));
+  const list = load(COLLECTION_KEY, []); list.unshift({ ...recordOf(t), label: `풍수 보물 ${t.rarity.label} ${t.type.label}부` }); save(COLLECTION_KEY, trimCollection(list, 80));
   const st = STICKERS[Math.floor(Math.random() * STICKERS.length)];
   const own = load(STICKER_KEY, {}); own[st.key] = (own[st.key] || 0) + 1; save(STICKER_KEY, own);
   showReveal(t, { sticker: st, emote: { key: todayEmote(state.fortune), rarity: 'rare' }, best: rarityRank(rarity) > rarityRank(st.rarity) ? rarity : st.rarity, pityHit: false }, () => {
@@ -4769,7 +4784,7 @@ function doDraw() {
 
   const list = load(COLLECTION_KEY, []);
   list.unshift({ ...recordOf(charm), label: `${charm.rarity.label} ${charm.type.label}부` });
-  save(COLLECTION_KEY, list.slice(0, 80));
+  save(COLLECTION_KEY, trimCollection(list, 80));
   const st = load(STICKER_KEY, {}); st[pack.sticker.key] = (st[pack.sticker.key] || 0) + 1; save(STICKER_KEY, st);
   const em = emoteOwnMap();
   if (!em[pack.emote.key] || rarityRank(pack.emote.rarity) > rarityRank(em[pack.emote.key])) em[pack.emote.key] = pack.emote.rarity;
@@ -5056,7 +5071,7 @@ function bindGrowth(panel, info) {
       const list = load(COLLECTION_KEY, []);
       const t = createTalisman(state.saju, state.fortune, { type: c.talisman, theme: 'neon', element: state.saju.weakest, rarity: res.reward.rarity });
       list.unshift(recordOf(t));
-      save(COLLECTION_KEY, list.slice(0, 60));
+      save(COLLECTION_KEY, trimCollection(list, 60));
       toast(`🎁 ${t.rarity.label} ${t.type.label}부를 도감에 넣었습니다${res.reward.freeze ? ' + 스트릭 보호 부적 1개' : ''}`);
       setTimeout(() => charge(t.element, CHARGE_BY_RARITY[t.rarity.key], 'reward', '🎁 연속 출석 보상'), 2200);
     }
@@ -5163,7 +5178,7 @@ function renderCompat() {
     const t = createTalisman(state.saju, state.fortune, { type: c.friendInfo.female !== state.profile.gender ? 'love' : 'luck', theme: 'neon', element: c.friendSaju.weakest, rarity });
     const list = load(COLLECTION_KEY, []);
     list.unshift({ ...recordOf(t), label: `${c.friendName}와의 ${t.rarity.label} 인연부` });
-    save(COLLECTION_KEY, list.slice(0, 60));
+    save(COLLECTION_KEY, trimCollection(list, 60));
     toast(`💞 ${c.friendName}와의 ${t.rarity.label} 인연부를 도감에 넣었어요. 캐릭터 탭에서 장착하세요!`);
     setTimeout(() => charge(t.element, CHARGE_BY_RARITY[t.rarity.key], `bond-${c.friendName}`, '💞 인연부'), 2200);
     renderCharm(false);
@@ -5185,7 +5200,7 @@ function renderCompat() {
     const t = createTalisman(state.saju, state.fortune, { type: 'luck', theme: 'neon', element: state.team.teamWeak, rarity: 'rare', reroll: 'team' });
     const added = charge(state.team.teamWeak, 4, 'team', '👥 팀 부적');
     if (!added) { toast('팀 부적은 하루에 한 번 받을 수 있어요'); return; }
-    const list = load(COLLECTION_KEY, []); list.unshift({ ...recordOf(t), label: `팀 ${t.rarity.label} 행운부` }); save(COLLECTION_KEY, list.slice(0, 80));
+    const list = load(COLLECTION_KEY, []); list.unshift({ ...recordOf(t), label: `팀 ${t.rarity.label} 행운부` }); save(COLLECTION_KEY, trimCollection(list, 80));
   });
   $$('[data-react]', panel).forEach((b) => b.addEventListener('click', () => {
     const list = load(FRIENDS_KEY, []);
@@ -5212,7 +5227,7 @@ function renderCompat() {
     const list = load(COLLECTION_KEY, []);
     list.unshift({ ...recordOf(t), label: `도감 보상 ${t.rarity.label} 인연부` });
     setTimeout(() => charge(t.element, CHARGE_BY_RARITY[t.rarity.key], 'reward', '📖 도감 보상'), 2200);
-    save(COLLECTION_KEY, list.slice(0, 60));
+    save(COLLECTION_KEY, trimCollection(list, 60));
     toast(`📖 칭호 "${res.reward.title}" 획득! ${t.rarity.label} 인연부를 도감에 넣었어요`);
     renderCompat(); renderCharm(false);
   }));
@@ -5510,3 +5525,275 @@ document.addEventListener('click', (e) => {
 
 $$('.tabs button').forEach((b) => b.addEventListener('click', () => selectTab(b.dataset.tab)));
 initForm();
+
+// ================= v0.57 소원 부적 · 지신 데일리 코디 · 걱정 태우기 =================
+// 원칙: 결제로 운을 올리지 않음, 정통 점수는 그대로, 바뀌는 건 경험과 기록뿐.
+function politeNow() { return isRooster(); }
+
+// ---------- ① 소원 부적 ----------
+function wishFormHTML() {
+  const today = state.fortune.dateKey; const d = state.wishDraft || {};
+  return `<div class="wish-form">
+    <p class="wish-h">🌠 <b>소원 한 줄</b> <small>(선택 · 적으면 소원 부적으로 저장돼요)</small></p>
+    <input type="text" id="wish-text" maxlength="${WISH_MAX}" autocomplete="off" placeholder="예: 자격증 합격" value="${esc(d.text || '')}">
+    <label class="wish-date">이루고 싶은 날 <input type="date" id="wish-date" min="${wishInputOf(today)}" value="${esc(d.date || wishInputOf(shiftDay(today, WISH_DAYS_DEFAULT)))}"></label>
+    <small class="muted">그날이 오면 지신이 먼저 「소원, 이루어졌나요?」 하고 물어봐요. 소원 부적은 바치거나 태우지 않고 지켜 둬요.</small>
+  </div>`;
+}
+function bindWishForm(panel) {
+  const t = $('#wish-text', panel); const d = $('#wish-date', panel);
+  const keep = () => { state.wishDraft = { text: t.value, date: d.value }; };
+  t?.addEventListener('input', keep); d?.addEventListener('change', keep);
+}
+/** 도감에 저장할 기록(소원이 있으면 소원 부적) — 위기 낱말이면 저장하지 않고 안내만, 날짜가 지났으면 null */
+function withWish(rec) {
+  const text = cleanWish(state.wishDraft?.text);
+  if (!text) return { rec };
+  if (isCrisis(text)) { showCare(); return { stop: true }; }
+  const today = state.fortune.dateKey;
+  const due = dueFromInput(state.wishDraft?.date, today);
+  if (!due) { toast('날짜는 오늘이나 그 뒤로 골라 주세요'); return { stop: true }; }
+  state.wishDraft = null;
+  return { rec: attachWish(rec, text, due, today), wish: text, due };
+}
+function showCare() {
+  const box = document.createElement('div'); box.className = 'evo-modal';
+  box.innerHTML = `<div class="evo-box care-box"><h3 style="margin:0 0 8px">💗 마음이 많이 무거운가요?</h3>
+    ${BURN_CARE.map((l) => `<p>${esc(l)}</p>`).join('')}
+    <p class="muted" style="font-size:0.84rem">가까운 사람에게 「나 지금 힘들어」 한마디만 보내도 좋아요.</p>
+    <div class="yday-btns" style="grid-template-columns:1fr 1fr"><a class="primary care-call" href="tel:109">☎ 109 전화하기</a><button type="button" class="ghost" data-close-reward>닫기</button></div></div>`;
+  document.body.appendChild(box);
+  box.addEventListener('click', (e) => { if (e.target.closest('[data-close-reward]') || e.target === box) box.remove(); });
+}
+function wishCharmHTML(r, gold) { return `<span class="wish-charm${gold ? ' gold' : ''}">${renderTalismanSVG(charmFromRecord(r))}</span>`; }
+/** 홈: 소원 날이 된 부적이 있으면 맨 위에 한 장 */
+function wishDueHTML() {
+  const due = dueWish(load(COLLECTION_KEY, []), state.fortune.dateKey); if (!due) return '';
+  const r = due.r;
+  return `<div class="card wish-due" data-casual>
+    <div class="wd-row">${wishCharmHTML(r, false)}
+      <div><p class="wd-tag">🌠 소원 날 · ${esc(wishDueLabel(r.dueKey, state.fortune.dateKey))}</p>
+      <p class="wd-ask">${esc(wishAskLine(r, politeNow()))}</p>
+      <small class="muted">${esc(wishDueLabel(r.madeKey || r.dateKey, state.fortune.dateKey))}에 ${esc(labelForRec(r))}에 적은 소원${r.waited ? ` · 함께 기다린 지 ${r.waited}번째` : ''}</small></div></div>
+    <div class="wd-btns"><button type="button" class="primary" data-wish-done="${due.i}">✨ 이루어졌어요</button>
+      <button type="button" class="ghost" data-wish-later="${due.i}" data-days="${WISH_LATER[0]}">일주일 더 기다릴래요</button>
+      <button type="button" class="ghost" data-wish-later="${due.i}" data-days="${WISH_LATER[1]}">한 달 더 기다릴래요</button></div>
+  </div>`;
+}
+function wishWallHTML() {
+  const col = load(COLLECTION_KEY, []); const today = state.fortune.dateKey;
+  const wall = wishWall(col); const wait = wishWaiting(col);
+  return `${wall.length ? `<div class="wish-wall">${wall.map((r) => `<figure class="wish-frame">${wishCharmHTML(r, true)}<figcaption><b>${esc(r.wish)}</b><small>${esc(wishDueLabel(r.doneKey, today))} 이룸</small></figcaption></figure>`).join('')}</div>`
+    : '<p class="muted" style="margin:0 0 8px">아직 걸린 액자가 없어요. 소원을 적은 부적이 이루어지면 금빛 액자로 여기에 걸려요.</p>'}
+    ${wait.length ? `<p class="wish-wait-h">⏳ 함께 기다리는 소원 ${wait.length}개</p><ul class="wish-wait">${wait.map((r) => `<li>${wishCharmHTML(r, false)}<span><b>${esc(r.wish)}</b><small>${esc(wishDueLabel(r.dueKey, today))}에 물어볼게요</small></span></li>`).join('')}</ul>` : ''}
+    <button type="button" class="ghost ki-go" data-wish-make>🌠 소원 부적 만들러 가기</button>`;
+}
+document.addEventListener('click', (e) => {
+  const mk = e.target.closest('[data-wish-make]');
+  if (mk) { selectTab('charm'); renderCharm(false); setTimeout(() => revealAndScroll('#wish-text', 'center'), 50); return; }
+  const done = e.target.closest('[data-wish-done]'); const later = e.target.closest('[data-wish-later]');
+  if (!done && !later) return;
+  const today = state.fortune.dateKey; const col = load(COLLECTION_KEY, []);
+  const i = Number((done || later).dataset.wishDone ?? (done || later).dataset.wishLater); const r = col[i];
+  if (!r?.wish) return;
+  if (later) {
+    const days = Number(later.dataset.days) || WISH_LATER[0];
+    const next = wishPostpone(col, i, today, days); save(COLLECTION_KEY, next);
+    toast(`⏳ ${wishLaterLine(r, wishDueLabel(next[i].dueKey, today), politeNow())}`);
+    renderToday(); renderHero(false); return;
+  }
+  save(COLLECTION_KEY, wishFulfill(col, i, today));
+  renderToday(); renderHero(false);
+  const box = document.createElement('div'); box.className = 'evo-modal';
+  box.innerHTML = `<div class="evo-box wish-pop"><div class="wish-shine">${wishCharmHTML(r, true)}</div>
+    <h3 style="margin:8px 0 4px">🌟 소원 성취 · 「${esc(r.wish)}」</h3>
+    <p data-casual>${esc(wishDoneLine(r, politeNow()))}</p>
+    <div class="yday-btns" style="grid-template-columns:1fr 1fr"><button type="button" class="ghost" data-close-reward>고마워요</button><button type="button" class="primary" data-go-wall>🖼️ 이룬 소원 벽 보기</button></div></div>`;
+  document.body.appendChild(box);
+  box.addEventListener('click', (ev) => {
+    if (ev.target.closest('[data-go-wall]')) { box.remove(); selectTab('hero'); setTimeout(() => revealAndScroll('#fold-wish'), 50); return; }
+    if (ev.target.closest('[data-close-reward]') || ev.target === box) box.remove();
+  });
+});
+
+// ---------- ② 지신 데일리 코디 ----------
+function loadCoordi() { return { ...emptyCoordi(), ...load(COORDI_KEY, {}) }; }
+function seasonHandItem() {
+  const st = loadSeason(); const owned = ownedItems(st); if (!owned.length) return null;
+  const eq = owned.find((x) => x.id === st.equipped) || owned[0];
+  return { id: COORDI_SEASON, icon: '🏮', name: eq.item || '계절 소품', key: eq.key };
+}
+function coordiNow() {
+  const f = state.fortune; const st = loadCoordi(); const saved = st.days[f.dateKey];
+  const outfit = state.coordiDraft || saved?.outfit || coordiSuggest(f.luck.element);
+  const res = coordiHearts(outfit, f.luck.element, f.todayElement, { season: !!seasonHandItem() });
+  return { st, saved, outfit, res };
+}
+function heartsHTML(n) { return `<span class="cd-hearts" aria-label="코디 하트 ${n}개">${'♥'.repeat(n)}<i>${'♡'.repeat(5 - n)}</i></span>`; }
+function coordiIcon(id) { return id === COORDI_SEASON ? seasonHandItem()?.icon || '' : coordiItemOf(id)?.icon || ''; }
+/** 지신 그림 위에 소품 얹기 */
+function coordiWrap(html, outfit) {
+  if (!outfit) return html;
+  return `<div class="cd-wrap">${html}${COORDI_SLOTS.map((s) => (coordiIcon(outfit[s.key]) ? `<span class="cd-on cd-${s.key}">${coordiIcon(outfit[s.key])}</span>` : '')).join('')}</div>`;
+}
+function coordiHTML() {
+  const f = state.fortune; const { st, saved, outfit, res } = coordiNow();
+  const lucky = f.luck.element; const info = characterInfo(state.saju, state.profile); info.stage = heroOptions().stage;
+  const svg = renderCharacterSVG(info, { mood: COORDI_MOOD[res.hearts - 1], stage: info.stage, width: 170, backdrop: true });
+  const sh = seasonHandItem(); const streak = coordiStreakOf(st, f.dateKey);
+  const row = (s) => {
+    const items = [...COORDI_WARDROBE[s.key], ...(s.key === 'hand' && sh ? [sh] : [])];
+    return `<div class="cd-row"><span class="cd-slot">${s.label}</span><div class="cd-chips">
+      ${items.map((it) => { const n = it.id === COORDI_SEASON ? 1 : coordiItemHearts(it, lucky, f.todayElement); return `<button type="button" class="cd-item${outfit[s.key] === it.id ? ' on' : ''}" data-cd-slot="${s.key}" data-cd-id="${it.id}" title="${esc(it.name)}${it.el != null ? ` · ${ELEMENT_KO[it.el]} 기운` : ''}"><span>${it.icon}</span><small>${esc(it.name)}</small>${n ? `<em>${'♥'.repeat(n)}</em>` : ''}</button>`; }).join('')}
+      <button type="button" class="cd-item none${!outfit[s.key] ? ' on' : ''}" data-cd-slot="${s.key}" data-cd-id=""><span>✕</span><small>빼기</small></button></div></div>`;
+  };
+  return `<div class="coordi">
+    <p class="cd-guide">오늘 행운 기운은 <b style="color:${EL_COLORS[lucky]}">${ELEMENT_KO[lucky]}(${esc(f.luck.color)})</b>, 오늘 하루 기운은 <b>${ELEMENT_KO[f.todayElement]}</b>${tailJosa(ELEMENT_KO[f.todayElement], '이에요/예요')}. 어울리는 소품일수록 하트(♥)가 붙어요.</p>
+    <div class="cd-stage">${coordiWrap(svg, outfit)}
+      <div class="cd-score"><small>오늘의 코디 하트</small>${heartsHTML(res.hearts)}<b>${esc(res.title)}</b>
+        <p class="cd-say" data-casual>💬 ${esc(coordiLine(res.hearts, politeNow()))}</p></div></div>
+    ${COORDI_SLOTS.map(row).join('')}
+    <div class="cd-btns"><button type="button" class="ghost" data-cd-suggest>✨ 행운 기운으로 추천 코디</button>
+      <button type="button" class="primary" data-cd-save>${saved ? '👗 코디 바꿔 입히기' : '👗 오늘 이렇게 입히기'}</button></div>
+    <p class="cd-streak">🗓️ 연속 코디 <b>${streak}일</b> · ${COORDI_NEED}일 연속이면 🎀 꾸미기 조각 1개 <span class="pc-dots">${Array.from({ length: COORDI_NEED }, (_, i) => `<i class="${i < streak % COORDI_NEED || (streak && streak % COORDI_NEED === 0) ? 'on' : ''}"></i>`).join('')}</span></p>
+    <p class="muted cd-note">코디 하트는 꾸미기 놀이예요. 오늘 운세 점수와는 상관없어요.</p>
+  </div>`;
+}
+function refreshCoordi() { const el = $('#fold-coordi .fold-body'); if (el) el.innerHTML = coordiHTML(); }
+document.addEventListener('click', (e) => {
+  const it = e.target.closest('[data-cd-slot]');
+  if (it) { const { outfit } = coordiNow(); state.coordiDraft = { ...outfit, [it.dataset.cdSlot]: it.dataset.cdId || null }; refreshCoordi(); return; }
+  if (e.target.closest('[data-cd-suggest]')) { state.coordiDraft = coordiSuggest(state.fortune.luck.element); refreshCoordi(); return; }
+  if (!e.target.closest('[data-cd-save]')) return;
+  const f = state.fortune; const { st, outfit, res } = coordiNow();
+  const first = !st.days[f.dateKey];
+  let next = coordiSaveDay(st, f.dateKey, outfit, res.hearts);
+  const c = coordiClaim(next, f.dateKey); next = c.store; save(COORDI_KEY, next);
+  state.coordiDraft = null; state.heroLine = coordiLine(res.hearts, politeNow());
+  if (first) tteokTask('care');
+  renderHero(false);
+  if (c.piece) {
+    const tt = { ...emptyTteok(), ...(loadTteok() || {}) }; tt.pieces = (tt.pieces || 0) + 1; save(TTEOK_KEY, tt);
+    toast(`🎀 ${c.streak}일 연속 코디! 꾸미기 조각 1개를 받았어요`);
+    if (tt.pieces >= PIECES_PER_ITEM) setTimeout(grantSeasonItem, 300);
+  } else toast(`👗 ${res.title} · 하트 ${res.hearts}개`);
+});
+
+// ---------- ③ 걱정 태우기 ----------
+function burnHTML() {
+  const col = load(COLLECTION_KEY, []); const list = burnableCharms(col, loadEquip().charms);
+  const sel = state.burnPick ?? (list[0]?.i ?? -1);
+  return `<div class="burn-intro">
+    <p class="muted" style="margin:0 0 8px">옛날에는 소원과 걱정을 종이에 적어 태워 하늘로 보냈어요(소지). 걱정 한 줄을 적고 다 쓴 부적에 붙여 태워 보세요. <b>적은 걱정은 어디에도 저장하지 않아요.</b></p>
+    <textarea id="burn-text" maxlength="${WORRY_MAX}" rows="2" autocomplete="off" spellcheck="false" placeholder="예: 다음 주 발표가 걱정돼요"></textarea>
+    <p class="burn-h">태울 부적 <small>(장착한 부적·소원 부적은 빼고)</small></p>
+    <div class="burn-pick">${list.slice(0, 12).map(({ r, i }) => `<button type="button" class="${sel === i ? 'on' : ''}" data-burn-pick="${i}" title="${esc(labelForRec(r))}">${renderTalismanSVG(charmFromRecord(r))}<small>+${offerValue(r, fillOf(load(CHARMGROW_KEY, {}), r))}</small></button>`).join('')}
+      <button type="button" class="paper${sel === -1 ? ' on' : ''}" data-burn-pick="-1"><span>📄</span><small>빈 종이</small></button></div>
+    <p class="muted" style="font-size:0.8rem;margin:4px 0 8px">부적을 태우면 그 기운은 지신에게 가요(바치기와 같은 성장 점수). 빈 종이는 기운 없이 걱정만 태워요.</p>
+    <button type="button" class="primary ki-go" data-burn-go>🔥 태우러 가기</button>
+  </div>`;
+}
+document.addEventListener('click', (e) => {
+  const p = e.target.closest('[data-burn-pick]');
+  if (p) { state.burnPick = Number(p.dataset.burnPick); $$('[data-burn-pick]').forEach((b) => b.classList.toggle('on', b === p)); return; }
+  if (!e.target.closest('[data-burn-go]')) return;
+  const ta = $('#burn-text'); const worry = cleanWorry(ta?.value);
+  if (!worry) { toast('걱정 한 줄을 먼저 적어 주세요'); ta?.focus(); return; }
+  if (ta) ta.value = ''; // 화면 칸에도 남기지 않음
+  const col = load(COLLECTION_KEY, []); const list = burnableCharms(col, loadEquip().charms);
+  const idx = list.some((x) => x.i === state.burnPick) ? state.burnPick : (state.burnPick === -1 ? -1 : list[0]?.i ?? -1);
+  openBurn(worry, idx);
+});
+/** 태우기 창: 종이(부적 + 걱정 글) 위에 캔버스, 손가락이 닿은 곳부터 불이 번짐 */
+function openBurn(worry, idx) {
+  const col = load(COLLECTION_KEY, []); const r = idx >= 0 ? col[idx] : null;
+  const care = burnNeedsCare(worry); const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const box = document.createElement('div'); box.className = 'evo-modal burn-modal';
+  box.innerHTML = `<div class="evo-box burn-box">
+    <h3 style="margin:0 0 4px">🔥 걱정 태우기</h3>
+    <p class="muted burn-tip">종이를 손가락으로 눌러 불을 붙이세요. 여러 군데 눌러도 돼요.</p>
+    ${care ? `<div class="burn-care">${BURN_CARE.map((l) => `<p>${esc(l)}</p>`).join('')}</div>` : ''}
+    <div class="burn-stage" role="img" aria-label="태울 종이">
+      <div class="burn-paper">${r ? `<span class="bp-charm">${renderTalismanSVG(charmFromRecord(r))}</span>` : ''}<p class="bp-worry"></p></div>
+      <canvas class="burn-fire" width="280" height="360"></canvas>
+    </div>
+    <div class="burn-end" hidden><p class="burn-take" data-casual></p><p class="burn-exp"></p></div>
+    <div class="yday-btns" style="grid-template-columns:1fr 1fr"><button type="button" class="ghost" data-burn-close>그만두기</button><button type="button" class="primary" data-burn-all>🔥 한 번에 태우기</button></div>
+  </div>`;
+  document.body.appendChild(box);
+  box.querySelector('.bp-worry').textContent = worry; // 글은 이 창 안에만, 다 타면 지움
+  const cv = box.querySelector('.burn-fire'); const ctx = cv.getContext('2d');
+  const CELL = 7; const g = makeGrid(Math.ceil(cv.width / CELL), Math.ceil(cv.height / CELL));
+  const ashes = []; let raf = 0; let done = false; let lit = false; let frame = 0;
+  const finish = () => {
+    if (done) return; done = true; cancelAnimationFrame(raf);
+    g.cell.fill(2); draw();
+    box.querySelector('.bp-worry').textContent = ''; worry = '';
+    // 남은 재가 위로 날아가며 사라지는 마무리(약 1.5초)
+    let k = 0; const drift = () => { for (const a of ashes) { a.x += a.vx; a.y += a.vy; a.life--; } for (let i = ashes.length - 1; i >= 0; i--) if (ashes[i].life <= 0) ashes.splice(i, 1); draw(); if (++k < 90 && ashes.length && box.isConnected) raf = requestAnimationFrame(drift); };
+    raf = requestAnimationFrame(drift);
+    const res = burnResult(load(COLLECTION_KEY, []), idx, r ? fillOf(load(CHARMGROW_KEY, {}), r) : 0);
+    const line = burnTakeLine(Date.now(), politeNow());
+    if (res.charm) save(COLLECTION_KEY, res.collection);
+    box.querySelector('.burn-tip').hidden = true;
+    box.querySelector('.burn-end').hidden = false;
+    box.querySelector('.burn-take').textContent = `💬 ${line}`;
+    box.querySelector('.burn-exp').textContent = res.exp ? `🧧 ${labelForRec(res.charm)}의 기운이 지신에게 갔어요 · 성장 +${res.exp}` : '걱정은 재가 되어 날아갔어요.';
+    const btns = box.querySelector('.yday-btns'); btns.style.gridTemplateColumns = '1fr';
+    btns.innerHTML = '<button type="button" class="primary" data-burn-close>고마워요</button>';
+    if (res.exp) grow((gr) => addExp(gr, res.exp), `🔥 ${line} (+${res.exp})`);
+    state.burnPick = undefined; state.heroLine = line;
+    renderHero(false);
+  };
+  function draw() {
+    const { w, cell, age } = g; ctx.clearRect(0, 0, cv.width, cv.height);
+    for (let i = 0; i < cell.length; i++) {
+      if (!cell[i]) continue;
+      const x = (i % w) * CELL; const y = ((i / w) | 0) * CELL;
+      if (cell[i] === 2) { ctx.fillStyle = '#2b2420'; ctx.fillRect(x, y, CELL, CELL); continue; }
+      const t = age[i] / 5; ctx.fillStyle = t < 0.4 ? '#ffd166' : t < 0.75 ? '#ff8c42' : '#c2410c';
+      ctx.fillRect(x, y, CELL, CELL);
+    }
+    for (const a of ashes) { ctx.globalAlpha = Math.max(0, a.life / 60); ctx.fillStyle = a.hot ? '#ffb070' : '#9a8f86'; ctx.fillRect(a.x, a.y, a.s, a.s); }
+    ctx.globalAlpha = 1;
+  }
+  const tick = () => {
+    frame++;
+    if (frame % 3 === 0) { // 불길은 세 화면마다 한 걸음(약 3~4초에 다 탐), 재는 매 화면 움직임
+      const ash = stepFire(g);
+      for (const i of ash) if (Math.random() < 0.18) ashes.push({ x: (i % g.w) * CELL, y: ((i / g.w) | 0) * CELL, s: 2 + Math.random() * 3, vx: (Math.random() - 0.5) * 0.8, vy: -0.6 - Math.random() * 1.2, life: 40 + Math.random() * 30, hot: Math.random() < 0.3 });
+    }
+    for (const a of ashes) { a.x += a.vx; a.y += a.vy; a.vx += (Math.random() - 0.5) * 0.15; a.life--; }
+    for (let i = ashes.length - 1; i >= 0; i--) if (ashes[i].life <= 0) ashes.splice(i, 1);
+    if (!isBurning(g) && burntShare(g) < BURN_DONE) rekindle(g);
+    draw();
+    if (burntShare(g) >= BURN_DONE) { cancelAnimationFrame(raf); finish(); return; }
+    raf = requestAnimationFrame(tick);
+  };
+  const light = (ev) => {
+    if (done) return;
+    const b = cv.getBoundingClientRect();
+    const x = ((ev.clientX - b.left) / b.width) * g.w; const y = ((ev.clientY - b.top) / b.height) * g.h;
+    if (reduce) { box.querySelector('.burn-stage').classList.add('fade'); setTimeout(finish, 700); return; }
+    ignite(g, x, y, 1);
+    if (!lit) { lit = true; box.querySelector('.burn-tip').textContent = '불이 번지고 있어요…'; raf = requestAnimationFrame(tick); }
+  };
+  cv.addEventListener('pointerdown', (ev) => { ev.preventDefault(); light(ev); });
+  cv.addEventListener('pointermove', (ev) => { if (ev.buttons) light(ev); });
+  box.addEventListener('click', (ev) => {
+    if (ev.target.closest('[data-burn-close]')) { cancelAnimationFrame(raf); box.remove(); worry = ''; return; }
+    if (ev.target.closest('[data-burn-all]') && !done) {
+      if (reduce) { box.querySelector('.burn-stage').classList.add('fade'); setTimeout(finish, 700); return; }
+      for (let x = 0; x < g.w; x += 3) ignite(g, x, g.h - 1, 1);
+      if (!lit) { lit = true; raf = requestAnimationFrame(tick); }
+    }
+  });
+}
+function coordiSub() {
+  const d = loadCoordi().days[state.fortune.dateKey];
+  return d ? `오늘 ${'♥'.repeat(d.hearts)} · 연속 ${coordiStreakOf(loadCoordi(), state.fortune.dateKey)}일` : `행운 기운 ${ELEMENT_KO[state.fortune.luck.element]}에 맞춰 입혀 보세요`;
+}
+function wishSub() {
+  const col = load(COLLECTION_KEY, []); const a = wishWall(col).length; const b = wishWaiting(col).length;
+  return a || b ? `이룬 소원 ${a}개 · 기다리는 소원 ${b}개` : '소원을 적은 부적이 이루어지면 금빛 액자로';
+}
