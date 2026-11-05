@@ -2741,16 +2741,17 @@ document.addEventListener('click', (e) => { if (e.target.closest('[data-sc-all]'
 document.addEventListener('keydown', (e) => { const t = e.target.closest?.('.sc-tile'); if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); revealScratch(t); } });
 
 /** 📻 지신 라디오: 오늘 운세를 소리로 */
-const canSpeak = () => typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
+const canSpeak = () => typeof window !== 'undefined' && !!window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function';
 let radioOn = false;
 function radioBtnHTML() {
-  if (!canSpeak()) return '';
-  return `<button type="button" class="ghost radio-btn ${radioOn ? 'on' : ''}" data-radio aria-pressed="${radioOn}">${radioOn ? '⏹ 라디오 멈추기' : '📻 지신 라디오로 듣기'}</button>`;
+  // v0.55.1 기기가 소리 읽기를 못 해도 버튼은 늘 보이게(누르면 이유 안내)
+  return `<button type="button" class="ghost radio-btn ${radioOn ? 'on' : ''}" data-radio aria-pressed="${radioOn}">${radioOn ? '⏹ 라디오 멈추기' : '📻 지신 라디오로 오늘 운세 듣기'}</button>`;
 }
 function setRadio(on) {
   radioOn = on; $$('[data-radio]').forEach((b) => { b.outerHTML = radioBtnHTML(); });
 }
 function playRadio() {
+  if (!canSpeak()) { toast('지금 보고 있는 화면은 소리 읽기를 지원하지 않아요. 휴대폰의 크롬·사파리나 컴퓨터 브라우저에서 열면 들을 수 있어요'); return; }
   const syn = window.speechSynthesis;
   if (radioOn) { syn.cancel(); setRadio(false); return; }
   const f = state.fortune; const t = todayStory(f, state.saju, fiveScores(f));
@@ -2779,9 +2780,10 @@ function fiveCardHTML() {
     <div class="five-head">
       <div class="five-total" style="--c:${scoreColor(v.total)}"><b>${v.total}</b><small>오늘 점수</small></div>
       <div class="five-hi"><small>${f.date.month}월 ${f.date.day}일 ${dowOf(f.date)}요일 · 오늘의 운세</small>${peekedFor(load(OMEN_KEY, {}), f.dateKey) ? '<em class="peek-open">🔓 어제 미리 본 이야기가 열렸어요</em>' : ''}<h2>${esc(t.head)}</h2>
-        <p>${esc(t.mood)}</p>${radioBtnHTML()}</div>
+        <p>${esc(t.mood)}</p></div>
     </div>
     <p class="ts-why">${zodiacFace(v.total >= 70 ? 'excited' : v.total >= 50 ? 'smile' : 'calm', 'z-face ts-z')}<span>${t.scene ? `<em class="ts-scene">🎬 오늘의 한 장면 · ${esc(t.scene)}</em>` : ''}<b class="ts-plain">쉽게 말하면,</b> ${esc(t.story)}</span></p>
+    ${radioBtnHTML()}
     <div class="ts-grid">
       <section class="ts-tile good"><h4>👍 오늘 좋은 점</h4><p>${esc(t.good)}</p></section>
       <section class="ts-tile watch"><h4>⚠️ 오늘 조심할 점</h4><p>${esc(t.watch)}</p>${t.dont?.length ? `<p class="ts-dont-h">⛔ 오늘 하지 말 것</p><ul class="ts-dont">${t.dont.map((a) => `<li>${esc(a)}</li>`).join('')}</ul>` : ''}</section>

@@ -1787,5 +1787,5 @@ html.easy .top h1 { font-size: 20px; }
 .sc-all { display: block; margin: 6px auto 0; }
 
 /* v0.55 지신 라디오 */
-.radio-btn { margin-top: 8px; min-height: 40px; padding: 6px 14px; font-size: 0.86rem; }
+.radio-btn { display: block; width: 100%; margin: 4px 0 12px; min-height: 46px; padding: 8px 14px; font-size: 0.92rem; }
 .radio-btn.on { background: #fff1f5; border-color: var(--neon); color: var(--neon); }
