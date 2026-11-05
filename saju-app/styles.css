@@ -1896,3 +1896,6 @@ html.easy .top h1 { font-size: 20px; }
 .burn-stage.fade .burn-paper { transition: opacity 0.7s; opacity: 0; }
 .burn-end .burn-take { font-size: 1rem; line-height: 1.6; margin: 4px 0; }
 .burn-end .burn-exp { font-size: 0.86rem; color: var(--muted); margin: 0 0 8px; }
+
+/* v0.58 코디 소품 그림 */
+.cd-item .cd-thumb { width: 1.9rem; height: 1.9rem; object-fit: contain; display: block; margin: 0 auto; }
