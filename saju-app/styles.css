@@ -6,7 +6,7 @@
   --line: rgba(222, 160, 182, 0.38);
   --text: #4b3942;
   --ink: #3b2a33;
-  --muted: #9b8590;
+  --muted: #7d6873;   /* v0.50.4 글자 대비 올림(예전 #9b8590) */
   --neon: #ec7fa0;      /* 주 색: 로즈 핑크 */
   --neon2: #ffa38f;     /* 보조: 코랄 */
   --lav: #b49ddb;       /* 보조: 라벤더 */
@@ -1631,7 +1631,7 @@ html.easy .hj-book { font-size: 1.15rem; }
 .bk-story h3, .sj-story h4 { margin: 22px 0 8px; font-size: 1.05rem; color: var(--ink); word-break: keep-all; }
 .bk-story p, .sj-story p { line-height: 1.85; word-break: keep-all; }
 .bk-hook { font-size: 1.02rem; padding: 14px 16px; border-radius: 16px; background: #fff8f0; border: 1px solid rgba(240, 190, 205, 0.45); }
-.bk-cliff { font-style: italic; color: var(--lav, #8a6fc9); border-left: 3px solid var(--neon); padding-left: 12px; margin-top: 18px; }
+.bk-cliff { color: #4a3a6b; background: #f4effc; border-left: 4px solid #8a6fc9; border-radius: 0 12px 12px 0; padding: 12px 14px; margin-top: 18px; font-weight: 600; line-height: 1.75; }
 .sj-story { padding: 24px 20px; }
 .sj-expert > summary { min-height: 56px; }
 /* v0.50.3 기운 카드 한 편 · 타로 이야기 */

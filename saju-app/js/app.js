@@ -2944,7 +2944,7 @@ function scoreColor(v) {
   // 파스텔 테마(2026-11-04): 높을수록 따뜻한 로즈, 낮은 점수는 겁주지 않는 차분한 색
   if (v >= 80) return '#e85d8a';
   if (v >= 60) return '#ef8a5a';
-  if (v >= 40) return '#9c7fd6';
+  if (v >= 40) return '#7d5fc4';
   return '#7f8fb5';
 }
 

@@ -207,7 +207,7 @@ export const PLAIN_TERMS = [
   ['천간합', '윗글자끼리의 짝'], ['천간충', '윗글자끼리의 부딪힘'], ['천충지충', '위아래가 모두 부딪힘'], ['지장간', '속에 숨은 글자'], ['12운성', '기운의 나이'], ['12신살', '띠로 보는 별'],
   ['공망', '비어 있는 자리'], ['충', '부딪힘'], ['원진', '괜히 서운한 사이'], ['육합', '찰떡 짝'], ['삼합', '셋이 뭉치는 짝'], ['반합', '반쯤 뭉치는 짝'], ['방합', '같은 계절끼리 뭉침'], ['복음', '같은 글자의 겹침'],
   ['대운', '10년 큰 흐름'], ['세운', '그해 흐름'], ['월운', '그달 흐름'], ['일진', '그날 기운'], ['용신', '가장 필요한 기운'], ['희신', '곁에서 돕는 기운'], ['기신', '조심할 기운'],
-  ['지지', '아랫글자'], ['일간', '나를 뜻하는 글자'], ['일지', '배우자 자리'], ['천간', '윗글자'], ['연주', '태어난 해 기둥'], ['월주', '태어난 달 기둥'], ['일주', '태어난 날 기둥'], ['시주', '태어난 시간 기둥'],
+  ['지지', '아랫글자'], ['시지', '태어난 시간 자리'], ['월지', '태어난 달 자리'], ['연지', '태어난 해 자리'], ['일간', '나를 뜻하는 글자'], ['일지', '배우자 자리'], ['천간', '윗글자'], ['연주', '태어난 해 기둥'], ['월주', '태어난 달 기둥'], ['일주', '태어난 날 기둥'], ['시주', '태어난 시간 기둥'],
   ['비겁', '나를 세우는 기운'], ['식상', '재능을 펼치는 기운'], ['재성', '결실의 기운'], ['관성', '책임의 기운'], ['인성', '배움과 도움의 기운'],
   ...Object.entries(PLAIN_GOD),
 ];
@@ -245,15 +245,23 @@ export function plainText(text, opts = {}) {
   t = t.replace(/\s?\([^()]*[\u3400-\u9fff][^()]*\)/g, '');
   // 기둥(壬寅) → 임인 · 지지 한 글자(寅) → 호랑이 · 천간 한 글자(壬) → 임 · 오행 한 글자(土) → 흙
   t = replaceWithJosa(t, new RegExp(`[${ALL_HANJA}]{2,}`, 'g'), (m) => [...m[0]].map((c) => HANJA_KO[c]).join(''));
-  t = replaceWithJosa(t, new RegExp(`[${ALL_HANJA}]`, 'g'), (m) => { const c = m[0]; const bi = BRANCHES.indexOf(c); if (bi >= 0) return opts.terms === false ? `${BRANCHES_KO[bi]}(${ANIMALS[bi]})` : ANIMALS[bi]; const ei = EL_HANJA.indexOf(c); if (ei >= 0) return EL_NAME[ei]; return HANJA_KO[c]; });
+  t = replaceWithJosa(t, new RegExp(`[${ALL_HANJA}]`, 'g'), (m) => { const c = m[0]; const bi = BRANCHES.indexOf(c); if (bi >= 0) return opts.terms === false ? `${BRANCHES_KO[bi]}(${ANIMALS[bi]})` : ANIMALS[bi]; const ei = EL_HANJA.indexOf(c); if (ei >= 0) return EL_NAME[ei]; const si = STEMS.indexOf(c); if (si >= 0 && opts.terms !== false) return `${HANJA_KO[c]}(${EL_NAME[[0, 0, 1, 1, 2, 2, 3, 3, 4, 4][si]]})`; return HANJA_KO[c]; });
   t = t.replace(/([가-힣]+)\(\1\)/g, '$1');
   if (opts.terms !== false) {
+    t = t.replace(/띠\(([가-힣]+)\) 기준 12신살로 보면/g, '$1띠에게 붙는 별로 보면');
     for (const [k, v] of PLAIN_TERMS) {
       const re = new RegExp(`(?<![가-힣])${escRe(k)}${NOT_AFTER[k] || ''}(?:\\([가-힣·\\s]{1,14}\\))?(?!격)`, 'g');
       t = replaceWithJosa(t, re, () => v);
     }
     t = t.replace(/([가-힣 ]+)\(\1\)/g, '$1');
     t = t.replace(TERM_PAREN, '');
+    // 바꾼 말이 앞뒤 낱말과 겹친 곳 정리(v0.50.4): 「기운 기운」·「자리 자리」·「10년 큰 흐름(10년 큰 흐름, …)」
+    t = t.replace(/(기운|자리|흐름|글자) \1/g, '$1');
+    t = t.replace(/부딪힘을 이룹니다/g, '부딪힙니다').replace(/부딪힘을 이뤄요/g, '부딪혀요').replace(/부딪힘을 이루/g, '부딪히');
+    t = t.replace(/아랫글자 (쥐|소|호랑이|토끼|용|뱀|말|양|원숭이|닭|개|돼지)/g, '$1 기운');
+    t = t.replace(/(쥐|소|호랑이|토끼|용|뱀|말|양|원숭이|닭|개|돼지) 기운(은|는|이|가|을|를|과|와|에는|에)?/g, (m, a, j) => `${a} 기운${j ? josa('기운', ['은/는', '이/가', '을/를', '과/와'].find((p) => p.split('/').includes(j)) || j).slice(2) || j : ''}`);
+    t = t.replace(/([0-9가-힣][0-9가-힣 ]{2,}?)\(\1,\s*/g, '$1(');
+    t = t.replace(/([0-9가-힣][0-9가-힣 ]{2,}?)\(\1\)/g, '$1');
   }
   return t;
 }
