@@ -55,7 +55,7 @@ import { emoImage, charImage } from './assets.js';
 import { PRODUCTS, buildPremiumYear, buildLifeReport, buildCompatReport, premiumTeaser, compatTeaser, tarotBridge, bundleWorth, BUNDLE_COMPAT, BUNDLE_TTEOK } from './premium.js';
 import { tarotPrice, useTarot, TAROT_COST, TAROT_FREE_PER_DAY, gift as tteokGift } from './tteok.js';
 import { emptyShop, owns as shopOwns, priceOf, grant as shopGrant, yearKey, compatKey, bundleKey, grantBundle, useCompatCredit, compatCredits, kindOf } from './shop.js';
-import { preloadCharImages, itemImage, tarotImage } from './assets.js';
+import { preloadCharImages, itemImage, tarotImage, coordiImage } from './assets.js';
 /** 계절 한정 소품 그림 (없으면 빈칸) */
 const itemThumb = (key, cls = 'item-thumb') => { const u = itemImage(key); return u ? `<img class="${cls}" src="${u}" alt="" loading="lazy">` : ''; };
 import { GUIDE_STEPS, emptyGuide, showNextYear, nextStep, progress as guideProgress, isUnlocked, stepFor, completeStep as completeGuideStep, setAll as guideSetAll } from './guide.js';
@@ -3544,7 +3544,7 @@ function renderHero(animate) {
   const info = characterInfo(s, p);
   const { eq, charms, mood, emote, stage, unlock, season } = heroOptions();
   info.stage = stage;
-  const svg = renderCharacterSVG(info, { mood, charms, emote, stage, season, width: 300, backdrop: true, animate: true });
+  const svg = renderCharacterSVG(info, { mood, charms, emote, stage, season, width: 300, backdrop: true, animate: true, coordi: loadCoordi().days[f.dateKey]?.outfit });
   const gs = summary(loadGrowth(), f.dateKey);
 
   // 장착 후보: 지금 공방의 부적 + 도감
@@ -5631,20 +5631,23 @@ function coordiNow() {
 }
 function heartsHTML(n) { return `<span class="cd-hearts" aria-label="코디 하트 ${n}개">${'♥'.repeat(n)}<i>${'♡'.repeat(5 - n)}</i></span>`; }
 function coordiIcon(id) { return id === COORDI_SEASON ? seasonHandItem()?.icon || '' : coordiItemOf(id)?.icon || ''; }
-/** 지신 그림 위에 소품 얹기 */
+/** 소품 고르기 칸 아이콘: 그림이 있으면 그림(v0.58), 없으면 이모지 */
+function coordiChip(it) { const im = coordiImage(it.id); return im ? `<img class="cd-thumb" src="${im.src}" alt="">` : it.icon; }
+/** 지신 그림 위에 소품 얹기 — 그림이 있는 소품은 character.js가 몸에 직접 입히고(opts.coordi), 그림이 없는 소품만 이모지로 얹음 */
 function coordiWrap(html, outfit) {
   if (!outfit) return html;
-  return `<div class="cd-wrap">${html}${COORDI_SLOTS.map((s) => (coordiIcon(outfit[s.key]) ? `<span class="cd-on cd-${s.key}">${coordiIcon(outfit[s.key])}</span>` : '')).join('')}</div>`;
+  const icon = (id) => (coordiImage(id) ? '' : coordiIcon(id));
+  return `<div class="cd-wrap">${html}${COORDI_SLOTS.map((s) => (icon(outfit[s.key]) ? `<span class="cd-on cd-${s.key}">${icon(outfit[s.key])}</span>` : '')).join('')}</div>`;
 }
 function coordiHTML() {
   const f = state.fortune; const { st, saved, outfit, res } = coordiNow();
   const lucky = f.luck.element; const info = characterInfo(state.saju, state.profile); info.stage = heroOptions().stage;
-  const svg = renderCharacterSVG(info, { mood: COORDI_MOOD[res.hearts - 1], stage: info.stage, width: 170, backdrop: true });
+  const svg = renderCharacterSVG(info, { mood: COORDI_MOOD[res.hearts - 1], stage: info.stage, width: 170, backdrop: true, coordi: outfit });
   const sh = seasonHandItem(); const streak = coordiStreakOf(st, f.dateKey);
   const row = (s) => {
     const items = [...COORDI_WARDROBE[s.key], ...(s.key === 'hand' && sh ? [sh] : [])];
     return `<div class="cd-row"><span class="cd-slot">${s.label}</span><div class="cd-chips">
-      ${items.map((it) => { const n = it.id === COORDI_SEASON ? 1 : coordiItemHearts(it, lucky, f.todayElement); return `<button type="button" class="cd-item${outfit[s.key] === it.id ? ' on' : ''}" data-cd-slot="${s.key}" data-cd-id="${it.id}" title="${esc(it.name)}${it.el != null ? ` · ${ELEMENT_KO[it.el]} 기운` : ''}"><span>${it.icon}</span><small>${esc(it.name)}</small>${n ? `<em>${'♥'.repeat(n)}</em>` : ''}</button>`; }).join('')}
+      ${items.map((it) => { const n = it.id === COORDI_SEASON ? 1 : coordiItemHearts(it, lucky, f.todayElement); return `<button type="button" class="cd-item${outfit[s.key] === it.id ? ' on' : ''}" data-cd-slot="${s.key}" data-cd-id="${it.id}" title="${esc(it.name)}${it.el != null ? ` · ${ELEMENT_KO[it.el]} 기운` : ''}"><span>${coordiChip(it)}</span><small>${esc(it.name)}</small>${n ? `<em>${'♥'.repeat(n)}</em>` : ''}</button>`; }).join('')}
       <button type="button" class="cd-item none${!outfit[s.key] ? ' on' : ''}" data-cd-slot="${s.key}" data-cd-id=""><span>✕</span><small>빼기</small></button></div></div>`;
   };
   return `<div class="coordi">

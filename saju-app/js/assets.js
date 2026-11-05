@@ -6,6 +6,7 @@
 // - 스토리 카드·PNG 저장은 외부 파일 참조가 안 되므로 미리 data URL로 불러 둔다
 import { CHAR_FILES, EMO_FILES, SCENE_FILES, CHARM_FILES, ITEM_FILES } from './asset-manifest.js';
 import { TAROT_FILES } from './tarot-manifest.js';
+import { COORDI_IMAGES } from './coordi-manifest.js';
 
 export const EL_NAME = ['wood', 'fire', 'earth', 'metal', 'water'];
 export const CHAR_ASSETS = new Set(CHAR_FILES);
@@ -36,6 +37,9 @@ export function charmImage(name) { return CHARM_ASSETS.has(name) ? url('charm', 
 /** 타로 메이저 아르카나 그림 주소: 'm0'~'m21' (없으면 null → 코드 카드) */
 export function tarotImage(key) { return TAROT_ASSETS.has(key) ? url('tarot', key) : null; }
 /** 계절 한정 소품 그림 주소 (없으면 null) */
+/** 코디 소품 그림 {src, ratio} (없으면 null → 이모지) — v0.58 */
+export function coordiImage(id) { const r = (COORDI_IMAGES || {})[id]; return r ? { src: url('coordi', id), ratio: r } : null; }
+
 export function itemImage(seasonKey) { return ITEM_ASSETS.has(seasonKey) ? url('item', seasonKey) : null; }
 
 /** 계절 장면 그림 주소 (꾸미기 세트의 배경, 없으면 null → SVG 장면) */
@@ -59,7 +63,7 @@ export async function preloadCharImages(zodiacKey) {
   if (typeof fetch !== 'function' || typeof FileReader === 'undefined') return 0;
   const pick = (set, kind) => [...set].filter((k) => !zodiacKey || k.startsWith(`${zodiacKey}_`)).map((k) => `${kind}/${k}`);
   // 부적·소품 그림은 작아서(합계 약 300KB) 모두 함께 불러 둔다 → 부적 PNG 저장·스토리 카드에도 그림이 들어감
-  const keys = [...pick(CHAR_ASSETS, 'char'), ...pick(EMO_ASSETS, 'emo'), ...[...CHARM_ASSETS].map((k) => `charm/${k}`), ...[...ITEM_ASSETS].map((k) => `item/${k}`)];
+  const keys = [...pick(CHAR_ASSETS, 'char'), ...pick(EMO_ASSETS, 'emo'), ...[...CHARM_ASSETS].map((k) => `charm/${k}`), ...[...ITEM_ASSETS].map((k) => `item/${k}`), ...Object.keys(COORDI_IMAGES || {}).map((k) => `coordi/${k}`)];
   let n = 0;
   await Promise.all(keys.map(async (key) => {
     if (dataCache.has(key)) return;
