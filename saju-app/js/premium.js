@@ -18,6 +18,8 @@ import { tenGodProfile, pillarReadings, natalWatch } from './natal.js';
 import { buildIlju } from './ilju.js';
 import { twelveStage, HIDDEN_STEMS, sinsalOf, sinsal12Of, SINSAL12_NOTE } from './expert.js';
 import { dateToJdn, jdnToDate } from './lunar.js';
+import { plainText, dedupeReport, PLAIN_GOD, EL_NAME, yearize } from './storybook.js';
+import { yearStoryChapters, yearClosing, monthStory, seasonStory, lifeStoryChapters, lifeOpening, lifeClosing } from './storyreport.js';
 
 // ---------- 상품 ----------
 export const PRODUCTS = {
@@ -56,6 +58,20 @@ const avg = (a) => Math.round(a.reduce((x, y) => x + y, 0) / Math.max(1, a.lengt
 const plusDays = (d, n) => jdnToDate(dateToJdn(d.year, d.month, d.day) + n);
 const dayText = (d) => `${d.month}월 ${d.day}일`;
 
+/** 마무리: 본문은 쉬운 말로(한자·용어 → 사람 말), 부록은 한자만 한글로 · 겹친 문장 정리 · 목차·글자 수 */
+function finish(rep, yr = null) {
+  const P = (t, o) => (t ? (yr ? yearize(plainText(t, o), yr.year, yr.now) : plainText(t, o)) : t);
+  const sec = (s) => { const o = s.appendix ? { terms: false } : {}; return { ...s, h: P(s.h, o), intro: P(s.intro, o), blocks: s.blocks.map((b) => ({ ...b, h: P(b.h, o), paras: b.paras.map((x) => P(x, o)) })) }; };
+  const out = dedupeReport({ ...rep, sub: P(rep.sub), sections: rep.sections.map(sec) });
+  out.toc = tocOf(out); out.chars = charCount(out);
+  return out;
+}
+function monthDaysText(saju, m, gender) {
+  const md = monthDays(saju, plusDays(m.start, 3), gender);
+  const byDate = (a, b) => a.date.day - b.date.day + (a.date.month - b.date.month) * 100;
+  return { good: [...md.best].sort(byDate).map((d) => dayText(d.date)), slow: [...md.caution].sort(byDate).map((d) => dayText(d.date)) };
+}
+
 /** 글자 수(공백 포함) */
 export const charCount = (rep) => rep.sections.reduce((t, s) => t + sectionChars(s), 0);
 function sectionChars(s) {
@@ -68,39 +84,6 @@ export const tocOf = (rep) => rep.sections.map((s) => ({ key: s.key, h: s.h, cha
 // 1) 그해 상세판(990원)
 // ======================================================================
 
-/** 달 하나: 흐름 · 분야 · 원국과 만남 · 좋은 날 · 할 일/대비 */
-function monthBlock(y, i, ctx, rank) {
-  const m = y.months[i]; const { saju, gender } = ctx;
-  const R = GOD_READING[m.god]; const P = m.pillar; const me = saju.dayMaster;
-  const inner = tenGod(me, BRANCH_MAIN_STEM[P.branch]); const I = GOD_READING[inner];
-  const keys = ['wealth', 'career', 'love', 'health', 'social'];
-  const vals = keys.map((k) => ({ k, v: fieldValue(m, k) })).sort((a, b) => b.v - a.v);
-  const hi = vals[0]; const lo = vals[vals.length - 1];
-  const tone = rank < 3 ? '한 해 가운데 흐름이 가장 좋은 달 중 하나예요' : rank >= 10 ? '한 해 가운데 속도를 늦추고 안을 다지기 좋은 달이에요' : '한 해의 흐름을 고르게 이어 가는 달이에요';
-  const paras = [];
-  paras.push(`${m.term}부터 ${pillarName(P)}의 달이 열려요. 일간 ${stemLabel(me)}에게 이 달의 천간 ${STEMS[P.stem]}${hasBatchim(STEMS_KO[P.stem]) ? '은' : '는'} ${m.god}, 「${R.keyword}」의 기운이에요. ${first(R.core)} ${tone}.`);
-  paras.push(inner === m.god
-    ? `지지 ${BRANCHES[P.branch]}에도 같은 ${m.god} 기운이 흘러 겉과 속이 한 방향이에요. 이 달의 성격이 또렷하게 드러나니, 마음먹은 일은 망설이지 말고 한 번에 밀고 가 보세요.`
-    : `지지 ${BRANCHES[P.branch]}에는 ${inner}, 「${I.keyword}」의 기운이 바탕에 깔려요. 겉으로는 ${R.keyword}, 속으로는 ${josa(I.keyword, '이/가')} 함께 움직이니 ${first(I.good[i % I.good.length])}`);
-  paras.push(`이 달 가장 힘이 실리는 분야는 ${FIELD_KO[hi.k]}, ${hi.v}점이에요. ${sentence(R.fields[hi.k])} ${FIELD_KO[lo.k]} 분야(${lo.v}점)는 한 걸음 천천히 가면 좋아요. ${first(R.fields[lo.k])}`);
-  // 원국과의 만남: 이 달 글자가 내 사주 글자와 맺는 관계 1개, 없으면 용신·기신
-  const rel = incomingRelations(saju.pillars, P, '이 달')[0];
-  const stEl = STEM_ELEMENT[P.stem];
-  if (rel) paras.push(`${rel.text} ${sentence(rel.act)}`);
-  else if (stEl === saju.yongsin) paras.push(`이 달의 천간은 내게 가장 필요한 ${el(stEl)} 기운이라, 몸과 마음이 한결 가벼워지는 때예요. 미뤄 둔 부탁이나 시작은 이 달에 꺼내 보세요.`);
-  else if (stEl === saju.gisin) paras.push(`이 달의 천간은 내게 이미 넉넉한 ${el(stEl)} 기운이라, 일을 늘리기보다 정리하고 덜어 낼 때 흐름이 편해져요.`);
-  else paras.push(`이 달의 글자는 내 사주와 크게 부딪히거나 묶이지 않아, 평소 리듬을 지키며 꾸준히 가면 되는 달이에요.`);
-  // 좋은 날 · 쉬어 갈 날 (오늘 운세와 같은 점수)
-  const md = monthDays(saju, plusDays(m.start, 3), gender);
-  const byDate = (a, b) => a.date.day - b.date.day + (a.date.month - b.date.month) * 100;
-  const good = [...md.best].sort(byDate).map((d) => dayText(d.date)); const slow = [...md.caution].sort(byDate).map((d) => dayText(d.date));
-  paras.push(`이 달 특히 좋은 날은 ${good.join(', ')}이에요. 약속·연락·결정은 이날들에 맞춰 보세요. ${slow.join(', ')}은 쉬어 가는 날로 두고 무리한 일정은 피하면 좋아요.`);
-  // 할 일 · 대비
-  paras.push(rank >= 10
-    ? `대비: ${sentence(R.watch[i % R.watch.length])} ${WATCH_ACT[m.god]}`
-    : `할 일: ${sentence(R.tips[i % R.tips.length])} 챙길 점은 하나, ${R.watch[0].replace(/[.!?]$/, '')}${R.watch[0].endsWith('요') ? '.' : '는 점이에요.'}`);
-  return { h: `${m.solarMonth}월 · ${monthRange(y.months, i)} · ${pillarName(P)}월 ${rank < 3 ? '🌟' : rank >= 10 ? '🍵' : ''}`.trim(), paras };
-}
 const WATCH_ACT = {
   비견: '중요한 결정 전에 믿는 사람 한 명에게 반대 의견을 물어보세요.', 겁재: '돈 빌려주기·보증·공동 투자는 이 달엔 미뤄 두세요.',
   식신: '식사량과 군것질을 줄이고, 미룬 일 하나는 끝내 두세요.', 상관: '윗사람에게 할 말은 하룻밤 자고 글로 정리해 전하세요.',
@@ -138,7 +121,7 @@ function fieldBlock(y, key, label, ctx, focus) {
     const v = avg(list.map((x) => x.v));
     return `${name}(${ms.join('·')}월, 평균 ${v}점)에는 「${GOD_READING[mid.m.god].keyword}」의 기운이 중심이에요. ${first(GOD_READING[mid.m.god].fields[rf])}`;
   });
-  paras.push(seasonLines.join(' '));
+  void seasonLines;
   paras.push(`가장 힘이 실리는 두 달은 ${top.map((x) => `${x.m.solarMonth}월(${monthRange(y.months, x.i)}, ${x.v}점)`).join('과 ')}이에요. 이 분야의 중요한 일은 이 두 달에 몰아 두면 같은 노력으로 더 큰 결과가 나와요. 반대로 ${low.m.solarMonth}월(${monthRange(y.months, low.i)}, ${low.v}점)은 새로 벌이기보다 지키고 정리하는 달로 쓰세요.`);
   paras.push(`조심할 장면 두 가지. 하나, ${FIELD_WATCH[key][g]}${ig !== g ? ` 둘, ${FIELD_WATCH[key][ig]}` : ` 둘, ${sentence(GOD_READING[god].watch[GOD_READING[god].watch.length - 1])} 미리 알면 충분히 다룰 수 있어요.`}`);
   const age = y.sajuYear - saju.input.year; const al = ['wealth', 'career', 'love', 'health', 'social'].includes(key) ? ageLine(age, key, god) : '';
@@ -164,28 +147,31 @@ export function buildPremiumYear(ctx) {
   const sections = [];
 
   sections.push({
-    key: 'open', h: '열면서 · 이 상세판을 읽는 법',
+    key: 'open', h: `${who}께 · ${y.sajuYear}년을 여는 편지`,
     blocks: [{ paras: [
-      `${who}의 ${y.sajuYear}년, ${yearName(y.year.pillar)} 상세판이에요. 무료 총운에서 한 해의 큰 모양을 봤다면, 여기서는 그 해를 달마다·분야마다 나눠 「언제, 무엇을」까지 짚어요. 모든 문장은 ${who}의 여덟 글자와 그해·그달의 글자가 만나는 방식에서 나왔고, 다시 열어도 같은 내용이에요.`,
-      `한 해의 중심 기운은 ${god}, ${iyeyo(`「${R.keyword}」`)}. 흐름이 가장 좋은 세 달은 ${best.join('·')}월, 속도를 늦추고 다지기 좋은 두 달은 ${slow.join('·')}월이에요.${yong.length ? ` 게다가 ${yong.join('·')}월은 천간에 내게 가장 필요한 ${el(saju.yongsin)} 기운이 들어오는 달이라, 몸과 마음이 한결 편해요.` : ''}`,
-      '읽는 법: 🌟는 흐름이 가장 좋은 달, 🍵는 쉬어 가며 다지는 달이에요. 점수는 무료 화면과 같은 값이고, 상세판은 해석과 행동만 더 자세히 풀어 써요. 한 번 열면 언제든 다시 볼 수 있어요.',
+      `${y.sajuYear}년 12월의 어느 저녁, ${josa(who, '은/는')} 달력을 넘겨 보다가 ${best[0]}월 칸에 적어 둔 메모 한 줄을 보고 피식 웃게 될지도 몰라요. 「그때 시작하길 정말 잘했다.」 이 책은 그 장면까지 가는 길을 따라가는, ${who}가 주인공인 이야기예요.`.replace(`${who}가 주인공`, `${josa(who, '이/가')} 주인공`),
+      `${who}, ${y.sajuYear}년은 ${PLAIN_GOD[god]}이 들어오는 해예요. 한 줄로 말하면 「${GOD_READING[god].keyword}」의 해. 이 책은 점수 대신 이야기로, 왜 그런 흐름이 오는지, 무엇을 피하고 무엇을 붙잡으면 되는지 차근차근 들려드려요.`,
+      `흐름이 가장 좋은 세 달은 ${best.join('·')}월, 속도를 늦추고 다지기 좋은 두 달은 ${slow.join('·')}월이에요.${yong.length ? ` 그리고 ${yong.join('·')}월은 ${who}에게 가장 필요한 ${EL_NAME[saju.yongsin]} 기운이 하늘에서 내려오는 달이라, 몸과 마음이 한결 편해요.` : ''}`,
+      '1장부터 6장까지는 한 해의 이야기, 7장은 열두 달, 8장은 분야별 전략이에요. 어려운 계산 근거는 맨 뒤 부록에 모아 두었어요. 점수는 무료 화면과 같은 값이에요.',
     ] }],
   });
 
+  const checks = yearChecks(y, saju, { gender: ctx.gender, calib });
+  sections.push(...yearStoryChapters({ ...ctx, checks }));
+
   sections.push({
-    key: 'months', h: '12달 달력 풀이', intro: '입춘부터 이듬해 소한까지, 절기가 바뀌는 날을 달의 시작으로 봐요.',
-    blocks: y.months.map((m, i) => monthBlock(y, i, ctx, rankOf(i))),
+    key: 'months', h: '7장 · 열두 달 이야기', intro: '절기가 바뀌는 날(입춘·경칩…)을 달의 시작으로 봐요. 🌟는 바람이 시원한 달, 🍵는 쉬어 가는 달이에요.',
+    blocks: [seasonStory(y), ...y.months.map((m, i) => monthStory(y, i, ctx, rankOf(i), monthDaysText(saju, m, ctx.gender)))],
   });
 
   const focus = { exam: 'career', job: 'career', wealth: 'wealth', business: 'business', love: 'love', marriage: 'love', health: 'health', people: 'social', change: 'career' }[concern];
   const order = focus ? [FIELD_ORDER.find(([k]) => k === focus), ...FIELD_ORDER.filter(([k]) => k !== focus)] : FIELD_ORDER;
   sections.push({
-    key: 'fields', h: '분야 8개 전략', intro: '분야마다 상·하반기, 계절, 가장 좋은 두 달, 조심할 장면, 체크리스트 순서로 봐요.',
+    key: 'fields', h: '8장 · 분야별 전략', intro: '분야마다 한 해의 모양, 가장 좋은 두 달, 조심할 장면, 체크리스트 순서로 봐요.',
     blocks: order.map(([k, label]) => fieldBlock(y, k, label, ctx, k === focus)),
   });
 
-  // 조심할 점 전체(무료 책자는 다섯 개만) + 쉬어 갈 달의 쉬어 갈 날
-  const checks = yearChecks(y, saju, { gender: ctx.gender, calib });
+  // 부록: 조심할 점 전체(계산 근거와 함께) + 쉬어 갈 달의 쉬어 갈 날
   const cautionBlocks = checks.map((c) => ({ h: `${{ watch: '⚠️ 조심', good: '🌟 기회', note: '📌 참고' }[c.kind]} · ${c.title}`, paras: [sentence(c.text), `👉 ${sentence(c.act)}${c.when ? ` 특히 ${c.when}에 한 번 더 챙겨 보세요.` : ''}`] }));
   const slowBlocks = ranked.slice(-2).map(({ m, i }) => {
     const md = monthDays(saju, plusDays(m.start, 3), ctx.gender);
@@ -194,7 +180,7 @@ export function buildPremiumYear(ctx) {
       `대비: ${WATCH_ACT[m.god]} 큰 결정이 필요하다면 이 달 안에서도 흐름이 좋은 ${md.best.map((d) => dayText(d.date)).join(', ')}에 맞추고, ${md.caution.map((d) => dayText(d.date)).join(', ')}에는 일정을 가볍게 두세요.`,
     ] };
   });
-  sections.push({ key: 'care', h: '조심할 달과 대비', intro: '겁주려는 글이 아니라, 미리 알면 다룰 수 있는 것들을 모았어요.', blocks: [...slowBlocks, ...cautionBlocks] });
+  const appendix = { key: 'basis', appendix: true, h: '부록 · 풀이의 근거(궁금한 분만)', intro: '본문에 쓴 이야기가 어떤 계산에서 나왔는지 사주 용어 그대로 적었어요.', blocks: [...slowBlocks, ...cautionBlocks] };
 
   // 나만의 보정: 대운 교차·교운기, 지난 일 보정, 용신 쓰는 법(계절별)
   const own = [];
@@ -207,18 +193,14 @@ export function buildPremiumYear(ctx) {
   own.push(`${who}에게 가장 필요한 기운은 ${iyeyo(el(saju.yongsin))}. 한 해 내내 ${L.color} 계열의 소품, ${L.direction} 방향, ${L.time}가 힘이 되고, 먹을거리는 ${josa(L.food, '이/가')} 잘 맞아요. 행운의 숫자는 ${iyeyo(L.numbers.join('·'))}.`);
   const hs = saju.heesin; if (hs != null && hs !== saju.yongsin) { const H = ELEMENT_LUCK[hs]; own.push(`곁에서 돕는 기운(희신)은 ${iyeyo(el(hs))}. ${H.item}처럼 ${H.color} 계열 물건을 하나 곁에 두면 필요한 기운을 받쳐 줘요.`); }
   own.push(`계절마다 쓰는 법: 봄에는 ${josa(L.item, '으로/로')} 시작을 가볍게, 여름에는 ${L.direction} 쪽 자리에서 중요한 일을, 가을에는 ${josa(String(L.numbers[0]), '이/가')} 들어간 날짜에 정리를, 겨울에는 ${josa(L.food, '으로/로')} 몸을 데우며 다음 해를 준비해 보세요.`);
-  sections.push({ key: 'own', h: '나만의 보정 풀이', blocks: [{ paras: own }] });
+  appendix.blocks.push({ h: '나만의 보정', paras: own });
 
   const km = keyMonths(y); const goodKm = km.filter((m) => m.kind === 'good').map((m) => m.month);
   const seasons = seasonsOf(y.months); const bs = seasons.find((s) => s.tone === 'best');
-  sections.push({ key: 'close', h: '맺음 · 한 해의 다짐 세 가지', blocks: [{ paras: [
-    `① ${goodKm.join('월과 ')}월에는 미뤄 둔 일 하나를 꺼내요. ② ${slow.join('월과 ')}월에는 새로 벌이기보다 정리하고 쉬어요. ③ ${sentence(R.tips[0])}`,
-    `${bs ? `${bs.label}에 가장 큰 바람이 불어요. ` : ''}운은 정해진 점수가 아니라 쓰는 방식이에요. ${who}가 좋은 달에 한 걸음 더 내딛고 차분한 달에 한 걸음 쉬어 간다면, 이 해는 숫자보다 훨씬 좋은 해로 기억될 거예요.`.replace(`${who}가`, josa(who, '이/가')),
-  ] }] });
+  void km; void seasons;
+  sections.push(yearClosing(ctx), appendix);
 
-  const rep = { kind: 'year', year: y.sajuYear, title: `${y.sajuYear}년 상세 운세`, sub: `${yearName(y.year.pillar)} · ${who}`, sections };
-  rep.toc = tocOf(rep); rep.chars = charCount(rep);
-  return rep;
+  return finish({ kind: 'year', year: y.sajuYear, title: `${y.sajuYear}년 상세 운세`, sub: `${yearName(y.year.pillar)} · ${who}`, sections }, { year: y.sajuYear, now: ctx.nowYear ?? null });
 }
 
 /**
@@ -236,8 +218,10 @@ export function compatTeaser(rep) {
 
 /** 무료 책자 끝에서 보여 줄 맛보기: 첫 달 풀이 첫 두 문장(나머지는 흐리게) */
 export function premiumTeaser(rep) {
-  const b = rep.sections.find((s) => s.key === 'months')?.blocks.find((x) => x.h.includes('🌟')) || rep.sections[1].blocks[0];
-  return { h: b.h, open: b.paras[0], blur: b.paras[1] };
+  const b = rep.sections.find((s) => s.key === 'why')?.blocks[0] || rep.sections[1].blocks[0];
+  const h = rep.sections.find((s) => s.key === 'why')?.h || b.h;
+  // 무료 책자 앞머리가 2장 첫 문단을 이미 보여 주므로, 맛보기는 그다음 문단부터
+  return { h, open: b.paras[1] || b.paras[0], blur: b.paras[2] || '' };
 }
 
 /**
@@ -254,13 +238,13 @@ export function tarotBridge(rep, topic) {
   const bi = field && fsec >= 0 ? rep.sections[fsec].blocks.findIndex((b) => b.h.startsWith(label)) : -1;
   if (bi >= 0) {
     const ps = rep.sections[fsec].blocks[bi].paras;
-    const two = ps[2].split(/(?<=요\.)\s+/)[0]; const watch = ps[3];
+    const two = (ps.find((x) => x.includes('두 달은')) || ps[1]).split(/(?<=요\.)\s+/)[0]; const watch = ps.find((x) => x.startsWith('조심할 장면')) || ps[2];
     return { field, label, sec: fsec, block: bi, q: [
       { q: `${label}에 가장 힘이 실리는 두 달은?`, a: two },
       { q: `${label}에서 조심할 장면 두 가지는?`, a: watch },
     ] };
   }
-  const open = rep.sections.find((s) => s.key === 'open').blocks[0].paras[1];
+  const ops = rep.sections.find((s) => s.key === 'open').blocks[0].paras; const open = ops.find((x) => x.includes('세 달은')) || ops[1];
   const msec = rep.sections.findIndex((s) => s.key === 'months');
   const mb = Math.max(0, rep.sections[msec].blocks.findIndex((b) => b.h.includes('🌟')));
   return { field: null, label: '12달 흐름', sec: msec, block: mb, q: [
@@ -523,9 +507,17 @@ export function buildLifeReport(ctx) {
 
   sections.push({ key: 'close', h: '맺음', blocks: [{ paras: [`사주는 정해진 운명표가 아니라 타고난 바람의 방향이에요. ${who}에게 맞는 바람은 ${el(saju.yongsin)}에서 불어오고, ${gyeok ? `「${GP.title}」의 그릇` : '고른 그릇'}에 「${ilju.keyword}」의 힘이 담겨 있어요. 좋은 대운에는 돛을 활짝 펴고, 차분한 대운에는 배를 손보며 가면 돼요. 이 풀이가 그 항해의 지도가 되기를 바라요.`] }] });
 
-  const rep = { kind: 'life', title: '평생 정통사주 종합', sub: `${ilju.name} · ${who}`, sections };
-  rep.toc = tocOf(rep); rep.chars = charCount(rep);
-  return rep;
+  // v0.50: 본문 = 쉬운 이야기 7장, 사주 용어로 된 풀이는 「부록」으로(접혀서 보임)
+  const story = lifeStoryChapters({ saju, gyeok, gp: GP, daewoon, name, gender: ctx.gender, curAge, watch: natalWatch(saju) });
+  const open = { key: 'open', h: `${who}께 · 나를 읽는 편지`, blocks: [{ paras: [
+    lifeOpening(saju, who),
+    `${who}, 이 책은 ${who}가 어떤 사람으로 태어났는지, 왜 비슷한 고비가 반복되는지, 누구와 어떤 일을 할 때 가장 빛나는지를 이야기로 풀어요.`.replace(`${who}가`, josa(who, '이/가')),
+    `한 줄로 줄이면, ${josa(who, '은/는')} 「${DP.image}」의 바탕에 「${ilju.image}」의 모습을 가진 사람이에요. 가장 필요한 기운은 ${EL_NAME[saju.yongsin]} 기운이에요.`,
+    `이 책은 주인공인 ${who}의 이야기예요. 1장부터 8장까지는 쉬운 이야기, 그 뒤 부록에는 여덟 글자 하나하나를 사주 용어로 짚은 풀이가 있어요. 궁금한 부분만 펼쳐 보세요.`,
+  ] }] };
+  const appendix = sections.filter((x) => !['open', 'close'].includes(x.key)).map((x) => ({ ...x, key: `ap-${x.key}`, appendix: true, h: `부록 · ${x.h}` }));
+  const close = lifeClosing(saju, who);
+  return finish({ kind: 'life', title: '평생 정통사주 종합', sub: `${ilju.name} · ${who}`, sections: [open, ...story, close, ...appendix] });
 }
 
 // ======================================================================
@@ -567,9 +559,9 @@ const EL_ACTIVITY = ['숲길 산책·식물 기르기·새 강의 함께 듣기'
 const COMPAT_QA = [
   ['오래 갈 수 있을까요?', ['처음엔 맞춰 가는 시간이 필요해요. 서로의 속도를 인정하는 순간부터 관계가 단단해져요.', '편안함이 큰 사이라 오래 갈 힘이 있어요. 익숙함 속에서도 고마움을 표현하면 더 오래가요.', '서로를 끌어당기는 힘이 큰 사이예요. 다툼이 생겨도 금세 다시 찾게 되는 인연이에요.']],
   ['다투면 누가 먼저 다가가야 할까요?', ['둘 다 고집이 있는 편이라, 「먼저 사과하는 사람이 이긴다」는 규칙을 정해 두면 좋아요.', '말하는 속도가 빠른 쪽이 먼저 한 발 물러나면 대화가 금세 풀려요.', '누가 먼저든 금세 풀리는 사이예요. 다만 서운함을 쌓아 두지만 않으면 돼요.']],
-  ['돈 관리는 누가 하면 좋을까요?', ['돈에 대한 생각이 다를 수 있어요. 공동 통장과 각자 통장을 나눠 두면 다툼이 줄어요.', '토·금 기운이 더 많은 쪽이 살림을, 목·화 기운이 더 많은 쪽이 계획과 경험을 맡으면 자연스러워요.', '돈 이야기를 편하게 나눌 수 있는 사이예요. 한 해 목표 금액을 함께 정해 보세요.']],
+  ['돈 관리는 누가 하면 좋을까요?', ['돈에 대한 생각이 다를 수 있어요. 공동 통장과 각자 통장을 나눠 두면 다툼이 줄어들어요.', '토·금 기운이 더 많은 쪽이 살림을, 목·화 기운이 더 많은 쪽이 계획과 경험을 맡으면 자연스러워요.', '돈 이야기를 편하게 나눌 수 있는 사이예요. 한 해 목표 금액을 함께 정해 보세요.']],
   ['함께 일하거나 사업해도 될까요?', ['역할이 겹치면 부딪히기 쉬워요. 시작 전에 역할·수익·결정권을 글로 정해 두면 가능해요.', '손발이 맞는 편이라 작은 일부터 함께 해 보면 좋아요. 성과 나누기는 처음부터 정해 두세요.', '서로의 강점이 맞물려 결과가 커지는 사이예요. 공동 목표를 숫자로 정하면 더 멀리 가요.']],
-  ['결혼이나 동거처럼 함께 사는 건 어떨까요?', ['생활 방식이 다른 편이라 각자의 시간과 공간을 정해 두면 오히려 편안해요.', '생활 리듬이 무난하게 맞는 편이에요. 집안일을 미리 나눠 두면 다툼이 크게 줄어요.', '생활 리듬이 잘 맞물리는 사이예요. 함께 사는 시간이 길수록 서로를 더 닮아 가요.']],
+  ['결혼이나 동거처럼 함께 사는 건 어떨까요?', ['생활 방식이 다른 편이라 각자의 시간과 공간을 정해 두면 오히려 편안해요.', '생활 리듬이 무난하게 맞는 편이에요. 집안일을 미리 나눠 두면 다툼이 크게 줄어들어요.', '생활 리듬이 잘 맞물리는 사이예요. 함께 사는 시간이 길수록 서로를 더 닮아 가요.']],
 ];
 const SPOUSE_LIKE = ['대등하게 어깨를 나란히 하는', '즐겁게 표현하며 챙겨 주는', '현실적으로 생활을 꾸리는', '믿음직하게 약속을 지키는', '따뜻하게 품어 주는'];
 // 일간 오행별 말하는 방식
@@ -602,7 +594,7 @@ export function buildCompatReport(ctx) {
     { h: `${A} · ${DA.name}, ${DA.image}`, paras: [DA.text] },
     { h: `${B} · ${DB.name}, ${DB.image}`, paras: [DB.text] },
     ...[[A, me], [B, friend]].map(([n, sj]) => { const il = buildIlju(sj); return { h: `${n}의 일주 · ${il.name}, ${il.image}`, paras: [il.paras.personality, `사랑: ${il.paras.love}`] }; }),
-    { h: '말하는 방식이 다를 때', paras: [`${A}: ${TALK[STEM_ELEMENT[me.dayMaster]]}`, `${B}: ${TALK[STEM_ELEMENT[friend.dayMaster]]}`, STEM_ELEMENT[me.dayMaster] === STEM_ELEMENT[friend.dayMaster] ? '말하는 방식이 닮아 대화가 편해요. 다만 둘 다 같은 순간에 같은 것을 원할 때가 있으니, 순서를 번갈아 양보해 보세요.' : '말하는 방식이 달라, 상대의 속도를 알아 두는 것만으로 오해가 크게 줄어요.'] },
+    { h: '말하는 방식이 다를 때', paras: [`${A}: ${TALK[STEM_ELEMENT[me.dayMaster]]}`, `${B}: ${TALK[STEM_ELEMENT[friend.dayMaster]]}`, STEM_ELEMENT[me.dayMaster] === STEM_ELEMENT[friend.dayMaster] ? '말하는 방식이 닮아 대화가 편해요. 다만 둘 다 같은 순간에 같은 것을 원할 때가 있으니, 순서를 번갈아 양보해 보세요.' : '말하는 방식이 달라, 상대의 속도를 알아 두는 것만으로 오해가 크게 줄어들어요.'] },
   ] });
 
   sections.push({ key: 'stem', h: `타고난 기운(일간) · ${c.stem.label}`, blocks: [{ paras: [`${STEMS[me.dayMaster]} × ${STEMS[friend.dayMaster]}: ${sentence(c.stem.text)}`, ...STEM_REL_DETAIL[c.stem.type]] }] });
@@ -683,7 +675,5 @@ export function buildCompatReport(ctx) {
     '궁합은 정해진 성적표가 아니라 두 사람이 서로를 이해하는 지도예요. 점수가 높든 낮든, 서로의 다름을 알고 맞춰 가는 사이가 가장 좋은 궁합이에요.',
   ] }] });
 
-  const rep = { kind: 'compat', title: '궁합 상세', sub: `${A} × ${B}`, sections };
-  rep.toc = tocOf(rep); rep.chars = charCount(rep);
-  return rep;
+  return finish({ kind: 'compat', title: '궁합 상세', sub: `${A} × ${B}`, sections });
 }

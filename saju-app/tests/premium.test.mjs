@@ -24,7 +24,7 @@ t('그해 상세판: 사람마다 1만 4천 자 이상, 12달·분야 8개가 �
   for (const p of PEOPLE) {
     const r = yearRep(p);
     assert.ok(r.chars >= 14000, `상세판 ${r.chars}자`);
-    assert.equal(r.sections.find((s) => s.key === 'months').blocks.length, 12);
+    assert.equal(r.sections.find((s) => s.key === 'months').blocks.filter((b) => /^\d+월/.test(b.h)).length, 12);
     assert.equal(r.sections.find((s) => s.key === 'fields').blocks.length, 8);
     assert.equal(r.chars, charCount(r));
   }

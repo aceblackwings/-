@@ -45,6 +45,10 @@ import { buildNote, markNote, weekStamps, stampRarity, AREA_CHARM, RARITY_KO, MO
 import { ELEMENT_LUCK } from './fortune.js';
 import { TAROT_TOPICS, TAROT_SPREADS, TAROT_SITU, TONE_KO, shuffleDeck, readTarot, cardOf, ROMAN, markSeen, repeatLine } from './tarot.js';
 import { fiveScores } from './todayfive.js';
+import { todayStory, setEmpathy, empathyReply } from './todaystory.js';
+import { plainText, yearize } from './storybook.js';
+import { bookletStory, sajuStory } from './storyreport.js';
+import { kiStory, tarotTale } from './funstory.js';
 import { claimItem, PIECES_PER_ITEM } from './tteok.js';
 import { TTEOK, visit as tteokVisit, doTask as tteokDoTask, todayTasks, doneCount, isOpen as scrollOpen, spend as tteokSpend, buy as tteokBuy, SCROLLS, PACKS, TASKS as TTEOK_TASKS, ALL_BONUS } from './tteok.js';
 import { emoImage, charImage } from './assets.js';
@@ -84,6 +88,7 @@ const HABIT_KEY = 'unmyeong2099.habit'; // v0.30 마음 날씨 + 오늘의 우�
 const EQUIP_KEY = 'unmyeong2099.equip';
 const GROWTH_KEY = 'unmyeong2099.growth';
 const KICARD_KEY = 'unmyeong2099.kicard'; // v0.43 오늘의 기운 카드
+const EMPATHY_KEY = 'unmyeong2099.empathy'; // v0.50 오늘 이야기 공감
 const FRIENDS_KEY = 'unmyeong2099.friends';
 const DEX_KEY = 'unmyeong2099.dex';
 const LUCK_KEY = 'unmyeong2099.luck';
@@ -589,6 +594,10 @@ function renderSajuFull() {
       <p class="muted" style="margin-bottom:0">${s.animal}띠 · 일주 ${pillarLabel(s.pillars.day)}(${pillarLabelKo(s.pillars.day)}) · 사주 연도 ${s.sajuYear}년 기준</p>
     </div>
 
+    ${sajuStoryHTML()}
+    ${lifeOfferHTML()}
+    ${hourGuessCardHTML()}
+    <details class="card fold sj-expert" id="fold-sj-expert"${state.folds?.['fold-sj-expert'] ? ' open' : ''}><summary><span class="fd-ic">🔎</span><span class="fd-t"><b>전문가용 풀이 자세히</b><small>사주 용어로 된 기질·그릇·일주·십성·오행·10년 흐름 · 궁금한 분만</small></span><span class="fd-arrow" aria-hidden="true">▾</span></summary><div class="fold-body sj-expert-body">
     <div class="card">
       <h3>타고난 기질 <span class="tag">일간 ${STEMS[s.dayMaster]}</span></h3>
       <p><b class="el-${me}">${prof.name} · ${prof.image}</b><br>${prof.text}</p>
@@ -597,7 +606,6 @@ function renderSajuFull() {
 
     ${personCardHTML()}
     ${natalWatchHTML()}
-    ${hourGuessCardHTML()}
     ${retroCardHTML()}
     ${iljuCardHTML()}
     ${gyeokCardHTML()}
@@ -605,7 +613,6 @@ function renderSajuFull() {
     ${pillarCardHTML()}
     ${relationsCardHTML()}
     ${sinsalCardHTML()}
-    ${lifeOfferHTML()}
 
     <div class="card">
       <h3>오행 스탯 <span class="tag">ELEMENT STATS</span></h3>
@@ -624,9 +631,23 @@ function renderSajuFull() {
       <button class="primary" type="button" data-go="charm" style="width:100%">부족한 ${ELEMENT_KO[s.weakest]} 기운 부적 만들러 가기 →</button>
     </div>
     ${daewoonCardHTML()}
-    ${expertCardHTML()}`;
-  $('[data-panel="saju"]').insertAdjacentHTML('afterbegin', readingCardHTML());
+    ${expertCardHTML()}
+    </div></details>`;
+  $('[data-panel="saju"] .sj-expert-body').insertAdjacentHTML('afterbegin', readingCardHTML());
   $$('[data-go]', $('[data-panel="saju"]')).forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); selectTab(b.dataset.go); }));
+}
+
+/** v0.50.2 내 사주 「이야기로 읽는 나」: 정통사주 1장 + 2장 앞부분 + 예고(쉬운 말) */
+function sajuStoryHTML() {
+  const s = state.saju; const g = analyzeGyeok(s);
+  const st = sajuStory({ saju: s, gyeok: g, gp: GYEOK_PROFILE[g.name], name: state.profile.name, gender: state.profile.gender, curAge: sajuYearOf(state.fortune.date) - s.input.year, watch: natalWatch(s) });
+  const P = (t) => `<p>${esc(PT(t))}</p>`;
+  return `<article class="card sj-story"><h3>📖 이야기로 읽는 나 <span class="tag">주인공 소개</span></h3>
+    <p class="bk-hook">${esc(PT(st.hook))}</p>
+    ${st.blocks.map((b) => `<h4>${esc(PT(b.h))}</h4>${b.paras.map(P).join('')}`).join('')}
+    <h4>${esc(PT(st.hard.h))}</h4>${st.hard.paras.map(P).join('')}
+    <p class="bk-cliff">${esc(PT(st.cliff))}</p>
+  </article>`;
 }
 
 /** A4 「나라는 사람」 한 장 요약 */
@@ -1901,24 +1922,34 @@ function retroCalibNow(dw) {
 function bookletData() {
   const d = timelineData(); const y = d.next || d.year; const prev = d.next ? d.year : null;
   const ageY = y.sajuYear - state.saju.input.year; const nextDw = d.dw?.pillars.find((p) => (p.turnAge ?? p.startAge) >= ageY && (!y.daewoon || p.startAge > y.daewoon.startAge)) || null;
+  bkYear = { Y: y.sajuYear, now: sajuYearOf(state.fortune.date) };
   const b = buildBooklet({ y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, concern: state.profile.concern, gender: state.profile.gender, nextDaewoon: nextDw, calib: retroCalibNow(d.dw) });
   return { d, y, b };
 }
 
 /** 첫 화면 위: 표지 + 총운(펼쳐 둠). 바로 아래가 오늘의 운세 (2026-11-03 사용자 요청: 스크롤 줄이기) */
+// 신년운세 책자에서는 「그해」·(내년을 미리 볼 때) 「올해」를 실제 연도로 — bookletData()가 bkYear를 정함
+let bkYear = { Y: null, now: null };
+const PT = (t) => (bkYear.Y ? yearize(plainText(t), bkYear.Y, bkYear.now) : plainText(t));
 function bookletHTML(bd = bookletData()) {
-  const { b } = bd; const P = (t) => `<p>${esc(t)}</p>`;
+  const { b } = bd; const P = (t) => `<p>${esc(PT(t))}</p>`;
+  const st = bookletStory({ y: bd.y, thisYear: bd.d.next ? bd.d.year : null, saju: state.saju, name: state.profile.name, gender: state.profile.gender });
   return `<article class="card booklet" id="booklet" data-formal>
     <header class="bk-head">
       <small>${b.year} 신년운세</small>
-      <h2>「${esc(b.title)}」</h2>
-      <p class="bk-sub">${b.name}${state.profile.name ? ` · ${esc(state.profile.name)} 님` : ''}</p>
+      <h2>「${esc(PT(b.title))}」</h2>
+      <p class="bk-sub">${esc(PT(b.name))}${state.profile.name ? ` · ${esc(state.profile.name)} 님` : ''}</p>
     </header>
-    <p class="bk-lead">${esc(b.lead)}</p>
-    ${kaiunBoxHTML('year', b.score)}
-    <section class="bk-part"><h3>총운</h3>
-      ${b.general.map((x) => `<h4>${x.h}</h4>${x.paras.map(P).join('')}`).join('')}
+    <section class="bk-story">
+      <p class="bk-hook">${esc(PT(st.hook))}</p>
+      ${st.chapters.map((c) => `<h3>${esc(PT(c.h))}</h3>${c.paras.map(P).join('')}`).join('')}
+      <p class="bk-cliff">${esc(PT(st.cliff))}</p>
     </section>
+    <p class="bk-lead">${esc(PT(b.lead))}</p>
+    ${kaiunBoxHTML('year', b.score)}
+    <details class="bk-part bk-fold bk-general"><summary><h3>📖 총운 자세히</h3><span class="bk-peek">한 해의 기운·10년 흐름·잘 풀리는 점·열쇠</span></summary>
+      ${b.general.map((x) => `<h4>${esc(PT(x.h))}</h4>${x.paras.map(P).join('')}`).join('')}
+    </details>
     ${checksHTML(b.checks, b.calibText)}
     ${premiumYearOfferHTML(bd)}
   </article>`;
@@ -1928,8 +1959,8 @@ function bookletHTML(bd = bookletData()) {
 function checksHTML(list = [], calibText = '') {
   if (!list.length) return '';
   const ICON = { watch: '⚠️', good: '🌟', note: '📌' }; const TAG = { watch: '조심', good: '기회', note: '참고' };
-  return `<section class="bk-part bk-checks"><h3>⚠️ 조심할 점 · 참고할 점 <small>내 사주 글자와 그해 글자가 만나는 방식으로 골랐어요</small></h3>${calibText ? `<p class="ck-calib">🔎 ${esc(calibText)}</p>` : ''}
-    <ul class="ck-list">${list.map((c) => `<li class="ck ${c.kind}"><b>${ICON[c.kind]} <em>${TAG[c.kind]}</em> ${esc(c.title)}</b><p>${esc(c.text)}</p><p class="ck-act">👉 ${esc(c.act)}${c.when ? ` <span class="ck-when">· 특히 ${esc(c.when)}</span>` : ''}</p></li>`).join('')}</ul>
+  return `<section class="bk-part bk-checks"><h3>⚠️ 조심할 점 · 참고할 점 <small>내 사주 글자와 ${bkYear.Y ? `${bkYear.Y}년` : '그해'} 글자가 만나는 방식으로 골랐어요</small></h3>${calibText ? `<p class="ck-calib">🔎 ${esc(PT(calibText))}</p>` : ''}
+    <ul class="ck-list">${list.map((c) => `<li class="ck ${c.kind}"><b>${ICON[c.kind]} <em>${TAG[c.kind]}</em> ${esc(PT(c.title.replace(/\s*\([^)]*\)$/, '')))}</b><p>${esc(PT(c.text))}</p><p class="ck-act">👉 ${esc(PT(c.act))}${c.when ? ` <span class="ck-when">· 특히 ${esc(c.when)}</span>` : ''}</p></li>`).join('')}</ul>
   </section>`;
 }
 
@@ -1937,12 +1968,12 @@ const FIELD_ICON = { wealth: '💰', business: '🏪', career: '💼', love: '�
 
 /** 첫 화면 아래: 분야별 운세(모두 접힘, 눌러서 펼치기) + 달마다 두 줄 */
 function bookletFieldsHTML(bd = bookletData()) {
-  const { d, y, b } = bd; const P = (t) => `<p>${esc(t)}</p>`; const kp = kaiunNow();
+  const { d, y, b } = bd; const P = (t) => `<p>${esc(PT(t))}</p>`; const kp = kaiunNow();
   return `<article class="card booklet bk-fields" id="booklet-fields" data-formal>
     <h3 class="bk-fields-h">${b.year} 분야별 운세 <small>궁금한 분야를 눌러 펼쳐 보세요</small></h3>
-    ${b.fields.map((f) => { const kx = ['family', 'business', 'children'].includes(f.key) ? '' : fieldKaiunSentence(kp, f.key, 'year'); return `<details class="bk-part bk-fold"><summary><h3>${FIELD_ICON[f.key] || ''} ${f.label}${f.focus ? ' <small>내 고민</small>' : ''}</h3><span class="bk-peek">${esc(f.title)}</span></summary>${f.paras.map(P).join('')}${kx ? `<p class="bk-kaiun">${esc(kx)}</p>` : ''}</details>`; }).join('')}
+    ${b.fields.map((f) => { const kx = ['family', 'business', 'children'].includes(f.key) ? '' : fieldKaiunSentence(kp, f.key, 'year'); return `<details class="bk-part bk-fold"><summary><h3>${FIELD_ICON[f.key] || ''} ${f.label}${f.focus ? ' <small>내 고민</small>' : ''}</h3><span class="bk-peek">${esc(PT(f.title))}</span></summary>${f.paras.map(P).join('')}${kx ? `<p class="bk-kaiun">${esc(PT(kx))}</p>` : ''}</details>`; }).join('')}
     <details class="bk-part bk-fold bk-months"><summary><h3>🗓️ 달마다 두 줄</h3><span class="bk-peek">입춘부터 절기월</span></summary>
-      ${monthLines(y).map((m) => `<div class="bk-month"><h4>${m.mark} ${m.month}월 <small>${m.range}</small></h4><p>${esc(m.flow)}</p><p class="bk-act">${esc(m.act)}</p></div>`).join('')}
+      ${monthLines(y).map((m) => `<div class="bk-month"><h4>${m.mark} ${m.month}월 <small>${m.range}</small></h4><p>${esc(PT(m.flow))}</p><p class="bk-act">${esc(PT(m.act))}</p></div>`).join('')}
     </details>
     <div class="bk-next"><button class="ghost" type="button" data-tl-step="read-${d.next ? 'next' : 'year'}">📖 12달 자세히</button></div>
   </article>`;
@@ -1959,7 +1990,7 @@ function premiumYearOf(bd) {
   if (state.pyear?.key === key) return state.pyear.rep;
   const d = bd.d; const prev = d.next ? d.year : null; const ageY = bd.y.sajuYear - state.saju.input.year;
   const nextDw = d.dw?.pillars.find((p) => (p.turnAge ?? p.startAge) >= ageY && (!bd.y.daewoon || p.startAge > bd.y.daewoon.startAge)) || null;
-  const rep = buildPremiumYear({ y: bd.y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, gender: state.profile.gender, concern: state.profile.concern, nextDaewoon: nextDw, calib: retroCalibNow(d.dw) });
+  const rep = buildPremiumYear({ y: bd.y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, gender: state.profile.gender, concern: state.profile.concern, nextDaewoon: nextDw, calib: retroCalibNow(d.dw), nowYear: sajuYearOf(state.fortune.date) });
   state.pyear = { key, rep }; return rep;
 }
 function lifeReportNow() {
@@ -2116,18 +2147,20 @@ function openReader(kind, jump = null) {
   if (!rep) return;
   document.querySelectorAll('.hj-reader').forEach((x) => x.remove());
   const P = (t) => `<p>${esc(t)}</p>`;
+  const secHTML = (s, i) => `<section class="hj-sec" id="hj-s${i}"><h3>${esc(s.h)}</h3>${s.intro ? `<p class="hj-intro">${esc(s.intro)}</p>` : ''}${s.blocks.map((b, j) => `<div class="hj-blk${b.cliff ? ' hj-cliff' : ''}" id="hj-s${i}-b${j}">${b.h ? `<h4>${esc(b.h)}</h4>` : ''}${b.paras.map(P).join('')}</div>`).join('')}</section>`;
   const box = document.createElement('div'); box.className = 'hj-reader hanji'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', rep.title);
   box.innerHTML = `<header class="hj-bar"><button type="button" class="hj-close" data-reader-close aria-label="닫기">✕</button><span>${esc(rep.title)}</span><small>${kChars(rep.chars)}</small></header>
     <article class="hj-book" data-formal>
       <header class="hj-cover"><p class="hj-eyebrow">${PRODUCTS[rep.kind].icon} ${esc(rep.title)}</p><h2>${esc(rep.sub)}</h2><span class="hj-seal" aria-hidden="true">${esc(state.profile.name ? state.profile.name.slice(0, 2) : '符')}</span></header>
-      <nav class="hj-index">${rep.sections.map((s, i) => `<a href="#hj-s${i}" data-hj-jump="hj-s${i}">${esc(s.h)}</a>`).join('')}</nav>
-      ${rep.sections.map((s, i) => `<section class="hj-sec" id="hj-s${i}"><h3>${esc(s.h)}</h3>${s.intro ? `<p class="hj-intro">${esc(s.intro)}</p>` : ''}${s.blocks.map((b, j) => `<div class="hj-blk" id="hj-s${i}-b${j}">${b.h ? `<h4>${esc(b.h)}</h4>` : ''}${b.paras.map(P).join('')}</div>`).join('')}</section>`).join('')}
+      <nav class="hj-index">${rep.sections.map((s, i) => s.appendix ? '' : `<a href="#hj-s${i}" data-hj-jump="hj-s${i}">${esc(s.h)}</a>`).join('')}${rep.sections.some((s) => s.appendix) ? `<a href="#hj-appendix" data-hj-jump="hj-appendix" class="hj-ap-link">📎 부록 · 풀이의 근거</a>` : ''}</nav>
+      ${rep.sections.map((s, i) => s.appendix ? '' : secHTML(s, i)).join('')}
+      ${rep.sections.some((s) => s.appendix) ? `<details class="hj-appendix" id="hj-appendix"><summary>📎 부록 · 풀이의 근거 <small>사주 용어로 된 계산 근거예요. 궁금한 분만 펼쳐 보세요</small></summary>${rep.sections.map((s, i) => s.appendix ? secHTML(s, i) : '').join('')}</details>` : ''}
       <footer class="hj-end"><p>— 끝 —</p><button type="button" class="hj-buy" data-reader-close>닫기</button></footer>
     </article>`;
   document.body.appendChild(box); document.body.classList.add('hj-open');
-  if (jump) requestAnimationFrame(() => box.querySelector(`#${jump}`)?.scrollIntoView({ block: 'start' }));
+  if (jump) requestAnimationFrame(() => { const t = box.querySelector(`#${jump}`); const d = t?.closest('details'); if (d) d.open = true; t?.scrollIntoView({ block: 'start' }); });
   box.addEventListener('click', (e) => {
-    const j = e.target.closest('[data-hj-jump]'); if (j) { e.preventDefault(); box.querySelector(`#${j.dataset.hjJump}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+    const j = e.target.closest('[data-hj-jump]'); if (j) { e.preventDefault(); const t = box.querySelector(`#${j.dataset.hjJump}`); if (t?.tagName === 'DETAILS') t.open = true; t?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
     if (e.target.closest('[data-reader-close]')) { box.remove(); document.body.classList.remove('hj-open'); }
   });
 }
@@ -2146,7 +2179,7 @@ function applyEasyClass() {
   const on = easyOn();
   document.documentElement.classList.toggle('easy', on);
   const b = $('#btn-easy');
-  if (b) { b.innerHTML = `<span class="ez-ic" aria-hidden="true">🔍</span><span class="ez-t">${on ? '글씨 작게' : '글씨 크게'}</span>`; b.setAttribute('aria-pressed', String(on)); b.title = on ? '글씨 원래 크기로 돌아가기 (글씨 작게)' : '글씨 크게 보기 (어려운 말도 쉬운 말로)'; b.setAttribute('aria-label', b.title); }
+  if (b) { b.innerHTML = `<span class="ez-ic" aria-hidden="true">🔍</span><span class="ez-t">${on ? '작게' : '크게'}</span>`; b.setAttribute('aria-pressed', String(on)); b.title = on ? '글씨 원래 크기로 돌아가기 (글씨 작게)' : '글씨 크게 보기 (어려운 말도 쉬운 말로)'; b.setAttribute('aria-label', b.title); }
   const c = $('#birth-form [name="easy"]'); if (c) c.checked = on;
 }
 
@@ -2161,7 +2194,7 @@ function setEasyMode(on, by = 'self', quiet = false) {
     renderAll();
     selectTab(tab);
   }
-  if (!quiet) toast(on ? '🔍 글씨를 크게, 말을 쉽게 바꿨어요. 오른쪽 위 「글씨 작게」를 누르면 돌아가요' : '원래 글씨로 돌아왔어요. 오른쪽 위 「🔍 글씨 크게」로 언제든 다시 켤 수 있어요');
+  if (!quiet) toast(on ? '🔍 글씨를 크게, 말을 쉽게 바꿨어요. 오른쪽 위 「🔍 작게」를 누르면 돌아가요' : '원래 글씨로 돌아왔어요. 오른쪽 위 「🔍 크게」로 언제든 다시 켤 수 있어요');
 }
 const todayKeyNow = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
 
@@ -2170,7 +2203,7 @@ function easySuggestHTML() {
   if (!state.profile) return '';
   const birth = solarDateOf(state.profile); if (birth.error) return '';
   if (!suggestEasy(birth, state.fortune.date, loadEasy())) return '';
-  return `<div class="card easy-suggest" id="easy-suggest"><b>🔍 글씨를 크게 볼까요?</b><p>글씨를 크게, 어려운 사주 말은 쉬운 말로 바꿔 보여 드려요. 언제든 오른쪽 위 「글씨 작게」로 되돌릴 수 있어요.</p>
+  return `<div class="card easy-suggest" id="easy-suggest"><b>🔍 글씨를 크게 볼까요?</b><p>글씨를 크게, 어려운 사주 말은 쉬운 말로 바꿔 보여 드려요. 언제든 오른쪽 위 「🔍 작게」로 되돌릴 수 있어요.</p>
     <div class="yday-btns"><button type="button" class="primary" data-easy-suggest="on">크게 보기</button><button type="button" class="ghost" data-easy-suggest="no">괜찮아요</button></div></div>`;
 }
 
@@ -2195,7 +2228,7 @@ function easySettingsHTML() {
 
 document.addEventListener('click', (e) => {
   const sg = e.target.closest('[data-easy-suggest]');
-  if (sg) { if (sg.dataset.easySuggest === 'on') setEasyMode(true); else { save(EASY_KEY, dismissEasy(loadEasy())); toast('알겠어요. 오른쪽 위 「🔍 글씨 크게」로 언제든 켤 수 있어요'); renderToday(); } return; }
+  if (sg) { if (sg.dataset.easySuggest === 'on') setEasyMode(true); else { save(EASY_KEY, dismissEasy(loadEasy())); toast('알겠어요. 오른쪽 위 「🔍 크게」로 언제든 켤 수 있어요'); renderToday(); } return; }
   if (e.target.closest('#btn-easy') || e.target.closest('[data-easy-toggle]')) { setEasyMode(!easyOn()); return; }
   const cp = e.target.closest('[data-easy-copy]');
   if (cp) {
@@ -2223,7 +2256,7 @@ function handleEasyLink() {
   const box = document.createElement('div'); box.className = 'evo-modal'; box.id = 'easy-link-ask';
   box.innerHTML = `<div class="evo-box"><h3 style="margin:0 0 8px">🔍 글씨 크게 · 쉬운 말</h3>
     <p style="margin:0 0 6px">${esc(linkAskText(link))}</p>
-    <p class="muted" style="margin:0 0 14px">글씨가 커지고, 어려운 말은 쉬운 말로 바뀌어요. 언제든 오른쪽 위 「글씨 작게」로 되돌릴 수 있어요.</p>
+    <p class="muted" style="margin:0 0 14px">글씨가 커지고, 어려운 말은 쉬운 말로 바뀌어요. 언제든 오른쪽 위 「🔍 작게」로 되돌릴 수 있어요.</p>
     <div class="yday-btns"><button type="button" class="primary" data-link-yes>네, 켤게요</button><button type="button" class="ghost" data-link-no>아니요</button></div></div>`;
   document.body.appendChild(box);
   box.addEventListener('click', (ev) => {
@@ -2528,20 +2561,37 @@ function showScrollsOpened() {
   box.addEventListener('click', (e) => { if (e.target === box) box.remove(); });
 }
 
-/** ① 오늘의 운세: 5분야 점수(30~90점대) */
+/** ① 오늘의 운세(v0.50): 한 줄 제목 → 왜 그런지 → 좋은 점·조심할 점·생각해 볼 것·하면 좋은 것 → 공감 묻기 → 5분야 점수(작게) */
 function fiveCardHTML() {
-  const f = state.fortune; const v = fiveScores(f);
+  const f = state.fortune; const v = fiveScores(f); const t = todayStory(f, state.saju, v);
+  const emp = load(EMPATHY_KEY, {})[f.dateKey];
   return `<article class="card five-card" id="five-card">
     <div class="five-head">
       <div class="five-total" style="--c:${scoreColor(v.total)}"><b>${v.total}</b><small>오늘 점수</small></div>
-      <div class="five-hi"><small>${f.date.month}월 ${f.date.day}일 ${dowOf(f.date)}요일</small><h2>오늘의 운세</h2>
-        <p>${v.best.icon} <b>${v.best.label}</b>이 가장 빛나요</p></div>
-      ${zodiacFace(v.total >= 70 ? 'excited' : v.total >= 50 ? 'smile' : 'calm', 'z-face five-z')}
+      <div class="five-hi"><small>${f.date.month}월 ${f.date.day}일 ${dowOf(f.date)}요일 · 오늘의 운세</small><h2>${esc(t.head)}</h2>
+        <p>${esc(t.mood)}</p></div>
     </div>
-    <ul class="five-list">${v.list.map((x) => `<li><span class="fv-ic">${x.icon}</span><span class="fv-l">${x.label}</span><span class="fv-bar"><i style="width:${x.score}%;background:${scoreColor(x.score)}"></i></span><b class="fv-n" style="color:${scoreColor(x.score)}">${x.score}</b><small class="fv-line">${esc(x.line)}</small></li>`).join('')}</ul>
-    <p class="five-note">${v.low.icon} ${v.low.label}은 아래 「좋은 습관 하나」로 채워 주세요.</p>
+    <p class="ts-why">${zodiacFace(v.total >= 70 ? 'excited' : v.total >= 50 ? 'smile' : 'calm', 'z-face ts-z')}<span>${esc(t.story)}</span></p>
+    <div class="ts-grid">
+      <section class="ts-tile good"><h4>👍 오늘 좋은 점</h4><p>${esc(t.good)}</p></section>
+      <section class="ts-tile watch"><h4>⚠️ 오늘 조심할 점</h4><p>${esc(t.watch)}</p></section>
+      <section class="ts-tile think"><h4>🤔 생각해 볼 것</h4><p>${esc(t.think)}</p></section>
+      <section class="ts-tile act"><h4>✅ 이렇게 해 보세요</h4><ul>${t.act.map((a) => `<li>${esc(a)}</li>`).join('')}</ul></section>
+    </div>
+    <p class="ts-lucky">${esc(t.lucky)}</p>
+    <div class="ts-react" aria-live="polite">${emp ? `<p class="ts-thanks">${emp === 'yes' ? '💗' : '🙏'} ${esc(empathyReply(emp, state.profile.name))}</p>`
+      : `<p>오늘 이야기, 와닿았나요?</p><div class="ts-btns"><button type="button" class="primary" data-empathy="yes">💗 공감해요</button><button type="button" class="ghost" data-empathy="meh">🤔 글쎄요</button></div>`}</div>
+    <details class="five-more"><summary><span>📊 분야별 점수</span><span class="five-chips">${v.list.map((x) => `<i>${x.icon}<b style="color:${scoreColor(x.score)}">${x.score}</b></i>`).join('')}</span></summary>
+      <ul class="five-list">${v.list.map((x) => `<li><span class="fv-ic">${x.icon}</span><span class="fv-l">${x.label}</span><span class="fv-bar"><i style="width:${x.score}%;background:${scoreColor(x.score)}"></i></span><b class="fv-n" style="color:${scoreColor(x.score)}">${x.score}</b><small class="fv-line">${esc(x.line)}</small></li>`).join('')}</ul>
+      ${t.low ? `<p class="five-note">${v.low.icon} ${esc(t.low)}</p>` : ''}
+    </details>
   </article>`;
 }
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-empathy]'); if (!b) return;
+  save(EMPATHY_KEY, setEmpathy(load(EMPATHY_KEY, {}), state.fortune.dateKey, b.dataset.empathy));
+  const card = $('#five-card'); if (card) card.outerHTML = fiveCardHTML();
+});
 
 // ---------- v0.43 단순화: 접힌 줄 · 오늘의 기운 카드(매일 한 장 → 지신 기운·진화) ----------
 /** 한 줄 제목으로 접힌 카드. 열림 상태는 다시 그려도 유지 */
@@ -2601,11 +2651,10 @@ function kiCardHTML() {
         <b>${esc(x.name)}</b><small>${Z.hanja} · ${ELEMENT_HANJA[c.element]} · ${esc(x.keyword)}</small>
       </div>
       <div class="ki-text">
-        <p class="ki-why">${c.lack ? '💧' : '🌈'} ${esc(x.why)}</p>
-        <p>${esc(x.message)}</p>
         <p class="ki-act">☂️ 오늘 할 한 가지<br><b>${esc(x.action)}</b></p>
       </div>
     </div>
+    <p class="ki-story">${esc(kiStory(c, s, state.profile.name))}</p>
     <h4 class="ki-gh">🐉 지신 기운 게이지 <small>★ 부족한 기운 · 채울수록 개운이 올라요</small></h4>
     ${kiGaugeHTML(c.element)}
     ${kiProgressHTML(st)}
@@ -2807,6 +2856,7 @@ function renderTarot() {
     const cardName = (c) => `${c.card.kind === 'major' ? `${ROMAN[c.card.num]}. ` : ''}${c.card.name} · ${c.card.title}`;
     body = `<p class="tr-guide">${r.topic.icon} 「${r.topic.ask}」${r.situ ? `<br><small>내 상황: ${r.situ.label}</small>` : ''}</p>
       <div class="tr-cards n${r.cards.length}">${r.cards.map((c) => `<div class="tr-card"><small class="tr-pos">${c.pos}</small>${tarotFace(c.card.key, c.reversed ? 'sleepy' : (c.card.mood || 'smile'), c.reversed)}<b>${cardName(c)}</b><small class="tr-kw">${c.keyword}</small></div>`).join('')}</div>
+      <div class="tr-tale"><small>🎬 카드가 들려주는 이야기</small><p>${esc(tarotTale(r))}</p></div>
       <div class="tr-answer"><small>🔮 카드의 대답</small><p>${esc(r.answer)}</p></div>
       ${(r.repeats || []).map((x) => `<p class="tr-repeat">${esc(x.line)}</p>`).join('')}
       ${r.storyParts.length ? `<div class="tr-story"><b>📖 세 장이 이어 주는 이야기</b>${r.storyParts.map((x) => `<p>${esc(x)}</p>`).join('')}</div>` : ''}
@@ -2853,7 +2903,7 @@ document.addEventListener('click', (e) => {
     T.step = 'result';
     const dk = state.fortune.dateKey; const r = T.result;
     { const m = markSeen(load(TAROT_SEEN_KEY, null), dk, r.topic.key, r.cards.map((c) => c.card.key)); save(TAROT_SEEN_KEY, m.store); r.repeats = m.repeats.map((x) => ({ ...x, line: repeatLine(x, r.topic.key) })); }
-    save(RECORDS_KEY, addItem(loadRecords(), { kind: 'tarot', dateKey: dk, key: `${r.topic.key}-${Date.now() % 100000}`, title: `12지신 타로 · ${r.topic.label}`, summary: r.cards.map((c) => `${c.card.name}${c.reversed ? '(쉬어 가기)' : ''}`).join(' · '), lines: [`카드의 대답: ${r.answer}`, ...r.repeats.map((x) => x.line), ...r.cards.map((c) => `${c.pos} · ${c.card.name}: ${c.reading}${c.situLine ? ` ${c.situLine}` : ''}`), ...(r.story ? [r.story] : []), `오늘 할 한 가지: ${r.act}`] }).rec);
+    save(RECORDS_KEY, addItem(loadRecords(), { kind: 'tarot', dateKey: dk, key: `${r.topic.key}-${Date.now() % 100000}`, title: `12지신 타로 · ${r.topic.label}`, summary: r.cards.map((c) => `${c.card.name}${c.reversed ? '(쉬어 가기)' : ''}`).join(' · '), lines: [tarotTale(r), `카드의 대답: ${r.answer}`, ...r.repeats.map((x) => x.line), ...r.cards.map((c) => `${c.pos} · ${c.card.name}: ${c.reading}${c.situLine ? ` ${c.situLine}` : ''}`), ...(r.story ? [r.story] : []), `오늘 할 한 가지: ${r.act}`] }).rec);
     renderTarot(); window.scrollTo({ top: 0, behavior: 'smooth' });
     tteokTask('tarot');
     return;
@@ -2897,7 +2947,7 @@ function scoreColor(v) {
   // 파스텔 테마(2026-11-04): 높을수록 따뜻한 로즈, 낮은 점수는 겁주지 않는 차분한 색
   if (v >= 80) return '#e85d8a';
   if (v >= 60) return '#ef8a5a';
-  if (v >= 40) return '#9c7fd6';
+  if (v >= 40) return '#7d5fc4';
   return '#7f8fb5';
 }
 

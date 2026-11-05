@@ -6,7 +6,7 @@
   --line: rgba(222, 160, 182, 0.38);
   --text: #4b3942;
   --ink: #3b2a33;
-  --muted: #9b8590;
+  --muted: #7d6873;   /* v0.50.4 글자 대비 올림(예전 #9b8590) */
   --neon: #ec7fa0;      /* 주 색: 로즈 핑크 */
   --neon2: #ffa38f;     /* 보조: 코랄 */
   --lav: #b49ddb;       /* 보조: 라벤더 */
@@ -1574,3 +1574,74 @@ html.easy .hj-book { font-size: 1.15rem; }
 .sh-btn { min-height: 44px; padding: 8px 12px; white-space: nowrap; }
 .tteok-shop h4 small.ts-bal { font-weight: 400; font-size: 0.82rem; margin-left: 6px; }
 .tteok-shop .hj-bundle { margin-top: 12px; text-align: left; }
+
+/* ---------- v0.50 오늘의 이야기 · 여백(2026-11-05 사용자 의견 「꽉 채워 여백의 미가 없다」) ---------- */
+[data-panel="today"] > .card, [data-panel="today"] > article.card { margin: 22px 0; }
+[data-panel="today"] .fold-list { gap: 14px; margin-top: 26px; }
+.five-card { padding: 26px 22px 22px; }
+.five-head { margin-bottom: 18px; }
+.five-hi h2 { font-size: 1.5rem; line-height: 1.35; margin: 4px 0 6px; word-break: keep-all; }
+.five-hi p { color: var(--muted); line-height: 1.6; word-break: keep-all; }
+.ts-why { display: flex; gap: 12px; align-items: center; margin: 0 0 20px; padding: 14px 16px; border-radius: 18px; background: #fff; border: 1px solid rgba(240, 190, 205, 0.5); line-height: 1.7; word-break: keep-all; }
+.ts-why .ts-z { width: 54px; height: 54px; flex: none; }
+.ts-grid { display: grid; gap: 14px; }
+@media (min-width: 560px) { .ts-grid { grid-template-columns: 1fr 1fr; } }
+.ts-tile { padding: 16px 18px; border-radius: 18px; background: #fff; border: 1px solid rgba(240, 190, 205, 0.45); }
+.ts-tile h4 { margin: 0 0 8px; font-size: 1rem; color: var(--ink); }
+.ts-tile p, .ts-tile li { margin: 0; line-height: 1.75; font-size: 0.97rem; color: var(--text); word-break: keep-all; }
+.ts-tile ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+.ts-tile.good { background: #fff8f0; }
+.ts-tile.watch { background: #f7f4ff; }
+.ts-tile.think { background: #f2f9f6; }
+.ts-tile.act { background: #fff4f7; border-color: rgba(236, 127, 160, 0.45); }
+.ts-lucky { margin: 18px 0 0; font-size: 0.92rem; color: var(--muted); text-align: center; }
+.ts-react { margin: 20px 0 0; padding-top: 18px; border-top: 1px dashed var(--line); text-align: center; }
+.ts-react > p { margin: 0 0 10px; font-weight: 700; color: var(--ink); }
+.ts-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.ts-btns button { min-height: 48px; min-width: 132px; }
+.ts-thanks { margin: 0; line-height: 1.7; color: var(--text) !important; font-weight: 400 !important; word-break: keep-all; }
+.five-more { margin-top: 20px; border-radius: 16px; background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(240, 190, 205, 0.45); }
+.five-more > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 14px; min-height: 48px; font-weight: 700; color: var(--ink); }
+.five-more > summary::-webkit-details-marker { display: none; }
+.five-chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; font-weight: 400; }
+.five-chips i { font-style: normal; font-size: 0.85rem; display: inline-flex; gap: 2px; align-items: center; }
+.five-more .five-list { padding: 0 12px 12px; }
+.five-more .five-note { padding: 0 14px 14px; margin: 0; }
+/* 읽는 책(상세판·정통사주): 문단 사이 숨 쉴 틈 · 부록은 접힘 */
+.hj-sec { padding-top: 34px; }
+.hj-sec p { margin: 0 0 16px; }
+.hj-sec h4 { margin: 28px 0 8px; }
+.hj-blk { padding-bottom: 4px; }
+.hj-appendix { margin-top: 40px; padding: 14px 16px; border: 1px dashed var(--hj-line); border-radius: 12px; background: var(--hj-paper2); }
+.hj-appendix > summary { cursor: pointer; font-family: var(--hj-serif); font-weight: 700; color: var(--hj-navy); min-height: 44px; display: flex; flex-direction: column; justify-content: center; }
+.hj-appendix > summary small { font-family: inherit; font-weight: 400; color: var(--hj-ink2); font-size: 0.82rem; }
+.hj-appendix .hj-sec h3 { font-size: 1.1rem; color: var(--hj-navy); }
+.hj-appendix .hj-sec p { font-size: 0.94rem; }
+.hj-ap-link { border-style: dashed !important; }
+.five-more > summary > span:first-child { white-space: nowrap; }
+.five-chips i { font-size: 0.8rem; }
+/* v0.50.1 장 끝 한 줄(다음 장 예고) · 오늘의 한 편 */
+.hj-cliff p { font-style: italic; color: var(--hj-navy) !important; border-left: 3px solid var(--hj-red); padding-left: 12px; margin-top: 18px; }
+.ts-why span { font-size: 1.02rem; line-height: 1.85; }
+.ts-why { display: block; }
+.ts-why .ts-z { float: left; width: 46px; height: 46px; margin: 2px 10px 4px 0; }
+.ts-why::after { content: ''; display: block; clear: both; }
+/* v0.50.2 무료 책자 앞머리 · 내 사주 이야기 */
+.bk-story { margin: 6px 0 20px; }
+.bk-story h3, .sj-story h4 { margin: 22px 0 8px; font-size: 1.05rem; color: var(--ink); word-break: keep-all; }
+.bk-story p, .sj-story p { line-height: 1.85; word-break: keep-all; }
+.bk-hook { font-size: 1.02rem; padding: 14px 16px; border-radius: 16px; background: #fff8f0; border: 1px solid rgba(240, 190, 205, 0.45); }
+.bk-cliff { color: #4a3a6b; background: #f4effc; border-left: 4px solid #8a6fc9; border-radius: 0 12px 12px 0; padding: 12px 14px; margin-top: 18px; font-weight: 600; line-height: 1.75; }
+.sj-story { padding: 24px 20px; }
+.sj-expert > summary { min-height: 56px; }
+/* v0.50.3 기운 카드 한 편 · 타로 이야기 */
+.ki-story { line-height: 1.8; word-break: keep-all; margin: 0 0 12px; }
+.tr-tale { margin: 16px 0 12px; padding: 16px 18px; border-radius: 18px; background: #fff8f0; border: 1px solid rgba(240, 190, 205, 0.5); }
+.tr-tale small { display: block; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
+.tr-tale p { margin: 0; line-height: 1.85; word-break: keep-all; }
+.ki-story { margin: 16px 0 4px; padding: 14px 16px; border-radius: 16px; background: #fff8f0; border: 1px solid rgba(240, 190, 205, 0.45); }
+/* v0.50.5 글씨 버튼: 돋보기 + 「크게/작게」 두 글자, 쉬운 모드에서도 머리줄 버튼은 같은 크기(자리 차지 줄임) */
+#btn-easy, html.easy #btn-easy { font-size: 14px; padding: 6px 10px; gap: 3px; min-width: 0; min-height: 40px; }
+#btn-easy .ez-ic, html.easy #btn-easy .ez-ic { font-size: 15px; }
+html.easy #btn-edit { font-size: 14px; padding: 6px 10px; min-height: 40px; }
+html.easy .top h1 { font-size: 20px; }
