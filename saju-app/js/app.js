@@ -45,6 +45,7 @@ import { buildNote, markNote, weekStamps, stampRarity, AREA_CHARM, RARITY_KO, MO
 import { ELEMENT_LUCK } from './fortune.js';
 import { TAROT_TOPICS, TAROT_SPREADS, TAROT_SITU, TONE_KO, shuffleDeck, readTarot, cardOf, ROMAN, markSeen, repeatLine } from './tarot.js';
 import { fiveScores } from './todayfive.js';
+import { todayStory, setEmpathy, empathyReply } from './todaystory.js';
 import { claimItem, PIECES_PER_ITEM } from './tteok.js';
 import { TTEOK, visit as tteokVisit, doTask as tteokDoTask, todayTasks, doneCount, isOpen as scrollOpen, spend as tteokSpend, buy as tteokBuy, SCROLLS, PACKS, TASKS as TTEOK_TASKS, ALL_BONUS } from './tteok.js';
 import { emoImage, charImage } from './assets.js';
@@ -84,6 +85,7 @@ const HABIT_KEY = 'unmyeong2099.habit'; // v0.30 마음 날씨 + 오늘의 우�
 const EQUIP_KEY = 'unmyeong2099.equip';
 const GROWTH_KEY = 'unmyeong2099.growth';
 const KICARD_KEY = 'unmyeong2099.kicard'; // v0.43 오늘의 기운 카드
+const EMPATHY_KEY = 'unmyeong2099.empathy'; // v0.50 오늘 이야기 공감
 const FRIENDS_KEY = 'unmyeong2099.friends';
 const DEX_KEY = 'unmyeong2099.dex';
 const LUCK_KEY = 'unmyeong2099.luck';
@@ -2116,18 +2118,20 @@ function openReader(kind, jump = null) {
   if (!rep) return;
   document.querySelectorAll('.hj-reader').forEach((x) => x.remove());
   const P = (t) => `<p>${esc(t)}</p>`;
+  const secHTML = (s, i) => `<section class="hj-sec" id="hj-s${i}"><h3>${esc(s.h)}</h3>${s.intro ? `<p class="hj-intro">${esc(s.intro)}</p>` : ''}${s.blocks.map((b, j) => `<div class="hj-blk" id="hj-s${i}-b${j}">${b.h ? `<h4>${esc(b.h)}</h4>` : ''}${b.paras.map(P).join('')}</div>`).join('')}</section>`;
   const box = document.createElement('div'); box.className = 'hj-reader hanji'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', rep.title);
   box.innerHTML = `<header class="hj-bar"><button type="button" class="hj-close" data-reader-close aria-label="닫기">✕</button><span>${esc(rep.title)}</span><small>${kChars(rep.chars)}</small></header>
     <article class="hj-book" data-formal>
       <header class="hj-cover"><p class="hj-eyebrow">${PRODUCTS[rep.kind].icon} ${esc(rep.title)}</p><h2>${esc(rep.sub)}</h2><span class="hj-seal" aria-hidden="true">${esc(state.profile.name ? state.profile.name.slice(0, 2) : '符')}</span></header>
-      <nav class="hj-index">${rep.sections.map((s, i) => `<a href="#hj-s${i}" data-hj-jump="hj-s${i}">${esc(s.h)}</a>`).join('')}</nav>
-      ${rep.sections.map((s, i) => `<section class="hj-sec" id="hj-s${i}"><h3>${esc(s.h)}</h3>${s.intro ? `<p class="hj-intro">${esc(s.intro)}</p>` : ''}${s.blocks.map((b, j) => `<div class="hj-blk" id="hj-s${i}-b${j}">${b.h ? `<h4>${esc(b.h)}</h4>` : ''}${b.paras.map(P).join('')}</div>`).join('')}</section>`).join('')}
+      <nav class="hj-index">${rep.sections.map((s, i) => s.appendix ? '' : `<a href="#hj-s${i}" data-hj-jump="hj-s${i}">${esc(s.h)}</a>`).join('')}${rep.sections.some((s) => s.appendix) ? `<a href="#hj-appendix" data-hj-jump="hj-appendix" class="hj-ap-link">📎 부록 · 풀이의 근거</a>` : ''}</nav>
+      ${rep.sections.map((s, i) => s.appendix ? '' : secHTML(s, i)).join('')}
+      ${rep.sections.some((s) => s.appendix) ? `<details class="hj-appendix" id="hj-appendix"><summary>📎 부록 · 풀이의 근거 <small>사주 용어로 된 계산 근거예요. 궁금한 분만 펼쳐 보세요</small></summary>${rep.sections.map((s, i) => s.appendix ? secHTML(s, i) : '').join('')}</details>` : ''}
       <footer class="hj-end"><p>— 끝 —</p><button type="button" class="hj-buy" data-reader-close>닫기</button></footer>
     </article>`;
   document.body.appendChild(box); document.body.classList.add('hj-open');
-  if (jump) requestAnimationFrame(() => box.querySelector(`#${jump}`)?.scrollIntoView({ block: 'start' }));
+  if (jump) requestAnimationFrame(() => { const t = box.querySelector(`#${jump}`); const d = t?.closest('details'); if (d) d.open = true; t?.scrollIntoView({ block: 'start' }); });
   box.addEventListener('click', (e) => {
-    const j = e.target.closest('[data-hj-jump]'); if (j) { e.preventDefault(); box.querySelector(`#${j.dataset.hjJump}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+    const j = e.target.closest('[data-hj-jump]'); if (j) { e.preventDefault(); const t = box.querySelector(`#${j.dataset.hjJump}`); if (t?.tagName === 'DETAILS') t.open = true; t?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
     if (e.target.closest('[data-reader-close]')) { box.remove(); document.body.classList.remove('hj-open'); }
   });
 }
@@ -2528,20 +2532,37 @@ function showScrollsOpened() {
   box.addEventListener('click', (e) => { if (e.target === box) box.remove(); });
 }
 
-/** ① 오늘의 운세: 5분야 점수(30~90점대) */
+/** ① 오늘의 운세(v0.50): 한 줄 제목 → 왜 그런지 → 좋은 점·조심할 점·생각해 볼 것·하면 좋은 것 → 공감 묻기 → 5분야 점수(작게) */
 function fiveCardHTML() {
-  const f = state.fortune; const v = fiveScores(f);
+  const f = state.fortune; const v = fiveScores(f); const t = todayStory(f, state.saju, v);
+  const emp = load(EMPATHY_KEY, {})[f.dateKey];
   return `<article class="card five-card" id="five-card">
     <div class="five-head">
       <div class="five-total" style="--c:${scoreColor(v.total)}"><b>${v.total}</b><small>오늘 점수</small></div>
-      <div class="five-hi"><small>${f.date.month}월 ${f.date.day}일 ${dowOf(f.date)}요일</small><h2>오늘의 운세</h2>
-        <p>${v.best.icon} <b>${v.best.label}</b>이 가장 빛나요</p></div>
-      ${zodiacFace(v.total >= 70 ? 'excited' : v.total >= 50 ? 'smile' : 'calm', 'z-face five-z')}
+      <div class="five-hi"><small>${f.date.month}월 ${f.date.day}일 ${dowOf(f.date)}요일 · 오늘의 운세</small><h2>${esc(t.head)}</h2>
+        <p>${esc(t.mood)}</p></div>
     </div>
-    <ul class="five-list">${v.list.map((x) => `<li><span class="fv-ic">${x.icon}</span><span class="fv-l">${x.label}</span><span class="fv-bar"><i style="width:${x.score}%;background:${scoreColor(x.score)}"></i></span><b class="fv-n" style="color:${scoreColor(x.score)}">${x.score}</b><small class="fv-line">${esc(x.line)}</small></li>`).join('')}</ul>
-    <p class="five-note">${v.low.icon} ${v.low.label}은 아래 「좋은 습관 하나」로 채워 주세요.</p>
+    <p class="ts-why">${zodiacFace(v.total >= 70 ? 'excited' : v.total >= 50 ? 'smile' : 'calm', 'z-face ts-z')}<span>${esc(t.why)}</span></p>
+    <div class="ts-grid">
+      <section class="ts-tile good"><h4>👍 오늘 좋은 점</h4><p>${esc(t.good)}</p></section>
+      <section class="ts-tile watch"><h4>⚠️ 오늘 조심할 점</h4><p>${esc(t.watch)}</p></section>
+      <section class="ts-tile think"><h4>🤔 생각해 볼 것</h4><p>${esc(t.think)}</p></section>
+      <section class="ts-tile act"><h4>✅ 이렇게 해 보세요</h4><ul>${t.act.map((a) => `<li>${esc(a)}</li>`).join('')}</ul></section>
+    </div>
+    <p class="ts-lucky">${esc(t.lucky)}</p>
+    <div class="ts-react" aria-live="polite">${emp ? `<p class="ts-thanks">${emp === 'yes' ? '💗' : '🙏'} ${esc(empathyReply(emp, state.profile.name))}</p>`
+      : `<p>오늘 이야기, 와닿았나요?</p><div class="ts-btns"><button type="button" class="primary" data-empathy="yes">💗 공감해요</button><button type="button" class="ghost" data-empathy="meh">🤔 글쎄요</button></div>`}</div>
+    <details class="five-more"><summary><span>📊 분야별 점수</span><span class="five-chips">${v.list.map((x) => `<i>${x.icon}<b style="color:${scoreColor(x.score)}">${x.score}</b></i>`).join('')}</span></summary>
+      <ul class="five-list">${v.list.map((x) => `<li><span class="fv-ic">${x.icon}</span><span class="fv-l">${x.label}</span><span class="fv-bar"><i style="width:${x.score}%;background:${scoreColor(x.score)}"></i></span><b class="fv-n" style="color:${scoreColor(x.score)}">${x.score}</b><small class="fv-line">${esc(x.line)}</small></li>`).join('')}</ul>
+      ${t.low ? `<p class="five-note">${v.low.icon} ${esc(t.low)}</p>` : ''}
+    </details>
   </article>`;
 }
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-empathy]'); if (!b) return;
+  save(EMPATHY_KEY, setEmpathy(load(EMPATHY_KEY, {}), state.fortune.dateKey, b.dataset.empathy));
+  const card = $('#five-card'); if (card) card.outerHTML = fiveCardHTML();
+});
 
 // ---------- v0.43 단순화: 접힌 줄 · 오늘의 기운 카드(매일 한 장 → 지신 기운·진화) ----------
 /** 한 줄 제목으로 접힌 카드. 열림 상태는 다시 그려도 유지 */
