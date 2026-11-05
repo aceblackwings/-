@@ -1733,3 +1733,31 @@ html.easy .top h1 { font-size: 20px; }
 .duo-name { display: block; margin-top: 12px; font-size: 0.88rem; }
 .duo-name input { display: block; width: 100%; margin-top: 4px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); font: inherit; box-sizing: border-box; }
 .duo-warn { font-size: 0.82rem; color: #9a4f12; margin: 8px 0 0; }
+
+/* v0.54 오늘의 작은 예언 · 내일 맛보기 */
+.omen-box { margin: 18px 0 12px; padding: 14px 16px; border-radius: 18px; background: #f6f1ff; border: 1px solid rgba(125, 95, 196, 0.28); }
+.omen-box h4 { margin: 0 0 6px; font-size: 1rem; color: #4a3a6b; }
+.omen-text { margin: 0 0 10px; font-size: 1rem; line-height: 1.75; font-weight: 600; color: var(--ink); }
+.omen-ask, .omen-wait, .omen-done { margin: 0 0 8px; font-size: 0.88rem; line-height: 1.6; }
+.omen-wait { color: #5d4d7d; }
+.omen-done { color: #4a3a6b; font-weight: 600; }
+.omen-btns { display: flex; gap: 8px; margin: 0 0 8px; }
+.omen-btns button { flex: 1; min-height: 46px; }
+.omen-y { margin: 8px 0; padding: 10px 12px; border-radius: 14px; background: #fff; border: 1px dashed rgba(125, 95, 196, 0.35); }
+.omen-y p { margin: 0 0 8px; font-size: 0.86rem; line-height: 1.6; }
+.omen-stamps { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 4px 0 0; font-size: 0.78rem; color: var(--muted); }
+.omen-stamps span { width: 100%; margin-bottom: 2px; }
+.omen-stamps i { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: #fff; border: 1px solid var(--line); font-style: normal; font-size: 0.72rem; }
+.omen-stamps i.on { background: #ffe3ee; border-color: var(--neon); }
+.omen-stamps i.miss { opacity: 0.5; }
+.omen-stamps small { margin-left: 6px; }
+.peek-box { margin: 0 0 12px; }
+.peek-btn { width: 100%; min-height: 50px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.peek-btn small { font-size: 0.76rem; color: var(--muted); }
+.peek-box.open { padding: 14px 16px; border-radius: 18px; background: linear-gradient(135deg, #eef1ff, #fbf3ff); border: 1px solid rgba(47, 62, 92, 0.15); }
+.peek-box.open p { margin: 0 0 4px; }
+.peek-h { font-size: 0.82rem; color: #2f3e5c; }
+.peek-head { font-size: 1.05rem; font-weight: 700; color: var(--ink); }
+.peek-hint { font-size: 0.88rem; }
+.peek-lock { font-size: 0.8rem; color: var(--muted); }
+.peek-open { display: block; font-style: normal; font-size: 0.78rem; color: #2f3e5c; margin-top: 2px; }

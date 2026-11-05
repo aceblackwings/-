@@ -77,6 +77,7 @@ import {
   QUESTS, STAGES, STREAK_REWARDS, emptyGrowth, checkIn, complete, addExp, evolve, claimStreakReward, summary, stageName,
 } from './growth.js';
 import { drawKiCard, todayKiCard, stageForDays, nextStage, kiCardText, rarityLabel, CARD_RARITY, LACK_RATE } from './dailycard.js';
+import { omenOf, checkable, markOmen, markShown, omenStats, markPeek, peekedFor, tomorrowTeaser, shiftDay, dateOfKey, CHECK_HOUR, OMEN_REWARD } from './omen.js';
 import { BOWLS, STAGE_POINTS, DECOR, EMO_ORDER, EMO_KO, seedFood, feed, todayBowls, fedDays, stageForPoints, growthOf, daysLeft, heightCm, decorCount, emotesUnlocked, conditionOf, feedLine,
   secondUnlocked, recommendSecond, adoptSecond, secondPoints, secondStage, duoScene, cleanName, SECOND_UNLOCK, SECOND_RATE, NAME_MAX } from './jisin.js';
 import {
@@ -2572,6 +2573,64 @@ function showScrollsOpened() {
   box.addEventListener('click', (e) => { if (e.target === box) box.remove(); });
 }
 
+// ---------- v0.54 오늘의 작은 예언(저녁에 「봤나요?」) · 내일 맛보기(한 줄만, 내일 열림) ----------
+const OMEN_KEY = 'unmyeong2099.omen';
+const kstHour = () => new Date(Date.now() + 9 * 3600 * 1000).getUTCHours();
+const omenSeedKey = () => `${zIdx()}|${state.saju.dayMaster}|${state.profile.name || ''}`;
+const fortuneOn = (dateKey) => {
+  (state.fortuneCache ||= {});
+  return (state.fortuneCache[dateKey] ||= computeFortune(state.saju, dateOfKey(dateKey), { gender: state.profile.gender }));
+};
+function omenHTML() {
+  const f = state.fortune; let st = load(OMEN_KEY, {});
+  const shown = markShown(st, f.dateKey); if (shown !== st) { save(OMEN_KEY, shown); st = shown; }
+  const o = omenOf(f, omenSeedKey()); const c = checkable(st, f.dateKey, kstHour()); const stats = omenStats(st, f.dateKey);
+  const DOW = ['월', '화', '수', '목', '금', '토', '일'];
+  const yRow = c.yesterday ? `<div class="omen-y"><p>📮 어제 예언: ${esc(omenOf(fortuneOn(c.yesterday), omenSeedKey()).sign)} 좋은 신호라고 했어요. 봤나요?</p>
+    <div class="omen-btns"><button type="button" class="primary" data-omen="yes" data-omen-day="${c.yesterday}">👀 봤어요</button><button type="button" class="ghost" data-omen="no" data-omen-day="${c.yesterday}">못 봤어요</button></div></div>` : '';
+  const body = c.answered ? `<p class="omen-done">${c.answered === 'yes' ? `👀 예언이 맞았어요! 도장 쾅 · 🍡 복떡 +${OMEN_REWARD}` : '오늘은 못 봤어도 괜찮아요. 내일 예언이 또 찾아와요.'}</p>`
+    : c.today ? `<p class="omen-ask">오늘 하루, 이 신호를 봤나요?</p><div class="omen-btns"><button type="button" class="primary" data-omen="yes" data-omen-day="${f.dateKey}">👀 봤어요</button><button type="button" class="ghost" data-omen="no" data-omen-day="${f.dateKey}">아직 못 봤어요</button></div>`
+      : `<p class="omen-wait">⏰ 오후 ${CHECK_HOUR - 12}시부터 「봤나요?」를 확인할 수 있어요. 하루 동안 살짝 눈여겨봐 주세요.</p>`;
+  return `<section class="omen-box" id="omen-box">
+    <h4>🔮 오늘의 작은 예언</h4>
+    <p class="omen-text">${esc(o.text)}</p>
+    ${body}
+    ${yRow}
+    <p class="omen-stamps"><span>이번 주 예언 도장</span>${stats.week.map((w, i) => `<i class="${w.v === 'yes' ? 'on' : w.v ? 'miss' : ''}" title="${DOW[i]}">${w.v === 'yes' ? '👀' : DOW[i]}</i>`).join('')}<small>누적 ${stats.hits}번 맞음</small></p>
+  </section>`;
+}
+function peekHTML() {
+  const f = state.fortune; const st = load(OMEN_KEY, {}); const tk = shiftDay(f.dateKey, 1);
+  if (!(st.peek || {})[tk]) {
+    return `<section class="peek-box" id="peek-box"><button type="button" class="ghost peek-btn" data-peek>🌙 내일 운세 살짝 보기 <small>한 줄만 먼저 보여 드려요</small></button></section>`;
+  }
+  const tf = fortuneOn(tk); const tv = fiveScores(tf); const t = tomorrowTeaser(todayStory(tf, state.saju, tv).head, tv.total, fiveScores(f).total);
+  const d = dateOfKey(tk);
+  return `<section class="peek-box open" id="peek-box">
+    <p class="peek-h">🌙 내일 ${d.month}월 ${d.day}일 미리 보기</p>
+    <p class="peek-head">「${esc(t.head)}」</p>
+    <p class="peek-hint">${esc(t.hint)}</p>
+    <p class="peek-lock">🔒 자세한 이야기·점수·내일의 예언은 내일 아침에 열려요</p>
+  </section>`;
+}
+document.addEventListener('click', (e) => {
+  const ob = e.target.closest('[data-omen]');
+  if (ob) {
+    const r = markOmen(load(OMEN_KEY, {}), ob.dataset.omenDay, ob.dataset.omen);
+    if (!r.already) {
+      save(OMEN_KEY, r.store);
+      if (r.reward) { save(TTEOK_KEY, tteokGift(loadTteok(), '작은 예언', r.reward).store); toast(`👀 예언이 맞았어요! 🍡 복떡 +${r.reward}`); }
+      else toast('괜찮아요. 내일 예언이 또 찾아와요');
+    }
+    if ($('#omen-box')) $('#omen-box').outerHTML = omenHTML();
+    return;
+  }
+  if (e.target.closest('[data-peek]')) {
+    save(OMEN_KEY, markPeek(load(OMEN_KEY, {}), shiftDay(state.fortune.dateKey, 1)));
+    if ($('#peek-box')) $('#peek-box').outerHTML = peekHTML();
+  }
+});
+
 /** ① 오늘의 운세(v0.50): 한 줄 제목 → 왜 그런지 → 좋은 점·조심할 점·생각해 볼 것·하면 좋은 것 → 공감 묻기 → 5분야 점수(작게) */
 function fiveCardHTML() {
   const f = state.fortune; const v = fiveScores(f); const t = todayStory(f, state.saju, v);
@@ -2579,7 +2638,7 @@ function fiveCardHTML() {
   return `<article class="card five-card" id="five-card">
     <div class="five-head">
       <div class="five-total" style="--c:${scoreColor(v.total)}"><b>${v.total}</b><small>오늘 점수</small></div>
-      <div class="five-hi"><small>${f.date.month}월 ${f.date.day}일 ${dowOf(f.date)}요일 · 오늘의 운세</small><h2>${esc(t.head)}</h2>
+      <div class="five-hi"><small>${f.date.month}월 ${f.date.day}일 ${dowOf(f.date)}요일 · 오늘의 운세</small>${peekedFor(load(OMEN_KEY, {}), f.dateKey) ? '<em class="peek-open">🔓 어제 미리 본 이야기가 열렸어요</em>' : ''}<h2>${esc(t.head)}</h2>
         <p>${esc(t.mood)}</p></div>
     </div>
     <p class="ts-why">${zodiacFace(v.total >= 70 ? 'excited' : v.total >= 50 ? 'smile' : 'calm', 'z-face ts-z')}<span>${t.scene ? `<em class="ts-scene">🎬 오늘의 한 장면 · ${esc(t.scene)}</em>` : ''}<b class="ts-plain">쉽게 말하면,</b> ${esc(t.story)}</span></p>
@@ -2592,6 +2651,8 @@ function fiveCardHTML() {
     <p class="ts-lucky">${esc(t.lucky)}</p>
     <div class="ts-react" aria-live="polite">${emp ? `<p class="ts-thanks">${emp === 'yes' ? '💗' : '🙏'} ${esc(empathyReply(emp, state.profile.name))}</p>`
       : `<p>오늘 이야기, 와닿았나요?</p><div class="ts-btns"><button type="button" class="primary" data-empathy="yes">💗 공감해요</button><button type="button" class="ghost" data-empathy="meh">🤔 글쎄요</button></div>`}</div>
+    ${omenHTML()}
+    ${peekHTML()}
     <details class="five-more"><summary><span>📊 분야별 점수</span><span class="five-chips">${v.list.map((x) => `<i>${x.icon}<b style="color:${scoreColor(x.score)}">${x.score}</b></i>`).join('')}</span></summary>
       <ul class="five-list">${v.list.map((x) => `<li><span class="fv-ic">${x.icon}</span><span class="fv-l">${x.label}</span><span class="fv-bar"><i style="width:${x.score}%;background:${scoreColor(x.score)}"></i></span><b class="fv-n" style="color:${scoreColor(x.score)}">${x.score}</b><small class="fv-line">${esc(x.line)}</small></li>`).join('')}</ul>
       ${t.low ? `<p class="five-note">${v.low.icon} ${esc(t.low)}</p>` : ''}
