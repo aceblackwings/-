@@ -77,7 +77,8 @@ import {
   QUESTS, STAGES, STREAK_REWARDS, emptyGrowth, checkIn, complete, addExp, evolve, claimStreakReward, summary, stageName,
 } from './growth.js';
 import { drawKiCard, todayKiCard, stageForDays, nextStage, kiCardText, rarityLabel, CARD_RARITY, LACK_RATE } from './dailycard.js';
-import { BOWLS, STAGE_POINTS, DECOR, EMO_ORDER, EMO_KO, seedFood, feed, todayBowls, fedDays, stageForPoints, growthOf, daysLeft, heightCm, decorCount, emotesUnlocked, conditionOf, feedLine } from './jisin.js';
+import { BOWLS, STAGE_POINTS, DECOR, EMO_ORDER, EMO_KO, seedFood, feed, todayBowls, fedDays, stageForPoints, growthOf, daysLeft, heightCm, decorCount, emotesUnlocked, conditionOf, feedLine,
+  secondUnlocked, recommendSecond, adoptSecond, secondPoints, secondStage, duoScene, cleanName, SECOND_UNLOCK, SECOND_RATE, NAME_MAX } from './jisin.js';
 import {
   lunarToSolar, solarToLunar, leapMonthOf, lunarMonthDays, formatLunar,
 } from './lunar.js';
@@ -2643,9 +2644,11 @@ function flushEvolution() {
 /** 그릇 하나 채우기 → 지신 반응 → 진화 확인 */
 function feedJisin(key, { quiet = false } = {}) {
   if (!state.saju || !state.fortune) return;
+  const before = foodPoints();
   const r = feed(loadFood(), state.fortune.dateKey, key);
   if (r.already) return;
   save(FOOD_KEY, r.store);
+  checkSecondEvolution(before);
   const b = BOWLS.find((x) => x.key === key);
   if (!quiet) toast(`${b.icon} ${b.label} 냠냠 · 지신이 +${r.gained} 자랐어요${r.full ? ' · 🎉 오늘 세 그릇 완료!' : ''}`);
   state.heroLine = feedLine(key, r.bowls);
@@ -2658,13 +2661,14 @@ function feedJisin(key, { quiet = false } = {}) {
   }
   if ($('#jisin-grow')) $('#jisin-grow').outerHTML = jisinGrowHTML();
   if ($('#jg-bowls-home')) $('#jg-bowls-home').outerHTML = bowlsHTML(true);
+  if ($('#duo-box')) $('#duo-box').outerHTML = secondJisinHTML();
 }
 /** 오늘 세 그릇 */
 function bowlsHTML(compact = false) {
   const bw = todayBowls(loadFood(), state.fortune.dateKey); const n = bw.filter((b) => b.done).length;
   const GO = { morning: 'data-go-tab="today"', snack: 'data-go-tab="tarot"', dinner: 'data-ki-hero' };
   return `<div class="jg-bowls ${compact ? 'compact' : ''}" id="${compact ? 'jg-bowls-home' : 'jg-bowls'}">
-    <p class="jg-bh">🍽️ 오늘 지신 밥 <b>${n}/3</b>${n === 3 ? ' · 배불러요!' : ''}</p>
+    <p class="jg-bh">🍽️ 오늘 지신 밥 <b>${n}/3</b>${n === 3 ? ' · 배불러요!' : ''}${loadSecond() ? ' <small>· 두 지신이 함께 먹어요</small>' : ''}</p>
     <div class="jg-row">${bw.map((b) => `<button type="button" class="jg-bowl ${b.done ? 'done' : ''}" ${b.done ? 'disabled' : GO[b.key]} title="${b.how}"><span>${b.done ? b.icon : '🥣'}</span><b>${b.label}</b><small>${b.done ? '먹었어요' : b.how}</small></button>`).join('')}</div>
   </div>`;
 }
@@ -2714,6 +2718,108 @@ function openGrowthPreview() {
   document.body.appendChild(el);
   el.addEventListener('click', (e) => { if (e.target === el || e.target.closest('[data-gp-close]')) el.remove(); });
 }
+
+// ---------- v0.53 두 번째 지신: 첫 지신 5단계 완성 뒤 다른 띠 하나 더(같은 세 그릇을 나눠 먹고 1.5배 빨리 자람) ----------
+const JISIN2_KEY = 'unmyeong2099.jisin2';
+const loadSecond = () => { const s = load(JISIN2_KEY, null); return s && Number.isInteger(s.branch) ? s : null; };
+const secondInfo = (sec) => { const info = characterInfo(galSaju(sec.branch, sec.element), state.profile); return { ...info, stage: secondStage(sec, foodPoints()) }; };
+const secondLabel = (sec) => (sec.name ? `${sec.name}의 ${ZODIAC[sec.branch].name}` : `${ZODIAC[sec.branch].name}띠 지신`);
+/** 밥을 먹은 뒤: 두 번째 지신이 진화했으면 알림 */
+function checkSecondEvolution(beforePoints) {
+  const sec = loadSecond(); if (!sec) return;
+  const from = stageForPoints(secondPoints(sec, beforePoints)); const to = secondStage(sec, foodPoints());
+  if (to > from) setTimeout(() => showSecondEvolution(sec, from, to), 1100);
+}
+function showSecondEvolution(sec, from, to) {
+  if (document.querySelector('.evo-modal, .hj-reader')) { setTimeout(() => showSecondEvolution(sec, from, to), 1200); return; }
+  const info = secondInfo(sec); const nm = stageName(to, info.female);
+  const box = document.createElement('div'); box.className = 'evo-modal';
+  box.innerHTML = `<div class="evo-box">
+    <p class="muted" style="margin:0">두 번째 지신 진화</p>
+    <div class="evo-stage"><div class="evo-before">${renderCharacterSVG({ ...info, stage: from }, { stage: from, width: 220, mood: 'wow', backdrop: true })}</div><div class="evo-after">${renderCharacterSVG({ ...info, stage: to }, { stage: to, width: 220, mood: 'excited', backdrop: true, animate: true })}</div><div class="evo-flash"></div></div>
+    <h3>${esc(josa(secondLabel(sec), '이/가'))} <span style="color:var(--gold)">${esc(josa(nm, '으로/로'))}</span> 자랐어요!</h3>
+    <p class="muted">큰 지신이 가르쳐 줘서 ${SECOND_RATE}배 빨리 크고 있어요.</p>
+    <button type="button" class="primary" data-evo-close style="width:100%">좋아요</button>
+  </div>`;
+  document.body.appendChild(box);
+  box.addEventListener('click', (e) => {
+    if (e.target !== box && !e.target.closest('[data-evo-close]')) return;
+    box.remove();
+    if (!$('[data-panel="hero"]').classList.contains('hidden')) renderHero(false);
+  });
+}
+/** 지신 탭: 두 번째 지신 칸(잠김 · 데려오기 · 함께 크는 모습) */
+function secondJisinHTML() {
+  const stage = jisinStage(); const sec = loadSecond(); const female = state.profile.gender === 'female';
+  if (!secondUnlocked(stage)) {
+    const left = Math.max(0, STAGE_POINTS[SECOND_UNLOCK] - foodPoints());
+    const recs = recommendSecond(zIdx(), state.saju.yongsin).slice(0, 3);
+    return `<section class="duo-box locked" id="duo-box">
+      <h4>🔒 두 번째 지신 <small>${SECOND_UNLOCK}단계(${stageName(SECOND_UNLOCK, female)})가 되면 열려요</small></h4>
+      <p>지금 ${stage}단계 · 밥 <b>${left}</b>점 더(세 그릇씩이면 약 <b>${daysLeft(left)}</b>일). 그때 다른 띠 지신 하나를 더 데려와 함께 키울 수 있어요.</p>
+      <div class="duo-peek">${recs.map((r) => `<span>${zodiacFace('smile', 'duo-peek-face', ZODIAC[r.branch].key)}<small>${ZODIAC[r.branch].name}</small></span>`).join('')}<em>추천 친구 미리 보기</em></div>
+    </section>`;
+  }
+  if (!sec) {
+    return `<section class="duo-box open" id="duo-box">
+      <h4>🐣 두 번째 지신을 데려올 수 있어요!</h4>
+      <p>가족·연인·친구의 띠로 골라도 좋고, 내 사주와 잘 맞는 띠를 골라도 좋아요. 따로 할 일은 없어요. 지금처럼 세 그릇을 채우면 둘이 나눠 먹고, 작은 지신은 ${SECOND_RATE}배 빨리 자라요.</p>
+      <button type="button" class="primary" data-duo-pick style="width:100%">🐾 두 번째 지신 고르기</button>
+    </section>`;
+  }
+  const info2 = secondInfo(sec); const p2 = secondPoints(sec, foodPoints()); const go2 = growthOf(p2, info2.stage);
+  const main = characterInfo(state.saju, state.profile);
+  const bowls = todayBowls(loadFood(), state.fortune.dateKey).filter((b) => b.done).length;
+  const talk = pairDialogue(zIdx(), sec.branch, { stageA: stage, stageB: info2.stage, nameB: sec.name ? `${sec.name}의 ${ZODIAC[sec.branch].name}` : undefined });
+  return `<section class="duo-box" id="duo-box">
+    <h4>🐾 함께 크는 두 지신 <small>밥은 같이 먹어요</small></h4>
+    <div class="duo-row">
+      <figure>${renderCharacterSVG(main, { stage, width: 120, mood: 'smile', backdrop: true })}<figcaption><b>큰 지신</b><small>${main.zodiac.name} · ${stage}단계</small></figcaption></figure>
+      <figure>${renderCharacterSVG(info2, { stage: info2.stage, width: 120, mood: bowls === 3 ? 'sleepy' : 'excited', backdrop: true })}<figcaption><b>${esc(secondLabel(sec))}</b><small>${stageName(info2.stage, info2.female)} · ${info2.stage}단계</small></figcaption></figure>
+    </div>
+    <p class="duo-scene">🎬 ${duoScene(state.fortune.dateKey, bowls)}</p>
+    <div class="duo-talk" data-casual>${talk.lines.map((l) => `<p><b>${ZODIAC[l.speaker].name}</b> ${esc(l.text)}</p>`).join('')}</div>
+    <div class="jg-bar-h"><span>${go2.next ? `작은 지신 ✨ <b>${stageName(go2.next, info2.female)}</b>까지` : '✨ 최종 진화 완료'}</span><span>${go2.next ? `세 그릇씩이면 약 <b>${Math.ceil(go2.left / (4 * SECOND_RATE))}</b>일` : ''}</span></div>
+    <div class="jg-bar"><i style="width:${Math.round(go2.ratio * 100)}%"></i></div>
+    <p class="muted duo-meta">📏 키 ${heightCm(p2)}cm · ${esc(sec.at)} 데려옴 · <button type="button" class="linkish" data-duo-pick>바꾸기</button></p>
+  </section>`;
+}
+/** 두 번째 지신 고르기 창 */
+function openSecondPicker() {
+  const cur = loadSecond(); const recs = recommendSecond(zIdx(), state.saju.yongsin); const recSet = new Set(recs.map((r) => r.branch));
+  const others = ZODIAC.map((_, b) => b).filter((b) => b !== zIdx() && !recSet.has(b));
+  let pick = cur?.branch ?? recs[0]?.branch;
+  const box = document.createElement('div'); box.className = 'evo-modal gp-modal';
+  const btn = (b, extra = '') => `<button type="button" class="duo-opt ${b === pick ? 'on' : ''}" data-duo-b="${b}">${zodiacFace('smile', 'duo-face', ZODIAC[b].key)}<b>${ZODIAC[b].name}</b>${extra}</button>`;
+  box.innerHTML = `<div class="evo-box gp-box">
+    <h3>🐾 두 번째 지신 고르기</h3>
+    <p class="muted" style="margin:0 0 10px">내 띠(${ZODIAC[zIdx()].name})는 이미 큰 지신이에요. 운세 점수와는 상관없는 재미 요소라 마음에 드는 띠를 골라도 돼요.</p>
+    <h4 style="margin:6px 0">⭐ 내 사주 추천</h4>
+    <div class="duo-grid">${recs.map((r) => btn(r.branch, `<em>${r.tags.join(' · ')}</em><small>${esc(r.why)}</small>`)).join('')}</div>
+    <h4 style="margin:12px 0 6px">👨‍👩‍👧 가족·연인·친구의 띠</h4>
+    <div class="duo-grid small">${others.map((b) => btn(b)).join('')}</div>
+    <label class="duo-name">부르는 말(선택, ${NAME_MAX}자) <input type="text" maxlength="${NAME_MAX}" placeholder="예: 엄마, 지우" value="${esc(cur?.name || '')}" data-duo-name></label>
+    ${cur ? '<p class="duo-warn">⚠️ 다른 띠로 바꾸면 작은 지신은 1단계부터 다시 자라요. (큰 지신은 그대로예요)</p>' : ''}
+    <button type="button" class="primary" data-duo-ok style="width:100%;margin-top:10px">${cur ? '이대로 저장하기' : '데려오기'}</button>
+    <button type="button" class="ghost" data-gp-close style="width:100%;margin-top:6px">닫기</button>
+  </div>`;
+  document.body.appendChild(box);
+  box.addEventListener('click', (e) => {
+    if (e.target === box || e.target.closest('[data-gp-close]')) { box.remove(); return; }
+    const o = e.target.closest('[data-duo-b]');
+    if (o) { pick = Number(o.dataset.duoB); $$('.duo-opt', box).forEach((x) => x.classList.toggle('on', Number(x.dataset.duoB) === pick)); return; }
+    if (!e.target.closest('[data-duo-ok]') || !Number.isInteger(pick)) return;
+    const name = cleanName($('[data-duo-name]', box).value);
+    const same = cur && cur.branch === pick;
+    const next = same ? { ...cur, name } : adoptSecond({ branch: pick, name, dateKey: state.fortune.dateKey, totalPoints: foodPoints() });
+    save(JISIN2_KEY, next); box.remove();
+    if (same) toast('부르는 말을 바꿨어요');
+    else { toast(`🐣 ${josa(secondLabel(next), '이/가')} 왔어요! 오늘부터 함께 밥을 먹어요`); state.heroLine = pairLine(zIdx(), pick, { stage: jisinStage() }).text; }
+    renderHero(false);
+    setTimeout(() => revealAndScroll('#duo-box', 'center'), 100);
+  });
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-duo-pick]')) openSecondPicker(); });
 
 /** 지신 기운 게이지: 오행 다섯 칸(오행 충전과 같은 값). 부족한 칸은 ★ */
 function kiGaugeHTML(hl = -1) {
@@ -3255,6 +3361,7 @@ function renderHero(animate) {
       <h3 class="hero-title" style="text-align:center">${info.title}</h3>
       <p style="margin:0 0 10px;text-align:center"><span class="rarity-badge" style="color:var(--gold)">${stageName(gs.stage, info.female)} · 진화 ${gs.stage}단계</span>${currentDex().title ? ` <span class="rarity-badge" style="color:#ff8fb3">📖 ${currentDex().title}</span>` : ''}${seasonTitle() ? ` <span class="rarity-badge season-title">🏮 ${esc(seasonTitle())}</span>` : ''}</p>
       ${jisinGrowHTML()}
+      ${secondJisinHTML()}
       <h4 class="ki-gh">🐉 지신 기운 게이지 <small>★ 부족한 기운</small></h4>
       ${kiGaugeHTML(kc ? kc.element : -1)}
       ${kiProgressHTML(kst)}
