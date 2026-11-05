@@ -1700,3 +1700,92 @@ html.easy .top h1 { font-size: 20px; }
 .gp-emo > div { display: flex; flex-direction: column; align-items: center; font-size: 0.75rem; color: var(--text); }
 .gp-emo .off .gp-face { filter: grayscale(1) brightness(1.2); opacity: 0.45; }
 .gp-face { width: 52px; height: 52px; object-fit: contain; }
+
+/* v0.53 두 번째 지신 */
+.duo-box { margin: 0 0 14px; padding: 14px 16px; border-radius: 18px; background: #fbf7ff; border: 1px solid rgba(167, 123, 224, 0.3); }
+.duo-box h4 { margin: 0 0 8px; font-size: 1rem; color: var(--ink); }
+.duo-box h4 small { font-weight: normal; color: var(--muted); font-size: 0.8rem; }
+.duo-box p { margin: 0 0 8px; font-size: 0.9rem; line-height: 1.7; }
+.duo-box.locked { background: #faf7f5; border-style: dashed; }
+.duo-peek { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.duo-peek span { display: flex; flex-direction: column; align-items: center; opacity: 0.55; filter: grayscale(0.5); }
+.duo-peek-face { width: 40px; height: 40px; object-fit: contain; }
+.duo-peek em { font-size: 0.78rem; color: var(--muted); font-style: normal; }
+.duo-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.duo-row figure { margin: 0; text-align: center; }
+.duo-row svg { max-width: 100%; height: auto; }
+.duo-row figcaption { display: flex; flex-direction: column; font-size: 0.85rem; }
+.duo-row figcaption small { color: var(--muted); }
+.duo-scene { margin-top: 8px !important; color: #4a3a6b; font-weight: 600; }
+.duo-talk { background: #fff; border-radius: 14px; padding: 8px 12px; margin-bottom: 10px; }
+.duo-talk p { margin: 2px 0 !important; font-size: 0.86rem !important; }
+.duo-talk b { color: var(--neon); margin-right: 4px; }
+.duo-meta { font-size: 0.8rem !important; margin-top: 6px !important; }
+.duo-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.duo-grid.small { grid-template-columns: repeat(4, 1fr); }
+.duo-opt { display: grid; grid-template-columns: 44px 1fr; grid-template-rows: auto auto auto; align-items: center; column-gap: 10px; text-align: left; padding: 8px 10px; min-height: 48px; border-radius: 14px; border: 2px solid var(--line); background: #fff; cursor: pointer; font: inherit; color: var(--text); }
+.duo-opt .duo-face { grid-row: 1 / span 3; width: 44px; height: 44px; object-fit: contain; }
+.duo-opt em { font-style: normal; font-size: 0.78rem; color: var(--neon); }
+.duo-opt small { font-size: 0.76rem; color: var(--muted); line-height: 1.4; }
+.duo-grid.small .duo-opt { grid-template-columns: 1fr; text-align: center; justify-items: center; padding: 6px 4px; }
+.duo-grid.small .duo-opt .duo-face { grid-row: auto; width: 36px; height: 36px; }
+.duo-opt.on { border-color: var(--neon); background: #fff1f5; }
+.duo-name { display: block; margin-top: 12px; font-size: 0.88rem; }
+.duo-name input { display: block; width: 100%; margin-top: 4px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); font: inherit; box-sizing: border-box; }
+.duo-warn { font-size: 0.82rem; color: #9a4f12; margin: 8px 0 0; }
+
+/* v0.54 오늘의 작은 예언 · 내일 맛보기 */
+.omen-box { margin: 18px 0 12px; padding: 14px 16px; border-radius: 18px; background: #f6f1ff; border: 1px solid rgba(125, 95, 196, 0.28); }
+.omen-box h4 { margin: 0 0 6px; font-size: 1rem; color: #4a3a6b; }
+.omen-text { margin: 0 0 10px; font-size: 1rem; line-height: 1.75; font-weight: 600; color: var(--ink); }
+.omen-ask, .omen-wait, .omen-done { margin: 0 0 8px; font-size: 0.88rem; line-height: 1.6; }
+.omen-wait { color: #5d4d7d; }
+.omen-done { color: #4a3a6b; font-weight: 600; }
+.omen-btns { display: flex; gap: 8px; margin: 0 0 8px; }
+.omen-btns button { flex: 1; min-height: 46px; }
+.omen-y { margin: 8px 0; padding: 10px 12px; border-radius: 14px; background: #fff; border: 1px dashed rgba(125, 95, 196, 0.35); }
+.omen-y p { margin: 0 0 8px; font-size: 0.86rem; line-height: 1.6; }
+.omen-stamps { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 4px 0 0; font-size: 0.78rem; color: var(--muted); }
+.omen-stamps span { width: 100%; margin-bottom: 2px; }
+.omen-stamps i { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: #fff; border: 1px solid var(--line); font-style: normal; font-size: 0.72rem; }
+.omen-stamps i.on { background: #ffe3ee; border-color: var(--neon); }
+.omen-stamps i.miss { opacity: 0.5; }
+.omen-stamps small { margin-left: 6px; }
+.peek-box { margin: 0 0 12px; }
+.peek-btn { width: 100%; min-height: 50px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.peek-btn small { font-size: 0.76rem; color: var(--muted); }
+.peek-box.open { padding: 14px 16px; border-radius: 18px; background: linear-gradient(135deg, #eef1ff, #fbf3ff); border: 1px solid rgba(47, 62, 92, 0.15); }
+.peek-box.open p { margin: 0 0 4px; }
+.peek-h { font-size: 0.82rem; color: #2f3e5c; }
+.peek-head { font-size: 1.05rem; font-weight: 700; color: var(--ink); }
+.peek-hint { font-size: 0.88rem; }
+.peek-lock { font-size: 0.8rem; color: var(--muted); }
+.peek-open { display: block; font-style: normal; font-size: 0.78rem; color: #2f3e5c; margin-top: 2px; }
+
+/* v0.55 지신의 기록 */
+#fold-diary .fd-t small { font-style: italic; }
+.diary-paper { padding: 16px 18px 14px; border-radius: 14px; background: #fbf8f1; border: 1px solid rgba(90, 70, 50, 0.14);
+  box-shadow: inset 0 0 0 4px #fbf8f1, inset 0 0 0 5px rgba(90, 70, 50, 0.08);
+  font-family: 'Gowun Batang', serif; color: #3a302a; }
+.diary-paper p { margin: 0 0 8px; font-size: 0.95rem; line-height: 1.85; }
+.diary-date { font-size: 0.8rem !important; color: #8a7a6a; letter-spacing: 0.02em; }
+.diary-ps { font-size: 0.86rem !important; color: #6a5a4a; font-style: italic; }
+.diary-sign { text-align: right; font-size: 0.86rem !important; color: #6a5a4a; margin-top: 4px !important; }
+
+/* v0.55 오늘의 행운 긁기 */
+.sc-box { margin: 14px 0 6px; }
+.sc-h { margin: 0 0 8px; font-weight: 600; color: var(--ink); }
+.sc-h small { font-weight: normal; color: var(--muted); font-size: 0.8rem; margin-left: 4px; }
+.sc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sc-tile { position: relative; min-height: 74px; padding: 10px 12px; border-radius: 14px; background: #fffaf3; border: 1px solid rgba(208, 132, 58, 0.25); display: flex; flex-direction: column; justify-content: center; gap: 4px; overflow: hidden; user-select: none; }
+.sc-l { font-size: 0.78rem; color: var(--muted); }
+.sc-v { font-size: 0.98rem; color: var(--ink); line-height: 1.4; }
+.sc-tile.open .sc-v { animation: sc-pop 0.5s ease; }
+@keyframes sc-pop { 0% { transform: scale(0.85); opacity: 0.3; } 100% { transform: scale(1); opacity: 1; } }
+.sc-foil { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; transition: opacity 0.35s; }
+.sc-foil.gone { opacity: 0; }
+.sc-all { display: block; margin: 6px auto 0; }
+
+/* v0.55 지신 라디오 */
+.radio-btn { margin-top: 8px; min-height: 40px; padding: 6px 14px; font-size: 0.86rem; }
+.radio-btn.on { background: #fff1f5; border-color: var(--neon); color: var(--neon); }

@@ -77,7 +77,12 @@ import {
   QUESTS, STAGES, STREAK_REWARDS, emptyGrowth, checkIn, complete, addExp, evolve, claimStreakReward, summary, stageName,
 } from './growth.js';
 import { drawKiCard, todayKiCard, stageForDays, nextStage, kiCardText, rarityLabel, CARD_RARITY, LACK_RATE } from './dailycard.js';
-import { BOWLS, STAGE_POINTS, DECOR, EMO_ORDER, EMO_KO, seedFood, feed, todayBowls, fedDays, stageForPoints, growthOf, daysLeft, heightCm, decorCount, emotesUnlocked, conditionOf, feedLine } from './jisin.js';
+import { buildDiary, logVisit, markRead, isRead } from './diary.js';
+import { scratchTiles, scratchedOn, markScratched, clearedRatio } from './scratch.js';
+import { radioScript, speechChunks } from './radio.js';
+import { omenOf, checkable, markOmen, markShown, omenStats, markPeek, peekedFor, tomorrowTeaser, shiftDay, dateOfKey, CHECK_HOUR, OMEN_REWARD } from './omen.js';
+import { BOWLS, STAGE_POINTS, DECOR, EMO_ORDER, EMO_KO, seedFood, feed, todayBowls, fedDays, stageForPoints, growthOf, daysLeft, heightCm, decorCount, emotesUnlocked, conditionOf, feedLine,
+  secondUnlocked, recommendSecond, adoptSecond, secondPoints, secondStage, duoScene, cleanName, SECOND_UNLOCK, SECOND_RATE, NAME_MAX } from './jisin.js';
 import {
   lunarToSolar, solarToLunar, leapMonthOf, lunarMonthDays, formatLunar,
 } from './lunar.js';
@@ -2571,6 +2576,201 @@ function showScrollsOpened() {
   box.addEventListener('click', (e) => { if (e.target === box) box.remove(); });
 }
 
+// ---------- v0.54 오늘의 작은 예언(저녁에 「봤나요?」) · 내일 맛보기(한 줄만, 내일 열림) ----------
+const OMEN_KEY = 'unmyeong2099.omen';
+const kstHour = () => new Date(Date.now() + 9 * 3600 * 1000).getUTCHours();
+const omenSeedKey = () => `${zIdx()}|${state.saju.dayMaster}|${state.profile.name || ''}`;
+const fortuneOn = (dateKey) => {
+  (state.fortuneCache ||= {});
+  return (state.fortuneCache[dateKey] ||= computeFortune(state.saju, dateOfKey(dateKey), { gender: state.profile.gender }));
+};
+function omenHTML() {
+  const f = state.fortune; let st = load(OMEN_KEY, {});
+  const shown = markShown(st, f.dateKey); if (shown !== st) { save(OMEN_KEY, shown); st = shown; }
+  const o = omenOf(f, omenSeedKey()); const c = checkable(st, f.dateKey, kstHour()); const stats = omenStats(st, f.dateKey);
+  const DOW = ['월', '화', '수', '목', '금', '토', '일'];
+  const yRow = c.yesterday ? `<div class="omen-y"><p>📮 어제 예언: ${esc(omenOf(fortuneOn(c.yesterday), omenSeedKey()).sign)} 좋은 신호라고 했어요. 봤나요?</p>
+    <div class="omen-btns"><button type="button" class="primary" data-omen="yes" data-omen-day="${c.yesterday}">👀 봤어요</button><button type="button" class="ghost" data-omen="no" data-omen-day="${c.yesterday}">못 봤어요</button></div></div>` : '';
+  const body = c.answered ? `<p class="omen-done">${c.answered === 'yes' ? `👀 예언이 맞았어요! 도장 쾅 · 🍡 복떡 +${OMEN_REWARD}` : '오늘은 못 봤어도 괜찮아요. 내일 예언이 또 찾아와요.'}</p>`
+    : c.today ? `<p class="omen-ask">오늘 하루, 이 신호를 봤나요?</p><div class="omen-btns"><button type="button" class="primary" data-omen="yes" data-omen-day="${f.dateKey}">👀 봤어요</button><button type="button" class="ghost" data-omen="no" data-omen-day="${f.dateKey}">아직 못 봤어요</button></div>`
+      : `<p class="omen-wait">⏰ 오후 ${CHECK_HOUR - 12}시부터 「봤나요?」를 확인할 수 있어요. 하루 동안 살짝 눈여겨봐 주세요.</p>`;
+  return `<section class="omen-box" id="omen-box">
+    <h4>🔮 오늘의 작은 예언</h4>
+    <p class="omen-text">${esc(o.text)}</p>
+    ${body}
+    ${yRow}
+    <p class="omen-stamps"><span>이번 주 예언 도장</span>${stats.week.map((w, i) => `<i class="${w.v === 'yes' ? 'on' : w.v ? 'miss' : ''}" title="${DOW[i]}">${w.v === 'yes' ? '👀' : DOW[i]}</i>`).join('')}<small>누적 ${stats.hits}번 맞음</small></p>
+  </section>`;
+}
+function peekHTML() {
+  const f = state.fortune; const st = load(OMEN_KEY, {}); const tk = shiftDay(f.dateKey, 1);
+  if (!(st.peek || {})[tk]) {
+    return `<section class="peek-box" id="peek-box"><button type="button" class="ghost peek-btn" data-peek>🌙 내일 운세 살짝 보기 <small>한 줄만 먼저 보여 드려요</small></button></section>`;
+  }
+  const tf = fortuneOn(tk); const tv = fiveScores(tf); const t = tomorrowTeaser(todayStory(tf, state.saju, tv).head, tv.total, fiveScores(f).total);
+  const d = dateOfKey(tk);
+  return `<section class="peek-box open" id="peek-box">
+    <p class="peek-h">🌙 내일 ${d.month}월 ${d.day}일 미리 보기</p>
+    <p class="peek-head">「${esc(t.head)}」</p>
+    <p class="peek-hint">${esc(t.hint)}</p>
+    <p class="peek-lock">🔒 자세한 이야기·점수·내일의 예언은 내일 아침에 열려요</p>
+  </section>`;
+}
+document.addEventListener('click', (e) => {
+  const ob = e.target.closest('[data-omen]');
+  if (ob) {
+    const r = markOmen(load(OMEN_KEY, {}), ob.dataset.omenDay, ob.dataset.omen);
+    if (!r.already) {
+      save(OMEN_KEY, r.store);
+      if (r.reward) { save(TTEOK_KEY, tteokGift(loadTteok(), '작은 예언', r.reward).store); toast(`👀 예언이 맞았어요! 🍡 복떡 +${r.reward}`); }
+      else toast('괜찮아요. 내일 예언이 또 찾아와요');
+    }
+    if ($('#omen-box')) $('#omen-box').outerHTML = omenHTML();
+    return;
+  }
+  if (e.target.closest('[data-peek]')) {
+    save(OMEN_KEY, markPeek(load(OMEN_KEY, {}), shiftDay(state.fortune.dateKey, 1)));
+    if ($('#peek-box')) $('#peek-box').outerHTML = peekHTML();
+  }
+});
+
+// ---------- v0.55 지신의 기록(관찰 일기) · 오늘의 행운 긁기 · 지신 라디오 ----------
+const DIARY_KEY = 'unmyeong2099.diary';
+const SCRATCH_KEY = 'unmyeong2099.scratch';
+function logVisitNow() {
+  const st = load(DIARY_KEY, {}); const next = logVisit(st, state.fortune.dateKey, kstHour());
+  if (next !== st) save(DIARY_KEY, next);
+}
+/** 어제 기기에 남은 기록 → 일기 재료 */
+function diaryFacts() {
+  const f = state.fortune; const today = f.dateKey; const y = shiftDay(today, -1);
+  const di = load(DIARY_KEY, {}); const food = loadFood().days || {};
+  const history = Object.keys(di.visits || {}).some((k) => k !== today) || Object.keys(food).some((k) => k !== today);
+  if (!history) return null;
+  const fd = food[y] || null;
+  const tarots = (loadRecords()?.items || []).filter((it) => it.kind === 'tarot' && it.dateKey === y);
+  let tarot = null;
+  if (tarots.length) {
+    const it = tarots[0]; const cards = String(it.summary || '').split(' · ');
+    const last = cards[cards.length - 1] || '';
+    const TL = { '취업·일': '일과 취업', '오늘·궁금한 일': '마음에 걸린 일' }; const tl = String(it.title || '').split(' · ')[1] || '고민';
+    tarot = { topic: TL[tl] || tl, card: last.replace('(쉬어 가기)', '').trim(), reversed: last.includes('(쉬어 가기)'), count: tarots.length };
+  }
+  const h = habitDay(load(HABIT_KEY, {}), y);
+  const mood = h.before || null;
+  const sec = loadSecond();
+  return {
+    dateKey: y, todayKey: today,
+    visits: (di.visits || {})[y] || [], visitedKnown: !!fd,
+    bowls: fd ? BOWLS.filter((b) => fd[b.key]).length : 0,
+    tarot, habitDone: !!(load(NOTE_KEY, {})[y]?.done || h.done),
+    mood, moodLabel: MOODS.find((m) => m.v === mood)?.label || '',
+    omen: (load(OMEN_KEY, {}).days || {})[y] || null,
+    empathy: load(EMPATHY_KEY, {})[y] || null,
+    todayHead: todayStory(f, state.saju, fiveScores(f)).head,
+    zodiac: myZodiac().name, polite: myZodiac().key === 'rooster',
+    second: sec ? secondLabel(sec) : null,
+  };
+}
+function diaryHTML() {
+  const x = diaryFacts(); if (!x) return '';
+  const d = buildDiary(x); const dt = dateOfKey(d.date); const today = state.fortune.dateKey;
+  const st = load(DIARY_KEY, {});
+  if (!isRead(st, today)) { (state.folds ||= {})['fold-diary'] = true; save(DIARY_KEY, markRead(st, today)); }
+  const body = `<div class="diary-paper" data-casual>
+    <p class="diary-date">${dt.month}월 ${dt.day}일의 기록${x.mood ? ` · 마음 날씨 ${esc(x.moodLabel)}` : ''}</p>
+    ${d.lines.map((l) => `<p>${esc(l)}</p>`).join('')}
+    ${d.ps ? `<p class="diary-ps">${esc(d.ps)}</p>` : ''}
+    <p class="diary-sign">${esc(d.sign)}</p>
+  </div>`;
+  return foldHTML('diary', '📔', '지신의 기록', `어제의 ${x.polite ? '당신' : '너'}를 적어 두었다`, body);
+}
+
+/** 🍀 오늘의 행운 긁기 */
+function scratchHTML() {
+  const f = state.fortune; const open = scratchedOn(load(SCRATCH_KEY, {}), f.dateKey); const tiles = scratchTiles(f.luck);
+  const all = tiles.every((t) => open.has(t.key));
+  setTimeout(initScratch, 0);
+  return `<section class="sc-box" id="sc-box">
+    <p class="sc-h">🍀 오늘의 행운 <small>${all ? '모두 열었어요' : '손가락으로 긁어 보세요'}</small></p>
+    <div class="sc-grid">${tiles.map((t) => `<div class="sc-tile ${open.has(t.key) ? 'open' : ''}" data-sc="${t.key}" tabindex="0" role="button" aria-label="${t.label} 긁어서 보기">
+      <span class="sc-l">${t.icon} ${t.label}</span><b class="sc-v">${esc(t.value)}</b>${open.has(t.key) ? '' : '<canvas class="sc-foil" aria-hidden="true"></canvas>'}</div>`).join('')}</div>
+    ${all ? '' : '<button type="button" class="linkish sc-all" data-sc-all>한 번에 모두 열기</button>'}
+  </section>`;
+}
+function revealScratch(tile) {
+  if (!tile || tile.classList.contains('open')) return;
+  const key = tile.dataset.sc; const dk = state.fortune.dateKey;
+  save(SCRATCH_KEY, markScratched(load(SCRATCH_KEY, {}), dk, key));
+  tile.classList.add('open');
+  const cv = tile.querySelector('canvas'); if (cv) { cv.classList.add('gone'); setTimeout(() => cv.remove(), 400); }
+  const open = scratchedOn(load(SCRATCH_KEY, {}), dk);
+  if (scratchTiles(state.fortune.luck).every((t) => open.has(t.key))) {
+    const box = $('#sc-box'); if (box) { box.querySelector('.sc-h small').textContent = '모두 열었어요'; box.querySelector('[data-sc-all]')?.remove(); }
+    toast('🍀 오늘의 행운을 모두 열었어요');
+  }
+}
+function initScratch() {
+  $$('.sc-tile:not(.open) canvas.sc-foil').forEach((cv) => {
+    if (cv.dataset.ready) return; cv.dataset.ready = '1';
+    const tile = cv.parentElement; const r = tile.getBoundingClientRect(); if (!r.width) { cv.dataset.ready = ''; return; }
+    const dpr = window.devicePixelRatio || 1; cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+    const ctx = cv.getContext('2d');
+    const g = ctx.createLinearGradient(0, 0, cv.width, cv.height); g.addColorStop(0, '#e4dff0'); g.addColorStop(0.5, '#c9c1dc'); g.addColorStop(1, '#ded8ec');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; for (let i = 0; i < 40; i++) ctx.fillRect(Math.random() * cv.width, Math.random() * cv.height, 2 * dpr, 2 * dpr);
+    ctx.fillStyle = '#6a5a8a'; ctx.font = `600 ${13 * dpr}px "Gowun Dodum", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(tile.querySelector('.sc-l').textContent, cv.width / 2, cv.height / 2 - 10 * dpr);
+    ctx.font = `${11 * dpr}px "Gowun Dodum", sans-serif`; ctx.fillText('✦ 긁어 보세요 ✦', cv.width / 2, cv.height / 2 + 12 * dpr);
+    ctx.globalCompositeOperation = 'destination-out';
+    let down = false; let moves = 0; let lastP = null;
+    const at = (e) => { const b = cv.getBoundingClientRect(); return [(e.clientX - b.left) * dpr, (e.clientY - b.top) * dpr]; };
+    const scrape = (p) => {
+      ctx.lineWidth = 30 * dpr; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(...(lastP || p)); ctx.lineTo(...p); ctx.stroke();
+      ctx.beginPath(); ctx.arc(p[0], p[1], 15 * dpr, 0, Math.PI * 2); ctx.fill(); lastP = p;
+      if (++moves % 6 === 0 && clearedRatio(ctx.getImageData(0, 0, cv.width, cv.height).data) > 0.45) { down = false; revealScratch(tile); }
+    };
+    cv.addEventListener('pointerdown', (e) => { down = true; lastP = null; cv.setPointerCapture?.(e.pointerId); scrape(at(e)); });
+    cv.addEventListener('pointermove', (e) => { if (down) scrape(at(e)); });
+    const up = () => { down = false; lastP = null; };
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  });
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-sc-all]')) $$('.sc-tile:not(.open)').forEach(revealScratch); });
+document.addEventListener('keydown', (e) => { const t = e.target.closest?.('.sc-tile'); if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); revealScratch(t); } });
+
+/** 📻 지신 라디오: 오늘 운세를 소리로 */
+const canSpeak = () => typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
+let radioOn = false;
+function radioBtnHTML() {
+  if (!canSpeak()) return '';
+  return `<button type="button" class="ghost radio-btn ${radioOn ? 'on' : ''}" data-radio aria-pressed="${radioOn}">${radioOn ? '⏹ 라디오 멈추기' : '📻 지신 라디오로 듣기'}</button>`;
+}
+function setRadio(on) {
+  radioOn = on; $$('[data-radio]').forEach((b) => { b.outerHTML = radioBtnHTML(); });
+}
+function playRadio() {
+  const syn = window.speechSynthesis;
+  if (radioOn) { syn.cancel(); setRadio(false); return; }
+  const f = state.fortune; const t = todayStory(f, state.saju, fiveScores(f));
+  const text = radioScript({ month: f.date.month, day: f.date.day, dow: dowOf(f.date), name: state.profile.name, zodiac: myZodiac().name,
+    head: t.head, mood: t.mood, story: t.story, good: t.good, watch: t.watch, dont: t.dont, act: t.act, omen: omenOf(f, omenSeedKey()).text });
+  const voices = syn.getVoices(); const ko = voices.find((v) => /^ko/i.test(v.lang));
+  if (voices.length && !ko) { toast('이 기기에는 한국어 목소리가 없어 읽어 드리기 어려워요'); return; }
+  syn.cancel();
+  const chunks = speechChunks(text); const easy = document.documentElement.classList.contains('easy');
+  chunks.forEach((c, i) => {
+    const u = new SpeechSynthesisUtterance(c); u.lang = 'ko-KR'; if (ko) u.voice = ko; u.rate = easy ? 0.88 : 0.98; u.pitch = 1;
+    if (i === chunks.length - 1) u.onend = () => setRadio(false);
+    u.onerror = () => setRadio(false);
+    syn.speak(u);
+  });
+  setRadio(true);
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-radio]')) playRadio(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && radioOn) { window.speechSynthesis.cancel(); setRadio(false); } });
+
 /** ① 오늘의 운세(v0.50): 한 줄 제목 → 왜 그런지 → 좋은 점·조심할 점·생각해 볼 것·하면 좋은 것 → 공감 묻기 → 5분야 점수(작게) */
 function fiveCardHTML() {
   const f = state.fortune; const v = fiveScores(f); const t = todayStory(f, state.saju, v);
@@ -2578,8 +2778,8 @@ function fiveCardHTML() {
   return `<article class="card five-card" id="five-card">
     <div class="five-head">
       <div class="five-total" style="--c:${scoreColor(v.total)}"><b>${v.total}</b><small>오늘 점수</small></div>
-      <div class="five-hi"><small>${f.date.month}월 ${f.date.day}일 ${dowOf(f.date)}요일 · 오늘의 운세</small><h2>${esc(t.head)}</h2>
-        <p>${esc(t.mood)}</p></div>
+      <div class="five-hi"><small>${f.date.month}월 ${f.date.day}일 ${dowOf(f.date)}요일 · 오늘의 운세</small>${peekedFor(load(OMEN_KEY, {}), f.dateKey) ? '<em class="peek-open">🔓 어제 미리 본 이야기가 열렸어요</em>' : ''}<h2>${esc(t.head)}</h2>
+        <p>${esc(t.mood)}</p>${radioBtnHTML()}</div>
     </div>
     <p class="ts-why">${zodiacFace(v.total >= 70 ? 'excited' : v.total >= 50 ? 'smile' : 'calm', 'z-face ts-z')}<span>${t.scene ? `<em class="ts-scene">🎬 오늘의 한 장면 · ${esc(t.scene)}</em>` : ''}<b class="ts-plain">쉽게 말하면,</b> ${esc(t.story)}</span></p>
     <div class="ts-grid">
@@ -2588,9 +2788,11 @@ function fiveCardHTML() {
       <section class="ts-tile think"><h4>🤔 생각해 볼 것</h4><p>${esc(t.think)}</p></section>
       <section class="ts-tile act"><h4>✅ 이렇게 해 보세요</h4><ul>${t.act.map((a) => `<li>${esc(a)}</li>`).join('')}</ul></section>
     </div>
-    <p class="ts-lucky">${esc(t.lucky)}</p>
+    ${scratchHTML()}
     <div class="ts-react" aria-live="polite">${emp ? `<p class="ts-thanks">${emp === 'yes' ? '💗' : '🙏'} ${esc(empathyReply(emp, state.profile.name))}</p>`
       : `<p>오늘 이야기, 와닿았나요?</p><div class="ts-btns"><button type="button" class="primary" data-empathy="yes">💗 공감해요</button><button type="button" class="ghost" data-empathy="meh">🤔 글쎄요</button></div>`}</div>
+    ${omenHTML()}
+    ${peekHTML()}
     <details class="five-more"><summary><span>📊 분야별 점수</span><span class="five-chips">${v.list.map((x) => `<i>${x.icon}<b style="color:${scoreColor(x.score)}">${x.score}</b></i>`).join('')}</span></summary>
       <ul class="five-list">${v.list.map((x) => `<li><span class="fv-ic">${x.icon}</span><span class="fv-l">${x.label}</span><span class="fv-bar"><i style="width:${x.score}%;background:${scoreColor(x.score)}"></i></span><b class="fv-n" style="color:${scoreColor(x.score)}">${x.score}</b><small class="fv-line">${esc(x.line)}</small></li>`).join('')}</ul>
       ${t.low ? `<p class="five-note">${v.low.icon} ${esc(t.low)}</p>` : ''}
@@ -2643,9 +2845,11 @@ function flushEvolution() {
 /** 그릇 하나 채우기 → 지신 반응 → 진화 확인 */
 function feedJisin(key, { quiet = false } = {}) {
   if (!state.saju || !state.fortune) return;
+  const before = foodPoints();
   const r = feed(loadFood(), state.fortune.dateKey, key);
   if (r.already) return;
   save(FOOD_KEY, r.store);
+  checkSecondEvolution(before);
   const b = BOWLS.find((x) => x.key === key);
   if (!quiet) toast(`${b.icon} ${b.label} 냠냠 · 지신이 +${r.gained} 자랐어요${r.full ? ' · 🎉 오늘 세 그릇 완료!' : ''}`);
   state.heroLine = feedLine(key, r.bowls);
@@ -2658,13 +2862,14 @@ function feedJisin(key, { quiet = false } = {}) {
   }
   if ($('#jisin-grow')) $('#jisin-grow').outerHTML = jisinGrowHTML();
   if ($('#jg-bowls-home')) $('#jg-bowls-home').outerHTML = bowlsHTML(true);
+  if ($('#duo-box')) $('#duo-box').outerHTML = secondJisinHTML();
 }
 /** 오늘 세 그릇 */
 function bowlsHTML(compact = false) {
   const bw = todayBowls(loadFood(), state.fortune.dateKey); const n = bw.filter((b) => b.done).length;
   const GO = { morning: 'data-go-tab="today"', snack: 'data-go-tab="tarot"', dinner: 'data-ki-hero' };
   return `<div class="jg-bowls ${compact ? 'compact' : ''}" id="${compact ? 'jg-bowls-home' : 'jg-bowls'}">
-    <p class="jg-bh">🍽️ 오늘 지신 밥 <b>${n}/3</b>${n === 3 ? ' · 배불러요!' : ''}</p>
+    <p class="jg-bh">🍽️ 오늘 지신 밥 <b>${n}/3</b>${n === 3 ? ' · 배불러요!' : ''}${loadSecond() ? ' <small>· 두 지신이 함께 먹어요</small>' : ''}</p>
     <div class="jg-row">${bw.map((b) => `<button type="button" class="jg-bowl ${b.done ? 'done' : ''}" ${b.done ? 'disabled' : GO[b.key]} title="${b.how}"><span>${b.done ? b.icon : '🥣'}</span><b>${b.label}</b><small>${b.done ? '먹었어요' : b.how}</small></button>`).join('')}</div>
   </div>`;
 }
@@ -2714,6 +2919,108 @@ function openGrowthPreview() {
   document.body.appendChild(el);
   el.addEventListener('click', (e) => { if (e.target === el || e.target.closest('[data-gp-close]')) el.remove(); });
 }
+
+// ---------- v0.53 두 번째 지신: 첫 지신 5단계 완성 뒤 다른 띠 하나 더(같은 세 그릇을 나눠 먹고 1.5배 빨리 자람) ----------
+const JISIN2_KEY = 'unmyeong2099.jisin2';
+const loadSecond = () => { const s = load(JISIN2_KEY, null); return s && Number.isInteger(s.branch) ? s : null; };
+const secondInfo = (sec) => { const info = characterInfo(galSaju(sec.branch, sec.element), state.profile); return { ...info, stage: secondStage(sec, foodPoints()) }; };
+const secondLabel = (sec) => (sec.name ? `${sec.name}의 ${ZODIAC[sec.branch].name}` : `${ZODIAC[sec.branch].name}띠 지신`);
+/** 밥을 먹은 뒤: 두 번째 지신이 진화했으면 알림 */
+function checkSecondEvolution(beforePoints) {
+  const sec = loadSecond(); if (!sec) return;
+  const from = stageForPoints(secondPoints(sec, beforePoints)); const to = secondStage(sec, foodPoints());
+  if (to > from) setTimeout(() => showSecondEvolution(sec, from, to), 1100);
+}
+function showSecondEvolution(sec, from, to) {
+  if (document.querySelector('.evo-modal, .hj-reader')) { setTimeout(() => showSecondEvolution(sec, from, to), 1200); return; }
+  const info = secondInfo(sec); const nm = stageName(to, info.female);
+  const box = document.createElement('div'); box.className = 'evo-modal';
+  box.innerHTML = `<div class="evo-box">
+    <p class="muted" style="margin:0">두 번째 지신 진화</p>
+    <div class="evo-stage"><div class="evo-before">${renderCharacterSVG({ ...info, stage: from }, { stage: from, width: 220, mood: 'wow', backdrop: true })}</div><div class="evo-after">${renderCharacterSVG({ ...info, stage: to }, { stage: to, width: 220, mood: 'excited', backdrop: true, animate: true })}</div><div class="evo-flash"></div></div>
+    <h3>${esc(josa(secondLabel(sec), '이/가'))} <span style="color:var(--gold)">${esc(josa(nm, '으로/로'))}</span> 자랐어요!</h3>
+    <p class="muted">큰 지신이 가르쳐 줘서 ${SECOND_RATE}배 빨리 크고 있어요.</p>
+    <button type="button" class="primary" data-evo-close style="width:100%">좋아요</button>
+  </div>`;
+  document.body.appendChild(box);
+  box.addEventListener('click', (e) => {
+    if (e.target !== box && !e.target.closest('[data-evo-close]')) return;
+    box.remove();
+    if (!$('[data-panel="hero"]').classList.contains('hidden')) renderHero(false);
+  });
+}
+/** 지신 탭: 두 번째 지신 칸(잠김 · 데려오기 · 함께 크는 모습) */
+function secondJisinHTML() {
+  const stage = jisinStage(); const sec = loadSecond(); const female = state.profile.gender === 'female';
+  if (!secondUnlocked(stage)) {
+    const left = Math.max(0, STAGE_POINTS[SECOND_UNLOCK] - foodPoints());
+    const recs = recommendSecond(zIdx(), state.saju.yongsin).slice(0, 3);
+    return `<section class="duo-box locked" id="duo-box">
+      <h4>🔒 두 번째 지신 <small>${SECOND_UNLOCK}단계(${stageName(SECOND_UNLOCK, female)})가 되면 열려요</small></h4>
+      <p>지금 ${stage}단계 · 밥 <b>${left}</b>점 더(세 그릇씩이면 약 <b>${daysLeft(left)}</b>일). 그때 다른 띠 지신 하나를 더 데려와 함께 키울 수 있어요.</p>
+      <div class="duo-peek">${recs.map((r) => `<span>${zodiacFace('smile', 'duo-peek-face', ZODIAC[r.branch].key)}<small>${ZODIAC[r.branch].name}</small></span>`).join('')}<em>추천 친구 미리 보기</em></div>
+    </section>`;
+  }
+  if (!sec) {
+    return `<section class="duo-box open" id="duo-box">
+      <h4>🐣 두 번째 지신을 데려올 수 있어요!</h4>
+      <p>가족·연인·친구의 띠로 골라도 좋고, 내 사주와 잘 맞는 띠를 골라도 좋아요. 따로 할 일은 없어요. 지금처럼 세 그릇을 채우면 둘이 나눠 먹고, 작은 지신은 ${SECOND_RATE}배 빨리 자라요.</p>
+      <button type="button" class="primary" data-duo-pick style="width:100%">🐾 두 번째 지신 고르기</button>
+    </section>`;
+  }
+  const info2 = secondInfo(sec); const p2 = secondPoints(sec, foodPoints()); const go2 = growthOf(p2, info2.stage);
+  const main = characterInfo(state.saju, state.profile);
+  const bowls = todayBowls(loadFood(), state.fortune.dateKey).filter((b) => b.done).length;
+  const talk = pairDialogue(zIdx(), sec.branch, { stageA: stage, stageB: info2.stage, nameB: sec.name ? `${sec.name}의 ${ZODIAC[sec.branch].name}` : undefined });
+  return `<section class="duo-box" id="duo-box">
+    <h4>🐾 함께 크는 두 지신 <small>밥은 같이 먹어요</small></h4>
+    <div class="duo-row">
+      <figure>${renderCharacterSVG(main, { stage, width: 120, mood: 'smile', backdrop: true })}<figcaption><b>큰 지신</b><small>${main.zodiac.name} · ${stage}단계</small></figcaption></figure>
+      <figure>${renderCharacterSVG(info2, { stage: info2.stage, width: 120, mood: bowls === 3 ? 'sleepy' : 'excited', backdrop: true })}<figcaption><b>${esc(secondLabel(sec))}</b><small>${stageName(info2.stage, info2.female)} · ${info2.stage}단계</small></figcaption></figure>
+    </div>
+    <p class="duo-scene">🎬 ${duoScene(state.fortune.dateKey, bowls)}</p>
+    <div class="duo-talk" data-casual>${talk.lines.map((l) => `<p><b>${ZODIAC[l.speaker].name}</b> ${esc(l.text)}</p>`).join('')}</div>
+    <div class="jg-bar-h"><span>${go2.next ? `작은 지신 ✨ <b>${stageName(go2.next, info2.female)}</b>까지` : '✨ 최종 진화 완료'}</span><span>${go2.next ? `세 그릇씩이면 약 <b>${Math.ceil(go2.left / (4 * SECOND_RATE))}</b>일` : ''}</span></div>
+    <div class="jg-bar"><i style="width:${Math.round(go2.ratio * 100)}%"></i></div>
+    <p class="muted duo-meta">📏 키 ${heightCm(p2)}cm · ${esc(sec.at)} 데려옴 · <button type="button" class="linkish" data-duo-pick>바꾸기</button></p>
+  </section>`;
+}
+/** 두 번째 지신 고르기 창 */
+function openSecondPicker() {
+  const cur = loadSecond(); const recs = recommendSecond(zIdx(), state.saju.yongsin); const recSet = new Set(recs.map((r) => r.branch));
+  const others = ZODIAC.map((_, b) => b).filter((b) => b !== zIdx() && !recSet.has(b));
+  let pick = cur?.branch ?? recs[0]?.branch;
+  const box = document.createElement('div'); box.className = 'evo-modal gp-modal';
+  const btn = (b, extra = '') => `<button type="button" class="duo-opt ${b === pick ? 'on' : ''}" data-duo-b="${b}">${zodiacFace('smile', 'duo-face', ZODIAC[b].key)}<b>${ZODIAC[b].name}</b>${extra}</button>`;
+  box.innerHTML = `<div class="evo-box gp-box">
+    <h3>🐾 두 번째 지신 고르기</h3>
+    <p class="muted" style="margin:0 0 10px">내 띠(${ZODIAC[zIdx()].name})는 이미 큰 지신이에요. 운세 점수와는 상관없는 재미 요소라 마음에 드는 띠를 골라도 돼요.</p>
+    <h4 style="margin:6px 0">⭐ 내 사주 추천</h4>
+    <div class="duo-grid">${recs.map((r) => btn(r.branch, `<em>${r.tags.join(' · ')}</em><small>${esc(r.why)}</small>`)).join('')}</div>
+    <h4 style="margin:12px 0 6px">👨‍👩‍👧 가족·연인·친구의 띠</h4>
+    <div class="duo-grid small">${others.map((b) => btn(b)).join('')}</div>
+    <label class="duo-name">부르는 말(선택, ${NAME_MAX}자) <input type="text" maxlength="${NAME_MAX}" placeholder="예: 엄마, 지우" value="${esc(cur?.name || '')}" data-duo-name></label>
+    ${cur ? '<p class="duo-warn">⚠️ 다른 띠로 바꾸면 작은 지신은 1단계부터 다시 자라요. (큰 지신은 그대로예요)</p>' : ''}
+    <button type="button" class="primary" data-duo-ok style="width:100%;margin-top:10px">${cur ? '이대로 저장하기' : '데려오기'}</button>
+    <button type="button" class="ghost" data-gp-close style="width:100%;margin-top:6px">닫기</button>
+  </div>`;
+  document.body.appendChild(box);
+  box.addEventListener('click', (e) => {
+    if (e.target === box || e.target.closest('[data-gp-close]')) { box.remove(); return; }
+    const o = e.target.closest('[data-duo-b]');
+    if (o) { pick = Number(o.dataset.duoB); $$('.duo-opt', box).forEach((x) => x.classList.toggle('on', Number(x.dataset.duoB) === pick)); return; }
+    if (!e.target.closest('[data-duo-ok]') || !Number.isInteger(pick)) return;
+    const name = cleanName($('[data-duo-name]', box).value);
+    const same = cur && cur.branch === pick;
+    const next = same ? { ...cur, name } : adoptSecond({ branch: pick, name, dateKey: state.fortune.dateKey, totalPoints: foodPoints() });
+    save(JISIN2_KEY, next); box.remove();
+    if (same) toast('부르는 말을 바꿨어요');
+    else { toast(`🐣 ${josa(secondLabel(next), '이/가')} 왔어요! 오늘부터 함께 밥을 먹어요`); state.heroLine = pairLine(zIdx(), pick, { stage: jisinStage() }).text; }
+    renderHero(false);
+    setTimeout(() => revealAndScroll('#duo-box', 'center'), 100);
+  });
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-duo-pick]')) openSecondPicker(); });
 
 /** 지신 기운 게이지: 오행 다섯 칸(오행 충전과 같은 값). 부족한 칸은 ★ */
 function kiGaugeHTML(hl = -1) {
@@ -3016,12 +3323,14 @@ function renderToday() {
   { const v = tteokVisit(loadTteok(), state.fortune.dateKey); if (v.gained) save(TTEOK_KEY, v.store); }
   if (!todayBowls(loadFood(), state.fortune.dateKey)[0].done) setTimeout(() => feedJisin('morning'), 0); // 오늘 운세를 본 것 = 아침밥
   logToday();
+  logVisitNow();
   recordKaiun();
   // v0.43 단순화: 펼친 것은 오늘 운세 점수 + 오늘의 기운 카드 두 개뿐, 나머지는 한 줄 제목으로 접힘
   const bd = bookletData(); const sj = state.saju;
   const weekly = weeklyLetterHTML();
   $('[data-panel="today"]').innerHTML = `
     ${easySuggestHTML()}
+    ${diaryHTML()}
     ${fiveCardHTML()}
     ${kiCardHTML()}
     <div class="fold-list">
@@ -3255,6 +3564,7 @@ function renderHero(animate) {
       <h3 class="hero-title" style="text-align:center">${info.title}</h3>
       <p style="margin:0 0 10px;text-align:center"><span class="rarity-badge" style="color:var(--gold)">${stageName(gs.stage, info.female)} · 진화 ${gs.stage}단계</span>${currentDex().title ? ` <span class="rarity-badge" style="color:#ff8fb3">📖 ${currentDex().title}</span>` : ''}${seasonTitle() ? ` <span class="rarity-badge season-title">🏮 ${esc(seasonTitle())}</span>` : ''}</p>
       ${jisinGrowHTML()}
+      ${secondJisinHTML()}
       <h4 class="ki-gh">🐉 지신 기운 게이지 <small>★ 부족한 기운</small></h4>
       ${kiGaugeHTML(kc ? kc.element : -1)}
       ${kiProgressHTML(kst)}
