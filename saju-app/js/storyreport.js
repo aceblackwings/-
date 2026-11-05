@@ -86,14 +86,14 @@ export function yearStoryChapters(ctx) {
   const out = [];
 
   // 1장 · 올해 부는 바람
-  const elLine = yEl === yong ? `게다가 그해 하늘에서 내려오는 기운이 ${who}에게 가장 필요한 ${elWord(yong)}이라, 숨통이 트이고 몸과 마음이 한결 가벼워지는 해예요.`
-    : yEl === saju.gisin ? `다만 그해 하늘의 기운이 ${who}에게 이미 넉넉한 ${elWord(yEl)}이라, 일을 더 벌이기보다 덜어 내고 정리할 때 흐름이 편해져요.`
-      : `그해 하늘의 기운은 ${elWord(yEl)}이에요. ${who}에게 가장 필요한 ${elWord(yong)}은 아니지만, 쓰는 방법만 알면 충분히 내 편이 돼요.`;
-  out.push({ key: 'wind', h: `1장 · 부름: ${Y}년, 나에게 부는 바람`, blocks: [
-    { h: `🌬️ 올해의 바람: ${PLAIN_GOD[god]}`, paras: [T.feel, T.why, elLine] },
-    { h: '👀 올해 주변 사람 눈에 비친 나', paras: [observer(GROUP_OF[god], who, '올해 ')] },
-    { h: '🤔 올해 나에게 던지는 질문', paras: [`${TODAY_TALE[god].think.replace(/오늘/g, '올해')} 이 질문에 답을 찾아가는 것이 ${Y}년의 숙제예요. 답은 정해져 있지 않아요. 이 책을 다 읽고 나서 ${who}만의 답을 적어 보세요.`] },
-    { h: '🎁 이 바람이 가져오는 선물', paras: [`${T.gift[0]}. ${T.gift[1]}.`, inner !== god ? `겉으로 부는 바람 아래, 속에서는 ${PLAIN_GOD[inner]}이 함께 흘러요. 그래서 ${I.gift[0].replace(/요$/, '요.')}` : `겉과 속에 같은 기운이 흘러, 올해의 성격이 아주 또렷해요. 마음먹은 일은 망설이지 말고 한 번에 밀고 가 보세요.`] },
+  const elLine = yEl === yong ? `게다가 그해 들어오는 오행이 ${who}에게 가장 필요한 ${elWord(yong)}이라, 몸과 마음이 평소보다 편한 해예요.`
+    : yEl === saju.gisin ? `다만 그해 들어오는 오행이 ${who}에게 이미 넉넉한 ${elWord(yEl)}이라, 일을 더 벌이기보다 줄이고 정리할 때 편해져요.`
+      : `그해 들어오는 오행은 ${elWord(yEl)}이에요. ${who}에게 가장 필요한 ${elWord(yong)}은 아니어서, 6장의 실천법으로 필요한 기운을 따로 채우면 돼요.`;
+  out.push({ key: 'wind', h: `1장 · ${Y}년에 들어오는 기운`, blocks: [
+    { h: `🧭 올해 들어오는 기운: ${PLAIN_GOD[god]}`, paras: [T.feel, T.why, elLine] },
+    { h: '👀 올해 주변 사람이 보는 나', paras: [observer(GROUP_OF[god], who, '올해 ')] },
+    { h: '🤔 올해 스스로 점검할 질문', paras: [`${TODAY_TALE[god].think.replace(/오늘/g, '올해')} 이 질문에 대한 답을 휴대폰 메모에 적어 두고, 6월과 12월에 다시 확인해 보세요.`] },
+    { h: '🎁 올해 좋아지는 점', paras: [`${T.gift[0]}. ${T.gift[1]}.`, inner !== god ? `겉으로 드러난 기운과 함께 속에서는 ${PLAIN_GOD[inner]}이 들어와요. 그래서 ${I.gift[0].replace(/요$/, '요.')}` : `겉과 속에 같은 기운이 들어와 올해의 성격이 뚜렷해요. 마음먹은 일은 미루지 말고 시작하세요.`] },
   ] });
 
   // 2장 · 요즘 힘든 이유
@@ -103,21 +103,21 @@ export function yearStoryChapters(ctx) {
     const D = GOD_TALE[y.daewoon.god];
     why.push(`더 큰 흐름도 있어요. ${josa(who, '은/는')} 지금 ${y.daewoon.startAge}~${y.daewoon.endAge}세의 10년 흐름 안에 있고, 이 10년을 끌고 가는 힘은 ${PLAIN_GOD[y.daewoon.god]}이에요. ${D.why}`);
   }
-  if (inner !== god) why.push(`올해는 겉으로 부는 바람 아래 ${PLAIN_GOD[inner]}이 함께 흘러요. 그래서 이런 마음도 함께 들 수 있어요. ${GOD_TALE[inner].feel.split('? ')[0].replace(/^요즘 /, '')}? 두 기운이 섞여 마음이 오락가락해도 이상한 게 아니에요.`);
+  if (inner !== god) why.push(`올해는 겉으로 드러난 기운과 함께 속에서 ${PLAIN_GOD[inner]}이 들어와요. 그래서 이런 마음도 함께 들 수 있어요. ${GOD_TALE[inner].feel.split('? ')[0].replace(/^요즘 /, '')}? 두 기운이 섞여 마음이 오락가락해도 이상한 게 아니에요.`);
   const rel = relationPlain(saju.pillars, y.year.pillar, '그해');
   if (rel) why.push(rel.good ? `반가운 소식도 있어요. ${rel.text}` : `올해 마음이 흔들릴 수 있는 이유가 하나 더 있어요. ${rel.text}`);
   const weak = saju.weakest; const wpct = saju.elements[weak];
   why.push(`그리고 타고난 사주에 ${elWord(weak)}이 적은 편(${wpct}%)이라, ${EL_TALE[weak].lack} 지칠 때 이 점을 떠올리면 「내가 부족해서가 아니라 기운이 비어서 그렇구나」 하고 스스로를 덜 탓하게 돼요.`);
-  why.push(`그래서 ${Y}년은 이렇게 달라져요. ${PLAIN_GOD[god]}이 들어와, ${sentence(T.gift[0])} ${sentence(T.gift[1])} 지난 시간의 무게를 내려놓을 준비가 됐다면, 아래 장에서 무엇을 피하고 무엇을 붙잡을지 하나씩 볼게요.`);
-  out.push({ key: 'why', h: '2장 · 지금 넘고 있는 산: 요즘 마음이 무거웠다면, 이유가 있어요', blocks: [{ paras: why }] });
+  why.push(`그래서 ${Y}년은 이렇게 달라져요. ${PLAIN_GOD[god]}이 들어와, ${sentence(T.gift[0])} ${sentence(T.gift[1])} 3장에서는 피할 일을, 4~6장에서는 도움이 되는 사람·맞는 일·실천법을 알려 드려요.`);
+  out.push({ key: 'why', h: '2장 · 요즘 마음이 무거웠던 이유', blocks: [{ paras: why }] });
 
   // 3장 · 위험과 피해야 할 일
   const watch = checks.filter((c) => c.kind === 'watch').slice(0, 3);
-  out.push({ key: 'risk', h: '3장 · 길 위의 덫: 꼭 피해야 할 일', intro: '겁주려는 글이 아니에요. 미리 알면 작게 지나가요.', blocks: [
+  out.push({ key: 'risk', h: '3장 · 올해 조심할 일과 피할 일', intro: '미리 알고 대비하면 손해를 줄일 수 있어요.', blocks: [
     { h: '⚠️ 올해 닥치기 쉬운 위험', paras: [...T.risk.map(sentence), ...(inner !== god ? [sentence(I.risk[0])] : [])] },
     { h: '🚫 올해 피해야 할 일', paras: [list([...T.avoid, ...(inner !== god ? [I.avoid[0]] : [])]) + '. 이 중 하나만 지켜도 한 해가 훨씬 가벼워져요.'] },
     ...watch.map((c) => ({ h: `🔎 ${c.title.replace(/\s*\([^)]*\)$/, '')}`, paras: [sentence(c.text), `👉 이렇게 막아요: ${sentence(c.act)}${c.when ? ` 특히 ${c.when}에 한 번 더 챙겨 보세요.` : ''}`], plain: true })),
-    { h: '📅 속도를 늦출 때', paras: [`${slow.map((x) => `${x.m.solarMonth}월`).join('과 ')}은 한 해 가운데 가장 차분한 달이에요. 이때는 새로 벌이기보다 정리하고 쉬어 가세요. ${sentence(TODAY_TALE[slow[0].m.god].watch.replace(/오늘은?/g, '이 달엔'))}`] },
+    { h: '📅 조심할 달', paras: [`${slow.map((x) => `${x.m.solarMonth}월`).join('과 ')}은 한 해 가운데 점수가 가장 낮은 달이에요. 이때는 새 일·큰 결제·계약을 피하고, 하던 일을 정리하세요. ${sentence(TODAY_TALE[slow[0].m.god].watch.replace(/오늘은?/g, '이 달엔'))}`] },
   ] });
 
   // 4장 · 좋은 인연
@@ -125,21 +125,21 @@ export function yearStoryChapters(ctx) {
   const spouseGods = gender === 'male' ? ['정재', '편재'] : ['정관', '편관'];
   const loveM = topMonths(y, 'love'); const socM = topMonths(y, 'social');
   const spouseM = y.months.filter((m) => spouseGods.includes(m.god)).map((m) => `${m.solarMonth}월`);
-  out.push({ key: 'people', h: '4장 · 함께 걸을 동료: 좋은 인연은 이렇게 와요', blocks: [
+  out.push({ key: 'people', h: '4장 · 올해 도움이 되는 사람과 인연', blocks: [
     { h: '🤝 올해 나를 돕는 사람', paras: [T.people, `특히 ${E.zodiac}처럼 ${elWord(yong)}을 가진 사람, 그리고 내 띠(${ANIMALS[myB]})와 찰떡인 ${ANIMALS[six]}띠, 뜻이 잘 맞는 ${tri.map((b) => ANIMALS[b]).join('·')}띠 사람이 곁에 있으면 일이 술술 풀려요.`] },
     { h: '💗 사랑과 만남', paras: [
-      `사랑에 바람이 부는 달은 ${mList(loveM)}이에요.${spouseM.length ? ` 또 ${spouseM.join('·')}은 사주로 보면 「짝의 기운」이 들어오는 달이라, 혼자라면 새 인연을, 함께라면 깊은 약속을 이야기하기 좋아요.` : ''}`,
+      `연애운이 가장 좋은 달은 ${mList(loveM)}이에요.${spouseM.length ? ` 또 ${spouseM.join('·')}은 사주로 보면 「짝의 기운」이 들어오는 달이라, 혼자라면 새 인연을, 함께라면 깊은 약속을 이야기하기 좋아요.` : ''}`,
       `만남은 ${E.place}처럼 ${elWord(yong)}이 흐르는 곳에서 생기기 쉬워요. 혼자라면 이번 달 안에 그런 곳에 한 번 가 보세요. 함께라면 그곳에서 둘만의 시간을 보내면 마음이 가까워져요.`,
     ] },
     { h: '💌 혼자라면, 함께라면', paras: [`혼자라면: ${LOVE_SOLO[GROUP_OF[god]]}`, `함께라면: ${LOVE_PAIR[GROUP_OF[god]]}`] },
-    { h: '🫂 사람 사이가 넓어지는 때', paras: [`모임과 부탁, 소개가 잘 풀리는 달은 ${mList(socM)}이에요. 이 달에는 오랜만인 사람에게 먼저 연락해 보세요. 한 통의 안부가 올해의 귀인을 데려올 수 있어요.`] },
+    { h: '🫂 사람 사이가 넓어지는 때', paras: [`모임과 부탁, 소개가 잘 풀리는 달은 ${mList(socM)}이에요. 이 달에는 오랜만인 사람에게 먼저 연락하세요. 소개와 부탁이 잘 들어지는 달이에요.`] },
   ] });
 
   // 5장 · 돈과 일
   const tg = tenGodProfile(saju); const topG = [...tg.groups].sort((a, b) => b.pct - a.pct)[0];
   const H = saju.heesin != null && saju.heesin !== yong ? EL_TALE[saju.heesin] : null;
   const wM = topMonths(y, 'wealth'); const bM = topMonths(y, 'business'); const wLow = lowMonths(y, 'wealth')[0];
-  out.push({ key: 'money', h: '5장 · 나의 무대: 돈과 일, 나에게 맞는 분야', blocks: [
+  out.push({ key: 'money', h: '5장 · 돈과 일: 나에게 맞는 분야', blocks: [
     { h: '💼 나는 이렇게 버는 사람', paras: [GROUP_MONEY[GROUP_ORDER.indexOf(topG.key)], `올해는 ${T.work}`] },
     { h: `🏪 사업·일을 한다면 이 분야 (${elWord(yong)})`, paras: [
       `${who}에게 가장 필요한 기운은 ${elWord(yong)}이에요. 일도 이 기운이 흐르는 분야를 고르면, 같은 노력으로 더 오래 더 크게 남아요.`,
@@ -154,23 +154,36 @@ export function yearStoryChapters(ctx) {
   ] });
 
   // 6장 · 이겨 내는 법
-  out.push({ key: 'fix', h: '6장 · 손에 쥘 무기: 운을 내 편으로 만드는 법', blocks: [
+  out.push({ key: 'fix', h: '6장 · 운을 좋게 하는 실천법', blocks: [
     { h: `🌱 ${elWord(yong)}을 곁에 두는 법`, paras: [`${elWord(yong)}은 ${E.nature}`, list(E.bring) + '.', `색은 ${E.color}, 장소는 ${E.place}가 힘이 돼요.`] },
-    { h: '🛡️ 올해 바람을 이겨 내는 행동 세 가지', paras: [list(T.fix) + '.', '세 가지를 다 하려 하지 말고, 가장 쉬운 하나부터 오늘 시작해 보세요. 작은 행동이 쌓이면 운의 방향이 바뀌어요.'] },
+    { h: '🛡️ 올해 꼭 할 행동 세 가지', paras: [list(T.fix) + '.', '세 가지를 한꺼번에 하려 하지 말고, 가장 쉬운 하나를 오늘 시작하세요. 한 달 뒤 두 번째를 더하면 돼요.'] },
     { h: '🗓️ 한 달 실천표', paras: [`1주: ${E.bring[0]}. 2주: ${T.fix[0]}. 3주: ${E.bring[1]}. 4주: 한 달 동안 달라진 점 세 가지를 적어 보기. 앱의 「오늘의 좋은 습관」이 날마다 이 흐름에 맞는 작은 일을 하나씩 골라 드려요.`] },
   ] });
-  // 장 끝 한 줄(다음 장이 궁금해지게): 덫 개수·첫 달처럼 숫자를 넣어 또렷하게
+  // 장 끝 한 줄: 다음 장에서 무엇을 알려 주는지 그대로(v0.51, 비유 없이 숫자와 내용으로)
   const trapN = T.risk.length + (inner !== god ? 1 : 0) + watch.length;
   const cliffs = [
-    `바람의 방향은 알았어요. 그런데 ${Y - 1}년에 유난히 어깨가 무거웠던 데에는 따로 까닭이 있었어요. 그 이야기를 다음 장에서 들려드릴게요.`,
-    `까닭을 알고 나면 산의 높이가 보여요. 하지만 산길에는 늘 덫이 숨어 있기 마련이죠. 올해 ${who}의 길 위에 놓인 덫은 모두 ${trapN}개예요.`,
-    `덫을 피하는 가장 좋은 방법은 혼자 걷지 않는 거예요. 그렇다면 올해 ${who} 곁에 나타날 동료는 누구일까요?`,
-    `동료가 생겼다면 이제 마음껏 뛸 무대가 필요해요. ${josa(who, '이/가')} 가장 빛날 무대는 어디일까요?`,
-    `무대에 오를 때는 손에 무기를 쥐어야 해요. ${who}의 무기는 멀리 있지 않고, 매일의 작은 습관 속에 숨어 있어요.`,
-    `이제 준비는 끝났어요. 남은 건 ${y.months[0].solarMonth}월부터 열두 달을 한 걸음씩 걸어가는 일이에요.`,
+    `다음 장에서는 ${Y - 1}년에 유난히 힘들었던 이유를 알려 드려요.`,
+    `다음 장에서는 올해 조심할 일 ${trapN}가지와 그 대비법을 알려 드려요.`,
+    `다음 장에서는 올해 ${who}에게 도움이 되는 사람과 띠, 연애운이 좋은 달을 알려 드려요.`,
+    `다음 장에서는 ${who}에게 맞는 일·사업 분야와 돈 흐름이 좋은 달을 알려 드려요.`,
+    `다음 장에서는 운을 좋게 하는 실천법과 한 달 실천표를 알려 드려요.`,
+    `다음 장에서는 ${y.months[0].solarMonth}월부터 열두 달을 한 달씩 풀어 드려요.`,
   ];
   out.forEach((sec, i) => sec.blocks.push({ cliff: true, paras: [cliffs[i]] }));
+  out.unshift(yearBrief(ctx, { T, I, inner, god, best, slow, watch }));
   return out;
+}
+
+/** v0.51 한눈에 정리(상세판 맨 앞 · 무료 책자 앞머리): 올해 한 줄 · 꼭 할 일 · 피할 일 · 좋은 달/조심할 달 */
+function yearBrief(ctx, { T, I, inner, god, best, slow, watch }) {
+  const Y = ctx.y.sajuYear;
+  const avoid = [...T.avoid, ...(inner !== god ? [I.avoid[0]] : [])];
+  return { key: 'brief', h: `📌 한눈에 정리: ${Y}년에 할 일과 피할 일`, intro: '자세한 이유는 1장부터 차례로 읽으면 돼요.', blocks: [
+    { h: '한 줄 요약', paras: [`${Y}년은 ${PLAIN_GOD[god]}이 들어오는 해예요. 올해의 목표는 「${T.goal}」, 이 한 줄이에요.`] },
+    { h: '✅ 올해 꼭 할 일', paras: T.fix.map((x) => `· ${x}`) },
+    { h: '⛔ 올해 피할 일', paras: [...avoid.map((x) => `· ${x}`), ...watch.map((c) => `· ${c.title.replace(/\s*\([^)]*\)$/, '')} → ${sentence(c.act)}`)], plain: true },
+    { h: '📅 언제', paras: [`· 좋은 달: ${best.map((x) => `${x.m.solarMonth}월`).join('·')}. 시작·계약·큰 결정은 이 달에 하세요.`, `· 조심할 달: ${slow.map((x) => `${x.m.solarMonth}월`).join('·')}. 이 달에는 새 일과 큰 결제를 미루세요.`] },
+  ] };
 }
 /** 관찰자 시점: 주변 사람 눈에 비친 나(기운 무리별) */
 const OBSERVER = [
@@ -182,7 +195,7 @@ const OBSERVER = [
 ];
 function observer(g, who, pre) {
   const [look, back] = OBSERVER[g];
-  return `${pre}주변 사람들 눈에 비친 ${josa(who, '은/는')} 「${look}」이에요. 그런데 ${back}. 겉으로 보이는 나와 속의 나 사이의 이 작은 틈을 알아 두면, 사람 사이의 오해가 절반으로 줄어들어요.`;
+  return `${pre}주변 사람들은 ${josa(who, '을/를')} 「${look}」으로 봐요. 그런데 ${back}. 그러니 힘들 때는 혼자 버티지 말고, 가까운 사람에게 지금 상태를 말로 알려 주세요.`;
 }
 const GROUP_ORDER = ['bigeop', 'siksang', 'jaeseong', 'gwanseong', 'inseong'];
 
@@ -193,8 +206,8 @@ export function yearClosing(ctx) {
   return { key: 'close', h: `맺음 · 나의 ${y.sajuYear}년 목표 세 가지`, blocks: [{ paras: [
     `① 마음의 목표: ${T.goal}. ② 돈의 목표: ${wM.m.solarMonth}월에 미뤄 둔 돈 결정 하나를 끝내기. ③ 사람의 목표: ${lM.m.solarMonth}월에 고마운 사람과 마음을 나누기.`,
     `세 가지를 휴대폰 메모나 달력에 적어 두세요. 적어 둔 목표는 잊혀도 다시 돌아와요.`,
-    `${who}, 운은 정해진 점수가 아니라 쓰는 방법이에요. 바람이 셀 때는 몸을 낮추고, 순할 때는 돛을 펴면 되니까요. 그리고 그 길에서 ${josa(EL_NAME[saju.yongsin] + ' 기운', '이/가')} 조용히 등을 받쳐 줄 거예요.`,
-    `이 책을 덮기 전에 두 가지만 스스로에게 물어보세요. 올해 내가 내려놓아야 할 짐은 무엇일까? 그리고 끝까지 놓지 말아야 할 것은 무엇일까? 지금은 답을 몰라도 괜찮아요. 12월의 ${josa(who, '은/는')} 아마 그 답을 알고 있을 테니까요.`,
+    `${who}, 점수가 좋은 달에는 미뤄 둔 일을 시작하고, 점수가 낮은 달에는 새 일을 벌이지 말고 정리하세요. 그리고 한 해 내내 6장의 방법으로 ${EL_NAME[saju.yongsin]} 기운을 곁에 두세요.`,
+    `6월과 12월에 이 책 맨 앞의 「한눈에 정리」를 다시 열어, 할 일을 몇 개 지켰는지 확인해 보세요.`,
   ] }] };
 }
 
@@ -208,7 +221,7 @@ export function seasonStory(y) {
     return { name, ms, v, line: `${name}(${ms.join('·')}월)은 「${TODAY_TALE[mid.god].head.replace(/날$/, '계절')}」. ${TODAY_TALE[mid.god].good.replace(/오늘/g, '이 계절')}` };
   });
   const bestS = [...rows].sort((a, b) => b.v - a.v)[0]; const slowS = [...rows].sort((a, b) => a.v - b.v)[0];
-  return { h: '🗺️ 사계절 한눈에', paras: [...rows.map((r) => r.line), `한 해 가운데 바람이 가장 시원한 계절은 ${bestS.name.slice(3)}, 숨을 고르기 좋은 계절은 ${slowS.name.slice(3)}이에요.`] };
+  return { h: '🗺️ 사계절 한눈에', paras: [...rows.map((r) => r.line), `한 해 가운데 가장 좋은 계절은 ${bestS.name.slice(3)}, 쉬어 가며 정리할 계절은 ${slowS.name.slice(3)}이에요.`] };
 }
 
 export function monthStory(y, i, ctx, rank, days) {
@@ -218,7 +231,7 @@ export function monthStory(y, i, ctx, rank, days) {
   const vals = keys.map((k) => ({ k, v: fieldOf(m, k) })).sort((a, b) => b.v - a.v);
   const hi = vals[0]; const lo = vals[vals.length - 1];
   const head = TT.head.replace(/날$/, '달');
-  const tone = rank < 3 ? '한 해 가운데 바람이 가장 시원한 달 중 하나예요.' : rank >= 10 ? '한 해 가운데 가장 차분한 달이라, 쉬어 가며 다지기 좋아요.' : '';
+  const tone = rank < 3 ? '한 해 가운데 가장 좋은 달 중 하나예요. 시작과 큰 결정은 이 달에 하세요.' : rank >= 10 ? '한 해 가운데 점수가 낮은 달이에요. 새 일은 미루고 정리하세요.' : '';
   const paras = [];
   paras.push(`${m.term}부터 ${PLAIN_GOD[m.god]}이 들어와요. ${TT.good.replace(/오늘/g, '이 달')} ${tone}`.trim());
   if (inner !== m.god) paras.push(`속에서는 ${PLAIN_GOD[inner]}이 함께 흘러요. ${sentence(GOD_TALE[inner].gift[i % 2])}`);
@@ -235,17 +248,18 @@ export function monthStory(y, i, ctx, rank, days) {
 // ======================================================================
 // 평생 정통사주 이야기
 // ======================================================================
+// v0.51: 일간 성향을 비유 없이(전통 이미지는 괄호로만)
 const DM_STORY = [
-  '곧게 뻗어 오르는 큰 나무예요. 한번 정한 길은 끝까지 가고, 불의를 보면 참지 못해요. 그래서 「고집 세다」는 말과 「믿음직하다」는 말을 함께 듣죠.',
-  '어디서든 뿌리내리는 덩굴과 꽃이에요. 분위기를 잘 읽고 사람 사이를 부드럽게 이어 줘요. 겉으로는 순해 보여도 속은 누구보다 끈질겨요.',
-  '세상을 비추는 태양이에요. 밝고 솔직해서 사람들이 모여들어요. 대신 마음이 상하면 얼굴에 다 드러나고, 한꺼번에 타올랐다 지치기도 해요.',
-  '어둠을 밝히는 촛불이에요. 겉은 조용해도 속에 뜨거운 열정과 깊은 배려가 있어요. 한 사람, 한 분야에 오래 마음을 쏟는 사람이에요.',
-  '묵직한 큰 산이에요. 쉽게 흔들리지 않아 주변이 기대고 싶어 해요. 대신 속마음을 잘 꺼내지 않아 혼자 오래 품고 있는 일이 많아요.',
-  '곡식을 길러 내는 기름진 들판이에요. 꼼꼼히 챙기고 가꾸는 힘이 있어 살림과 사람을 잘 키워요. 남을 챙기느라 나를 뒤로 미루기 쉬워요.',
-  '단단한 바위와 쇠예요. 옳고 그름이 분명하고 의리가 있어요. 위기에서 오히려 강해지지만, 말이 직설적이라 오해를 사기도 해요.',
-  '정교하게 다듬어진 보석이에요. 감각이 예리하고 아름다운 것을 알아봐요. 자존심이 강하고 완벽을 바라서, 스스로에게 가장 엄격해요.',
-  '넓은 바다예요. 생각의 크기가 크고 흐름을 빨리 읽어요. 자유를 사랑해서 틀에 갇히면 답답해하고, 속마음은 깊어 잘 보이지 않아요.',
-  '만물을 적시는 이슬비예요. 섬세하고 직관이 뛰어나 사람 마음을 잘 알아차려요. 조용하지만 한번 마음먹으면 바위도 뚫는 끈기가 있어요.',
+  '한번 정한 길은 끝까지 가고, 옳지 않은 일을 보면 참지 못하는 사람이에요(전통으로는 「큰 나무」). 그래서 「고집 세다」는 말과 「믿음직하다」는 말을 함께 들어요.',
+  '분위기를 잘 읽고 사람 사이를 부드럽게 이어 주는 사람이에요(전통으로는 「꽃과 덩굴」). 겉으로는 순해 보여도 속은 끈질겨요.',
+  '밝고 솔직해서 사람들이 모여드는 사람이에요(전통으로는 「태양」). 대신 기분이 얼굴에 그대로 드러나고, 한꺼번에 몰아서 하다 지치기 쉬워요.',
+  '겉은 조용해도 속에 열정과 배려가 많은 사람이에요(전통으로는 「촛불」). 한 사람, 한 분야에 오래 마음을 쏟아요.',
+  '쉽게 흔들리지 않아 주변이 기대는 사람이에요(전통으로는 「큰 산」). 대신 속마음을 잘 말하지 않아 혼자 오래 고민해요.',
+  '꼼꼼히 챙기고 사람과 살림을 잘 돌보는 사람이에요(전통으로는 「기름진 땅」). 남을 챙기느라 나를 뒤로 미루기 쉬워요.',
+  '옳고 그름이 분명하고 의리가 있는 사람이에요(전통으로는 「바위와 쇠」). 위기에 강하지만, 말이 직설적이라 오해를 사기도 해요.',
+  '감각이 예리하고 좋은 것을 잘 알아보는 사람이에요(전통으로는 「보석」). 자존심이 강하고 완벽을 바라서 스스로에게 가장 엄격해요.',
+  '생각의 폭이 넓고 상황 판단이 빠른 사람이에요(전통으로는 「큰 물」). 틀에 갇히면 답답해하고, 속마음을 잘 드러내지 않아요.',
+  '섬세하고 눈치가 빨라 사람 마음을 잘 알아차리는 사람이에요(전통으로는 「비와 이슬」). 조용하지만 한번 마음먹으면 끝까지 해내요.',
 ];
 const GROUP_HEAR = [
   '「너는 네 생각이 확실하구나」, 「혼자서도 잘하네」라는 말을 자주 듣지 않나요?',
@@ -270,23 +284,23 @@ export function lifeStoryChapters(ctx) {
   const over = [0, 1, 2, 3, 4].sort((a, b) => els[b] - els[a])[0]; const weak = saju.weakest;
   const out = [];
 
-  out.push({ key: 'me', h: '1장 · 주인공 소개: 나는 이런 사람이에요', blocks: [
-    { h: '🌳 타고난 모습', paras: [`${josa(who, '은/는')} ${DM_STORY[saju.dayMaster]}`, `${GROUP_HEAR[gi]} 사주에 「${top.mean}」이 가장 많아서(${top.pct}%) 그래요. ${top.strong}`] },
+  out.push({ key: 'me', h: '1장 · 나는 이런 사람이에요', blocks: [
+    { h: '🌳 타고난 성향', paras: [`${josa(who, '은/는')} ${DM_STORY[saju.dayMaster]}`, `${GROUP_HEAR[gi]} 사주에 「${top.mean}」이 가장 많아서(${top.pct}%) 그래요. ${top.strong}`] },
     { h: '🌼 태어난 날이 말해 주는 나', paras: (() => { const ij = buildIlju(saju); return [ij.paras.personality, `사랑할 때: ${ij.paras.love}`, `일할 때: ${ij.paras.work}`]; })() },
-    { h: '👀 주변 사람 눈에 비친 나', paras: [observer(gi, who, '')] },
-    { h: '🪞 남들은 모르는 속마음', paras: [`${GOD_TALE[GROUP_REP_HARD[gi]].feel.replace(/^요즘 /, '')} 이런 마음이 자주 든다면, 그건 ${who}의 사주가 그렇게 생겼기 때문이에요. 나쁜 게 아니라, 다루는 법을 알면 가장 큰 무기가 되는 성질이에요.`, ...(gp ? [`${who}의 타고난 그릇은 「${gp.title}」이에요. 강점은 ${gp.strengths.slice(0, 2).join(', ')}.`] : [])] },
+    { h: '👀 주변 사람이 보는 나', paras: [observer(gi, who, '')] },
+    { h: '🪞 남들은 모르는 속마음', paras: [`${GOD_TALE[GROUP_REP_HARD[gi]].feel.replace(/^요즘 /, '')} 이런 마음이 자주 든다면, 그건 ${who}의 사주가 그렇게 생겼기 때문이에요. 나쁜 성질이 아니라, 2~3장의 방법대로 다루면 장점이 되는 성질이에요.`, ...(gp ? [`${who}의 타고난 그릇은 「${gp.title}」이에요. 강점은 ${gp.strengths.slice(0, 2).join(', ')}.`] : [])] },
   ] });
 
   const hard = [];
   hard.push(`살다 보면 비슷한 고비가 반복된다고 느낄 때가 있죠. 그건 우연이 아니라, 타고난 기운의 모양 때문이에요.`);
   hard.push(`${who}의 사주에는 ${elWord(over)}이 가장 많고(${els[over]}%), ${elWord(weak)}이 가장 적어요(${els[weak]}%). 넘치는 쪽은 ${EL_OVER[over]} 모자란 쪽은 ${EL_TALE[weak].lack}`);
   for (const w of watch.slice(0, 3)) hard.push(`「${w.title}」 — ${sentence(w.text)} 👉 ${sentence(w.act)}`);
-  hard.push(`이걸 알고 나면 같은 고비가 와도 「아, 또 그 기운이구나」 하고 한 발 물러설 수 있어요. 아는 것만으로도 고비의 절반은 넘은 거예요.`);
-  out.push({ key: 'hard', h: '2장 · 반복되는 시련: 자꾸 같은 고비가 오는 이유', blocks: [{ paras: hard }] });
+  hard.push(`같은 고비가 다시 오면 위의 👉 대비법부터 하나씩 해 보세요. 고비가 오는 이유를 알면 같은 실수를 덜 하게 돼요.`);
+  out.push({ key: 'hard', h: '2장 · 자꾸 같은 고비가 오는 이유', blocks: [{ paras: hard }] });
 
   const RG = GOD_TALE[GROUP_REP_HARD[gi]];
-  out.push({ key: 'risk', h: '3장 · 평생의 덫: 조심할 위험과 피해야 할 일', intro: '타고난 성질의 뒷면이에요. 미리 알면 비켜 갈 수 있어요.', blocks: [
-    { h: '⚠️ 빠지기 쉬운 함정', paras: RG.risk.map(sentence) },
+  out.push({ key: 'risk', h: '3장 · 평생 조심할 일과 피할 일', intro: '타고난 성질의 단점이에요. 미리 알면 피할 수 있어요.', blocks: [
+    { h: '⚠️ 빠지기 쉬운 실수', paras: RG.risk.map(sentence) },
     { h: '🚫 평생 피하면 좋은 일', paras: [list([...RG.avoid, low.pct <= 8 ? `「${low.mean}」이 적으니 ${low.fill.replace(/[.]$/, '')}` : '내 기분이 가장 들뜬 날 큰 결정 내리기']) + '.'] },
   ] });
 
@@ -295,7 +309,7 @@ export function lifeStoryChapters(ctx) {
   const P = saju.pillars; const spots = [];
   for (const k of ['year', 'month', 'day', 'hour']) { if (!P[k]) continue; if (k !== 'day' && spouseGods.includes(tenGod(saju.dayMaster, P[k].stem))) spots.push(k); if (spouseGods.includes(tenGod(saju.dayMaster, BRANCH_MAIN_STEM[P[k].branch]))) spots.push(k); }
   const dayGod = tenGod(saju.dayMaster, BRANCH_MAIN_STEM[dB]);
-  out.push({ key: 'people', h: '4장 · 평생의 동료: 나를 살리는 인연', blocks: [
+  out.push({ key: 'people', h: '4장 · 나에게 맞는 사람과 도움이 되는 사람', blocks: [
     { h: '💗 나에게 맞는 짝', paras: [
       `배우자 자리에는 ${PLAIN_GOD[dayGod]}이 앉아 있어요. 그래서 ${SPOUSE_TYPE[dayGod]} 사람과 마음이 잘 맞아요. 이런 사람 곁에서는 ${who}도 가장 나다워져요.`,
       spots.length ? `사주에 「짝의 기운」이 ${new Set(spots).size}곳에 있어요. 인연이 없는 사주가 아니니 서두르지 않아도 돼요. 짝의 기운이 들어오는 해와 달(해마다 나오는 상세판에서 볼 수 있어요)에 마음을 열어 두세요.` : '사주에 「짝의 기운」이 겉으로 드러나 있지 않아요. 인연이 없다는 뜻이 아니라, 10년 흐름이나 어느 해에 짝의 기운이 들어올 때 인연이 또렷해진다는 뜻이에요. 그때를 기다리며 나를 먼저 가꾸면 돼요.',
@@ -304,12 +318,12 @@ export function lifeStoryChapters(ctx) {
     { h: '🤝 평생의 귀인', paras: [`${who}에게 가장 필요한 ${elWord(yong)}을 가진 ${E.zodiac} 사람이 귀인이 되기 쉬워요. ${GOD_TALE[GROUP_REP[GROUP_ORDER.indexOf(low.key)]].people}`] },
   ] });
 
-  out.push({ key: 'body', h: '5장 · 주인공의 몸: 몸이 보내는 신호', intro: '진단이 아니라 기운의 균형으로 보는 생활 습관이에요. 증상이 있으면 병원 진료가 먼저예요.', blocks: [{ paras: [
+  out.push({ key: 'body', h: '5장 · 건강: 먼저 챙길 곳', intro: '진단이 아니라 기운의 균형으로 보는 생활 습관이에요. 증상이 있으면 병원 진료가 먼저예요.', blocks: [{ paras: [
     `${elWord(over)}이 많은 사주는 ${BODY[over]} 쪽이 쉽게 지치고, ${elWord(weak)}이 적은 사주는 ${BODY[weak]} 쪽이 먼저 신호를 보내기 쉬워요.`,
     `${BODY_CARE[weak]} 넘치는 ${elWord(over)}은 ${BODY_EASE[over]}`,
   ] }] });
   const H = saju.heesin != null && saju.heesin !== yong ? EL_TALE[saju.heesin] : null;
-  out.push({ key: 'work', h: '6장 · 주인공의 무대: 타고난 일과 사업 분야', blocks: [
+  out.push({ key: 'work', h: '6장 · 나에게 맞는 일과 사업 분야', blocks: [
     { h: '💼 나는 이렇게 버는 사람', paras: [GROUP_MONEY[gi], ...(gp ? [`일하는 방식: ${sentence(gp.work)}`] : [])] },
     { h: `🏪 평생 잘 맞는 분야 (${elWord(yong)})`, paras: [`${elWord(yong)}이 흐르는 일을 하면 같은 노력으로 더 크게 남아요.`, ...E.biz.map(([f, r]) => `· ${f} — ${r}`), ...(H ? [`곁에서 돕는 ${elWord(saju.heesin)} 쪽도 좋아요: ${H.biz.slice(0, 3).map(([f]) => f).join(', ')}.`] : [])] },
     { h: '🧭 일을 고를 때 기준 하나', paras: [`일의 이름보다 「그 일에 ${elWord(yong)}이 흐르는가」를 보세요. ${E.nature.split('. ')[1] || E.nature} 이런 힘을 쓰는 자리라면, 어떤 직업이든 ${who}에게 맞는 일이 돼요.`] },
@@ -324,28 +338,45 @@ export function lifeStoryChapters(ctx) {
           : [`${d.startAge}~${d.endAge}세에는 ${PLAIN_GOD[d.god]}이 불어와요. ${G.gift[0]}. 다만 ${G.risk[0].replace(/요$/, '요.')} 👉 ${sentence(G.fix[0])} ${i === curI + 1 ? `지금부터 ${josa(`「${G.goal}」`, '을/를')} 마음에 두고 준비하면 그 10년이 훨씬 편해져요.` : ''}`.trim()];
       return { h: `${tag} · ${d.startAge}~${d.endAge}세 ${d.score >= 70 ? '🌟' : ''}`.trim(), paras };
     });
-    out.push({ key: 'seasons', h: '7장 · 인생의 여정: 지나온 길, 지금, 그리고 다음', intro: '10년마다 부는 바람이 바뀌어요. 지금이 힘들다면 그 이유가 여기 있어요.', blocks });
+    out.push({ key: 'seasons', h: '7장 · 10년마다 바뀌는 흐름: 지나온 때, 지금, 다음', intro: '10년마다 들어오는 기운이 바뀌어요. 지금이 힘들다면 그 이유가 여기 있어요.', blocks });
   }
 
-  out.push({ key: 'fix', h: '8장 · 주인공의 무기: 운을 바꾸는 습관', blocks: [
+  out.push({ key: 'fix', h: '8장 · 운을 좋게 하는 습관', blocks: [
     { h: `🌱 ${elWord(yong)}을 곁에 두는 법`, paras: [`${elWord(yong)}은 ${E.nature}`, list(E.bring) + '.', `색은 ${E.color}, 장소는 ${E.place}.`] },
-    { h: '🎯 평생의 목표 하나', paras: [`${top.fill} 그리고 「${GOD_TALE[GROUP_REP[gi]].goal}」, 이 한 줄을 마음에 두면 흔들릴 때마다 돌아올 자리가 생겨요.`] },
+    { h: '🎯 평생의 목표 하나', paras: [`${top.fill} 그리고 「${GOD_TALE[GROUP_REP[gi]].goal}」, 이 한 줄을 휴대폰 메모에 적어 두고 큰 결정을 할 때마다 다시 읽어 보세요.`] },
   ] });
-  // 장 끝 한 줄(다음 장이 궁금해지게)
+  // 장 끝 한 줄: 다음 장에서 무엇을 알려 주는지 그대로(v0.51)
   const nextCliff = {
-    me: `주인공의 얼굴은 이제 보였어요. 그런데 이런 사람에게는 왜 늘 비슷한 산이 찾아오는 걸까요? 그 까닭은 ${elWord(over)}과 ${elWord(weak)} 사이에 숨어 있어요.`,
-    hard: `시련의 모양을 알았다면, 이제 그 산길에 숨은 덫을 볼 차례예요. ${who}의 사주가 평생 조심하라고 말하는 덫은 ${RG.risk.length + 1}가지예요.`,
-    risk: '덫을 피해 가는 가장 든든한 방법은 곁에 좋은 사람을 두는 거예요. 그렇다면 평생 내 편이 되어 줄 사람은 어떤 모습일까요?',
-    people: `사람만큼 소중한 게 하나 더 있어요. 긴 여정을 끝까지 걸어 줄 내 몸이에요. ${elWord(weak)}이 적은 주인공의 몸은 어디서 먼저 신호를 보낼까요?`,
-    body: `몸을 챙겼다면 이제 마음껏 뛸 무대를 찾을 차례예요. ${elWord(yong)}이 흐르는 무대는 어디일까요?`,
-    work: '무대를 찾았다면, 이제 그 무대 위에서 보낼 시간을 10년 단위로 펼쳐 볼게요. 지금 몇 번째 장을 지나고 있는지 알면, 다음 장이 훨씬 덜 두려워져요.',
-    seasons: '여정의 지도는 다 펼쳤어요. 마지막으로, 어느 장에서든 꺼내 쓸 수 있는 주인공의 무기를 건네 드릴게요.',
+    me: `다음 장에서는 ${who}에게 비슷한 고비가 반복되는 이유를 ${elWord(over)}과 ${elWord(weak)}으로 설명해 드려요.`,
+    hard: `다음 장에서는 평생 조심할 일 ${RG.risk.length + 1}가지와 피할 일을 알려 드려요.`,
+    risk: '다음 장에서는 나에게 맞는 짝과 도움이 되는 사람, 잘 맞는 띠를 알려 드려요.',
+    people: `다음 장에서는 ${elWord(weak)}이 적은 사주가 먼저 챙길 건강 부위를 알려 드려요.`,
+    body: `다음 장에서는 ${elWord(yong)}이 필요한 ${who}에게 맞는 일과 사업 분야를 알려 드려요.`,
+    work: '다음 장에서는 10년마다 바뀌는 흐름과 지금 지나고 있는 10년을 알려 드려요.',
+    seasons: '다음 장에서는 어느 때든 쓸 수 있는, 운을 좋게 하는 습관을 알려 드려요.',
   };
+  out.unshift(lifeBrief({ who, saju, gi, RG, yong, E, weak, daewoon, curAge }));
   out.forEach((sec) => { if (nextCliff[sec.key]) sec.blocks.push({ cliff: true, paras: [nextCliff[sec.key]] }); });
   return out;
 }
 
-/** 정통사주 여는 문단(첫 장면) · 맺음(열린 질문) */
+/** v0.51 한눈에 정리(정통사주 맨 앞): 나는 어떤 사람 · 평생 할 일 · 피할 일 · 맞는 일 · 챙길 몸 · 지금 10년 */
+function lifeBrief({ who, saju, gi, RG, yong, E, weak, daewoon, curAge }) {
+  const G = GOD_TALE[GROUP_REP[gi]];
+  const cur = daewoon?.pillars?.find((d) => curAge >= d.startAge && curAge <= d.endAge);
+  const curGod = cur ? (cur.god || tenGod(saju.dayMaster, cur.stem)) : null;
+  return { key: 'brief', h: '📌 한눈에 정리: 평생 기억할 할 일과 피할 일', intro: '자세한 이유는 1장부터 차례로 읽으면 돼요.', blocks: [
+    { h: '한 줄 요약', paras: [`${josa(who, '은/는')} 「${GROUP_HEAR_TAG[gi]}」 사람이에요. 가장 필요한 기운은 ${elWord(yong)}이에요.`] },
+    { h: '✅ 평생 꾸준히 할 일', paras: [...G.fix.map((x) => `· ${x}`), `· ${E.bring[0]}`] },
+    { h: '⛔ 평생 피할 일', paras: RG.avoid.map((x) => `· ${x}`) },
+    { h: '💼 잘 맞는 일', paras: [`· ${E.biz.slice(0, 3).map(([f]) => f).join(', ')}`] },
+    { h: '🩺 먼저 챙길 몸', paras: [`· ${BODY[weak]} (자세히는 5장)`] },
+    ...(curGod ? [{ h: '⏳ 지금 10년', paras: [`· ${cur.startAge}~${cur.endAge}세는 ${PLAIN_GOD[curGod]}이 들어오는 10년이에요. 이 10년에 가장 먼저 할 일: ${sentence(GOD_TALE[curGod].fix[0])}`] }] : []),
+  ] };
+}
+const GROUP_HEAR_TAG = ['내 생각이 뚜렷하고 혼자서도 해내는', '말솜씨와 재주로 사람을 즐겁게 하는', '현실적이고 계산이 빠른', '책임감이 강해 믿고 맡길 수 있는', '생각이 깊고 아는 것이 많은'];
+
+/** 정통사주 여는 문단(첫 장면) · 맺음 */
 const LIFE_HOOK = [
   '말끝에 늘 힘이 실려 있고, 한번 정한 일은 누가 말려도 해내고 만다는 것',
   '어색한 자리에서도 먼저 웃음을 꺼내고, 눈이 반짝이는 순간이 유난히 많다는 것',
@@ -359,9 +390,9 @@ export function lifeOpening(saju, who) {
 }
 export function lifeClosing(saju, who) {
   const yong = saju.yongsin;
-  return { key: 'close', h: '맺음 · 주인공에게 남기는 질문', blocks: [{ paras: [
-    `사주는 정해진 운명표가 아니라, 타고난 바람의 방향이에요. 좋은 10년에는 돛을 활짝 펴고, 차분한 10년에는 배를 손보며 가면 되니까요. 그리고 그 항해 내내 ${josa(elWord(yong), '이/가')} ${who}의 등을 조용히 받쳐 줄 거예요.`,
-    `마지막으로 세 가지만 물어볼게요. 지금까지 나를 가장 많이 지켜 준 성질은 무엇이었을까? 반대로 나를 가장 많이 다치게 한 성질은? 그리고 앞으로 10년, 그 둘 가운데 무엇을 더 키우고 싶은가? 정답은 없어요. 다만 이 질문을 가끔 꺼내 보는 사람의 인생은, 분명 조금씩 방향이 바뀌어요.`,
+  return { key: 'close', h: '맺음 · 정리', blocks: [{ paras: [
+    `정리하면, 점수가 높은 10년에는 미뤄 둔 큰 목표를 시작하고, 점수가 낮은 10년에는 새 일을 줄이고 실력과 건강을 다지세요. 어느 때든 ${josa(elWord(yong), '을/를')} 곁에 두는 8장의 습관이 도움이 돼요.`,
+    `해마다 생일 무렵에 이 책 맨 앞의 「한눈에 정리」를 다시 열어, 할 일을 지키고 있는지 확인해 보세요.`,
   ] }] };
 }
 const LOVE_SOLO = [
@@ -382,7 +413,7 @@ const BODY = ['간·눈·근육', '심장·혈압·잠', '위장·소화', '폐�
 const BODY_CARE = [
   '눈을 자주 쉬게 하고, 아침 스트레칭으로 근육을 풀어 주세요.',
   '밤늦게까지 깨어 있지 말고, 따뜻한 차와 가벼운 걷기로 마음을 데워 주세요.',
-  '끼니를 거르지 말고, 천천히 꼭꼭 씹어 먹는 습관이 가장 큰 보약이에요.',
+  '끼니를 거르지 말고, 천천히 꼭꼭 씹어 드세요. 위장을 지키는 가장 쉬운 방법이에요.',
   '맑은 공기 속에서 깊게 숨 쉬는 시간을 두고, 피부는 촉촉하게 지켜 주세요.',
   '물을 자주 마시고, 허리를 따뜻하게, 잠은 충분히 자 주세요.',
 ];
@@ -417,12 +448,13 @@ export function bookletStory(ctx) {
   const best = [...y.months].sort((a, b) => b.score - a.score)[0];
   const trapN = (ch.find((s) => s.key === 'risk')?.blocks.filter((b) => !b.cliff && b.h?.startsWith('🔎')).length || 0) + GOD_TALE[y.year.god].risk.length;
   return {
-    hook: `${y.sajuYear}년 12월의 어느 저녁, ${josa(who, '은/는')} 달력을 넘겨 보다가 ${best.solarMonth}월 칸에 적어 둔 메모 한 줄을 보고 피식 웃게 될지도 몰라요. 「그때 시작하길 정말 잘했다.」 그 장면까지 가는 길, 지금부터 함께 걸어 볼게요.`,
+    hook: `${y.sajuYear}년 한 줄 요약: ${PLAIN_GOD[y.year.god]}이 들어오는 해예요. 가장 좋은 달은 ${best.solarMonth}월이에요.`,
+    brief: ch.find((s) => s.key === 'brief'),
     chapters: [
       { h: wind.h, paras: [...wind.blocks[0].paras, ...(wind.blocks.find((b) => b.h?.startsWith('👀'))?.paras || [])] },
       { h: why.h, paras: why.blocks[0].paras.slice(0, 1) },
     ],
-    cliff: `여기까지가 맛보기예요. 올해 ${who}의 길 위에 놓인 덫 ${trapN}가지, 함께 걸을 동료와 띠, 가장 빛날 사업·일 분야 6가지, 열두 달의 여정은 상세판의 3장부터 이어져요.`,
+    cliff: `여기까지가 무료로 보는 부분이에요. 올해 조심할 일 ${trapN}가지와 대비법, 도움이 되는 사람과 띠, 나에게 맞는 일·사업 분야 6가지, 열두 달 풀이는 상세판 3장부터 볼 수 있어요.`,
     yong: saju.yongsin,
   };
 }
@@ -434,8 +466,9 @@ export function sajuStory(ctx) {
   const who = ctx.name ? `${ctx.name} 님` : '당신';
   return {
     hook: lifeOpening(ctx.saju, who),
+    brief: ch.find((s) => s.key === 'brief'),
     blocks: me.blocks.filter((b) => !b.cliff),
     hard: { h: hard.h, paras: hard.blocks[0].paras.slice(0, 2) },
-    cliff: `${josa(who, '이/가')} 평생 조심할 덫, 나를 살리는 인연, 타고난 사업 분야, 10년마다 바뀌는 인생의 여정은 「평생 정통사주」에서 이어져요.`,
+    cliff: `${josa(who, '이/가')} 평생 조심할 일, 나에게 맞는 사람, 잘 맞는 일과 사업 분야, 10년마다 바뀌는 흐름은 「평생 정통사주」에서 볼 수 있어요.`,
   };
 }

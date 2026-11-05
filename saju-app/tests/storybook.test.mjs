@@ -124,4 +124,24 @@ t('기운 카드 한 편 · 타로 이야기: 4~6문장 · 한자 없음 · 조�
     assert.ok(x.endsWith('?'), x);
   }
 });
+t('v0.51 직설 문장: 한눈에 정리(할 일·피할 일·언제)가 맨 앞 · 오늘 하지 말 것 2개 · 비유 낱말 없음', () => {
+  const MET = /덫|무기|무대|돛|항해|바람이 부|부는 바람|화살|꽃다발|꿀이|탐정|날개|보약|주인공|여정|산길|등을 받쳐|등을 밀|손을 잡고|말랑/;
+  for (const p of PEOPLE.slice(0, 6)) {
+    const [y, , life] = reports(p);
+    for (const r of [y, life]) {
+      const i = r.sections.findIndex((x) => x.key === 'brief'); assert.ok(i >= 0 && i <= 1, `${r.kind} 한눈에 정리 위치 ${i}`);
+      const b = r.sections[i].blocks; assert.ok(b.find((x) => x.h.startsWith('✅')).paras.length >= 3); assert.ok(b.find((x) => x.h.startsWith('⛔')).paras.length >= 2);
+      for (const x of mainText(r)) assert.ok(!MET.test(x), `${r.kind} 비유: ${x.match(MET)?.[0]} | ${x}`);
+    }
+    const st = bookletStory({ y: yearOf(p.s, 2027, p.g), thisYear: yearOf(p.s, 2026, p.g), saju: p.s, name: '은하', gender: p.g });
+    assert.ok(st.brief?.blocks.some((x) => x.h.startsWith('📅')));
+    for (const x of [st.hook, st.cliff, ...st.chapters.flatMap((c) => [c.h, ...c.paras])]) assert.ok(!MET.test(x), `책자 비유: ${x}`);
+    for (let d = 1; d <= 20; d++) {
+      const f = computeFortune(p.s, { year: 2026, month: 12, day: d }, { gender: p.g }); const x = todayStory(f, p.s, fiveScores(f));
+      assert.equal(x.dont.length, 2); assert.match(x.story, /오늘 할 일:/);
+      for (const z of [x.head, x.mood, x.story, x.watch, ...x.dont]) assert.ok(!MET.test(z), `오늘 비유: ${z}`);
+    }
+    for (let e = 0; e < 5; e++) { const k = kiStory({ zodiac: e, element: e, rarity: 'rare', lack: true }, p.s, ''); assert.match(k, /오늘 할 일:.*피할 일:/); }
+  }
+});
 console.log(`storybook: ${pass} passed`);

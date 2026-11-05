@@ -642,8 +642,9 @@ function sajuStoryHTML() {
   const s = state.saju; const g = analyzeGyeok(s);
   const st = sajuStory({ saju: s, gyeok: g, gp: GYEOK_PROFILE[g.name], name: state.profile.name, gender: state.profile.gender, curAge: sajuYearOf(state.fortune.date) - s.input.year, watch: natalWatch(s) });
   const P = (t) => `<p>${esc(PT(t))}</p>`;
-  return `<article class="card sj-story"><h3>📖 이야기로 읽는 나 <span class="tag">주인공 소개</span></h3>
+  return `<article class="card sj-story"><h3>📖 쉽게 읽는 나 <span class="tag">한눈에 정리</span></h3>
     <p class="bk-hook">${esc(PT(st.hook))}</p>
+    ${briefHTML(st.brief)}
     ${st.blocks.map((b) => `<h4>${esc(PT(b.h))}</h4>${b.paras.map(P).join('')}`).join('')}
     <h4>${esc(PT(st.hard.h))}</h4>${st.hard.paras.map(P).join('')}
     <p class="bk-cliff">${esc(PT(st.cliff))}</p>
@@ -1927,6 +1928,11 @@ function bookletData() {
   return { d, y, b };
 }
 
+/** v0.51 「한눈에 정리」 상자: 할 일·피할 일·언제를 맨 앞에 그대로(테스터 의견 「무엇을 해야 할지 헷갈린다」) */
+function briefHTML(br) {
+  if (!br) return '';
+  return `<section class="brief-box"><h3>${esc(PT(br.h))}</h3>${br.blocks.map((b) => `<div class="brief-row"><h4>${esc(PT(b.h))}</h4>${b.paras.some((x) => x.startsWith('·')) ? `<ul>${b.paras.map((x) => `<li>${esc(PT(x.replace(/^·\s*/, '')))}</li>`).join('')}</ul>` : b.paras.map((x) => `<p>${esc(PT(x))}</p>`).join('')}</div>`).join('')}</section>`;
+}
 /** 첫 화면 위: 표지 + 총운(펼쳐 둠). 바로 아래가 오늘의 운세 (2026-11-03 사용자 요청: 스크롤 줄이기) */
 // 신년운세 책자에서는 「그해」·(내년을 미리 볼 때) 「올해」를 실제 연도로 — bookletData()가 bkYear를 정함
 let bkYear = { Y: null, now: null };
@@ -1942,6 +1948,7 @@ function bookletHTML(bd = bookletData()) {
     </header>
     <section class="bk-story">
       <p class="bk-hook">${esc(PT(st.hook))}</p>
+      ${briefHTML(st.brief)}
       ${st.chapters.map((c) => `<h3>${esc(PT(c.h))}</h3>${c.paras.map(P).join('')}`).join('')}
       <p class="bk-cliff">${esc(PT(st.cliff))}</p>
     </section>
@@ -2574,7 +2581,7 @@ function fiveCardHTML() {
     <p class="ts-why">${zodiacFace(v.total >= 70 ? 'excited' : v.total >= 50 ? 'smile' : 'calm', 'z-face ts-z')}<span>${esc(t.story)}</span></p>
     <div class="ts-grid">
       <section class="ts-tile good"><h4>👍 오늘 좋은 점</h4><p>${esc(t.good)}</p></section>
-      <section class="ts-tile watch"><h4>⚠️ 오늘 조심할 점</h4><p>${esc(t.watch)}</p></section>
+      <section class="ts-tile watch"><h4>⚠️ 오늘 조심할 점</h4><p>${esc(t.watch)}</p>${t.dont?.length ? `<p class="ts-dont-h">⛔ 오늘 하지 말 것</p><ul class="ts-dont">${t.dont.map((a) => `<li>${esc(a)}</li>`).join('')}</ul>` : ''}</section>
       <section class="ts-tile think"><h4>🤔 생각해 볼 것</h4><p>${esc(t.think)}</p></section>
       <section class="ts-tile act"><h4>✅ 이렇게 해 보세요</h4><ul>${t.act.map((a) => `<li>${esc(a)}</li>`).join('')}</ul></section>
     </div>
