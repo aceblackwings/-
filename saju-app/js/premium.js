@@ -220,7 +220,8 @@ export function compatTeaser(rep) {
 export function premiumTeaser(rep) {
   const b = rep.sections.find((s) => s.key === 'why')?.blocks[0] || rep.sections[1].blocks[0];
   const h = rep.sections.find((s) => s.key === 'why')?.h || b.h;
-  return { h, open: b.paras[0], blur: b.paras[1] || '' };
+  // 무료 책자 앞머리가 2장 첫 문단을 이미 보여 주므로, 맛보기는 그다음 문단부터
+  return { h, open: b.paras[1] || b.paras[0], blur: b.paras[2] || '' };
 }
 
 /**

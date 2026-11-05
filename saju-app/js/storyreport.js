@@ -405,3 +405,37 @@ const EL_OVER = [
   '스스로를 다그치고 말이 날카롭게 나가기 쉬워요.',
   '생각이 많아 결정을 미루고 잠이 얕아지기 쉬워요.',
 ];
+
+// ======================================================================
+// 무료 화면 맛보기(v0.50.2): 신년운세 책자 앞머리 · 내 사주 「이야기로 읽는 나」
+// ======================================================================
+/** 무료 책자 앞머리: 첫 장면 → 1장 부름(공감·이유·하늘 기운) → 2장 지금 넘고 있는 산(지난해) → 상세판 예고 */
+export function bookletStory(ctx) {
+  const { y, saju } = ctx; const who = ctx.name ? `${ctx.name} 님` : '당신';
+  const ch = yearStoryChapters({ ...ctx, checks: ctx.checks || [] });
+  const wind = ch.find((s) => s.key === 'wind'); const why = ch.find((s) => s.key === 'why');
+  const best = [...y.months].sort((a, b) => b.score - a.score)[0];
+  const trapN = (ch.find((s) => s.key === 'risk')?.blocks.filter((b) => !b.cliff && b.h?.startsWith('🔎')).length || 0) + GOD_TALE[y.year.god].risk.length;
+  return {
+    hook: `${y.sajuYear}년 12월의 어느 저녁, ${josa(who, '은/는')} 달력을 넘겨 보다가 ${best.solarMonth}월 칸에 적어 둔 메모 한 줄을 보고 피식 웃게 될지도 몰라요. 「그때 시작하길 정말 잘했다.」 그 장면까지 가는 길, 지금부터 함께 걸어 볼게요.`,
+    chapters: [
+      { h: wind.h, paras: [...wind.blocks[0].paras, ...(wind.blocks.find((b) => b.h?.startsWith('👀'))?.paras || [])] },
+      { h: why.h, paras: why.blocks[0].paras.slice(0, 1) },
+    ],
+    cliff: `여기까지가 맛보기예요. 올해 ${who}의 길 위에 놓인 덫 ${trapN}가지, 함께 걸을 동료와 띠, 가장 빛날 사업·일 분야 6가지, 열두 달의 여정은 상세판의 3장부터 이어져요.`,
+    yong: saju.yongsin,
+  };
+}
+
+/** 내 사주 「이야기로 읽는 나」: 정통사주 1장 + 2장 앞부분 + 예고 */
+export function sajuStory(ctx) {
+  const ch = lifeStoryChapters(ctx);
+  const me = ch.find((s) => s.key === 'me'); const hard = ch.find((s) => s.key === 'hard');
+  const who = ctx.name ? `${ctx.name} 님` : '당신';
+  return {
+    hook: lifeOpening(ctx.saju, who),
+    blocks: me.blocks.filter((b) => !b.cliff),
+    hard: { h: hard.h, paras: hard.blocks[0].paras.slice(0, 2) },
+    cliff: `${josa(who, '이/가')} 평생 조심할 덫, 나를 살리는 인연, 타고난 사업 분야, 10년마다 바뀌는 인생의 여정은 「평생 정통사주」에서 이어져요.`,
+  };
+}

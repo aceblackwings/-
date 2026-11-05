@@ -9,6 +9,8 @@ import { fiveScores } from '../js/todayfive.js';
 import { buildPremiumYear, buildLifeReport } from '../js/premium.js';
 import { plainText, GOD_TALE, TODAY_TALE, EL_TALE } from '../js/storybook.js';
 import { todayStory, setEmpathy, empathyRate } from '../js/todaystory.js';
+import { bookletStory, sajuStory } from '../js/storyreport.js';
+import { buildBooklet } from '../js/booklet.js';
 import { josaProblems } from '../js/josa.js';
 import { toneProblems } from '../js/habit.js';
 
@@ -90,5 +92,19 @@ t('공감 기록: 날짜별 저장 · 40일만 · 비율', () => {
   let st = {}; for (let i = 1; i <= 45; i++) st = setEmpathy(st, `2026-${i <= 30 ? 10 : 11}-${i <= 30 ? i : i - 30}`, i % 3 ? 'yes' : 'meh');
   assert.equal(Object.keys(st).length, 40); assert.ok(st['2026-11-15']); assert.ok(!st['2026-10-1']);
   assert.equal(empathyRate({ a: 'yes', b: 'meh' }), 50);
+});
+t('무료 화면(신년 책자 앞머리·총운·분야, 내 사주 이야기): 쉬운 말로 바꾼 뒤 한자·용어 없음 · 조사 맞음', () => {
+  for (const p of PEOPLE) {
+    const y = yearOf(p.s, 2027, p.g); const ty = yearOf(p.s, 2026, p.g);
+    const st = bookletStory({ y, thisYear: ty, saju: p.s, name: '은하', gender: p.g });
+    const b = buildBooklet({ y, thisYear: ty, saju: p.s, gyeok: analyzeGyeok(p.s), name: '은하', gender: p.g, concern: 'love' });
+    const sj = sajuStory({ saju: p.s, gyeok: analyzeGyeok(p.s), name: '은하', gender: p.g, curAge: 34, watch: [] });
+    const raw = [st.hook, ...st.chapters.flatMap((c) => [c.h, ...c.paras]), st.cliff, b.title, b.lead, ...b.general.flatMap((x) => [x.h, ...x.paras]), ...b.fields.flatMap((f) => [f.title, ...f.paras]), ...b.checks.flatMap((c) => [c.text, c.act]),
+      sj.hook, ...sj.blocks.flatMap((x) => [x.h, ...x.paras]), sj.hard.h, ...sj.hard.paras, sj.cliff];
+    const lines = raw.map((x) => plainText(x));
+    for (const x of lines) assert.ok(!HANJA.test(x), `한자: ${x}`);
+    for (const x of [st.hook, ...st.chapters.flatMap((c) => c.paras), st.cliff, sj.hook, ...sj.blocks.flatMap((x) => x.paras), sj.cliff].map((x) => plainText(x))) assert.ok(!JARGON.test(clean(x)), `용어: ${x}`);
+    assert.deepEqual(josaProblems(lines.join('\n')).map((x) => `${x.why} | ${x.text}`), []);
+  }
 });
 console.log(`storybook: ${pass} passed`);

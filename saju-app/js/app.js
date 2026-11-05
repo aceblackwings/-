@@ -46,6 +46,8 @@ import { ELEMENT_LUCK } from './fortune.js';
 import { TAROT_TOPICS, TAROT_SPREADS, TAROT_SITU, TONE_KO, shuffleDeck, readTarot, cardOf, ROMAN, markSeen, repeatLine } from './tarot.js';
 import { fiveScores } from './todayfive.js';
 import { todayStory, setEmpathy, empathyReply } from './todaystory.js';
+import { plainText } from './storybook.js';
+import { bookletStory, sajuStory } from './storyreport.js';
 import { claimItem, PIECES_PER_ITEM } from './tteok.js';
 import { TTEOK, visit as tteokVisit, doTask as tteokDoTask, todayTasks, doneCount, isOpen as scrollOpen, spend as tteokSpend, buy as tteokBuy, SCROLLS, PACKS, TASKS as TTEOK_TASKS, ALL_BONUS } from './tteok.js';
 import { emoImage, charImage } from './assets.js';
@@ -591,6 +593,10 @@ function renderSajuFull() {
       <p class="muted" style="margin-bottom:0">${s.animal}띠 · 일주 ${pillarLabel(s.pillars.day)}(${pillarLabelKo(s.pillars.day)}) · 사주 연도 ${s.sajuYear}년 기준</p>
     </div>
 
+    ${sajuStoryHTML()}
+    ${lifeOfferHTML()}
+    ${hourGuessCardHTML()}
+    <details class="card fold sj-expert" id="fold-sj-expert"${state.folds?.['fold-sj-expert'] ? ' open' : ''}><summary><span class="fd-ic">🔎</span><span class="fd-t"><b>전문가용 풀이 자세히</b><small>사주 용어로 된 기질·그릇·일주·십성·오행·10년 흐름 · 궁금한 분만</small></span><span class="fd-arrow" aria-hidden="true">▾</span></summary><div class="fold-body sj-expert-body">
     <div class="card">
       <h3>타고난 기질 <span class="tag">일간 ${STEMS[s.dayMaster]}</span></h3>
       <p><b class="el-${me}">${prof.name} · ${prof.image}</b><br>${prof.text}</p>
@@ -599,7 +605,6 @@ function renderSajuFull() {
 
     ${personCardHTML()}
     ${natalWatchHTML()}
-    ${hourGuessCardHTML()}
     ${retroCardHTML()}
     ${iljuCardHTML()}
     ${gyeokCardHTML()}
@@ -607,7 +612,6 @@ function renderSajuFull() {
     ${pillarCardHTML()}
     ${relationsCardHTML()}
     ${sinsalCardHTML()}
-    ${lifeOfferHTML()}
 
     <div class="card">
       <h3>오행 스탯 <span class="tag">ELEMENT STATS</span></h3>
@@ -626,9 +630,23 @@ function renderSajuFull() {
       <button class="primary" type="button" data-go="charm" style="width:100%">부족한 ${ELEMENT_KO[s.weakest]} 기운 부적 만들러 가기 →</button>
     </div>
     ${daewoonCardHTML()}
-    ${expertCardHTML()}`;
-  $('[data-panel="saju"]').insertAdjacentHTML('afterbegin', readingCardHTML());
+    ${expertCardHTML()}
+    </div></details>`;
+  $('[data-panel="saju"] .sj-expert-body').insertAdjacentHTML('afterbegin', readingCardHTML());
   $$('[data-go]', $('[data-panel="saju"]')).forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); selectTab(b.dataset.go); }));
+}
+
+/** v0.50.2 내 사주 「이야기로 읽는 나」: 정통사주 1장 + 2장 앞부분 + 예고(쉬운 말) */
+function sajuStoryHTML() {
+  const s = state.saju; const g = analyzeGyeok(s);
+  const st = sajuStory({ saju: s, gyeok: g, gp: GYEOK_PROFILE[g.name], name: state.profile.name, gender: state.profile.gender, curAge: sajuYearOf(state.fortune.date) - s.input.year, watch: natalWatch(s) });
+  const P = (t) => `<p>${esc(PT(t))}</p>`;
+  return `<article class="card sj-story"><h3>📖 이야기로 읽는 나 <span class="tag">주인공 소개</span></h3>
+    <p class="bk-hook">${esc(PT(st.hook))}</p>
+    ${st.blocks.map((b) => `<h4>${esc(PT(b.h))}</h4>${b.paras.map(P).join('')}`).join('')}
+    <h4>${esc(PT(st.hard.h))}</h4>${st.hard.paras.map(P).join('')}
+    <p class="bk-cliff">${esc(PT(st.cliff))}</p>
+  </article>`;
 }
 
 /** A4 「나라는 사람」 한 장 요약 */
@@ -1908,19 +1926,26 @@ function bookletData() {
 }
 
 /** 첫 화면 위: 표지 + 총운(펼쳐 둠). 바로 아래가 오늘의 운세 (2026-11-03 사용자 요청: 스크롤 줄이기) */
+const PT = (t) => plainText(t);
 function bookletHTML(bd = bookletData()) {
-  const { b } = bd; const P = (t) => `<p>${esc(t)}</p>`;
+  const { b } = bd; const P = (t) => `<p>${esc(PT(t))}</p>`;
+  const st = bookletStory({ y: bd.y, thisYear: bd.d.next ? bd.d.year : null, saju: state.saju, name: state.profile.name, gender: state.profile.gender });
   return `<article class="card booklet" id="booklet" data-formal>
     <header class="bk-head">
       <small>${b.year} 신년운세</small>
-      <h2>「${esc(b.title)}」</h2>
-      <p class="bk-sub">${b.name}${state.profile.name ? ` · ${esc(state.profile.name)} 님` : ''}</p>
+      <h2>「${esc(PT(b.title))}」</h2>
+      <p class="bk-sub">${esc(PT(b.name))}${state.profile.name ? ` · ${esc(state.profile.name)} 님` : ''}</p>
     </header>
-    <p class="bk-lead">${esc(b.lead)}</p>
-    ${kaiunBoxHTML('year', b.score)}
-    <section class="bk-part"><h3>총운</h3>
-      ${b.general.map((x) => `<h4>${x.h}</h4>${x.paras.map(P).join('')}`).join('')}
+    <section class="bk-story">
+      <p class="bk-hook">${esc(PT(st.hook))}</p>
+      ${st.chapters.map((c) => `<h3>${esc(PT(c.h))}</h3>${c.paras.map(P).join('')}`).join('')}
+      <p class="bk-cliff">${esc(PT(st.cliff))}</p>
     </section>
+    <p class="bk-lead">${esc(PT(b.lead))}</p>
+    ${kaiunBoxHTML('year', b.score)}
+    <details class="bk-part bk-fold bk-general"><summary><h3>📖 총운 자세히</h3><span class="bk-peek">한 해의 기운·10년 흐름·잘 풀리는 점·열쇠</span></summary>
+      ${b.general.map((x) => `<h4>${esc(PT(x.h))}</h4>${x.paras.map(P).join('')}`).join('')}
+    </details>
     ${checksHTML(b.checks, b.calibText)}
     ${premiumYearOfferHTML(bd)}
   </article>`;
@@ -1930,8 +1955,8 @@ function bookletHTML(bd = bookletData()) {
 function checksHTML(list = [], calibText = '') {
   if (!list.length) return '';
   const ICON = { watch: '⚠️', good: '🌟', note: '📌' }; const TAG = { watch: '조심', good: '기회', note: '참고' };
-  return `<section class="bk-part bk-checks"><h3>⚠️ 조심할 점 · 참고할 점 <small>내 사주 글자와 그해 글자가 만나는 방식으로 골랐어요</small></h3>${calibText ? `<p class="ck-calib">🔎 ${esc(calibText)}</p>` : ''}
-    <ul class="ck-list">${list.map((c) => `<li class="ck ${c.kind}"><b>${ICON[c.kind]} <em>${TAG[c.kind]}</em> ${esc(c.title)}</b><p>${esc(c.text)}</p><p class="ck-act">👉 ${esc(c.act)}${c.when ? ` <span class="ck-when">· 특히 ${esc(c.when)}</span>` : ''}</p></li>`).join('')}</ul>
+  return `<section class="bk-part bk-checks"><h3>⚠️ 조심할 점 · 참고할 점 <small>내 사주 글자와 그해 글자가 만나는 방식으로 골랐어요</small></h3>${calibText ? `<p class="ck-calib">🔎 ${esc(PT(calibText))}</p>` : ''}
+    <ul class="ck-list">${list.map((c) => `<li class="ck ${c.kind}"><b>${ICON[c.kind]} <em>${TAG[c.kind]}</em> ${esc(PT(c.title.replace(/\s*\([^)]*\)$/, '')))}</b><p>${esc(PT(c.text))}</p><p class="ck-act">👉 ${esc(PT(c.act))}${c.when ? ` <span class="ck-when">· 특히 ${esc(c.when)}</span>` : ''}</p></li>`).join('')}</ul>
   </section>`;
 }
 
@@ -1939,12 +1964,12 @@ const FIELD_ICON = { wealth: '💰', business: '🏪', career: '💼', love: '�
 
 /** 첫 화면 아래: 분야별 운세(모두 접힘, 눌러서 펼치기) + 달마다 두 줄 */
 function bookletFieldsHTML(bd = bookletData()) {
-  const { d, y, b } = bd; const P = (t) => `<p>${esc(t)}</p>`; const kp = kaiunNow();
+  const { d, y, b } = bd; const P = (t) => `<p>${esc(PT(t))}</p>`; const kp = kaiunNow();
   return `<article class="card booklet bk-fields" id="booklet-fields" data-formal>
     <h3 class="bk-fields-h">${b.year} 분야별 운세 <small>궁금한 분야를 눌러 펼쳐 보세요</small></h3>
-    ${b.fields.map((f) => { const kx = ['family', 'business', 'children'].includes(f.key) ? '' : fieldKaiunSentence(kp, f.key, 'year'); return `<details class="bk-part bk-fold"><summary><h3>${FIELD_ICON[f.key] || ''} ${f.label}${f.focus ? ' <small>내 고민</small>' : ''}</h3><span class="bk-peek">${esc(f.title)}</span></summary>${f.paras.map(P).join('')}${kx ? `<p class="bk-kaiun">${esc(kx)}</p>` : ''}</details>`; }).join('')}
+    ${b.fields.map((f) => { const kx = ['family', 'business', 'children'].includes(f.key) ? '' : fieldKaiunSentence(kp, f.key, 'year'); return `<details class="bk-part bk-fold"><summary><h3>${FIELD_ICON[f.key] || ''} ${f.label}${f.focus ? ' <small>내 고민</small>' : ''}</h3><span class="bk-peek">${esc(PT(f.title))}</span></summary>${f.paras.map(P).join('')}${kx ? `<p class="bk-kaiun">${esc(PT(kx))}</p>` : ''}</details>`; }).join('')}
     <details class="bk-part bk-fold bk-months"><summary><h3>🗓️ 달마다 두 줄</h3><span class="bk-peek">입춘부터 절기월</span></summary>
-      ${monthLines(y).map((m) => `<div class="bk-month"><h4>${m.mark} ${m.month}월 <small>${m.range}</small></h4><p>${esc(m.flow)}</p><p class="bk-act">${esc(m.act)}</p></div>`).join('')}
+      ${monthLines(y).map((m) => `<div class="bk-month"><h4>${m.mark} ${m.month}월 <small>${m.range}</small></h4><p>${esc(PT(m.flow))}</p><p class="bk-act">${esc(PT(m.act))}</p></div>`).join('')}
     </details>
     <div class="bk-next"><button class="ghost" type="button" data-tl-step="read-${d.next ? 'next' : 'year'}">📖 12달 자세히</button></div>
   </article>`;
