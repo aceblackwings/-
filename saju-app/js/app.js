@@ -32,7 +32,7 @@ import { layersAt, monthPeriod, explainParts, TEN_GOD_MOD, weekOf, yearOf, month
 import { orderedMenu, buildAnswer, concernAsk, ASK_MENU } from './ask.js';
 import { buildReading, FIELD_LABEL, closingLine, GOD_READING, crossLine, turnLine } from './reading.js';
 import { analyzeGyeok, GYEOK_PROFILE, strengthMission } from './gyeokguk.js';
-import { buildBooklet, todayLetter, monthLines } from './booklet.js';
+import { buildBooklet, todayLetter } from './booklet.js';
 import { natalRelations } from './relations.js';
 import { buildIlju } from './ilju.js';
 import { retroQuestions, retroSummary, RETRO_ANSWERS, retroCalib } from './retro.js';
@@ -47,7 +47,8 @@ import { TAROT_TOPICS, TAROT_SPREADS, TAROT_SITU, TONE_KO, shuffleDeck, readTaro
 import { fiveScores } from './todayfive.js';
 import { todayStory, setEmpathy, empathyReply } from './todaystory.js';
 import { plainText, yearize, EL_NAME } from './storybook.js';
-import { bookletStory, sajuStory } from './storyreport.js';
+import { bookletStory, sajuStory, yearSummary, textsOf } from './storyreport.js';
+import { weekStory, yearStory, decadeStory } from './flowstory.js'; // v0.59 4단계 나의 흐름 요약판
 import { kiStory, kiQuote, tarotTale } from './funstory.js';
 import { claimItem, PIECES_PER_ITEM } from './tteok.js';
 import { TTEOK, visit as tteokVisit, doTask as tteokDoTask, todayTasks, doneCount, isOpen as scrollOpen, spend as tteokSpend, buy as tteokBuy, SCROLLS, PACKS, TASKS as TTEOK_TASKS, ALL_BONUS } from './tteok.js';
@@ -690,16 +691,20 @@ function renderSajuFull() {
 }
 
 /** v0.50.2 내 사주 「이야기로 읽는 나」: 정통사주 1장 + 2장 앞부분 + 예고(쉬운 말) */
-function sajuStoryHTML() {
+function sajuStoryNow() {
   const s = state.saju; const g = analyzeGyeok(s);
-  const st = sajuStory({ saju: s, gyeok: g, gp: GYEOK_PROFILE[g.name], name: state.profile.name, gender: state.profile.gender, curAge: sajuYearOf(state.fortune.date) - s.input.year, watch: natalWatch(s) });
-  const P = (t) => `<p>${esc(PT(t))}</p>`;
+  return sajuStory({ saju: s, gyeok: g, gp: GYEOK_PROFILE[g.name], name: state.profile.name, gender: state.profile.gender, curAge: sajuYearOf(state.fortune.date) - s.input.year, watch: natalWatch(s) });
+}
+function sajuStoryHTML() {
+  const st = sajuStoryNow();
+  const P = (t) => `<p>${esc(plainText(t))}</p>`;
   return `<article class="card sj-story"><h3>📖 쉽게 읽는 나 <span class="tag">한눈에 정리</span></h3>
-    <p class="bk-hook">${esc(PT(st.hook))}</p>
-    ${briefHTML(st.brief)}
-    ${st.blocks.map((b) => `<h4>${esc(PT(b.h))}</h4>${b.paras.map(P).join('')}`).join('')}
-    <h4>${esc(PT(st.hard.h))}</h4>${st.hard.paras.map(P).join('')}
-    <p class="bk-cliff">${esc(PT(st.cliff))}</p>
+    <p class="bk-hook">${esc(plainText(st.hook))}</p>
+    ${briefHTML(st.brief, plainText)}
+    ${st.blocks.map((b) => `<h4>${esc(plainText(b.h))}</h4>${b.paras.map(P).join('')}`).join('')}
+    <h4>${esc(plainText(st.hard.h))}</h4>${st.hard.paras.map(P).join('')}
+    ${st.more.map((b) => `<h4>${esc(plainText(b.h))}</h4>${b.paras.map(P).join('')}`).join('')}
+    <p class="bk-cliff">${esc(plainText(st.cliff))}</p>
   </article>`;
 }
 
@@ -1069,6 +1074,8 @@ function tlCard(k, summary, body) {
   </section>`;
 }
 
+/** v0.59 4단계: 흐름 카드의 읽는 요약(첫 문단은 펼쳐 두고, 나머지는 「요약 더 읽기」) */
+const flowStoryHTML = (st) => `<div class="tl-story"><p class="tl-story-lead">${esc(st.paras[0])}</p><details class="tl-story-more"><summary>📖 요약 더 읽기</summary>${st.paras.slice(1).map((x) => `<p>${esc(x)}</p>`).join('')}</details></div>`;
 const scoreChip = (v, label = '') => `<em class="tl-score" style="color:${scoreColor(v)};border-color:${scoreColor(v)}">${label}${v}</em>`;
 const stepBtn = (label, action) => `<button class="primary tl-step" type="button" data-tl-step="${action}">${label} →</button>`;
 
@@ -1103,7 +1110,7 @@ function tlWeek(d) {
   const bestCat = (cat) => w.days.reduce((a, b) => (b.scores[cat] > a.scores[cat] ? b : a));
   const body = `
     <div class="wk-bars">${bars}</div>
-    <p class="tl-lead">🌟 <b>${w.best.date.month}/${w.best.date.day}(${dowOf(w.best.date)})</b>이 이번 주 가장 좋은 날 — ${TEN_GOD_INFO[w.best.god].title}. ⚠️ <b>${w.worst.date.month}/${w.worst.date.day}(${dowOf(w.worst.date)})</b>은 ${TEN_GOD_INFO[w.worst.god].caution}에 조심하세요.</p>
+    ${flowStoryHTML(weekStory(w))}
     <div class="tl-kit">${['wealth', 'love', 'career'].map((c) => { const b = bestCat(c); return `<span>${CATEGORIES.find((x) => x.key === c).icon} ${CATEGORIES.find((x) => x.key === c).label} 최고: ${dowOf(b.date)}요일 ${b.scores[c]}</span>`; }).join('')}</div>
     <details class="why"><summary>요일별 한 줄 보기</summary><ul class="wk-lines">${lines}</ul></details>
     ${stepBtn(`${dowOf(w.best.date)}요일을 어떻게 쓸지 수호신과 계획하기`, 'chat-week')}
@@ -1155,7 +1162,7 @@ function tlYear(d) {
   const mbars = y.months.map((m) => `<div class="yr-col ${m.solarMonth === cur ? 'now' : ''}" title="${m.term} ${md2(m.start)}~"><i style="height:${Math.max(6, m.score * 0.6)}px;background:${scoreColor(m.score)}"></i><span>${m.solarMonth}</span></div>`).join('');
   const body = `
     ${kaiunBoxHTML('year', y.year.score)}
-    <p class="tl-lead"><b>올해는 「${th.god} · ${th.theme}」의 해</b>예요. ${y.year.score >= 60 ? '흐름을 타고 넓혀 가기 좋은 해입니다.' : y.year.score >= 45 ? '무리하지 않고 다지는 만큼 쌓이는 해입니다.' : '속도를 줄이고 내실을 챙기면 다음 흐름이 단단해지는 해입니다.'}</p>
+    ${flowStoryHTML(yearStory(y))}
     <div class="yr-bars">${mbars}</div>
     <p class="muted" style="font-size:0.76rem;margin:2px 0 8px">입춘(${md2(y.months[0].start)})부터 12절기월 · 숫자는 양력 기준 달</p>
     <div class="tl-kit"><span>상반기 ${h1} · 하반기 ${h2}</span><span>🌟 좋은 달 ${y.best.map((m) => `${m.solarMonth}월`).join(' · ')}</span><span>⚠️ 조심할 달 ${y.caution.map((m) => `${m.solarMonth}월`).join(' · ')}</span></div>
@@ -1173,9 +1180,8 @@ function tlDaewoon(d) {
   const nextStart = cur ? cur.endAge + 1 : d.dw.startAge;
   const sum = cur ? `<small>${plKo(cur)} · ${cur.startAge}~${cur.endAge}세 · 다음 대운까지 ${nextStart - age}년</small>${scoreChip(cur.score)}` : `<small>첫 대운은 ${d.dw.startAge}세부터</small>`;
   const chips = d.dw.pillars.map((p) => `<span class="dw-chip ${cur && p.startAge === cur.startAge ? 'now' : ''}"><b>${p.startAge}세</b>${STEMS[p.stem]}${BRANCHES[p.branch]}<i style="color:${scoreColor(p.score)}">${p.score}</i></span>`).join('');
-  const th = cur ? pillarTheme(s, cur) : null;
   const body = `
-    ${cur ? `<p class="tl-lead"><b>지금은 「${th.god} · ${th.theme}」의 10년</b>이에요. ${daewoonComment(s, cur, 0)}</p>` : '<p class="tl-lead">아직 첫 대운이 시작되기 전이에요. 타고난 원국의 흐름대로 자라는 시기입니다.</p>'}
+    ${flowStoryHTML(decadeStory({ dw: d.dw, cur, age, godOf: (p) => tenGod(s.dayMaster, p.stem), name: state.profile.name }))}
     <div class="dw-chips">${chips}</div>
     <p class="why-calc">${d.dw.forward ? '순행' : '역행'} 대운 · ${d.dw.startAge}세 시작 (태어난 날부터 절기까지 ${d.dw.days}일 ÷ 3 · 정확히는 ${dwExact(d.dw)}부터)${cur ? ` · 근거: ${explainParts(layersAt(s, state.fortune.date, state.profile.gender).daewoon.parts)}` : ''}</p>
     <button class="ghost tl-read" type="button" data-tl-step="read-daewoon">📖 대운 풀이 자세히 읽기</button>
@@ -1977,21 +1983,22 @@ function bookletData() {
   const ageY = y.sajuYear - state.saju.input.year; const nextDw = d.dw?.pillars.find((p) => (p.turnAge ?? p.startAge) >= ageY && (!y.daewoon || p.startAge > y.daewoon.startAge)) || null;
   bkYear = { Y: y.sajuYear, now: sajuYearOf(state.fortune.date) };
   const b = buildBooklet({ y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, concern: state.profile.concern, gender: state.profile.gender, nextDaewoon: nextDw, calib: retroCalibNow(d.dw) });
-  return { d, y, b };
+  const st = bookletStory({ y, thisYear: prev, saju: state.saju, name: state.profile.name, gender: state.profile.gender });
+  // v0.59 4단계: 첫 화면 = 요약판(결론·할 일), 「자세히 보기」 = 요약판과 같은 문장을 뺀 상세판
+  return { d, y, b, sum: yearSummary({ b, st }) };
 }
 
 /** v0.51 「한눈에 정리」 상자: 할 일·피할 일·언제를 맨 앞에 그대로(테스터 의견 「무엇을 해야 할지 헷갈린다」) */
-function briefHTML(br) {
+function briefHTML(br, T = PT) {
   if (!br) return '';
-  return `<section class="brief-box"><h3>${esc(PT(br.h))}</h3>${br.blocks.map((b) => `<div class="brief-row"><h4>${esc(PT(b.h))}</h4>${b.paras.some((x) => x.startsWith('·')) ? `<ul>${b.paras.map((x) => `<li>${esc(PT(x.replace(/^·\s*/, '')))}</li>`).join('')}</ul>` : b.paras.map((x) => `<p>${esc(PT(x))}</p>`).join('')}</div>`).join('')}</section>`;
+  return `<section class="brief-box"><h3>${esc(T(br.h))}</h3>${br.blocks.map((b) => `<div class="brief-row"><h4>${esc(T(b.h))}</h4>${b.paras.some((x) => x.startsWith('·')) ? `<ul>${b.paras.map((x) => `<li>${esc(T(x.replace(/^·\s*/, '')))}</li>`).join('')}</ul>` : b.paras.map((x) => `<p>${esc(T(x))}</p>`).join('')}</div>`).join('')}</section>`;
 }
 /** 첫 화면 위: 표지 + 총운(펼쳐 둠). 바로 아래가 오늘의 운세 (2026-11-03 사용자 요청: 스크롤 줄이기) */
 // 신년운세 책자에서는 「그해」·(내년을 미리 볼 때) 「올해」를 실제 연도로 — bookletData()가 bkYear를 정함
 let bkYear = { Y: null, now: null };
 const PT = (t) => (bkYear.Y ? yearize(plainText(t), bkYear.Y, bkYear.now) : plainText(t));
 function bookletHTML(bd = bookletData()) {
-  const { b } = bd; const P = (t) => `<p>${esc(PT(t))}</p>`;
-  const st = bookletStory({ y: bd.y, thisYear: bd.d.next ? bd.d.year : null, saju: state.saju, name: state.profile.name, gender: state.profile.gender });
+  const { b, sum } = bd; const st = sum.story; const P = (t) => `<p>${esc(PT(t))}</p>`;
   return `<article class="card booklet" id="booklet" data-formal>
     <header class="bk-head">
       <small>${b.year} 신년운세</small>
@@ -2005,12 +2012,10 @@ function bookletHTML(bd = bookletData()) {
       ${st.chapters.map((c) => `<h3>${esc(PT(c.h))}</h3>${c.paras.map(P).join('')}`).join('')}
       <p class="bk-cliff">${esc(PT(st.cliff))}</p>
     </section>
-    <p class="bk-lead">${esc(PT(b.lead))}</p>
+    <p class="bk-lead">${esc(PT(sum.lead))}</p>
     ${kaiunBoxHTML('year', b.score)}
-    <details class="bk-part bk-fold bk-general"><summary><h3>📖 총운 자세히</h3><span class="bk-peek">한 해의 기운·10년 흐름·잘 풀리는 점·열쇠</span></summary>
-      ${b.general.map((x) => `<h4>${esc(PT(x.h))}</h4>${x.paras.map(P).join('')}`).join('')}
-    </details>
-    ${checksHTML(b.checks, b.calibText)}
+    ${sum.general.length ? `<section class="bk-part bk-general">${sum.general.map((x) => `<h4>${esc(PT(x.h))}</h4>${x.paras.map(P).join('')}`).join('')}</section>` : ''}
+    ${checksHTML(sum.checks, b.calibText)}
     ${premiumYearOfferHTML(bd)}
   </article>`;
 }
@@ -2028,13 +2033,10 @@ const FIELD_ICON = { wealth: '💰', business: '🏪', career: '💼', love: '�
 
 /** 첫 화면 아래: 분야별 운세(모두 접힘, 눌러서 펼치기) + 달마다 두 줄 */
 function bookletFieldsHTML(bd = bookletData()) {
-  const { d, y, b } = bd; const P = (t) => `<p>${esc(PT(t))}</p>`; const kp = kaiunNow();
+  const { d, b, sum } = bd; const P = (t) => `<p>${esc(PT(t))}</p>`; const kp = kaiunNow();
   return `<article class="card booklet bk-fields" id="booklet-fields" data-formal>
     <h3 class="bk-fields-h">${b.year} 분야별 운세 <small>궁금한 분야를 눌러 펼쳐 보세요</small></h3>
-    ${b.fields.map((f) => { const kx = ['family', 'business', 'children'].includes(f.key) ? '' : fieldKaiunSentence(kp, f.key, 'year'); return `<details class="bk-part bk-fold"><summary><h3>${FIELD_ICON[f.key] || ''} ${f.label}${f.focus ? ' <small>내 고민</small>' : ''}</h3><span class="bk-peek">${esc(PT(f.title))}</span></summary>${f.paras.map(P).join('')}${kx ? `<p class="bk-kaiun">${esc(PT(kx))}</p>` : ''}</details>`; }).join('')}
-    <details class="bk-part bk-fold bk-months"><summary><h3>🗓️ 달마다 두 줄</h3><span class="bk-peek">입춘부터 절기월</span></summary>
-      ${monthLines(y).map((m) => `<div class="bk-month"><h4>${m.mark} ${m.month}월 <small>${m.range}</small></h4><p>${esc(PT(m.flow))}</p><p class="bk-act">${esc(PT(m.act))}</p></div>`).join('')}
-    </details>
+    ${sum.fields.map((f) => { const kx = ['family', 'business', 'children'].includes(f.key) ? '' : fieldKaiunSentence(kp, f.key, 'year'); return `<details class="bk-part bk-fold"><summary><h3>${FIELD_ICON[f.key] || ''} ${f.label}${f.focus ? ' <small>내 고민</small>' : ''}</h3><span class="bk-peek">${esc(PT(f.title))}</span></summary>${f.paras.map(P).join('')}${kx ? `<p class="bk-kaiun">${esc(PT(kx))}</p>` : ''}</details>`; }).join('')}
     <div class="bk-next"><button class="ghost" type="button" data-tl-step="read-${d.next ? 'next' : 'year'}">📖 12달 자세히</button></div>
   </article>`;
 }
@@ -2050,13 +2052,13 @@ function premiumYearOf(bd) {
   if (state.pyear?.key === key) return state.pyear.rep;
   const d = bd.d; const prev = d.next ? d.year : null; const ageY = bd.y.sajuYear - state.saju.input.year;
   const nextDw = d.dw?.pillars.find((p) => (p.turnAge ?? p.startAge) >= ageY && (!bd.y.daewoon || p.startAge > bd.y.daewoon.startAge)) || null;
-  const rep = buildPremiumYear({ y: bd.y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, gender: state.profile.gender, concern: state.profile.concern, nextDaewoon: nextDw, calib: retroCalibNow(d.dw), nowYear: sajuYearOf(state.fortune.date) });
+  const rep = buildPremiumYear({ y: bd.y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, gender: state.profile.gender, concern: state.profile.concern, nextDaewoon: nextDw, calib: retroCalibNow(d.dw), nowYear: sajuYearOf(state.fortune.date), skip: textsOf(bd.sum) });
   state.pyear = { key, rep }; return rep;
 }
 function lifeReportNow() {
   const key = `${JSON.stringify(state.saju.input)}|${state.profile.gender}|${state.profile.name}|${state.fortune.date.year}`;
   if (state.plife?.key === key) return state.plife.rep;
-  const rep = buildLifeReport({ saju: state.saju, gyeok: analyzeGyeok(state.saju), daewoon: state.profile.gender ? computeDaewoon(state.saju, state.profile.gender) : null, name: state.profile.name, gender: state.profile.gender, nowYear: sajuYearOf(state.fortune.date) });
+  const rep = buildLifeReport({ saju: state.saju, gyeok: analyzeGyeok(state.saju), daewoon: state.profile.gender ? computeDaewoon(state.saju, state.profile.gender) : null, name: state.profile.name, gender: state.profile.gender, nowYear: sajuYearOf(state.fortune.date), skip: textsOf(sajuStoryNow()) });
   state.plife = { key, rep }; return rep;
 }
 function compatReportNow() {

@@ -59,12 +59,50 @@ const plusDays = (d, n) => jdnToDate(dateToJdn(d.year, d.month, d.day) + n);
 const dayText = (d) => `${d.month}월 ${d.day}일`;
 
 /** 마무리: 본문은 쉬운 말로(한자·용어 → 사람 말), 부록은 한자만 한글로 · 겹친 문장 정리 · 목차·글자 수 */
-function finish(rep, yr = null) {
+// skip(v0.59 4단계) = 첫 화면 요약판에 이미 보여 준 글. 같은 문장(20자+)은 빼고, 요약판에 있는 「한눈에 정리」 장도 뺌
+// → 요약판 = 결론·할 일, 자세히 보기 = 이유·사례·달마다의 장면(다시 쓰지 않고 겹침만 덜어 냄)
+function finish(rep, yr = null, skip = null) {
   const P = (t, o) => (t ? (yr ? yearize(plainText(t, o), yr.year, yr.now) : plainText(t, o)) : t);
   const sec = (s) => { const o = s.appendix ? { terms: false } : {}; return { ...s, h: P(s.h, o), intro: P(s.intro, o), blocks: s.blocks.map((b) => ({ ...b, h: P(b.h, o), paras: b.paras.map((x) => P(x, o)) })) }; };
-  const out = dedupeReport({ ...rep, sub: P(rep.sub), sections: rep.sections.map(sec) });
+  const sections = (skip ? rep.sections.filter((s) => s.key !== 'brief') : rep.sections).map(sec);
+  let out = dedupeReport({ ...rep, sub: P(rep.sub), sections }, skip ? skip.map((t) => P(t)) : []);
+  if (skip) out = mendChapters(sections, out);
+  out.summarized = !!skip;
   out.toc = tocOf(out); out.chars = charCount(out);
   return out;
+}
+/**
+ * 요약판으로 옮겨 가 통째로 빠진 장이 있을 때 이어 붙이기(v0.59 4단계):
+ * ① 빠진 장을 예고하던 「다음 장에서는 …」 줄 빼기 ② 장 번호 다시 매기기(1장, 2장, …)
+ * ③ 본문의 「3장에서는」「4~6장」 같은 참조를 새 번호로(빠진 장은 「첫 화면 요약」) ④ 「맨 앞의 한눈에 정리」 → 첫 화면 요약
+ */
+const CH_RE = /^(\d+)장 · /;
+function mendChapters(before, rep) {
+  const kept = new Set(rep.sections.map((x) => x.key));
+  const nextOf = new Map(before.map((x, i) => [x.key, before[i + 1]?.key]));
+  const olds = before.map((x) => x.h?.match(CH_RE)?.[1]).filter(Boolean).map(Number);
+  const keptOlds = rep.sections.map((x) => x.h?.match(CH_RE)?.[1]).filter(Boolean).map(Number);
+  const map = new Map(keptOlds.map((n, i) => [n, i + 1]));
+  const down = (n) => { const k = keptOlds.filter((x) => x <= n); return k.length ? map.get(k[k.length - 1]) : null; };
+  const up = (n) => { const k = keptOlds.find((x) => x >= n); return k != null ? map.get(k) : null; };
+  const fix = (t) => {
+    if (!t) return t;
+    let x = String(t)
+      .replace(/이 책 맨 앞의 「한눈에 정리」/g, '첫 화면 요약의 「한눈에 정리」')
+      .replace(/바로 다음 「한눈에 정리」에/g, '첫 화면 요약의 「한눈에 정리」에');
+    // 한 번 바꾼 번호는 다시 바꾸지 않게 표시(\u0001)를 붙였다가 마지막에 뗌
+    x = x.replace(/(\d+)장부터 (\d+)장까지/g, (m, a, b) => { const A = up(+a); const B = down(+b); return A && B && A <= B ? `${A}\u0001장부터 ${B}\u0001장까지` : '이 책 본문'; });
+    x = x.replace(/(\d+)~(\d+)장/g, (m, a, b) => { const A = up(+a); const B = down(+b); return !A || !B || A > B ? '첫 화면 요약' : A === B ? `${A}\u0001장` : `${A}~${B}\u0001장`; });
+    x = x.replace(/(?<![\d~])(\d+)장(?! · )/g, (m, a) => (olds.includes(+a) ? (map.has(+a) ? `${map.get(+a)}\u0001장` : '첫 화면 요약') : m));
+    return x.replace(/\u0001/g, '');
+  };
+  const sections = rep.sections.map((sec) => {
+    const lost = nextOf.get(sec.key) && !kept.has(nextOf.get(sec.key));
+    const blocks = sec.blocks.filter((b) => !(b.cliff && lost)).map((b) => ({ ...b, h: fix(b.h), paras: b.paras.map(fix) }));
+    const n = sec.h?.match(CH_RE)?.[1];
+    return { ...sec, h: n ? sec.h.replace(CH_RE, `${map.get(+n)}장 · `) : sec.h, intro: fix(sec.intro), blocks };
+  });
+  return { ...rep, sections };
 }
 function monthDaysText(saju, m, gender) {
   const md = monthDays(saju, plusDays(m.start, 3), gender);
@@ -149,8 +187,9 @@ export function buildPremiumYear(ctx) {
   sections.push({
     key: 'open', h: `${who}께 · ${y.sajuYear}년을 여는 편지`,
     blocks: [{ paras: [
-      `🎬 ${y.sajuYear}년 12월의 어느 저녁, ${josa(who, '은/는')} 달력을 넘기다 ${best[0]}월 칸의 메모를 보고 웃게 될지도 몰라요. 「그때 시작하길 정말 잘했다.」 쉽게 말하면, ${best[0]}월은 올해 가장 좋은 달이니 미뤄 둔 일은 이 달에 시작하세요.`,
-      `${who}, ${y.sajuYear}년은 ${PLAIN_GOD[god]}이 들어오는 해예요. 한 줄로 말하면 「${GOD_READING[god].keyword}」의 해예요. 이 책은 올해 무엇을 하고 무엇을 피하면 되는지, 그리고 그 이유를 차례로 알려 드려요.`,
+      // 요약판(첫 화면)에 이미 같은 장면이 있으면 상세판 편지는 장면 없이 시작(v0.59 4단계)
+      ...(ctx.skip ? [] : [`🎬 ${y.sajuYear}년 12월의 어느 저녁, ${josa(who, '은/는')} 달력을 넘기다 ${best[0]}월 칸의 메모를 보고 웃게 될지도 몰라요. 「그때 시작하길 정말 잘했다.」 쉽게 말하면, ${best[0]}월은 올해 가장 좋은 달이니 미뤄 둔 일은 이 달에 시작하세요.`,
+      `${who}, ${y.sajuYear}년은 ${PLAIN_GOD[god]}이 들어오는 해예요. 한 줄로 말하면 「${GOD_READING[god].keyword}」의 해예요. 이 책은 올해 무엇을 하고 무엇을 피하면 되는지, 그리고 그 이유를 차례로 알려 드려요.`]),
       `흐름이 가장 좋은 세 달은 ${best.join('·')}월, 속도를 늦추고 다지기 좋은 두 달은 ${slow.join('·')}월이에요.${yong.length ? ` 그리고 ${yong.join('·')}월은 ${who}에게 가장 필요한 ${EL_NAME[saju.yongsin]} 기운이 하늘에서 내려오는 달이라, 몸과 마음이 한결 편해요.` : ''}`,
       '바로 다음 「한눈에 정리」에 올해 할 일·피할 일·좋은 달을 모아 두었어요. 1장부터 6장까지는 그 이유와 방법, 7장은 열두 달, 8장은 분야별 전략이에요. 어려운 계산 근거는 맨 뒤 부록에 있어요. 점수는 무료 화면과 같은 값이에요.',
     ] }],
@@ -200,7 +239,7 @@ export function buildPremiumYear(ctx) {
   void km; void seasons;
   sections.push(yearClosing(ctx), appendix);
 
-  return finish({ kind: 'year', year: y.sajuYear, title: `${y.sajuYear}년 상세 운세`, sub: `${yearName(y.year.pillar)} · ${who}`, sections }, { year: y.sajuYear, now: ctx.nowYear ?? null });
+  return finish({ kind: 'year', year: y.sajuYear, title: `${y.sajuYear}년 상세 운세`, sub: `${yearName(y.year.pillar)} · ${who}`, sections }, { year: y.sajuYear, now: ctx.nowYear ?? null }, ctx.skip || null);
 }
 
 /**
@@ -517,7 +556,7 @@ export function buildLifeReport(ctx) {
   ] }] };
   const appendix = sections.filter((x) => !['open', 'close'].includes(x.key)).map((x) => ({ ...x, key: `ap-${x.key}`, appendix: true, h: `부록 · ${x.h}` }));
   const close = lifeClosing(saju, who);
-  return finish({ kind: 'life', title: '평생 정통사주 종합', sub: `${ilju.name} · ${who}`, sections: [open, ...story, close, ...appendix] });
+  return finish({ kind: 'life', title: '평생 정통사주 종합', sub: `${ilju.name} · ${who}`, sections: [open, ...story, close, ...appendix] }, null, ctx.skip || null);
 }
 
 // ======================================================================
