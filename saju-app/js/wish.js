@@ -87,3 +87,20 @@ export const doneLine = (r, polite) => fill(pick(DONE, (r.waited || 0))[polite ?
 export const laterLine = (r, dLabel, polite) => fill(pick(LATER, (r.waited || 0))[polite ? 1 : 0], r.wish, dLabel);
 export const madeLine = (wish, dLabel, polite) => fill(MADE[0][polite ? 1 : 0], wish, dLabel);
 export const ALL_LINES = [...ASK, ...DONE, ...LATER, ...MADE].flat();
+
+// ---------- v0.60 기다리는 동안: 중간쯤 「소원 부적 빛이 조금 진해졌어」 (한 번) ----------
+export const MID_MIN_SPAN = 4; // 만든 날과 그날 사이가 4일 이상일 때만
+const dNum = (k) => { const [y, m, d] = String(k).split('-').map(Number); return Date.UTC(y, m - 1, d) / 86400000; };
+/** 오늘 알려 줄 소원(중간을 지났고 그날 전, 아직 안 알림) — {r, i} 또는 null */
+export function midWish(collection, todayKey) {
+  const t = dNum(todayKey);
+  const list = (collection || []).map((r, i) => ({ r, i })).filter(({ r }) => {
+    if (!r?.wish || r.result || r.mid || !r.dueKey) return false;
+    const a = dNum(r.madeKey || r.dateKey); const b = dNum(r.dueKey);
+    return b - a >= MID_MIN_SPAN && t >= a + Math.ceil((b - a) / 2) && t < b;
+  });
+  return list[0] || null;
+}
+export function markMid(collection, i) {
+  return (collection || []).map((r, j) => (j === i && r?.wish ? { ...r, mid: true } : r));
+}

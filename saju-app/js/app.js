@@ -90,7 +90,8 @@ import { omenOf, checkable, markOmen, markShown, omenStats, markPeek, peekedFor,
 import { BOWLS, STAGE_POINTS, DECOR, EMO_ORDER, EMO_KO, seedFood, feed, todayBowls, fedDays, stageForPoints, growthOf, daysLeft, heightCm, decorCount, emotesUnlocked, conditionOf, feedLine,
   secondUnlocked, recommendSecond, adoptSecond, secondPoints, secondStage, duoScene, cleanName, SECOND_UNLOCK, SECOND_RATE, NAME_MAX } from './jisin.js';
 import { emptyTteok } from './tteok.js';
-import { WISH_MAX, WISH_DAYS_DEFAULT, WISH_LATER, cleanWish, dueFromInput, inputOf as wishInputOf, dueLabel as wishDueLabel, attachWish, dueWish, fulfill as wishFulfill, postpone as wishPostpone, wallOf as wishWall, waitingOf as wishWaiting, trimCollection, askLine as wishAskLine, doneLine as wishDoneLine, laterLine as wishLaterLine, madeLine as wishMadeLine } from './wish.js';
+import { WISH_MAX, WISH_DAYS_DEFAULT, WISH_LATER, cleanWish, dueFromInput, inputOf as wishInputOf, dueLabel as wishDueLabel, attachWish, dueWish, fulfill as wishFulfill, postpone as wishPostpone, wallOf as wishWall, waitingOf as wishWaiting, trimCollection, askLine as wishAskLine, doneLine as wishDoneLine, laterLine as wishLaterLine, madeLine as wishMadeLine, midWish, markMid as wishMarkMid } from './wish.js';
+import { paidCharmSVG, drawWallpaper, sealChars as sealCharsOf, PAY_GETS, RITUAL_STEPS, INK_NEED, TRACE_NEED, SEAL_HOLD, STAMP_BUZZ, inkShare, traceText, ritualLine, plantSeed, seedToAsk, answerSeed, seedStage, BRUSH_FONT, paperImage } from './paidcharm.js';
 import { SLOTS as COORDI_SLOTS, WARDROBE as COORDI_WARDROBE, SEASON_HAND as COORDI_SEASON, STREAK_NEED as COORDI_NEED, itemOf as coordiItemOf, itemHearts as coordiItemHearts, coordiHearts, MOOD_BY_HEARTS as COORDI_MOOD, coordiLine, suggestOutfit as coordiSuggest, emptyCoordi, saveDay as coordiSaveDay, streakOf as coordiStreakOf, claimStreak as coordiClaim } from './coordi.js';
 import { WORRY_MAX, BURN_DONE, cleanWorry, burnable as burnableCharms, needsCare as burnNeedsCare, CARE_LINES as BURN_CARE, burnResult, takeLine as burnTakeLine, makeGrid, ignite, stepFire, burntShare, isBurning, rekindle } from './burn.js';
 import {
@@ -100,6 +101,7 @@ import {
 const WISH_RECS = ['자격증 시험 합격', '가족 모두 건강하기', '좋은 인연 만나기', '이직에 성공하기', '저축 100만 원 모으기', '꾸준히 운동하기'];
 const BURN_RECS = ['괜히 불안한 마음', '나를 지치게 한 말', '자꾸 미루는 버릇', '꽉 막힌 일의 답답함', '다툰 뒤 남은 서운함', '잠 못 들게 하는 걱정'];
 const CHARMPAY_KEY = 'unmyeong2099.charmpay';
+const SEEDS_KEY = 'unmyeong2099.seeds'; // v0.60 걱정 씨앗 {list:[{at, el, answer}]} — 걱정 글은 없음
 
 const STORE_KEY = 'unmyeong2099.profile';
 const COLLECTION_KEY = 'unmyeong2099.collection';
@@ -3444,6 +3446,8 @@ function renderToday() {
   $('[data-panel="today"]').innerHTML = `
     ${easySuggestHTML()}
     ${wishDueHTML()}
+    ${wishMidHTML()}
+    ${seedAskHTML()}
     ${cookieCardHTML()}
     ${habitsCardHTML()}
     <div class="fold-list">
@@ -3560,7 +3564,8 @@ function renderCharm(animate) {
       if (!lead) toast('도감에 저장했습니다');
       grow((g) => complete(g, state.fortune.dateKey, 'charm', qBonus('charm')), lead);
     };
-    if (w.wish) openCharmPay('wish', commit, () => { state.wishDraft = draft; }); else commit(); // v0.59: 소원 부적은 990원 또는 복떡 50개
+    // v0.59: 소원 부적은 990원 또는 복떡 50개 · v0.60: 결제 뒤 직접 만드는 의식(먹 → 이름 → 도장 → 기운) 다음에 저장
+    if (w.wish) openCharmPay('wish', () => openWishRitual(w.rec, commit), () => { state.wishDraft = draft; }, paidDataOf(w.rec)); else commit();
   });
   $('#btn-png').addEventListener('click', () => downloadSVGAsPNG(renderTalismanSVG(t), `talisman-${t.type.key}-${t.dateKey}.png`, 3));
   $$('.collection .mini', panel).forEach((m) => m.addEventListener('click', () => {
@@ -5662,8 +5667,9 @@ function bindWishForm(panel) {
   t?.addEventListener('input', keep); d?.addEventListener('change', keep);
   $$('[data-wish-rec]', panel).forEach((b) => b.addEventListener('click', () => { t.value = b.dataset.wishRec; keep(); }));
 }
-/** v0.59 소원 부적 · 나쁜 기운 태우기 부적: 한 번 만들 때마다 990원(체험판은 결제 없음) 또는 복떡 50개로 한 번 무료 */
-function openCharmPay(kind, onOk, onCancel = () => {}) {
+/** v0.59 소원 부적 · 나쁜 기운 태우기 부적: 한 번 만들 때마다 990원(체험판은 결제 없음) 또는 복떡 50개로 한 번 무료
+ *  v0.60: 받는 것 4줄 + 부적 미리보기(preview = paidCharmSVG 데이터) */
+function openCharmPay(kind, onOk, onCancel = () => {}, preview = null) {
   document.querySelectorAll('.pay-modal').forEach((x) => x.remove());
   const bal = loadTteok()?.balance || 0; const can = bal >= CHARM_TTEOK;
   const nm = kind === 'wish' ? '🌠 소원 부적' : '🔥 나쁜 기운 태우기 부적';
@@ -5671,8 +5677,10 @@ function openCharmPay(kind, onOk, onCancel = () => {}) {
   box.innerHTML = `<div class="evo-box hanji hj-pay" role="dialog" aria-label="${nm}">
     <p class="hj-eyebrow">${nm}</p>
     <h3>${kind === 'wish' ? '소원을 부적에 담아 지켜 둘까요?' : '나쁜 기운을 부적과 함께 태워 보낼까요?'}</h3>
-    <p class="hj-desc">${kind === 'wish' ? '소원 부적은 도감에 지켜 두고, 그날이 오면 지신이 「이루어졌나요?」 하고 먼저 물어봐요.' : '적은 글은 어디에도 저장하지 않아요. 다 타면 그 기운은 지신에게 가요.'}</p>
-    <p class="hj-price"><b>${won(CHARM_PRICE)}</b> <small>한 번 만들 때마다</small></p>
+    <div class="cp-top">${preview ? `<span class="cp-preview">${paidCharmSVG(preview)}</span>` : ''}
+      <ul class="cp-gets">${(PAY_GETS[kind] || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
+    <p class="hj-desc">${kind === 'wish' ? '먹을 갈고, 이름을 쓰고, 도장을 찍으면 지신이 기운을 불어넣어요. 30초면 끝나요.' : '적은 글은 어디에도 저장하지 않아요. 다 타면 부적 기운은 지신에게 가요.'}</p>
+    <p class="hj-price"><b>${won(CHARM_PRICE)}</b> <small>한 번 만들 때마다 · 운세 점수와는 상관없어요</small></p>
     <button type="button" class="hj-buy" data-cp="pay">체험판으로 만들기 (결제 없음)</button>
     <button type="button" class="hj-buy navy" data-cp="tteok" ${can ? '' : 'disabled'}>${TTEOK} 복떡 ${CHARM_TTEOK}개로 무료 만들기</button>
     <p class="hj-note">${can ? `가진 복떡 ${bal}개 · ${CHARM_TTEOK}개를 쓰면 한 번 무료예요` : `복떡 ${CHARM_TTEOK}개가 모이면 한 번 무료 · 지금 ${bal}개`} · 지금은 체험판이라 실제 결제 없이 만들어져요</p>
@@ -5701,7 +5709,7 @@ function withWish(rec) {
   const due = dueFromInput(state.wishDraft?.date, today);
   if (!due) { toast('날짜는 오늘이나 그 뒤로 골라 주세요'); return { stop: true }; }
   state.wishDraft = null;
-  return { rec: attachWish(rec, text, due, today), wish: text, due };
+  return { rec: { ...attachWish(rec, text, due, today), paid: 'gold', by: (state.profile.name || '').slice(0, 8), seal: zIdx() }, wish: text, due };
 }
 function showCare() {
   const box = document.createElement('div'); box.className = 'evo-modal';
@@ -5712,7 +5720,178 @@ function showCare() {
   document.body.appendChild(box);
   box.addEventListener('click', (e) => { if (e.target.closest('[data-close-reward]') || e.target === box) box.remove(); });
 }
-function wishCharmHTML(r, gold) { return `<span class="wish-charm${gold ? ' gold' : ''}">${renderTalismanSVG(charmFromRecord(r))}</span>`; }
+// ---------- v0.60 유료 부적: 세상에 하나뿐인 부적 · 직접 만드는 의식 · 배경화면 · 기다리는 동안 ----------
+function paidDataOf(r) {
+  return { kind: 'wish', text: r.wish, name: r.by ?? '', madeKey: r.madeKey || r.dateKey, dueKey: r.dueKey, branch: r.seal ?? zIdx(), done: r.result === 'done', doneKey: r.doneKey };
+}
+function burnDataOf(worry) { return { kind: 'burn', text: worry, name: (state.profile.name || '').slice(0, 8), madeKey: state.fortune.dateKey, branch: zIdx() }; }
+const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+/** 종이 그림이 있으면 data URL로(SVG를 그림으로 그릴 때 바깥 주소는 안 불러와짐) */
+async function paperDataURL(kind) {
+  const src = paperImage(kind); if (!src) return null;
+  try { const b = await (await fetch(src)).blob(); return await new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(b); }); } catch { return null; }
+}
+/** D: 9:16 고화질 배경화면 — 폰은 공유 창(사진에 저장), 그 밖은 내려받기 */
+async function saveWallpaper(d, filename) {
+  try {
+    toast('📱 배경화면을 만들고 있어요…', 1500);
+    const cv = await drawWallpaper(document.createElement('canvas'), d, { paperSrc: await paperDataURL(d.kind) });
+    const blob = await new Promise((res) => cv.toBlob(res, 'image/png'));
+    const file = typeof File === 'function' ? new File([blob], filename, { type: 'image/png' }) : null;
+    if (file && navigator.canShare?.({ files: [file] }) && matchMedia('(pointer: coarse)').matches) {
+      try { await navigator.share({ files: [file], title: d.kind === 'burn' ? '나쁜 기운 태우기 부적' : '소원 부적' }); return; } catch (e) { if (e?.name === 'AbortError') return; }
+    }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    toast('📱 배경화면 그림을 저장했어요');
+  } catch { toast('그림을 만들지 못했어요. 한 번 더 눌러 주세요'); }
+}
+const wallName = (d) => `wish-charm-${String(d.madeKey || '').replace(/-/g, '')}${d.done ? '-done' : ''}.png`;
+/** B: 소원 부적 만들기 의식 — 먹 갈기 → 이름 따라 쓰기 → 도장(진동) → 지신이 기운 불어넣기. 어디서 닫아도 부적은 완성(저장)됨 */
+function openWishRitual(rec, onDone) {
+  document.querySelectorAll('.ritual-modal').forEach((x) => x.remove());
+  const d = paidDataOf(rec); const polite = politeNow(); const reduce = reducedMotion();
+  const box = document.createElement('div'); box.className = 'evo-modal ritual-modal';
+  box.innerHTML = `<div class="evo-box hanji rt-box" role="dialog" aria-label="소원 부적 만들기">
+    <ol class="rt-steps">${RITUAL_STEPS.map((x, i) => `<li data-rt-i="${i}"><span>${x.icon}</span><small>${x.title}</small></li>`).join('')}</ol>
+    <p class="rt-tip" aria-live="polite"></p>
+    <div class="rt-body"></div>
+    <div class="rt-foot"><button type="button" class="ghost" data-rt-skip>건너뛰고 완성하기</button></div>
+  </div>`;
+  document.body.appendChild(box);
+  const body = box.querySelector('.rt-body'); const tip = box.querySelector('.rt-tip');
+  let finished = false; let timers = [];
+  const later = (fn, ms) => { timers.push(setTimeout(fn, reduce ? Math.min(ms, 150) : ms)); };
+  const end = () => { if (finished) return; finished = true; timers.forEach(clearTimeout); box.remove(); onDone(); };
+  const show = (i) => {
+    box.querySelectorAll('.rt-steps li').forEach((li) => { const k = Number(li.dataset.rtI); li.classList.toggle('on', k === i); li.classList.toggle('done', k < i); });
+    tip.textContent = RITUAL_STEPS[i].tip;
+    [ink, trace, seal, blow][i]();
+  };
+  function ink() {
+    body.innerHTML = `<div class="rt-ink"><div class="rt-stone" role="button" tabindex="0" aria-label="벼루 문지르기"><span class="rt-well"></span><span class="rt-stick"></span></div>
+      <div class="rt-bar" aria-hidden="true"><i></i></div><small class="muted">문지르기 어렵다면 벼루를 여러 번 눌러도 돼요</small></div>`;
+    const stone = body.querySelector('.rt-stone'); const stick = body.querySelector('.rt-stick'); const well = body.querySelector('.rt-well'); const bar = body.querySelector('.rt-bar i');
+    let dist = 0; let last = null; let moved = false;
+    const add = (n) => {
+      dist += n; const k = inkShare(dist); well.style.opacity = String(0.15 + k * 0.85); bar.style.width = `${Math.round(k * 100)}%`;
+      if (k >= 1 && !moved) { moved = true; tip.textContent = '먹물이 진하게 갈렸어요'; later(() => show(1), 450); }
+    };
+    stone.addEventListener('pointerdown', (e) => { e.preventDefault(); last = [e.clientX, e.clientY]; stone.setPointerCapture?.(e.pointerId); });
+    stone.addEventListener('pointermove', (e) => {
+      if (!last) return; const b = stone.getBoundingClientRect();
+      stick.style.left = `${Math.max(10, Math.min(90, ((e.clientX - b.left) / b.width) * 100))}%`; stick.style.top = `${Math.max(10, Math.min(90, ((e.clientY - b.top) / b.height) * 100))}%`;
+      add(Math.hypot(e.clientX - last[0], e.clientY - last[1])); last = [e.clientX, e.clientY];
+    });
+    const up = () => { last = null; };
+    stone.addEventListener('pointerup', up); stone.addEventListener('pointercancel', up);
+    stone.addEventListener('click', () => add(INK_NEED / 7));
+    stone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); add(INK_NEED / 7); } });
+  }
+  function trace() {
+    const word = traceText(d.name);
+    body.innerHTML = `<div class="rt-trace"><canvas width="300" height="160" aria-label="「${esc(word)}」 따라 쓰기"></canvas>
+      <button type="button" class="primary" data-rt-next disabled>다 썼어요</button></div>`;
+    const cv = body.querySelector('canvas'); const ctx = cv.getContext('2d'); const btn = body.querySelector('[data-rt-next]');
+    const guide = () => {
+      ctx.clearRect(0, 0, 300, 160); ctx.fillStyle = 'rgba(43, 36, 32, 0.16)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = `${word.length > 3 ? 74 : 92}px ${BRUSH_FONT}`; ctx.fillText(word, 150, 86);
+    };
+    guide(); document.fonts?.load?.(`80px ${BRUSH_FONT}`).then(() => { if (!dist) guide(); }).catch(() => {});
+    let dist = 0; let last = null; let auto = 0;
+    const pos = (e) => { const b = cv.getBoundingClientRect(); return [((e.clientX - b.left) / b.width) * 300, ((e.clientY - b.top) / b.height) * 160]; };
+    cv.addEventListener('pointerdown', (e) => { e.preventDefault(); clearTimeout(auto); last = pos(e); cv.setPointerCapture?.(e.pointerId); });
+    cv.addEventListener('pointermove', (e) => {
+      if (!last) return; const p = pos(e);
+      ctx.strokeStyle = '#2b2420'; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(last[0], last[1]); ctx.lineTo(p[0], p[1]); ctx.stroke();
+      dist += Math.hypot(p[0] - last[0], p[1] - last[1]); last = p;
+      if (dist >= TRACE_NEED) btn.disabled = false;
+    });
+    const up = () => { last = null; if (dist >= TRACE_NEED * 1.6) { clearTimeout(auto); auto = setTimeout(() => !finished && body.contains(btn) && show(2), 900); timers.push(auto); } };
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+    btn.addEventListener('click', () => { clearTimeout(auto); show(2); });
+  }
+  function seal() {
+    const [a, b] = sealCharsOf(d.branch);
+    body.innerHTML = `<div class="rt-seal"><span class="rt-charm">${paidCharmSVG({ ...d, seal: false })}</span>
+      <button type="button" class="rt-sealbtn" aria-label="인장 꾹 눌러 찍기"><b>${a}</b><b>${b}</b></button><small class="muted">꾹 누르고 있다가 떼요</small></div>`;
+    const btn = body.querySelector('.rt-sealbtn'); let t0 = 0; let done = false;
+    const stamp = () => {
+      if (done) return; done = true;
+      try { navigator.vibrate?.(STAMP_BUZZ); } catch { /* 진동이 없는 기기 */ }
+      body.querySelector('.rt-charm').innerHTML = paidCharmSVG(d); body.querySelector('.rt-charm').classList.add('stamped');
+      btn.classList.add('pressed'); tip.textContent = '쾅! 인장이 찍혔어요';
+      later(() => show(3), 1000);
+    };
+    btn.addEventListener('pointerdown', (e) => { e.preventDefault(); t0 = Date.now(); btn.classList.add('holding'); timers.push(setTimeout(() => { if (t0) stamp(); }, SEAL_HOLD)); });
+    const up = () => { btn.classList.remove('holding'); if (!done && t0 && Date.now() - t0 < SEAL_HOLD) tip.textContent = '조금 더 꾹 눌러 주세요'; t0 = 0; };
+    btn.addEventListener('pointerup', up); btn.addEventListener('pointerleave', up);
+    btn.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); stamp(); } });
+  }
+  function blow() {
+    box.querySelector('.rt-foot').hidden = true;
+    const info = characterInfo(state.saju, state.profile); info.stage = heroOptions().stage;
+    const line = ritualLine('blow', polite, d.text, wishDueLabel(d.dueKey, state.fortune.dateKey));
+    body.innerHTML = `<div class="rt-blow"><span class="rt-jisin">${renderCharacterSVG(info, { mood: 'love', stage: info.stage, width: 110 })}</span>
+      <span class="rt-charm glow">${paidCharmSVG(d)}</span></div>
+      <p class="rt-line" data-casual>💬 ${esc(line)}</p>
+      <div class="rt-done"><button type="button" class="ghost" data-rt-wall>📱 배경화면 저장</button><button type="button" class="primary" data-rt-end>완성!</button></div>`;
+    tip.textContent = '🌠 세상에 하나뿐인 소원 부적이 완성됐어요';
+    body.querySelector('[data-rt-wall]').addEventListener('click', () => saveWallpaper(d, wallName(d)));
+    body.querySelector('[data-rt-end]').addEventListener('click', end);
+  }
+  box.addEventListener('click', (e) => { if (e.target.closest('[data-rt-skip]')) end(); });
+  show(0);
+}
+/** C: 기다리는 동안 한 번 — 「소원 부적 빛이 조금 진해졌어」 */
+function wishMidHTML() {
+  const today = state.fortune.dateKey; const m = midWish(load(COLLECTION_KEY, []), today); if (!m) return '';
+  return `<div class="card wish-due wish-mid" data-casual>
+    <div class="wd-row">${wishCharmHTML({ ...m.r, mid: true }, false)}
+      <div><p class="wd-tag">🌠 소원 부적 · ${esc(wishDueLabel(m.r.dueKey, today))}까지 기다리는 중</p>
+      <p class="wd-ask">${esc(ritualLine('mid', politeNow(), m.r.wish))}</p></div></div>
+    <div class="wd-btns"><button type="button" class="primary" data-wish-mid="${m.i}">고마워</button></div>
+  </div>`;
+}
+/** C: 걱정을 태운 지 7일 — 「요즘 마음은 좀 가벼워졌어?」(걱정 내용은 저장하지 않아 다시 보이지 않음) */
+function seedAskHTML() {
+  const today = state.fortune.dateKey; const st = load(SEEDS_KEY, { list: [] }); const i = seedToAsk(st, today); if (i < 0) return '';
+  return `<div class="card wish-due seed-ask" data-casual>
+    <div class="wd-row"><span class="seed-pot" aria-hidden="true">🌱</span>
+      <div><p class="wd-tag">🔥 ${esc(wishDueLabel(st.list[i].at, today))}에 걱정을 태운 자리</p>
+      <p class="wd-ask">${esc(ritualLine('seedAsk', politeNow()))}</p></div></div>
+    <div class="wd-btns"><button type="button" class="primary" data-seed-ans="light" data-i="${i}">가벼워졌어요</button><button type="button" class="ghost" data-seed-ans="heavy" data-i="${i}">아직 조금 무거워요</button></div>
+  </div>`;
+}
+function seedGardenHTML() {
+  const today = state.fortune.dateKey; const list = load(SEEDS_KEY, { list: [] }).list || []; if (!list.length) return '';
+  const st = list.map((x) => seedStage(x, today));
+  return `<p class="seed-garden"><b>🪴 걱정 씨앗 정원</b> <span aria-label="씨앗 ${list.length}개">${st.map((x) => `<i title="${x.label}">${x.icon}</i>`).join('')}</span>
+    <small>걱정을 태운 자리에 남은 씨앗이에요. 7일 뒤 새싹이 나요.</small></p>`;
+}
+document.addEventListener('click', (e) => {
+  const png = e.target.closest('[data-wish-png]');
+  if (png) { const r = load(COLLECTION_KEY, [])[Number(png.dataset.wishPng)]; if (r?.paid) { const d = paidDataOf(r); saveWallpaper(d, wallName(d)); } return; }
+  const mid = e.target.closest('[data-wish-mid]');
+  if (mid) { save(COLLECTION_KEY, wishMarkMid(load(COLLECTION_KEY, []), Number(mid.dataset.wishMid))); renderToday(); renderHero(false); return; }
+  const sa = e.target.closest('[data-seed-ans]'); if (!sa) return;
+  const today = state.fortune.dateKey; const ans = sa.dataset.seedAns;
+  save(SEEDS_KEY, answerSeed(load(SEEDS_KEY, { list: [] }), Number(sa.dataset.i), ans, today));
+  const line = ritualLine(ans === 'light' ? 'light' : 'heavy', politeNow());
+  state.heroLine = line; renderToday();
+  if (ans === 'light') { toast(`🌷 ${line}`); return; }
+  const box = document.createElement('div'); box.className = 'evo-modal';
+  box.innerHTML = `<div class="evo-box"><p style="font-size:2rem;margin:0">🌱</p><p data-casual>💬 ${esc(line)}</p>
+    <p class="muted" style="font-size:0.82rem">마음이 많이 힘들면 혼자 견디지 말고 ☎ 109(24시간)에 이야기해 주세요.</p>
+    <button type="button" class="primary" data-close-reward style="width:100%">고마워</button></div>`;
+  document.body.appendChild(box);
+  box.addEventListener('click', (ev) => { if (ev.target.closest('[data-close-reward]') || ev.target === box) box.remove(); });
+});
+function wishCharmHTML(r, gold) {
+  if (r.paid) return `<span class="wish-charm paid${gold ? ' done' : ''}${r.mid && !r.result ? ' glow' : ''}">${paidCharmSVG(paidDataOf(r))}</span>`; // v0.60 금박 한지
+  return `<span class="wish-charm${gold ? ' gold' : ''}">${renderTalismanSVG(charmFromRecord(r))}</span>`;
+}
 /** 홈: 소원 날이 된 부적이 있으면 맨 위에 한 장 */
 function wishDueHTML() {
   const due = dueWish(load(COLLECTION_KEY, []), state.fortune.dateKey); if (!due) return '';
@@ -5730,9 +5909,10 @@ function wishDueHTML() {
 function wishWallHTML() {
   const col = load(COLLECTION_KEY, []); const today = state.fortune.dateKey;
   const wall = wishWall(col); const wait = wishWaiting(col);
-  return `${wall.length ? `<div class="wish-wall">${wall.map((r) => `<figure class="wish-frame">${wishCharmHTML(r, true)}<figcaption><b>${esc(r.wish)}</b><small>${esc(wishDueLabel(r.doneKey, today))} 이룸</small></figcaption></figure>`).join('')}</div>`
+  const pngBtn = (r) => (r.paid ? `<button type="button" class="ghost wish-png" data-wish-png="${col.indexOf(r)}">📱 배경화면</button>` : '');
+  return `${wall.length ? `<div class="wish-wall">${wall.map((r) => `<figure class="wish-frame">${wishCharmHTML(r, true)}<figcaption><b>${esc(r.wish)}</b><small>${esc(wishDueLabel(r.doneKey, today))} 이룸</small>${pngBtn(r)}</figcaption></figure>`).join('')}</div>`
     : '<p class="muted" style="margin:0 0 8px">아직 걸린 액자가 없어요. 소원을 적은 부적이 이루어지면 금빛 액자로 여기에 걸려요.</p>'}
-    ${wait.length ? `<p class="wish-wait-h">⏳ 함께 기다리는 소원 ${wait.length}개</p><ul class="wish-wait">${wait.map((r) => `<li>${wishCharmHTML(r, false)}<span><b>${esc(r.wish)}</b><small>${esc(wishDueLabel(r.dueKey, today))}에 물어볼게요</small></span></li>`).join('')}</ul>` : ''}
+    ${wait.length ? `<p class="wish-wait-h">⏳ 함께 기다리는 소원 ${wait.length}개</p><ul class="wish-wait">${wait.map((r) => `<li>${wishCharmHTML(r, false)}<span><b>${esc(r.wish)}</b><small>${esc(wishDueLabel(r.dueKey, today))}에 물어볼게요${r.mid ? ' · 빛이 진해졌어요' : ''}</small>${pngBtn(r)}</span></li>`).join('')}</ul>` : ''}
     <button type="button" class="ghost ki-go" data-wish-make>🌠 소원 부적 만들러 가기</button>`;
 }
 document.addEventListener('click', (e) => {
@@ -5749,12 +5929,14 @@ document.addEventListener('click', (e) => {
     toast(`⏳ ${wishLaterLine(r, wishDueLabel(next[i].dueKey, today), politeNow())}`);
     renderToday(); renderHero(false); return;
   }
-  save(COLLECTION_KEY, wishFulfill(col, i, today));
+  const doneCol = wishFulfill(col, i, today); save(COLLECTION_KEY, doneCol);
   renderToday(); renderHero(false);
+  const dr = doneCol[i];
   const box = document.createElement('div'); box.className = 'evo-modal';
-  box.innerHTML = `<div class="evo-box wish-pop"><div class="wish-shine">${wishCharmHTML(r, true)}</div>
+  box.innerHTML = `<div class="evo-box wish-pop"><div class="wish-shine">${wishCharmHTML(dr, true)}</div>
     <h3 style="margin:8px 0 4px">🌟 소원 성취 · 「${esc(r.wish)}」</h3>
     <p data-casual>${esc(wishDoneLine(r, politeNow()))}</p>
+    ${dr.paid ? `<button type="button" class="ghost" data-wish-png="${i}" style="width:100%;margin-bottom:8px">📱 소원 성취 카드 저장</button>` : ''}
     <div class="yday-btns" style="grid-template-columns:1fr 1fr"><button type="button" class="ghost" data-close-reward>고마워요</button><button type="button" class="primary" data-go-wall>🖼️ 이룬 소원 벽 보기</button></div></div>`;
   document.body.appendChild(box);
   box.addEventListener('click', (ev) => {
@@ -5834,6 +6016,7 @@ function burnHTML() {
   const col = load(COLLECTION_KEY, []); const list = burnableCharms(col, loadEquip().charms);
   const sel = state.burnPick ?? (list[0]?.i ?? -1);
   return `<div class="burn-intro">
+    ${seedGardenHTML()}
     <p class="muted" style="margin:0 0 8px">옛날에는 소원과 걱정을 종이에 적어 태워 하늘로 보냈어요(소지). 걱정 한 줄을 적고 다 쓴 부적에 붙여 태워 보세요. <b>적은 걱정은 어디에도 저장하지 않아요.</b></p>
     <textarea id="burn-text" maxlength="${WORRY_MAX}" rows="2" autocomplete="off" spellcheck="false" placeholder="예: 다음 주 발표가 걱정돼요"></textarea>
     <div class="chips burn-recs"><small class="muted">추천 문구</small>${BURN_RECS.map((x) => `<button type="button" class="chip" data-burn-rec="${esc(x)}">${esc(x)}</button>`).join('')}</div>
@@ -5854,7 +6037,7 @@ document.addEventListener('click', (e) => {
   if (ta) ta.value = ''; // 화면 칸에도 남기지 않음
   const col = load(COLLECTION_KEY, []); const list = burnableCharms(col, loadEquip().charms);
   const idx = list.some((x) => x.i === state.burnPick) ? state.burnPick : (state.burnPick === -1 ? -1 : list[0]?.i ?? -1);
-  openCharmPay('burn', () => openBurn(worry, idx)); // v0.59: 990원 또는 복떡 50개
+  openCharmPay('burn', () => openBurn(worry, idx), () => {}, burnDataOf(worry)); // v0.59: 990원 또는 복떡 50개
 });
 /** 태우기 창: 종이(부적 + 걱정 글) 위에 캔버스, 손가락이 닿은 곳부터 불이 번짐 */
 function openBurn(worry, idx) {
@@ -5866,30 +6049,34 @@ function openBurn(worry, idx) {
     <p class="muted burn-tip">종이를 손가락으로 눌러 불을 붙이세요. 여러 군데 눌러도 돼요.</p>
     ${care ? `<div class="burn-care">${BURN_CARE.map((l) => `<p>${esc(l)}</p>`).join('')}</div>` : ''}
     <div class="burn-stage" role="img" aria-label="태울 종이">
-      <div class="burn-paper">${r ? `<span class="bp-charm">${renderTalismanSVG(charmFromRecord(r))}</span>` : ''}<p class="bp-worry"></p></div>
-      <canvas class="burn-fire" width="280" height="360"></canvas>
+      <div class="burn-paper"><span class="bp-red"></span>${r ? `<span class="bp-charm">${renderTalismanSVG(charmFromRecord(r))}</span>` : ''}</div>
+      <canvas class="burn-fire" width="300" height="480"></canvas>
+      <div class="burn-seed" hidden aria-hidden="true"><span>🌱</span></div>
     </div>
-    <div class="burn-end" hidden><p class="burn-take" data-casual></p><p class="burn-exp"></p></div>
+    <div class="burn-end" hidden><p class="burn-take" data-casual></p><p class="burn-seedline" data-casual></p><p class="burn-exp"></p></div>
     <div class="yday-btns" style="grid-template-columns:1fr 1fr"><button type="button" class="ghost" data-burn-close>그만두기</button><button type="button" class="primary" data-burn-all>🔥 한 번에 태우기</button></div>
   </div>`;
   document.body.appendChild(box);
-  box.querySelector('.bp-worry').textContent = worry; // 글은 이 창 안에만, 다 타면 지움
+  const red = box.querySelector('.bp-red');
+  red.innerHTML = paidCharmSVG(burnDataOf(worry)); // v0.60 붉은 한지 + 붓글씨 걱정 — 글은 이 창 안에만, 다 타면 지움
   const cv = box.querySelector('.burn-fire'); const ctx = cv.getContext('2d');
   const CELL = 7; const g = makeGrid(Math.ceil(cv.width / CELL), Math.ceil(cv.height / CELL));
   const ashes = []; let raf = 0; let done = false; let lit = false; let frame = 0;
   const finish = () => {
     if (done) return; done = true; cancelAnimationFrame(raf);
     g.cell.fill(2); draw();
-    box.querySelector('.bp-worry').textContent = ''; worry = '';
-    // 남은 재가 위로 날아가며 사라지는 마무리(약 1.5초)
-    let k = 0; const drift = () => { for (const a of ashes) { a.x += a.vx; a.y += a.vy; a.life--; } for (let i = ashes.length - 1; i >= 0; i--) if (ashes[i].life <= 0) ashes.splice(i, 1); draw(); if (++k < 90 && ashes.length && box.isConnected) raf = requestAnimationFrame(drift); };
+    red.innerHTML = paidCharmSVG(burnDataOf('')); worry = '';
+    // 남은 재가 위로 날아가며 사라지고(약 1.5초) → v0.60 지신이 재를 모아 작은 씨앗으로
+    let k = 0; const drift = () => { for (const a of ashes) { a.x += a.vx; a.y += a.vy; a.life--; } for (let i = ashes.length - 1; i >= 0; i--) if (ashes[i].life <= 0) ashes.splice(i, 1); draw(); if (++k < 90 && ashes.length && box.isConnected) raf = requestAnimationFrame(drift); else gather(); };
     raf = requestAnimationFrame(drift);
+    save(SEEDS_KEY, plantSeed(load(SEEDS_KEY, { list: [] }), state.fortune.dateKey, r ? r.element : state.saju.yongsin)); // 날짜·기운만
     const res = burnResult(load(COLLECTION_KEY, []), idx, r ? fillOf(load(CHARMGROW_KEY, {}), r) : 0);
     const line = burnTakeLine(Date.now(), politeNow());
     if (res.charm) save(COLLECTION_KEY, res.collection);
     box.querySelector('.burn-tip').hidden = true;
     box.querySelector('.burn-end').hidden = false;
     box.querySelector('.burn-take').textContent = `💬 ${line}`;
+    box.querySelector('.burn-seedline').textContent = '';
     box.querySelector('.burn-exp').textContent = res.exp ? `🧧 ${labelForRec(res.charm)}의 기운이 지신에게 갔어요 · 성장 +${res.exp}` : '걱정은 재가 되어 날아갔어요.';
     const btns = box.querySelector('.yday-btns'); btns.style.gridTemplateColumns = '1fr';
     btns.innerHTML = '<button type="button" class="primary" data-burn-close>고마워요</button>';
@@ -5897,6 +6084,21 @@ function openBurn(worry, idx) {
     state.burnPick = undefined; state.heroLine = line;
     renderHero(false);
   };
+  let gathered = false;
+  function gather() { // 재가 가운데로 모여 씨앗 → 새싹
+    if (gathered || !box.isConnected) return; gathered = true;
+    const cx = cv.width / 2; const cy = cv.height * 0.46; const dots = [];
+    if (!reduce) for (let i = 0; i < 70; i++) dots.push({ x: Math.random() * cv.width, y: Math.random() * cv.height, s: 2 + Math.random() * 3 });
+    let f = 0; const N = 48;
+    const step = () => {
+      draw(); const t = Math.min(1, f / N); const e = 1 - (1 - t) ** 3;
+      for (const p of dots) { ctx.fillStyle = Math.random() < 0.3 ? '#ffd27a' : '#f3d27a'; ctx.fillRect(p.x + (cx - p.x) * e, p.y + (cy - p.y) * e, p.s, p.s); }
+      if (++f <= N && dots.length && box.isConnected) { raf = requestAnimationFrame(step); return; }
+      draw(); box.querySelector('.burn-seed').hidden = false;
+      box.querySelector('.burn-seedline').textContent = `🌱 ${ritualLine('seed', politeNow())}`;
+    };
+    raf = requestAnimationFrame(step);
+  }
   function draw() {
     const { w, cell, age } = g; ctx.clearRect(0, 0, cv.width, cv.height);
     for (let i = 0; i < cell.length; i++) {
