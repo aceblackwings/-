@@ -81,6 +81,7 @@ import {
 import { drawKiCard, todayKiCard, stageForDays, nextStage, kiCardText, rarityLabel, CARD_RARITY, LACK_RATE } from './dailycard.js';
 import { buildDiary, logVisit, markRead, isRead } from './diary.js';
 import { scratchedOn, markScratched, clearedRatio } from './scratch.js';
+import { cookieReaction, specialOf, isGolden, GOLD_NOTE } from './cookieplus.js';
 import { COOKIE_KEY, isOpened as cookieOpened, markOpened as cookieMark, todayTodo, cookieTiles } from './cookie.js';
 import { DHABIT_KEY, HABIT_REWARD, HABIT_MAX, isSet as habitsSet, recommendHabits, setHabits, checkTarget, checksOn, checkHabit, recentChecks } from './dailyhabit.js';
 import { fortuneImage } from './assets.js';
@@ -2824,35 +2825,71 @@ function machineHTML() {
   const ch = charImage(z.key, 5, state.saju.yongsin);
   return `<span class="fc-mwrap">${fcImg('machine', 'fc-mimg') || MACHINE_SVG}</span>${ch ? `<img class="fc-jisin" src="${ch}" alt="" draggable="false">` : ''}`;
 }
-const cookieWhole = () => fcImg('cookie', 'fc-cimg') || cookieSVG();
+/** v0.61 오늘의 쿠키 정보: 황금 여부(10%) · 절기·명절 · 지신 반응(점수대 4단계 × 띠 말투) */
+function cookieInfo() {
+  const f = state.fortune; const z = myZodiac();
+  const gold = isGolden(f.dateKey, omenSeedKey());
+  const sp = specialOf(f.date);
+  const r = cookieReaction(fiveScores(f).total, z.key, gold);
+  return { gold, sp, r, z };
+}
+/** 명절 쿠키 덧그림(동지 팥빛 띠 · 설 붉은 끈 · 대보름 달 · 단오 창포 잎 · 칠석 별 · 추석 금빛 띠) */
+const SHAPE_SVG = {
+  string: '<path d="M12 47 Q60 28 108 47" stroke="#c62828" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M60 33 l-12 -9 v16z M60 33 l12 -9 v16z" fill="#d32f2f" stroke="#8e1b1b" stroke-width="1.2"/><circle cx="60" cy="33" r="3.5" fill="#ffcf5a"/><path d="M58 36 l-6 16 M62 36 l6 16" stroke="#c62828" stroke-width="3" stroke-linecap="round"/>',
+  redbean: '<path d="M22 40 Q60 22 98 40 L102 50 Q60 32 18 50Z" fill="#8e2b2b" opacity=".88"/>' + [[34, 41], [48, 35], [62, 33], [76, 35], [89, 41]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="2.6" ry="1.8" fill="#f3d6c8"/>`).join(''),
+  moon: '<circle cx="98" cy="16" r="11" fill="#ffe27a" stroke="#d0a03a" stroke-width="2"/><circle cx="94" cy="13" r="2" fill="#f2c94c"/>',
+  leaf: '<path d="M40 30 Q60 4 86 20 Q64 22 40 30Z" fill="#5fa86a" stroke="#2f6b3a" stroke-width="1.5"/><path d="M44 28 Q62 16 82 20" stroke="#2f6b3a" stroke-width="1" fill="none"/>',
+  stars: [[22, 18], [60, 8], [98, 18]].map(([x, y]) => `<path transform="translate(${x} ${y})" d="M0 -6 L1.8 -1.8 L6 0 L1.8 1.8 L0 6 L-1.8 1.8 L-6 0 L-1.8 -1.8Z" fill="#fff3a0" stroke="#c9a227" stroke-width="1"/>`).join(''),
+  ribbon: '<path d="M18 44 Q60 26 102 44 L104 50 Q60 32 16 50Z" fill="#e6b422" stroke="#9a6a1f" stroke-width="1.2"/>',
+};
+const shapeSVG = (shape) => SHAPE_SVG[shape] ? `<svg class="fc-shape" viewBox="0 0 120 90" aria-hidden="true">${SHAPE_SVG[shape]}</svg>` : '';
+const cookieWhole = (gold) => (gold && fcImg('cookie_gold', 'fc-cimg')) || fcImg('cookie', 'fc-cimg') || cookieSVG();
 const cookieHalf = (s) => fcImg(`cookie_${s}`, 'fc-cimg') || cookieSVG(s);
+const specialLine = (sp) => sp ? `<p class="fc-special">${sp.icon} <b>${esc(sp.name)}${sp.termName ? ` · ${esc(sp.termName)}` : ''} 특별 쿠키</b> ${esc(sp.line)}</p>` : '';
+function reactFace(r, z) {
+  const u = emoImage(z.key, r.mood, state.saju.yongsin) || charImage(z.key, 5, state.saju.yongsin);
+  return u ? `<img src="${u}" alt="" draggable="false">` : '<span>🐾</span>';
+}
 function cookieCardHTML() {
   const f = state.fortune; const opened = cookieOpened(load(COOKIE_KEY, {}), f.dateKey);
+  const { gold, sp, r, z } = cookieInfo();
+  const g = gold ? ' gold' : '';
   if (opened && !state.cookieReplay) {
-    return `<article class="card fc-card open" id="fc-card">
-      <div class="fc-top"><span class="fc-broken"><i class="l">${cookieHalf('l')}</i><i class="r">${cookieHalf('r')}</i></span>
-        <span class="fc-top-t"><b>🥠 오늘의 포춘 쿠키</b><button type="button" class="linkish" data-fc-replay>🔄 한 번 더 굴려 보기</button></span></div>
+    return `<article class="card fc-card open${g}" id="fc-card">
+      <div class="fc-top"><span class="fc-broken${g}"><i class="l">${cookieHalf('l')}</i><i class="r">${cookieHalf('r')}</i></span>
+        <span class="fc-top-t"><b>${gold ? '✨ 오늘은 황금 쿠키' : '🥠 오늘의 포춘 쿠키'}</b><small class="fc-say-s" data-casual>${esc(z.name)} 지신 · 「${esc(r.line)}」</small><button type="button" class="linkish" data-fc-replay>🔄 한 번 더 굴려 보기</button></span></div>
+      ${gold ? `<p class="fc-goldnote">✨ ${esc(GOLD_NOTE)}</p>` : ''}
+      ${specialLine(sp)}
       ${fiveCardHTML()}
     </article>`;
   }
-  return `<article class="card fc-card" id="fc-card">
+  const paper = gold ? '✨ 황금 쪽지' : sp ? `${sp.icon} ${sp.name} 쪽지` : '오늘의 운세';
+  return `<article class="card fc-card${g}" id="fc-card">
     <p class="fc-h">🥠 오늘의 포춘 쿠키</p>
-    <div class="fc-stage${fortuneImage(myZodiac().key) ? ' combo' : ''}" id="fc-stage" data-step="idle">
+    ${sp ? `<p class="fc-badge">${sp.icon} 오늘은 ${esc(sp.name)} · 특별 쿠키가 기다려요</p>` : ''}
+    <div class="fc-stage${fortuneImage(myZodiac().key) ? ' combo' : ''}${g}" id="fc-stage" data-step="idle">
       <button type="button" class="fc-machine" data-fc-turn aria-label="지신이 포춘 기계를 돌려요">${machineHTML()}</button>
-      <button type="button" class="fc-cookie" data-fc-crack aria-label="포춘 쿠키 쪼개기"><span class="fc-whole">${cookieWhole()}</span><span class="fc-half l">${cookieHalf('l')}</span><span class="fc-half r">${cookieHalf('r')}</span><span class="fc-paper">오늘의 운세</span></button>
+      <button type="button" class="fc-cookie" data-fc-crack aria-label="${gold ? '황금 ' : ''}포춘 쿠키 쪼개기"><span class="fc-whole">${cookieWhole(gold)}${sp ? shapeSVG(sp.shape) : ''}</span><span class="fc-half l">${cookieHalf('l')}</span><span class="fc-half r">${cookieHalf('r')}</span><span class="fc-paper">${esc(paper)}</span>${gold ? '<span class="fc-sparkle" aria-hidden="true"><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i></span>' : ''}</button>
+      <div class="fc-react${r.big ? ' big' : ''}" aria-live="polite" hidden><span class="fc-face">${reactFace(r, z)}</span><p class="fc-say" data-casual>${esc(r.line)}</p></div>
     </div>
     <p class="fc-guide" id="fc-guide">${opened ? '같은 운세가 한 번 더 굴러 나와요. 지신을 눌러 보세요' : `${esc(myZodiac().name)} 지신을 누르면 포춘 기계가 돌아가요`}</p>
+    <p class="fc-odds">✨ ${esc(GOLD_NOTE)}</p>
   </article>`;
 }
 function turnMachine() {
   const st = $('#fc-stage'); if (!st || st.dataset.step !== 'idle') return;
   st.dataset.step = 'spin'; $('#fc-guide').textContent = '드르륵… 기계가 돌아가요';
-  setTimeout(() => { st.dataset.step = 'ready'; $('#fc-guide').textContent = '🥠 쿠키를 눌러 쪼개 보세요'; }, reduceMotion() ? 60 : 1700);
+  setTimeout(() => {
+    st.dataset.step = 'ready';
+    $('#fc-guide').textContent = st.classList.contains('gold') ? '✨ 반짝이는 황금 쿠키예요! 눌러서 쪼개 보세요' : '🥠 쿠키를 눌러 쪼개 보세요';
+  }, reduceMotion() ? 60 : 1700);
 }
+/** 쿠키가 갈라지면 지신이 1.5초쯤 표정을 바꾸고 한마디 → 그다음 오늘의 운세 */
+const REACT_MS = 1500;
 function crackCookie() {
   const st = $('#fc-stage'); if (!st || st.dataset.step !== 'ready') return;
   st.dataset.step = 'crack'; $('#fc-guide').textContent = '';
-  setTimeout(() => {
+  const showFortune = () => {
     const dk = state.fortune.dateKey; const first = !cookieOpened(load(COOKIE_KEY, {}), dk);
     save(COOKIE_KEY, cookieMark(load(COOKIE_KEY, {}), dk));
     state.cookieReplay = false;
@@ -2860,7 +2897,12 @@ function crackCookie() {
     initScratch();
     if (first) feedJisin('morning'); // 포춘 쿠키를 연 것 = 지신 아침밥
     $('#five-card')?.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' });
-  }, reduceMotion() ? 60 : 1000);
+  };
+  setTimeout(() => {
+    const rx = st.querySelector('.fc-react');
+    if (rx) { rx.hidden = false; st.dataset.step = 'react'; }
+    setTimeout(showFortune, REACT_MS);
+  }, reduceMotion() ? 60 : 800);
 }
 document.addEventListener('click', (e) => {
   if (e.target.closest('[data-fc-turn]')) turnMachine();
