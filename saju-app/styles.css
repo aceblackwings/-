@@ -2187,3 +2187,46 @@ body.cm-open { overflow: hidden; }
 .dh-card.mini-fold > summary h3 { flex: 1 1 auto; }
 .dh-card.mini-fold > summary .mini-hint { order: 3; flex-basis: calc(100% - 24px); margin-left: 0; }
 .dh-card.mini-fold > summary::after { order: 2; }
+
+/* ---------- v0.64 소원 부적 990 / 100일 등불 2,900 · 걱정 태우기 무료 ---------- */
+.cm-price { display: inline-block; margin-top: 2px; padding: 2px 8px; border-radius: 999px; font-style: normal; font-size: .74rem; font-weight: 700; color: #8a5a12; background: #fff1cf; }
+.cm-price.free { color: #2f6b3a; background: #e3f4e4; }
+.cm-tiers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 12px; }
+.cm-tier { all: unset; box-sizing: border-box; cursor: pointer; position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 6px 10px; border-radius: 14px; background: #fff; border: 2px solid rgba(208, 160, 58, .25); text-align: center; touch-action: manipulation; }
+.cm-tier b { font-size: .92rem; color: var(--ink); word-break: keep-all; }
+.cm-tier .cm-tier-p { font-weight: 800; color: #a0521a; font-size: 1rem; }
+.cm-tier small { color: var(--muted); font-size: .72rem; line-height: 1.4; word-break: keep-all; }
+.cm-tier.on { border-color: #c98a2e; background: linear-gradient(180deg, #fffaf0, #fff1d8); box-shadow: 0 4px 14px rgba(201, 138, 46, .25); }
+.cm-tier:focus-visible { outline: 3px solid var(--neon); outline-offset: 2px; }
+.cm-tier-tag { position: absolute; top: -9px; right: 8px; padding: 1px 8px; border-radius: 999px; font-style: normal; font-size: .7rem; font-weight: 700; color: #fff; background: #c0503a; }
+.cm-lt-note { margin: 0 0 8px; font-size: .8rem; color: #8a5a12; text-align: left; }
+.cm-for small { color: var(--muted); font-weight: 400; }
+.cm-go:disabled { opacity: .55; cursor: default; }
+
+.lantern-card { background: linear-gradient(160deg, #2b2a4a 0%, #3d2f52 100%); color: #fbf2e2; border: 1px solid rgba(243, 210, 122, .35); }
+.lantern-card .muted { color: rgba(251, 242, 226, .7); }
+.lt-row { display: flex; gap: 14px; align-items: center; }
+.lt-lamp { position: relative; flex: none; width: 64px; height: 64px; display: grid; place-items: center; font-size: 2.3rem; }
+.lt-lamp b { position: relative; font-weight: 400; animation: lt-sway 4s ease-in-out infinite; transform-origin: 50% 0; }
+.lt-glow { position: absolute; inset: -6px; border-radius: 50%; background: radial-gradient(circle, rgba(255, 196, 92, var(--lt, .3)) 0%, rgba(255, 150, 60, calc(var(--lt, .3) * .5)) 45%, transparent 72%); animation: lt-breathe 3.2s ease-in-out infinite; }
+@keyframes lt-sway { 50% { transform: rotate(4deg); } }
+@keyframes lt-breathe { 50% { transform: scale(1.08); opacity: .85; } }
+.lt-t { min-width: 0; }
+.lt-tag { margin: 0; font-size: .8rem; color: #f3d27a; }
+.lt-wish { margin: 2px 0 4px; font-family: 'Nanum Brush Script', var(--serif); font-size: 1.45rem; line-height: 1.2; word-break: keep-all; }
+.lt-wish small { font-family: var(--serif); font-size: .75rem; color: #f6d9b0; }
+.lt-line { margin: 0; font-size: .88rem; line-height: 1.6; word-break: keep-all; }
+.lt-bar { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin: 12px 0 4px; }
+.lt-bar i { height: 8px; border-radius: 4px; background: rgba(251, 242, 226, .16); }
+.lt-bar i.on { background: linear-gradient(90deg, #f3b54a, #ffd98a); box-shadow: 0 0 8px rgba(255, 200, 100, .6); }
+.lt-meta { display: block; font-size: .74rem; }
+.lt-btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.lt-btns > button { flex: 1 1 140px; }
+.lt-btns .linkish { flex: 0 0 100%; text-align: center; color: #f6d9b0; }
+.lantern-card .ghost { color: #fbf2e2; border-color: rgba(251, 242, 226, .4); }
+.lt-letter p { text-align: left; line-height: 1.75; word-break: keep-all; }
+.lt-letter .lt-sign { text-align: right; color: var(--hj-ink2, #5b4d42); font-family: var(--hj-serif, serif); }
+@media (prefers-reduced-motion: reduce) { .lt-lamp b, .lt-glow { animation: none; } }
+.cm-box [hidden] { display: none !important; }
+.lantern-card .ghost, .lantern-card button.ghost { background: rgba(255, 255, 255, .08); color: #fbf2e2; border: 1px solid rgba(251, 242, 226, .45); }
+.lantern-card button:disabled { opacity: .7; }
