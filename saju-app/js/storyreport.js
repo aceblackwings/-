@@ -455,7 +455,7 @@ export function bookletStory(ctx) {
       { h: wind.h, paras: [...wind.blocks[0].paras, ...(wind.blocks.find((b) => b.h?.startsWith('👀'))?.paras || [])] },
       { h: why.h, paras: why.blocks[0].paras.slice(0, 1) },
     ],
-    cliff: `여기까지가 무료로 보는 부분이에요. 올해 조심할 일 ${trapN}가지와 대비법, 도움이 되는 사람과 띠, 나에게 맞는 일·사업 분야 6가지, 열두 달 풀이는 상세판 3장부터 볼 수 있어요.`,
+    cliff: `여기까지가 한눈에 보는 요약이에요. 조심할 일 ${trapN}가지가 생기는 이유와 대비법, 도움이 되는 사람과 띠, 나에게 맞는 일·사업 분야 6가지, 열두 달의 장면은 맨 아래 「자세히 보기」에서 이어서 볼 수 있어요.`,
     yong: saju.yongsin,
   };
 }
@@ -470,6 +470,48 @@ export function sajuStory(ctx) {
     brief: ch.find((s) => s.key === 'brief'),
     blocks: me.blocks.filter((b) => !b.cliff),
     hard: { h: hard.h, paras: hard.blocks[0].paras.slice(0, 2) },
-    cliff: `${josa(who, '이/가')} 평생 조심할 일, 나에게 맞는 사람, 잘 맞는 일과 사업 분야, 10년마다 바뀌는 흐름은 「평생 정통사주」에서 볼 수 있어요.`,
+    more: lifeSummaryMore(ch),
+    cliff: `여기까지가 ${josa(who, '을/를')} 한눈에 보는 요약이에요. 왜 그런지에 대한 이유, 지나온 10년과 앞날의 장면, 사주 글자로 본 근거는 맨 아래 「자세히 보기」에서 이어서 볼 수 있어요.`,
   };
+}
+
+/**
+ * v0.59 4단계(2026-11-06 사용자 결정 「요약 = 결론·할 일 / 자세히 = 이유·사례·장면, 같은 문장은 한 번만」):
+ * 정통사주 요약판에 붙는 결론 블록 — 3장~8장에서 「무엇을 하라·조심하라」 부분만 골라 담음(이유·지나온 장면은 자세히 보기에)
+ */
+function lifeSummaryMore(ch) {
+  const sec = (k) => ch.find((s) => s.key === k);
+  const blocks = (k) => (sec(k)?.blocks || []).filter((b) => !b.cliff);
+  const pick = (k, test, n = 9) => blocks(k).filter((b) => test(b.h || '')).map((b) => ({ h: b.h, paras: b.paras.slice(0, n) }));
+  const out = [];
+  const risk = blocks('risk'); if (risk.length) out.push({ h: sec('risk').h, paras: risk.flatMap((b) => b.paras) });
+  const love = pick('people', (h) => h.startsWith('💗'), 1); const helper = pick('people', (h) => h.startsWith('🤝'));
+  if (love.length || helper.length) out.push({ h: sec('people').h, paras: [...love, ...helper].flatMap((b) => b.paras) });
+  const body = blocks('body')[0]; if (body) out.push({ h: sec('body').h, paras: body.paras.slice(0, 1) });
+  const earn = pick('work', (h) => h.startsWith('💼'), 1); const rule = pick('work', (h) => h.startsWith('🧭'));
+  if (earn.length || rule.length) out.push({ h: sec('work').h, paras: [...earn, ...rule].flatMap((b) => b.paras) });
+  const now = pick('seasons', (h) => h.startsWith('지금')); if (now.length) out.push({ h: `⏳ ${now[0].h.replace(/\s*🌟/, '')}`, paras: now[0].paras });
+  const bring = pick('fix', (h) => h.startsWith('🌱')); if (bring.length) out.push({ h: bring[0].h, paras: bring[0].paras });
+  const goal = pick('fix', (h) => h.startsWith('🎯')); if (goal.length) out.push({ h: goal[0].h, paras: goal[0].paras });
+  return out;
+}
+
+/** 2027년 운세 요약판(첫 화면): 이야기 앞머리 + 한 해 정리(잘 풀리는 점·열쇠) + 조심할 점 + 분야마다 결론·힘 실리는 달·조심할 점 */
+export const YEAR_GENERAL_KEEP = ['잘 풀리는 점 · 챙길 점', '한 해의 열쇠'];
+export function yearSummary({ b, st }) {
+  return {
+    story: st,
+    lead: b.lead,
+    general: b.general.filter((x) => YEAR_GENERAL_KEEP.includes(x.h)),
+    checks: b.checks,
+    fields: b.fields.map((f) => ({ ...f, paras: f.paras.filter((p, i) => i === 0 || /달은|⚠️/.test(p)) })),
+  };
+}
+/** 요약판에 실제로 보이는 글을 모두 꺼냄(상세판에서 같은 문장을 빼는 데 씀) */
+export function textsOf(o) {
+  if (o == null) return [];
+  if (typeof o === 'string') return [o];
+  if (Array.isArray(o)) return o.flatMap(textsOf);
+  if (typeof o === 'object') return Object.values(o).flatMap(textsOf);
+  return [];
 }

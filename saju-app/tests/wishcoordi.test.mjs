@@ -92,6 +92,19 @@ t('데일리 코디: 연속 7일마다 조각 1개(같은 날 두 번 안 줌), 
   assert.equal(got, 2);
 });
 
+t('코디(v0.59): 부위마다 하루 한 번 · 세 부위 다 고르면 별 3=1·4=2·5=3 떡(하루 한 번)', () => {
+  const lucky = 1; const today = 3; const D = '2026-11-6';
+  const pick = (el) => C.WARDROBE.head.find((x) => x.el === el).id;
+  let r = C.pickSlot(null, D, 'head', pick(lucky), lucky, today); assert.equal(r.locked, false); assert.equal(r.done, false);
+  assert.equal(C.pickSlot(r.store, D, 'head', pick(0), lucky, today).locked, true, '같은 부위 두 번 안 됨');
+  assert.equal(C.claimStars(r.store, D).gained, 0);
+  r = C.pickSlot(r.store, D, 'neck', C.WARDROBE.neck.find((x) => x.el === lucky).id, lucky, today);
+  r = C.pickSlot(r.store, D, 'hand', C.WARDROBE.hand.find((x) => x.el === lucky).id, lucky, today); assert.ok(r.done);
+  const c = C.claimStars(r.store, D); assert.equal(c.stars, 5); assert.equal(c.gained, 3);
+  assert.equal(C.claimStars(c.store, D).gained, 0, '하루 한 번');
+  assert.deepEqual([1, 2, 3, 4, 5].map((n) => C.STAR_REWARD[n] || 0), [0, 0, 1, 2, 3]);
+  assert.ok(C.lockedOn(c.store, '2026-11-7').head === undefined, '다음 날은 다시');
+});
 t('걱정 태우기: 걱정은 결과에 없음 · 부적 기운 = 바치기 값 · 소원·장착 부적 제외 · 109', () => {
   const col = [rec({ rarity: 'common' }), rec({ rarity: 'epic', dateKey: '2026-11-4' }), { ...rec({ dateKey: '2026-11-3' }), wish: '합격', dueKey: '2026-12-1' }];
   const list = B.burnable(col, [col[0]]);

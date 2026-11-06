@@ -110,8 +110,9 @@ export function claimItem(store, seasons, ownedIds) {
 // ---------- 타로 이용(v0.46.1, 2026-11-04 사용자 결정): 하루 1회 무료, 그다음부터는 복떡 ----------
 // 현금 소액 결제(300원대)는 스토어 수수료와 결제 피로가 커서, 무료로도 모을 수 있는 복떡으로 받는다
 // 복떡 꾸러미(10개 1,100원)가 현금 상품이 되고, 매일 들르기·할 일로 모은 복떡으로도 더 볼 수 있음
-export const TAROT_FREE_PER_DAY = 1;
-export const TAROT_COST = { one: 3, three: 5 };
+// v0.59(2026-11-06 사용자 결정): 복떡은 습관 체크(하나에 2개)·코디 별 보상으로만 모으고, 타로는 할 때마다 3개(무료 없음)
+export const TAROT_FREE_PER_DAY = 0;
+export const TAROT_COST = { one: 3, three: 3 };
 export const tarotUsed = (store, dateKey) => norm(store).days[dateKey]?.tarot || 0;
 /** 이번 뽑기 값: { free: true } 또는 { free: false, cost } */
 export function tarotPrice(store, dateKey, spread) {
@@ -126,4 +127,31 @@ export function useTarot(store, dateKey, spread) {
   let next = { ...s, days: { ...s.days, [dateKey]: { ...day, tarot: (day.tarot || 0) + 1 } } };
   if (!pr.free) next = addLog(next, `타로 ${spread === 'three' ? '세 장' : '한 장'}`, -pr.cost);
   return { store: next, ok: true, free: pr.free, cost: pr.cost };
+}
+
+// ---------- v0.59 궁합·소원 부적·나쁜 기운 태우기 ----------
+// 궁합: 새 친구 한 명당 복떡 2개(같은 친구는 다시 무료) · 소원 부적/태우기 부적: 990원 또는 복떡 50개로 한 번(모으면 또 한 번)
+export const COMPAT_COST = 2;
+export const CHARM_TTEOK = 50;
+export const CHARM_PRICE = 990;
+export const friendKey = (fr) => `${fr.calendar || 'solar'}-${fr.year}-${fr.month}-${fr.day}`;
+export const compatOpen = (store, key) => !!norm(store).compat?.[key];
+/** 새 친구 궁합 열기: 이미 연 친구면 무료 */
+export function useCompat(store, key) {
+  const s = { ...norm(store), compat: { ...(norm(store).compat || {}) } };
+  if (s.compat[key]) return { store: s, ok: true, free: true };
+  if (s.balance < COMPAT_COST) return { store: s, ok: false, need: COMPAT_COST - s.balance };
+  return { store: addLog({ ...s, compat: { ...s.compat, [key]: true } }, '궁합 보기', -COMPAT_COST), ok: true, free: false };
+}
+/** 예전에 궁합을 본 친구는 열린 것으로(한 번만) */
+export function grandfatherCompat(store, keys) {
+  const s = norm(store); const compat = { ...(s.compat || {}) };
+  for (const k of keys) compat[k] = true;
+  return { ...s, compat };
+}
+/** 소원 부적·태우기 부적을 복떡 50개로 */
+export function useCharmTteok(store, kind) {
+  const s = norm(store);
+  if (s.balance < CHARM_TTEOK) return { store: s, ok: false, need: CHARM_TTEOK - s.balance };
+  return { store: addLog(s, kind === 'wish' ? '소원 부적' : '나쁜 기운 태우기 부적', -CHARM_TTEOK), ok: true };
 }

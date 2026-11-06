@@ -7,6 +7,7 @@
 import { CHAR_FILES, EMO_FILES, SCENE_FILES, CHARM_FILES, ITEM_FILES } from './asset-manifest.js';
 import { TAROT_FILES } from './tarot-manifest.js';
 import { COORDI_IMAGES } from './coordi-manifest.js';
+import { FORTUNE_IMAGES } from './fortune-manifest.js';
 
 export const EL_NAME = ['wood', 'fire', 'earth', 'metal', 'water'];
 export const CHAR_ASSETS = new Set(CHAR_FILES);
@@ -45,6 +46,9 @@ export function tarotImage(key) { return TAROT_ASSETS.has(key) ? url('tarot', ke
 /** 계절 한정 소품 그림 주소 (없으면 null) */
 /** 코디 소품 그림 {src, ratio} (없으면 null → 이모지) — v0.58 */
 export function coordiImage(id) { const r = (COORDI_IMAGES || {})[id]; return r ? { src: url('coordi', id), ratio: r } : null; }
+
+/** 포춘 기계·쿠키 그림 {src, ratio}: 'machine'·'cookie'·'cookie_l'·'cookie_r'·띠 키(지신 + 기계) — v0.59 (없으면 null → 코드 그림) */
+export function fortuneImage(id) { const r = (FORTUNE_IMAGES || {})[id]; return r ? { src: url('fortune', id), ratio: r } : null; }
 
 export function itemImage(seasonKey) { return ITEM_ASSETS.has(seasonKey) ? url('item', seasonKey) : null; }
 

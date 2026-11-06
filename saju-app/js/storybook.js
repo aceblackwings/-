@@ -284,13 +284,24 @@ export function plainReport(rep, opts = {}) {
   return { ...rep, sub: P(rep.sub), sections: rep.sections.map((s) => (s.raw ? s : { ...s, h: P(s.h), intro: P(s.intro), blocks: s.blocks.map((b) => ({ ...b, h: P(b.h), paras: b.paras.map(P) })) })) };
 }
 
-/** 문장 겹침 정리: 리포트 전체에서 이미 나온 문장은 빼기(문단이 비면 문단도 뺌) */
-export function dedupeReport(rep) {
+/** 문장 나누기 · 비교 열쇠(띄어쓰기 무시) — 겹침 검사에 같이 씀 */
+export const splitSentences = (p) => String(p || '').split(/(?<=[.!?요])\s+/).map((x) => x.trim()).filter(Boolean);
+export const sentenceKey = (x) => String(x).replace(/\s+/g, '').replace(/^[^가-힣A-Za-z0-9「(]+/u, '');
+/** 「이미 다른 화면에서 본 문장」 길이 기준(v0.59 4단계: 20자 이상이 같으면 같은 문장) */
+export const SEED_MIN = 20;
+
+/**
+ * 문장 겹침 정리: 리포트 전체에서 이미 나온 문장은 빼기(문단이 비면 문단도, 블록이 비면 장도 뺌)
+ * seed(v0.59 4단계) = 요약판에 이미 보여 준 글 — 그 안의 20자 이상 문장은 상세판에서 다시 나오지 않음
+ */
+export function dedupeReport(rep, seed = []) {
   const seen = new Set();
+  for (const t of seed) for (const x of splitSentences(t)) { const k = sentenceKey(x); if (k.length >= SEED_MIN) seen.add(k); }
   const cut = (p) => {
-    const parts = String(p).split(/(?<=[.!?요])\s+/);
-    const kept = parts.filter((x) => { const k = x.replace(/\s+/g, ''); if (k.length < 14) return true; if (seen.has(k)) return false; seen.add(k); return true; });
+    const kept = splitSentences(p).filter((x) => { const k = sentenceKey(x); if (k.length < 14) return true; if (seen.has(k)) return false; seen.add(k); return true; });
     return kept.join(' ').trim();
   };
-  return { ...rep, sections: rep.sections.map((s) => ({ ...s, blocks: s.blocks.map((b) => ({ ...b, paras: b.paras.map(cut).filter(Boolean) })).filter((b) => b.paras.length) })) };
+  const sections = rep.sections.map((s) => ({ ...s, blocks: s.blocks.map((b) => ({ ...b, paras: b.paras.map(cut).filter(Boolean) })).filter((b) => b.paras.length) }))
+    .filter((s) => s.appendix || s.blocks.some((b) => !b.cliff));
+  return { ...rep, sections };
 }
