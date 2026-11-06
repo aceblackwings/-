@@ -4,6 +4,7 @@
 // C 그 뒤의 이야기(소원: 중간에 「빛이 진해졌어」 · 태우기: 재가 씨앗으로, 7일 뒤 「마음은 좀 가벼워졌어?」)
 // D 9:16 배경화면 저장
 // 약속: 걱정 글은 저장하지 않는다(씨앗 기록에는 날짜·기운만). 운세 점수와는 무관.
+import { josa } from './josa.js';
 import { PAID_PAPERS } from './paidcharm-manifest.js';
 
 export const BRUSH_FONT = "'Nanum Brush Script', 'Gowun Batang', serif";
@@ -68,11 +69,12 @@ export function charmLayout(d) {
     { t: P.sub, x: 150, y: L.sub, size: L.small ? 12 : 13, font: TEXT_FONT, color: P.subInk, anchor: 'middle', spacing: 2 },
     ...lines.map((t, i) => ({ t, x: 150, y: Math.round(y0 + i * lh), size, font: BRUSH_FONT, color: P.ink, anchor: 'middle' })),
   ];
-  const who = d.name ? `${d.name} 님의 ${d.kind === 'burn' ? '걱정' : '소원'}` : `나의 ${d.kind === 'burn' ? '걱정' : '소원'}`;
+  // v0.64 등불: 가족을 위한 소원이면 「엄마를 위한 소원」
+  const who = d.forWho ? `${josa(d.forWho, '을/를')} 위한 소원` : d.name ? `${d.name} 님의 ${d.kind === 'burn' ? '걱정' : '소원'}` : `나의 ${d.kind === 'burn' ? '걱정' : '소원'}`;
   const fs = L.small ? 11 : 12;
   items.push({ t: who, x: L.x, y: L.who, size: L.small ? 13 : 14, font: TEXT_FONT, color: P.subInk, anchor: 'start', weight: 700 });
   items.push({ t: `${dotDate(d.madeKey)} 지음`, x: L.x, y: L.made, size: fs, font: TEXT_FONT, color: P.subInk, anchor: 'start' });
-  if (d.kind === 'wish' && d.dueKey) items.push({ t: `${L.dueShort ? '이룰 날' : '이루고 싶은 날'} · ${monthDay(d.dueKey)}`, x: L.x, y: L.due, size: fs, font: TEXT_FONT, color: P.subInk, anchor: 'start' });
+  if (d.kind === 'wish' && d.dueKey) items.push({ t: d.lantern ? `100일 등불 · ${monthDay(d.dueKey)}까지` : `${L.dueShort ? '이룰 날' : '이루고 싶은 날'} · ${monthDay(d.dueKey)}`, x: L.x, y: L.due, size: fs, font: TEXT_FONT, color: P.subInk, anchor: 'start' });
   if (d.seal !== false) {
     const [a, b] = sealChars(d.branch); const [sx, sy, sw, sh] = L.seal; const cx = sx + sw / 2; const g = Math.round(sh * 0.34);
     items.push({ t: a, x: cx, y: Math.round(sy + sh / 2 - 3), size: Math.round(sh * 0.34), font: HANJA_FONT, color: P.sealInk, anchor: 'middle', seal: true });
@@ -236,6 +238,7 @@ export const ALL_LINES = Object.values(L).flat();
 /** E 결제 창: 받는 것 4줄 */
 export const PAY_GETS = {
   wish: ['✨ 금박 한지에 담는 세상에 하나뿐인 소원 부적', '🖌️ 내 소원을 붓글씨로 · 이름·만든 날·지신 인장', '📱 휴대폰 배경화면(고화질 9:16) 저장', '🌠 중간에 한 번, 그날 한 번 지신이 먼저 물어봐요'],
+  lantern: ['🏮 소원 부적 + 홈에 100일 등불이 켜져요', '🙏 지신이 100일 동안 매일 다른 한 줄로 빌어 줘요', '💌 25·50·75일째 지신의 편지, 10일마다 등불이 밝아져요', '👪 가족·소중한 사람을 위한 소원도 OK · 100일째 금빛 액자'],
   burn: ['🔥 붉은 한지에 걱정을 붓글씨로 적어 태워요', '🌱 다 탄 재는 지신이 작은 씨앗으로 바꿔 줘요', '💬 7일 뒤 「요즘 마음은 좀 가벼워졌어?」 안부', '🔒 적은 걱정은 어디에도 저장하지 않아요'],
 };
 

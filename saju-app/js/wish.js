@@ -54,7 +54,8 @@ export function postpone(collection, i, todayKey, days = WISH_LATER[0]) {
   return (collection || []).map((r, j) => (j === i && r?.wish ? { ...r, dueKey: shiftDay(todayKey, days), waited: (r.waited || 0) + 1 } : r));
 }
 
-export const wallOf = (collection) => (collection || []).filter((r) => r?.wish && r.result === 'done').sort((a, b) => keyNum(b.doneKey) - keyNum(a.doneKey));
+// v0.64 100일 등불을 끝까지 채운 것(result 'kept')도 벽에 걸림
+export const wallOf = (collection) => (collection || []).filter((r) => r?.wish && (r.result === 'done' || r.result === 'kept')).sort((a, b) => keyNum(b.doneKey) - keyNum(a.doneKey));
 export const waitingOf = (collection) => (collection || []).filter((r) => r?.wish && !r.result).sort((a, b) => keyNum(a.dueKey) - keyNum(b.dueKey));
 
 /** 도감을 줄일 때 소원 부적은 지우지 않음(앞에서 n장 + 소원 부적 모두) */
@@ -95,7 +96,7 @@ const dNum = (k) => { const [y, m, d] = String(k).split('-').map(Number); return
 export function midWish(collection, todayKey) {
   const t = dNum(todayKey);
   const list = (collection || []).map((r, i) => ({ r, i })).filter(({ r }) => {
-    if (!r?.wish || r.result || r.mid || !r.dueKey) return false;
+    if (!r?.wish || r.result || r.mid || !r.dueKey || r.paid === 'lantern') return false; // 등불은 25·50·75일 편지가 대신함
     const a = dNum(r.madeKey || r.dateKey); const b = dNum(r.dueKey);
     return b - a >= MID_MIN_SPAN && t >= a + Math.ceil((b - a) / 2) && t < b;
   });
