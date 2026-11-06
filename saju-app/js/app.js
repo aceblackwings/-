@@ -2835,7 +2835,7 @@ function cookieCardHTML() {
   }
   return `<article class="card fc-card" id="fc-card">
     <p class="fc-h">🥠 오늘의 포춘 쿠키</p>
-    <div class="fc-stage" id="fc-stage" data-step="idle">
+    <div class="fc-stage${fortuneImage(myZodiac().key) ? ' combo' : ''}" id="fc-stage" data-step="idle">
       <button type="button" class="fc-machine" data-fc-turn aria-label="지신이 포춘 기계를 돌려요">${machineHTML()}</button>
       <button type="button" class="fc-cookie" data-fc-crack aria-label="포춘 쿠키 쪼개기"><span class="fc-whole">${cookieWhole()}</span><span class="fc-half l">${cookieHalf('l')}</span><span class="fc-half r">${cookieHalf('r')}</span><span class="fc-paper">오늘의 운세</span></button>
     </div>
