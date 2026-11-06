@@ -1992,8 +1992,8 @@ function bookletData() {
   const b = buildBooklet({ y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, concern: state.profile.concern, gender: state.profile.gender, nextDaewoon: nextDw, calib: retroCalibNow(d.dw) });
   const st = bookletStory({ y, thisYear: prev, saju: state.saju, name: state.profile.name, gender: state.profile.gender });
   // v0.59 4단계: 첫 화면 = 요약판(결론·할 일), 「자세히 보기」 = 요약판과 같은 문장을 뺀 상세판
-  // v0.63 사용자 「한눈에 정리는 한 줄 요약까지만, 꼭 할 일은 삭제」 → 첫 블록만(상세판 겹침 빼기도 이 한 줄만 기준)
-  if (st.brief) st.brief = { ...st.brief, h: '📌 한눈에 정리', intro: '', blocks: st.brief.blocks.slice(0, 1) };
+  // v0.63 사용자 「한눈에 정리는 한 줄 요약까지만, 꼭 할 일은 삭제」 → v0.63.1 「피할 일만 다시」: 한 줄 요약 + ⛔ 피할 일(상세판 겹침 빼기도 이 둘만 기준)
+  if (st.brief) st.brief = { ...st.brief, h: '📌 한눈에 정리', intro: '', blocks: st.brief.blocks.filter((x, i) => i === 0 || x.h.startsWith('⛔')) };
   return { d, y, b, sum: yearSummary({ b, st }) };
 }
 
