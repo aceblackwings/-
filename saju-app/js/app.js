@@ -2843,7 +2843,7 @@ const SHAPE_SVG = {
   ribbon: '<path d="M18 44 Q60 26 102 44 L104 50 Q60 32 16 50Z" fill="#e6b422" stroke="#9a6a1f" stroke-width="1.2"/>',
 };
 const shapeSVG = (shape) => SHAPE_SVG[shape] ? `<svg class="fc-shape" viewBox="0 0 120 90" aria-hidden="true">${SHAPE_SVG[shape]}</svg>` : '';
-const cookieWhole = (gold) => (gold && fcImg('cookie_gold', 'fc-cimg')) || fcImg('cookie', 'fc-cimg') || cookieSVG();
+const cookieWhole = (gold) => (gold && fcImg('cookie_gold', 'fc-cimg fc-gold-img')) || fcImg('cookie', 'fc-cimg') || cookieSVG();
 const cookieHalf = (s) => fcImg(`cookie_${s}`, 'fc-cimg') || cookieSVG(s);
 const specialLine = (sp) => sp ? `<p class="fc-special">${sp.icon} <b>${esc(sp.name)}${sp.termName ? ` · ${esc(sp.termName)}` : ''} 특별 쿠키</b> ${esc(sp.line)}</p>` : '';
 function reactFace(r, z) {

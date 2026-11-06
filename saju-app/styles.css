@@ -2107,6 +2107,7 @@ html.easy .tl-story p { font-size: 1rem; }
 .fc-goldnote { word-break: keep-all; margin: 0 0 10px; padding: 8px 12px; border-radius: 12px; background: linear-gradient(120deg, #fff8d6, #fff1b8); border: 1px solid #f2c94c; color: #7a5a12; font-size: .85rem; }
 .fc-card.gold { background: linear-gradient(170deg, #fffdf2 0%, #fff4cc 100%); }
 .gold .fc-cimg, .gold .fc-csvg, .fc-broken.gold svg, .fc-broken.gold img { filter: sepia(.6) saturate(2.2) hue-rotate(-6deg) brightness(1.12) drop-shadow(0 0 6px rgba(242, 201, 76, .8)); }
+.gold .fc-gold-img { filter: drop-shadow(0 0 8px rgba(242, 201, 76, .75)); } /* 황금 쿠키 그림은 이미 금빛이라 색 필터 없이 빛만 */
 .fc-sparkle { position: absolute; inset: -14px; pointer-events: none; }
 .fc-sparkle i { position: absolute; font-style: normal; color: #f2c94c; font-size: 1.1rem; text-shadow: 0 0 6px #fff3a0; animation: fc-twinkle 1.6s ease-in-out infinite; }
 .fc-sparkle i:nth-child(1) { left: 2%; top: 10%; } .fc-sparkle i:nth-child(2) { right: 4%; top: 0; animation-delay: .3s; }
