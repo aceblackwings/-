@@ -5845,18 +5845,23 @@ function openCharmMaker(kind, preset = '') {
           <div class="burn-pick">${list.slice(0, 12).map(({ r, i }) => `<button type="button" data-burn-pick="${i}" title="${esc(labelForRec(r))}">${renderTalismanSVG(charmFromRecord(r))}<small>+${offerValue(r, fillOf(load(CHARMGROW_KEY, {}), r))}</small></button>`).join('')}
           <button type="button" class="paper on" data-burn-pick="-1"><span>📄</span><small>안 태움</small></button></div></details>`}
     <ul class="cm-gets">${wish ? '<li>🖌️ 내 소원 붓글씨</li><li>🔴 지신 인장 꾹</li><li>📱 배경화면</li><li>🌠 그날 지신이 물어봐요</li>' : '<li>🖌️ 걱정 붓글씨</li><li>🔥 손끝으로 태우기</li><li>🌱 재가 씨앗으로</li><li>🔒 글은 저장 안 함</li>'}</ul>
-    <button type="button" class="hj-buy cm-go" data-cm="go">${wish ? '✨ 이 소원 부적 만들기' : '🔥 이 부적으로 태우러 가기'} <small>${won(CHARM_PRICE)}</small></button>
-    <p class="hj-note">${TTEOK} 복떡 ${CHARM_TTEOK}개면 한 번 무료 · 지금 ${bal}개 · 운세 점수와는 상관없어요</p>
+    <div class="cm-foot">
+      <button type="button" class="hj-buy cm-go" data-cm="go">${wish ? '✨ 이 소원 부적 만들기' : '🔥 이 부적으로 태우러 가기'} <small>${won(CHARM_PRICE)}</small></button>
+      <p class="hj-note">${TTEOK} 복떡 ${CHARM_TTEOK}개면 한 번 무료 · 지금 ${bal}개 · 운세 점수와는 상관없어요</p>
+    </div>
   </div>`;
-  document.body.appendChild(box);
+  document.body.appendChild(box); document.body.classList.add('cm-open');
+  box.querySelector('.cm-box').scrollTop = 0;
   const input = box.querySelector('#cm-text'); const date = box.querySelector('#cm-date'); const pv = box.querySelector('#cm-preview');
   let raf = 0;
   const redraw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { pv.innerHTML = paidCharmSVG(makerData(kind, wish ? cleanWish(input.value) : cleanWorry(input.value), date?.value)); }); };
   input.addEventListener('input', redraw); date?.addEventListener('change', redraw);
-  const close = () => { input.value = ''; box.remove(); };
+  // 창을 닫거나 결제 창으로 넘어갈 때 모두 이 함수로(뒤 화면 스크롤 잠금 풀기)
+  const drop = () => { box.remove(); if (!document.querySelector('.cm-modal')) document.body.classList.remove('cm-open'); };
+  const close = () => { input.value = ''; drop(); };
   box.addEventListener('click', (e) => {
     if (e.target === box || e.target.closest('[data-cm="close"]')) { close(); return; }
-    const rec = e.target.closest('[data-cm-rec]'); if (rec) { input.value = rec.dataset.cmRec; redraw(); return; }
+    const rec = e.target.closest('[data-cm-rec]'); if (rec) { input.value = rec.dataset.cmRec; redraw(); pv.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' }); return; }
     if (!e.target.closest('[data-cm="go"]')) return;
     if (wish) {
       const text = cleanWish(input.value);
@@ -5871,7 +5876,7 @@ function openCharmMaker(kind, preset = '') {
         renderHero(false); renderToday();
         grow((g) => complete(g, state.fortune.dateKey, 'charm', qBonus('charm')), `🌠 ${wishMadeLine(text, wishDueLabel(due, today), politeNow())}`);
       };
-      box.remove();
+      drop();
       openCharmPay('wish', () => openWishRitual(r, commit), () => openCharmMaker('wish', text), paidDataOf(r));
     } else {
       const worry = cleanWorry(input.value);
@@ -5882,7 +5887,8 @@ function openCharmMaker(kind, preset = '') {
       openCharmPay('burn', () => openBurn(worry, idx), () => {}, burnDataOf(worry));
     }
   });
-  setTimeout(() => input.focus({ preventScroll: true }), 60);
+  // 폰에서는 열자마자 자판이 올라와 부적이 가려지므로 컴퓨터에서만 바로 입력 칸으로
+  if (!matchMedia('(pointer: coarse)').matches) setTimeout(() => input.focus({ preventScroll: true }), 60);
 }
 document.addEventListener('click', (e) => {
   const o = e.target.closest('[data-cm-open]'); if (o) { openCharmMaker(o.dataset.cmOpen, o.dataset.cmPreset || ''); return; }
