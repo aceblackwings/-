@@ -164,12 +164,19 @@ const state = {
   storyCanvas: null,
 };
 
+// 저장소(v0.64.3): 로그인하지 않은 미리보기·비공개 창처럼 브라우저 저장소가 막힌 곳에서도
+// 앱 전체가 그대로 돌아가게, 저장이 안 되면 이 창의 메모리에 보관(새로고침하면 처음부터)
+const MEM_STORE = new Map();
+let storeBlocked = false;
 function load(key, fallback) {
-  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
+  if (MEM_STORE.has(key)) { try { return JSON.parse(MEM_STORE.get(key)) ?? fallback; } catch { return fallback; } }
+  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { storeBlocked = true; return fallback; }
 }
 function save(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* 저장 불가 환경 */ }
+  const text = JSON.stringify(value);
+  try { localStorage.setItem(key, text); MEM_STORE.delete(key); } catch { storeBlocked = true; MEM_STORE.set(key, text); }
 }
+
 
 function toast(msg, ms) {
   document.querySelectorAll('.toast').forEach((t) => t.remove());
@@ -238,6 +245,10 @@ function start(profile, mode = 'today') {
   $('#btn-edit').classList.remove('hidden');
   renderAll();
   selectTab(mode === 'summon' ? 'today' : (state.lastTab || 'today'));
+  if (storeBlocked && !state.memNoticeShown) { // 로그인하지 않은 미리보기 등: 기능은 모두 되고, 기록만 이 창에 남음
+    state.memNoticeShown = true;
+    setTimeout(() => toast('👀 지금 화면은 기록 저장이 꺼져 있어요. 모든 기능은 그대로 쓸 수 있고, 새로고침하면 처음부터 시작해요', 6000), 900);
+  }
   if (mode === 'summon') setTimeout(showSajuCard, 200);
   preloadCharImages(characterInfo(state.saju, profile).zodiac.key).then((n) => { if (n && !$('[data-panel="hero"]').classList.contains('hidden')) renderHero(false); });
   const lastSeen = loadGrowth().streak.last;
@@ -1563,6 +1574,7 @@ function backupCardHTML() {
 function currentBackup() {
   const entries = {};
   try { for (let k = 0; k < localStorage.length; k++) { const key = localStorage.key(k); if (key.startsWith(BACKUP_PREFIX)) entries[key] = localStorage.getItem(key); } } catch { /* 저장소 없음 */ }
+  MEM_STORE.forEach((v, key) => { if (key.startsWith(BACKUP_PREFIX)) entries[key] = v; }); // 저장소가 막힌 창의 기록도 백업에
   return makeBackup(entries);
 }
 
@@ -1574,7 +1586,12 @@ function restoreBackup(text) {
   try {
     Object.keys(localStorage).filter((k) => k.startsWith(BACKUP_PREFIX)).forEach((k) => localStorage.removeItem(k));
     Object.entries(r.entries).forEach(([k, v]) => localStorage.setItem(k, v));
-  } catch { toast('⚠️ 이 브라우저에서는 저장할 수 없어요'); return; }
+  } catch {
+    // 저장소가 막힌 창: 이 창의 메모리로 불러와 바로 다시 그림(새로고침하면 사라짐)
+    [...MEM_STORE.keys()].filter((k) => k.startsWith(BACKUP_PREFIX)).forEach((k) => MEM_STORE.delete(k));
+    Object.entries(r.entries).forEach(([k, v]) => MEM_STORE.set(k, v));
+    const p = load(STORE_KEY, null); toast('💾 백업을 이 창에 불러왔어요'); if (p) start(p, 'today'); return;
+  }
   toast('💾 백업을 가져왔어요. 다시 불러올게요');
   setTimeout(() => location.reload(), 700);
 }
@@ -6108,6 +6125,7 @@ function lanternHTML() {
   }).join('');
 }
 document.addEventListener('click', (e) => {
+  if (!state.fortune) return; // 가입 전 화면에서는 등불 버튼이 없음(예전에는 클릭마다 오류)
   const today = state.fortune.dateKey;
   const pr = e.target.closest('[data-lt-pray]');
   if (pr) {
