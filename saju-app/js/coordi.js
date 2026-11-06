@@ -89,7 +89,7 @@ const keyNum = (k) => { const [y, m, d] = String(k).split('-').map(Number); retu
 /** 오늘 코디 저장(날짜 기록은 14일만, 연속 일수는 따로 셈) */
 export function saveDay(store, dateKey, outfit, hearts) {
   const s = { ...emptyCoordi(), ...(store || {}) };
-  const days = { ...s.days, [dateKey]: { outfit: { ...outfit }, hearts } };
+  const days = { ...s.days, [dateKey]: { ...(s.days[dateKey] || {}), outfit: { ...outfit }, hearts } };
   const keep = Object.keys(days).sort((a, b) => keyNum(b) - keyNum(a)).slice(0, 14);
   const streak = s.last === dateKey ? s.streak : s.last === shiftDay(dateKey, -1) ? (s.streak || 0) + 1 : 1;
   return { ...s, last: dateKey, streak, days: Object.fromEntries(keep.map((k) => [k, days[k]])) };
@@ -105,4 +105,25 @@ export function claimStreak(store, todayKey) {
   const n = s.last === todayKey ? s.streak : 0;
   if (n < STREAK_NEED || n % STREAK_NEED || s.claimed === todayKey) return { store: s, piece: false, streak: n };
   return { store: { ...s, claimed: todayKey }, piece: true, streak: n };
+}
+
+// ---------- v0.59(2026-11-06 사용자 결정): 부위마다 하루 한 번만 고르기 · 추천 없음 · 별 3개 = 떡 1 · 4개 = 2 · 5개 = 3 ----------
+export const STAR_REWARD = { 3: 1, 4: 2, 5: 3 };
+export const lockedOn = (store, dateKey) => ({ ...((store?.days || {})[dateKey]?.locked || {}) });
+/** 한 부위 고르기(그날 그 부위는 잠김) → {store, locked:true}면 이미 고른 부위 */
+export function pickSlot(store, dateKey, slot, id, luckyEl, todayEl, opts = {}) {
+  const s = { ...emptyCoordi(), ...(store || {}) }; const day = s.days[dateKey] || {};
+  if (day.locked?.[slot]) return { store: s, locked: true };
+  const outfit = { ...(day.outfit || {}), [slot]: id || null };
+  const res = coordiHearts(outfit, luckyEl, todayEl, opts);
+  const next = saveDay(s, dateKey, outfit, res.hearts);
+  next.days[dateKey] = { ...next.days[dateKey], locked: { ...(day.locked || {}), [slot]: true } };
+  return { store: next, locked: false, res, done: SLOTS.every((x) => next.days[dateKey].locked[x.key]) };
+}
+/** 세 부위를 다 고른 날 한 번: 별 수만큼 떡 */
+export function claimStars(store, dateKey) {
+  const s = { ...emptyCoordi(), ...(store || {}) }; const day = s.days[dateKey];
+  if (!day || day.paid || !SLOTS.every((x) => day.locked?.[x.key])) return { store: s, gained: 0, done: false };
+  const gained = STAR_REWARD[day.hearts] || 0;
+  return { store: { ...s, days: { ...s.days, [dateKey]: { ...day, paid: true } } }, gained, done: true, stars: day.hearts };
 }

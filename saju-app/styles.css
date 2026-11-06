@@ -1973,3 +1973,15 @@ html.easy .top h1 { font-size: 20px; }
 .dh-week i { width: 22px; height: 22px; border-radius: 50%; background: #f3e9ee; display: flex; align-items: center; justify-content: center; font-style: normal; font-size: .75rem; color: #fff; }
 .dh-week i.n1 { background: #f5b9c9; } .dh-week i.n2 { background: var(--neon); }
 .dh-note { margin: 6px 0 0; font-size: .85rem; color: var(--muted); }
+.tr-lock, .cp-lock { padding: 18px 16px; border-radius: 16px; background: #fff7fa; border: 1.5px dashed var(--neon); text-align: center; line-height: 1.7; }
+.tr-lock-h { font-weight: 700; font-size: 1.05rem; color: var(--ink); margin: 0 0 6px; }
+.cp-lock { margin: 0 0 12px; }
+.cp-lock p { margin: 0 0 8px; }
+.cp-fs { border: 0; padding: 0; margin: 0; display: contents; }
+.cp-fs:disabled { opacity: .5; }
+.cp-cost { font-size: .85rem; }
+.cd-left { margin: 10px 0 4px; font-size: .92rem; }
+.cd-item:disabled { cursor: default; opacity: .45; }
+.cd-item.on:disabled { opacity: 1; }
+.wish-recs, .burn-recs { margin: 6px 0; align-items: center; }
+.hj-buy:disabled { opacity: .45; cursor: default; }
