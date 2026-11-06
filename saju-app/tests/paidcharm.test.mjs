@@ -42,7 +42,7 @@ t('부적 글자 배치·SVG: 종이 안쪽, 인장, 꺾쇠 안전, 생년월일
   const svg = P.paidCharmSVG({ ...base, kind: 'wish' });
   assert.ok(svg.includes('所願成就') && svg.includes('하늘 님의 소원') && svg.includes('이루고 싶은 날 · 12월 6일') && svg.includes('龍神'));
   assert.ok(P.paidCharmSVG({ ...base, kind: 'burn' }).includes('消災降福'));
-  const strip = (x) => x.replace(/pc\d+g/g, '');
+  const strip = (x) => x.replace(/pc\d+[gmsc]/g, '');
   assert.equal(strip(P.paidCharmSVG({ ...base, kind: 'wish' })), strip(P.paidCharmSVG({ ...base, kind: 'wish' })));
   assert.ok(!P.paidCharmSVG({ ...base, kind: 'wish' }, { noText: true }).includes('<text'));
   assert.ok(!P.paidCharmSVG({ ...base, kind: 'wish', seal: false }).includes('pc-seal'));
@@ -102,6 +102,18 @@ t('말·결제 창: 존댓말 짝 · 조사 · 겁주는 말 없음 · 받는 �
   for (const k of ['wish', 'burn']) { assert.equal(P.PAY_GETS[k].length, 4); P.PAY_GETS[k].forEach((s) => assert.deepEqual(toneProblems(s), [])); }
   assert.ok(P.PAY_GETS.wish.some((x) => x.includes('배경화면')));
   assert.ok(P.PAY_GETS.burn.some((x) => x.includes('저장하지 않아요')));
+});
+
+t('v0.61.2 금박 장식: 이중 테두리·모서리 구름·연꽃·빛줄기 · v2 그림 종이면 구분선·반짝임만 · 제목 테두리 글씨', () => {
+  const d = { text: '합격', name: '하늘', madeKey: '2026-11-6', dueKey: '2026-12-6', branch: 4, kind: 'wish' };
+  const full = P.paidCharmSVG(d, { paperSrc: 'x.webp', artPaper: false });
+  assert.ok(full.includes('class="pc-orn"') && full.includes('pc-sheen') && full.includes('stroke-dasharray="0.1 6"'));
+  const lite = P.paidCharmSVG(d, { paperSrc: 'x.webp', artPaper: true });
+  assert.ok(lite.includes('pc-orn lite') && !lite.includes('stroke-dasharray="0.1 6"'));
+  assert.ok(P.paidCharmSVG(d, { paperSrc: null }).includes('class="pc-orn"')); // 코드 종이는 늘 전체 장식
+  const head = P.charmLayout(d)[0]; assert.ok(head.stroke && head.strokeW > 0);
+  assert.ok(P.charmLayout({ ...d, kind: 'burn' })[0].stroke);
+  assert.equal(P.GOLD_STOPS.length, 6);
 });
 
 console.log(`paidcharm: ${pass} passed`);

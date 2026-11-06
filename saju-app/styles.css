@@ -2021,6 +2021,10 @@ html.easy .tl-story p { font-size: 1rem; }
 
 /* ===== v0.60 유료 부적: 금박 한지 · 붉은 한지 · 만드는 의식 · 씨앗 ===== */
 .paid-charm { width: 100%; height: auto; display: block; border-radius: 4px; }
+/* v0.61.2 금박 빛 한 줄기가 부적 위를 천천히 훑고 지나감(배경화면 그림에는 안 나옴) */
+.paid-charm .pc-sheen { transform-box: view-box; transform: translateX(-200px) rotate(18deg); animation: pc-sheen 5.5s ease-in-out 1.2s infinite; }
+@keyframes pc-sheen { 0% { transform: translateX(-200px) rotate(18deg); } 45%, 100% { transform: translateX(560px) rotate(18deg); } }
+@media (prefers-reduced-motion: reduce) { .paid-charm .pc-sheen { animation: none; } }
 .wish-charm.paid svg { box-shadow: 0 2px 8px rgba(150, 105, 30, 0.25); border-radius: 3px; }
 .wish-charm.paid.glow svg, .rt-charm.glow svg { animation: pcGlow 1.8s ease-in-out infinite alternate; }
 .wish-charm.paid.done svg { box-shadow: 0 0 0 2px #f3d27a, 0 0 14px rgba(240, 180, 60, 0.75); }

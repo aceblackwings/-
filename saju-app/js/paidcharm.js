@@ -19,8 +19,8 @@ export const SEAL_ANIMAL = ['鼠', '牛', '虎', '兔', '龍', '蛇', '馬', '�
 export const sealChars = (branch) => [`${SEAL_ANIMAL[((Number(branch) % 12) + 12) % 12] || '神'}神`, '之印'];
 
 export const PAPER = {
-  wish: { head: '所願成就', sub: '소원 부적', ink: '#2b2420', headInk: '#b8382a', subInk: '#7a5a26', seal: '#b8382a', sealInk: '#fff6e6', stops: ['#fbf0cf', '#f1d98f', '#e3bf63'], fiber: 'rgba(150, 105, 30, 0.2)', flake: '#c9962c', border: '#c18f2a', line: '#b8382a' },
-  burn: { head: '消災降福', sub: '나쁜 기운 태우기 부적', ink: '#fff1d6', headInk: '#f3d27a', subInk: '#f6d9b0', seal: '#d9ab3d', sealInk: '#7e2418', stops: ['#cf4a32', '#a9321f', '#7c2216'], fiber: 'rgba(255, 220, 180, 0.14)', flake: '#e8c063', border: '#e8c063', line: '#f3d27a' },
+  wish: { head: '所願成就', sub: '소원 부적', ink: '#2b2420', headInk: '#b8382a', subInk: '#7a5a26', seal: '#b8382a', sealInk: '#fff6e6', headStroke: '#e9c25a', headStrokeW: 1.8, stops: ['#fbf0cf', '#f1d98f', '#e3bf63'], fiber: 'rgba(150, 105, 30, 0.2)', flake: '#c9962c', border: '#c18f2a', line: '#b8382a' },
+  burn: { head: '消災降福', sub: '나쁜 기운 태우기 부적', ink: '#fff1d6', headInk: '#f3d27a', subInk: '#f6d9b0', seal: '#d9ab3d', sealInk: '#7e2418', headStroke: '#5a160e', headStrokeW: 3.2, stops: ['#cf4a32', '#a9321f', '#7c2216'], fiber: 'rgba(255, 220, 180, 0.14)', flake: '#e8c063', border: '#e8c063', line: '#f3d27a' },
 };
 
 /** 'Y-M-D' → '2026. 11. 6.' */
@@ -55,7 +55,7 @@ export function charmLayout(d) {
   const lh = size * 1.18; const mid = 238;
   const y0 = mid - ((lines.length - 1) * lh) / 2 + size * 0.34;
   const items = [
-    { t: P.head, x: 150, y: 70, size: 32, font: HANJA_FONT, color: P.headInk, anchor: 'middle', spacing: 6 },
+    { t: P.head, x: 150, y: 70, size: 32, font: HANJA_FONT, color: P.headInk, anchor: 'middle', spacing: 6, stroke: P.headStroke, strokeW: P.headStrokeW },
     { t: P.sub, x: 150, y: 96, size: 13, font: TEXT_FONT, color: P.subInk, anchor: 'middle', spacing: 2 },
     ...lines.map((t, i) => ({ t, x: 150, y: Math.round(y0 + i * lh), size, font: BRUSH_FONT, color: P.ink, anchor: 'middle' })),
   ];
@@ -78,7 +78,53 @@ const escX = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').repla
 let uid = 0;
 
 /** 종이 그림 주소(그림이 들어오면 그림 종이, 없으면 코드 종이) */
-export const paperImage = (kind) => (PAID_PAPERS && PAID_PAPERS[kind === 'burn' ? 'red' : 'gold'] ? `assets/paidcharm/${kind === 'burn' ? 'red' : 'gold'}.webp` : null);
+// v2(일러스트 부적 카드, docs/prompts/paid-charm-v2.md) gold2·red2가 있으면 먼저 씀
+const paperId = (kind) => { const b = kind === 'burn' ? 'red' : 'gold'; return PAID_PAPERS?.[`${b}2`] ? `${b}2` : PAID_PAPERS?.[b] ? b : null; };
+export const paperImage = (kind) => { const id = paperId(kind); return id ? `assets/paidcharm/${id}.webp` : null; };
+/** v2 그림 종이(테두리·모서리 장식이 그림에 있음)면 true → 코드 장식은 구분선·반짝임만 */
+export const isArtPaper = (kind) => /2$/.test(paperId(kind) || '');
+
+/** 금박 색 띠(어두운 금 → 밝은 금 → 흰 빛 → 금): 테두리·장식에 빛이 도는 느낌 */
+export const GOLD_STOPS = [[0, '#8a5a12'], [0.22, '#e9c25a'], [0.42, '#fff3c4'], [0.6, '#d9a83a'], [0.8, '#f7e08a'], [1, '#9a6a1f']];
+
+/** 모서리 구름무늬 한 조각(왼쪽 위 기준) */
+const CORNER = (M) => `<path d="M14 70 V26 Q14 14 26 14 H70" fill="none" stroke="${M}" stroke-width="3.2" stroke-linecap="round"/>
+  <path d="M22 58 V32 Q22 22 32 22 H58" fill="none" stroke="${M}" stroke-width="1.1" opacity="0.9"/>
+  <path d="M30 46 q0 -16 16 -16 q10 0 10 9 q0 7 -7 7 q-5 0 -5 -5 q0 -3 3 -3" fill="none" stroke="${M}" stroke-width="2" stroke-linecap="round"/>
+  <path d="M36 62 q-8 0 -8 -8" fill="none" stroke="${M}" stroke-width="1.6" stroke-linecap="round"/><path d="M62 36 q0 -8 -8 -8" fill="none" stroke="${M}" stroke-width="1.6" stroke-linecap="round"/>
+  <circle cx="14" cy="14" r="4.2" fill="${M}"/><circle cx="70" cy="14" r="2.2" fill="${M}"/><circle cx="14" cy="70" r="2.2" fill="${M}"/>`;
+/** 작은 구름(제목 양옆) */
+const CLOUD = (M, fill) => `<path d="M-20 4 q-6 0 -6 -6 q0 -6 7 -6 q2 -8 11 -7 q5 -7 13 -2 q8 -2 10 6 q7 1 6 8 q-1 6 -7 6 z" fill="${fill}" stroke="${M}" stroke-width="1.4"/>
+  <path d="M-12 -3 q3 -4 7 -1 M3 -4 q4 -3 7 1" fill="none" stroke="${M}" stroke-width="1.1" stroke-linecap="round"/>`;
+/** 가운데 장식 구분선(마름모 + 점, 양끝은 가늘게) */
+const DIVIDER = (M, y) => `<path d="M58 ${y} Q100 ${y - 1.4} 136 ${y}" fill="none" stroke="${M}" stroke-width="1.4"/><path d="M164 ${y} Q200 ${y - 1.4} 242 ${y}" fill="none" stroke="${M}" stroke-width="1.4"/>
+  <path d="M150 ${y - 7} l7 7 l-7 7 l-7 -7z" fill="${M}"/><path d="M150 ${y - 3.2} l3.2 3.2 l-3.2 3.2 l-3.2 -3.2z" fill="#fff8e0" opacity="0.85"/>
+  <circle cx="139" cy="${y}" r="1.8" fill="${M}"/><circle cx="161" cy="${y}" r="1.8" fill="${M}"/><circle cx="56" cy="${y}" r="1.4" fill="${M}"/><circle cx="244" cy="${y}" r="1.4" fill="${M}"/>`;
+/** 반짝이는 별(네 갈래) */
+const TWINKLE = (M, x, y, s) => `<path transform="translate(${x} ${y}) scale(${s})" d="M0 -6 Q0.9 -0.9 6 0 Q0.9 0.9 0 6 Q-0.9 0.9 -6 0 Q-0.9 -0.9 0 -6z" fill="${M}"/>`;
+
+/** 금박 장식 한 벌: 이중 테두리 · 모서리 구름무늬 · 연꽃 문양(글 뒤에 은은하게) · 제목 옆 구름 · 구분선 · 반짝임 */
+function ornamentSVG(P, M, kind, lite = false) {
+  const lotusOp = kind === 'burn' ? 0.2 : 0.24;
+  const petals = Array.from({ length: 12 }, (_, i) => `<path transform="rotate(${i * 30} 150 238)" d="M150 238 Q138 196 150 160 Q162 196 150 238z" fill="none" stroke="${M}" stroke-width="1.2"/>`).join('');
+  const petals2 = Array.from({ length: 12 }, (_, i) => `<path transform="rotate(${i * 30 + 15} 150 238)" d="M150 238 Q143 212 150 190 Q157 212 150 238z" fill="${M}" opacity="0.5"/>`).join('');
+  const cx = Math.max(44, Math.round(150 - P.sub.length * 7.6 - 26)); // 부제 길이에 맞춰 구름을 바깥으로
+  const cloudFill = kind === 'burn' ? 'rgba(120, 25, 14, 0.55)' : 'rgba(255, 248, 224, 0.75)';
+  if (lite) return `<g class="pc-orn lite">${DIVIDER(M, 112)}${DIVIDER(M, 352)}${TWINKLE(M, 86, 146, 0.9)}${TWINKLE(M, 222, 322, 1.1)}</g>`;
+  return `<g class="pc-orn">
+    <g opacity="${lotusOp}"><circle cx="150" cy="238" r="96" fill="none" stroke="${M}" stroke-width="1.4"/><circle cx="150" cy="238" r="88" fill="none" stroke="${M}" stroke-width="0.8" stroke-dasharray="2 4"/>${petals}${petals2}<circle cx="150" cy="238" r="10" fill="none" stroke="${M}" stroke-width="1.4"/></g>
+    <rect x="8" y="8" width="284" height="464" rx="5" fill="none" stroke="${M}" stroke-width="4.5"/>
+    <rect x="8" y="8" width="284" height="464" rx="5" fill="none" stroke="#fff6d0" stroke-width="0.8" opacity="0.55"/>
+    <rect x="20" y="20" width="260" height="440" rx="3" fill="none" stroke="${M}" stroke-width="1.2"/>
+    <rect x="25" y="25" width="250" height="430" rx="2" fill="none" stroke="${P.line}" stroke-width="0.8" opacity="0.55" stroke-dasharray="1 3"/>
+    <rect x="14" y="14" width="272" height="452" rx="4" fill="none" stroke="${M}" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="0.1 6"/>
+    <g transform="scale(0.8)">${CORNER(M)}</g><g transform="matrix(-0.8 0 0 0.8 300 0)">${CORNER(M)}</g>
+    <g transform="matrix(0.8 0 0 -0.8 0 480)">${CORNER(M)}</g><g transform="matrix(-0.8 0 0 -0.8 300 480)">${CORNER(M)}</g>
+    <g transform="translate(${cx} 92) scale(0.62)">${CLOUD(M, cloudFill)}</g><g transform="matrix(-0.62 0 0 0.62 ${300 - cx} 92)">${CLOUD(M, cloudFill)}</g>
+    ${DIVIDER(M, 112)}${DIVIDER(M, 352)}
+    ${TWINKLE(M, 86, 146, 0.9)}${TWINKLE(M, 222, 322, 1.1)}${TWINKLE(M, 236, 150, 0.6)}${TWINKLE(M, 70, 316, 0.6)}
+  </g>`;
+}
 
 /**
  * 유료 부적 SVG. opts.noText = 글자 없이(배경화면 캔버스가 글자를 따로 씀), opts.paperSrc = 종이 그림 주소(data URL 가능)
@@ -99,19 +145,21 @@ export function paidCharmSVG(d, opts = {}) {
   }
   const items = charmLayout(d);
   const hasSeal = items.some((x) => x.seal);
-  const text = opts.noText ? '' : items.map((x) => `<text x="${x.x}" y="${x.y}" font-size="${x.size}" fill="${x.color}" text-anchor="${x.anchor}" font-family="${escX(x.font)}"${x.weight ? ` font-weight="${x.weight}"` : ''}${x.spacing ? ` letter-spacing="${x.spacing}"` : ''}>${escX(x.t)}</text>`).join('');
+  const text = opts.noText ? '' : items.map((x) => `<text x="${x.x}" y="${x.y}" font-size="${x.size}" fill="${x.color}" text-anchor="${x.anchor}" font-family="${escX(x.font)}"${x.weight ? ` font-weight="${x.weight}"` : ''}${x.spacing ? ` letter-spacing="${x.spacing}"` : ''}${x.stroke ? ` stroke="${x.stroke}" stroke-width="${x.strokeW}" paint-order="stroke" stroke-linejoin="round"` : ''}>${escX(x.t)}</text>`).join('');
   const seal = hasSeal ? `<g class="pc-seal"><rect x="214" y="390" width="64" height="62" rx="6" fill="${P.seal}"/><rect x="219" y="395" width="54" height="52" rx="3" fill="none" stroke="${P.sealInk}" stroke-width="1.6" opacity="0.8"/></g>` : '';
   const badge = d.done ? `<circle cx="150" cy="127" r="21" fill="#c9962c" stroke="#fff3c4" stroke-width="2"/>` : '';
   const paper = src
     ? `<image href="${escX(src)}" x="0" y="0" width="300" height="480" preserveAspectRatio="xMidYMid slice"/>`
     : `<rect width="300" height="480" fill="url(#${id}g)"/><g fill="none" stroke="${P.fiber}" stroke-width="0.8">${fiber}</g><g fill="${P.flake}">${flake}</g>`;
+  const M = `url(#${id}m)`; // 금박(빛 도는 금색)
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 480" width="${CHARM_W}" height="${CHARM_H}" class="paid-charm pc-${d.kind}" role="img" aria-label="${escX(P.sub)}">
-    <defs><linearGradient id="${id}g" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="${P.stops[0]}"/><stop offset="0.55" stop-color="${P.stops[1]}"/><stop offset="1" stop-color="${P.stops[2]}"/></linearGradient></defs>
+    <defs><linearGradient id="${id}g" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="${P.stops[0]}"/><stop offset="0.55" stop-color="${P.stops[1]}"/><stop offset="1" stop-color="${P.stops[2]}"/></linearGradient>
+      <linearGradient id="${id}m" x1="0" y1="0" x2="1" y2="1">${GOLD_STOPS.map(([o, c]) => `<stop offset="${o}" stop-color="${c}"/>`).join('')}</linearGradient>
+      <linearGradient id="${id}s" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.5" stop-color="#fffbe6" stop-opacity="0.55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+      <clipPath id="${id}c"><rect width="300" height="480" rx="4"/></clipPath></defs>
     ${paper}
-    <rect x="10" y="10" width="280" height="460" rx="4" fill="none" stroke="${P.border}" stroke-width="3"/>
-    <rect x="18" y="18" width="264" height="444" rx="2" fill="none" stroke="${P.line}" stroke-width="1.2" opacity="0.85"/>
-    <path d="M60 110 H240" stroke="${P.line}" stroke-width="1" opacity="0.6"/><path d="M60 352 H240" stroke="${P.line}" stroke-width="1" opacity="0.6"/>
-    ${[[24, 24], [276, 24], [24, 456], [276, 456]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3" fill="${P.border}"/>`).join('')}
+    ${ornamentSVG(P, M, d.kind, !!src && (opts.artPaper ?? isArtPaper(d.kind)))}
+    <g clip-path="url(#${id}c)"><rect class="pc-sheen" x="-150" y="-60" width="90" height="600" fill="url(#${id}s)" transform="translate(-200 0) rotate(18)"/></g>
     ${seal}${badge}${text}
   </svg>`;
 }
@@ -203,6 +251,7 @@ export async function drawWallpaper(canvas, d, { paperSrc, title = '12지신 강
     ctx.font = `${it.weight || 400} ${it.size * S}px ${it.font}`; ctx.fillStyle = it.color;
     ctx.textAlign = it.anchor === 'middle' ? 'center' : it.anchor === 'end' ? 'right' : 'left'; ctx.textBaseline = 'alphabetic';
     if ('letterSpacing' in ctx) ctx.letterSpacing = `${(it.spacing || 0) * S}px`;
+    if (it.stroke) { ctx.strokeStyle = it.stroke; ctx.lineWidth = it.strokeW * S; ctx.lineJoin = 'round'; ctx.strokeText(it.t, X + it.x * S, Y + it.y * S); }
     ctx.fillText(it.t, X + it.x * S, Y + it.y * S);
   }
   if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
