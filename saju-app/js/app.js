@@ -78,7 +78,10 @@ import {
 } from './growth.js';
 import { drawKiCard, todayKiCard, stageForDays, nextStage, kiCardText, rarityLabel, CARD_RARITY, LACK_RATE } from './dailycard.js';
 import { buildDiary, logVisit, markRead, isRead } from './diary.js';
-import { scratchTiles, scratchedOn, markScratched, clearedRatio } from './scratch.js';
+import { scratchedOn, markScratched, clearedRatio } from './scratch.js';
+import { COOKIE_KEY, isOpened as cookieOpened, markOpened as cookieMark, todayTodo, cookieTiles } from './cookie.js';
+import { DHABIT_KEY, HABIT_REWARD, HABIT_MAX, isSet as habitsSet, recommendHabits, setHabits, checkTarget, checksOn, checkHabit, recentChecks } from './dailyhabit.js';
+import { fortuneImage } from './assets.js';
 import { ohengGuide, roleOf, defaultOheng } from './oheng.js';
 import { omenOf, checkable, markOmen, markShown, omenStats, markPeek, peekedFor, tomorrowTeaser, shiftDay, dateOfKey, CHECK_HOUR, OMEN_REWARD } from './omen.js';
 import { BOWLS, STAGE_POINTS, DECOR, EMO_ORDER, EMO_KO, seedFood, feed, todayBowls, fedDays, stageForPoints, growthOf, daysLeft, heightCm, decorCount, emotesUnlocked, conditionOf, feedLine,
@@ -2724,14 +2727,15 @@ function diaryHTML() {
 }
 
 /** 🍀 오늘의 행운 긁기 */
+const todayTiles = () => cookieTiles(state.fortune.luck, todayTodo(state.saju, state.fortune.dateKey, omenSeedKey()));
 function scratchHTML() {
-  const f = state.fortune; const open = scratchedOn(load(SCRATCH_KEY, {}), f.dateKey); const tiles = scratchTiles(f.luck);
+  const f = state.fortune; const open = scratchedOn(load(SCRATCH_KEY, {}), f.dateKey); const tiles = todayTiles();
   const all = tiles.every((t) => open.has(t.key));
   setTimeout(initScratch, 0);
   return `<section class="sc-box" id="sc-box">
-    <p class="sc-h">🍀 오늘의 행운 <small>${all ? '모두 열었어요' : '손가락으로 긁어 보세요'}</small></p>
-    <div class="sc-grid">${tiles.map((t) => `<div class="sc-tile ${open.has(t.key) ? 'open' : ''}" data-sc="${t.key}" tabindex="0" role="button" aria-label="${t.label} 긁어서 보기">
-      <span class="sc-l">${t.icon} ${t.label}</span><b class="sc-v">${esc(t.value)}</b>${open.has(t.key) ? '' : '<canvas class="sc-foil" aria-hidden="true"></canvas>'}</div>`).join('')}</div>
+    <p class="sc-h">🍀 오늘의 행운 · 오늘 할 일 <small>${all ? '모두 열었어요' : '손가락으로 긁어 보세요'}</small></p>
+    <div class="sc-grid">${tiles.map((t) => `<div class="sc-tile ${open.has(t.key) ? 'open' : ''} ${t.wide ? 'wide' : ''}" data-sc="${t.key}" tabindex="0" role="button" aria-label="${t.label} 긁어서 보기">
+      <span class="sc-l">${t.icon} ${t.label}</span><b class="sc-v">${esc(t.value)}</b>${t.sub ? `<small class="sc-sub">${esc(t.sub)}</small>` : ''}${open.has(t.key) ? '' : '<canvas class="sc-foil" aria-hidden="true"></canvas>'}</div>`).join('')}</div>
     ${all ? '' : '<button type="button" class="linkish sc-all" data-sc-all>한 번에 모두 열기</button>'}
   </section>`;
 }
@@ -2742,7 +2746,7 @@ function revealScratch(tile) {
   tile.classList.add('open');
   const cv = tile.querySelector('canvas'); if (cv) { cv.classList.add('gone'); setTimeout(() => cv.remove(), 400); }
   const open = scratchedOn(load(SCRATCH_KEY, {}), dk);
-  if (scratchTiles(state.fortune.luck).every((t) => open.has(t.key))) {
+  if (todayTiles().every((t) => open.has(t.key))) {
     const box = $('#sc-box'); if (box) { box.querySelector('.sc-h small').textContent = '모두 열었어요'; box.querySelector('[data-sc-all]')?.remove(); }
     toast('🍀 오늘의 행운을 모두 열었어요');
   }
@@ -2778,34 +2782,153 @@ document.addEventListener('click', (e) => { if (e.target.closest('[data-sc-all]'
 document.addEventListener('keydown', (e) => { const t = e.target.closest?.('.sc-tile'); if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); revealScratch(t); } });
 
 
-/** ① 오늘의 운세(v0.50): 한 줄 제목 → 왜 그런지 → 좋은 점·조심할 점·생각해 볼 것·하면 좋은 것 → 공감 묻기 → 5분야 점수(작게) */
+/** 오늘의 운세(v0.59 쪽지): 제목·기분 → 한 장면 + 쉽게 말하면 → ⚠️ 조심할 점 하나 → 긁기(행운 색·숫자·오늘 할 일) → 공감 → 작은 예언 → 분야별 점수(접힘) */
 function fiveCardHTML() {
   const f = state.fortune; const v = fiveScores(f); const t = todayStory(f, state.saju, v);
   const emp = load(EMPATHY_KEY, {})[f.dateKey];
-  return `<article class="card five-card" id="five-card">
+  return `<section class="five-card fc-slip" id="five-card">
     <div class="five-head">
       <div class="five-total" style="--c:${scoreColor(v.total)}"><b>${v.total}</b><small>오늘 점수</small></div>
-      <div class="five-hi"><small>${f.date.month}월 ${f.date.day}일 ${dowOf(f.date)}요일 · 오늘의 운세</small>${peekedFor(load(OMEN_KEY, {}), f.dateKey) ? '<em class="peek-open">🔓 어제 미리 본 이야기가 열렸어요</em>' : ''}<h2>${esc(t.head)}</h2>
+      <div class="five-hi"><small>${f.date.month}월 ${f.date.day}일 ${dowOf(f.date)}요일 · 오늘의 운세</small><h2>${esc(t.head)}</h2>
         <p>${esc(t.mood)}</p></div>
     </div>
-    <p class="ts-why">${zodiacFace(v.total >= 70 ? 'excited' : v.total >= 50 ? 'smile' : 'calm', 'z-face ts-z')}<span>${t.scene ? `<em class="ts-scene">🎬 오늘의 한 장면 · ${esc(t.scene)}</em>` : ''}<b class="ts-plain">쉽게 말하면,</b> ${esc(t.story)}</span></p>
-    <div class="ts-grid">
-      <section class="ts-tile good"><h4>👍 오늘 좋은 점</h4><p>${esc(t.good)}</p></section>
-      <section class="ts-tile watch"><h4>⚠️ 오늘 조심할 점</h4><p>${esc(t.watch)}</p>${t.dont?.length ? `<p class="ts-dont-h">⛔ 오늘 하지 말 것</p><ul class="ts-dont">${t.dont.map((a) => `<li>${esc(a)}</li>`).join('')}</ul>` : ''}</section>
-      <section class="ts-tile think"><h4>🤔 생각해 볼 것</h4><p>${esc(t.think)}</p></section>
-      <section class="ts-tile act"><h4>✅ 이렇게 해 보세요</h4><ul>${t.act.map((a) => `<li>${esc(a)}</li>`).join('')}</ul></section>
-    </div>
+    <p class="ts-why"><span>${t.scene ? `<em class="ts-scene">🎬 오늘의 한 장면 · ${esc(t.scene)}</em>` : ''}<b class="ts-plain">쉽게 말하면,</b> ${esc(t.story.replace('오늘 할 일:', '오늘의 한 걸음:'))}</span></p>
+    <section class="ts-tile watch ts-one"><h4>⚠️ 오늘 조심할 점</h4><p>${esc(t.watch)}</p></section>
     ${scratchHTML()}
     <div class="ts-react" aria-live="polite">${emp ? `<p class="ts-thanks">${emp === 'yes' ? '💗' : '🙏'} ${esc(empathyReply(emp, state.profile.name))}</p>`
       : `<p>오늘 이야기, 와닿았나요?</p><div class="ts-btns"><button type="button" class="primary" data-empathy="yes">💗 공감해요</button><button type="button" class="ghost" data-empathy="meh">🤔 글쎄요</button></div>`}</div>
     ${omenHTML()}
-    ${peekHTML()}
     <details class="five-more"><summary><span>📊 분야별 점수</span><span class="five-chips">${v.list.map((x) => `<i>${x.icon}<b style="color:${scoreColor(x.score)}">${x.score}</b></i>`).join('')}</span></summary>
       <ul class="five-list">${v.list.map((x) => `<li><span class="fv-ic">${x.icon}</span><span class="fv-l">${x.label}</span><span class="fv-bar"><i style="width:${x.score}%;background:${scoreColor(x.score)}"></i></span><b class="fv-n" style="color:${scoreColor(x.score)}">${x.score}</b><small class="fv-line">${esc(x.line)}</small></li>`).join('')}</ul>
       ${t.low ? `<p class="five-note">${v.low.icon} ${esc(t.low)}</p>` : ''}
     </details>
+  </section>`;
+}
+
+// ---------- v0.59 오늘의 포춘 쿠키: 지신 누르기 → 기계가 돌고 쿠키가 굴러 나옴 → 쿠키를 쪼개면 오늘의 운세 ----------
+const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+/** 그림이 없을 때 쓰는 코드 기계 */
+const MACHINE_SVG = `<svg class="fc-msvg" viewBox="0 0 200 210" aria-hidden="true">
+  <path d="M100 6 v12" stroke="#b8382a" stroke-width="3"/><circle cx="100" cy="8" r="5" fill="#d9534f"/>
+  <circle cx="100" cy="78" r="60" fill="#eaf3ff" fill-opacity=".75" stroke="#4b3942" stroke-width="4"/>
+  ${[[72, 92], [98, 104], [124, 94], [84, 116], [112, 120], [70, 62], [100, 72], [128, 64], [92, 46], [116, 40]].map(([x, y], i) => `<path transform="translate(${x} ${y}) rotate(${(i * 47) % 360})" d="M-11 2 Q0 -12 11 2 Q4 -2 0 6 Q-4 -2 -11 2Z" fill="#e8b04a" stroke="#9a6a1f" stroke-width="1.5"/>`).join('')}
+  <path d="M60 58 Q70 34 96 26" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none" opacity=".8"/>
+  <rect x="38" y="126" width="124" height="74" rx="20" fill="#fff8ee" stroke="#4b3942" stroke-width="4"/>
+  <rect x="38" y="140" width="124" height="14" fill="#2f3e5c"/>
+  <path d="M60 176 q8 -8 16 0 M124 176 q8 -8 16 0" stroke="#d0a03a" stroke-width="3" fill="none"/>
+  <rect x="82" y="164" width="36" height="26" rx="10" fill="#2f3e5c" stroke="#4b3942" stroke-width="3"/>
+  <g class="fc-crank"><path d="M160 150 L186 128" stroke="#d0a03a" stroke-width="7" stroke-linecap="round"/><circle cx="188" cy="126" r="9" fill="#2f3e5c" stroke="#4b3942" stroke-width="3"/><circle cx="160" cy="150" r="7" fill="#d0a03a" stroke="#4b3942" stroke-width="3"/></g>
+</svg>`;
+const COOKIE_PATH = 'M8 52 Q20 8 60 10 Q100 8 112 52 Q92 40 74 58 Q64 70 60 82 Q56 70 46 58 Q28 40 8 52Z';
+const cookieSVG = (part = '') => `<svg class="fc-csvg" viewBox="0 0 120 90" aria-hidden="true">
+  ${part ? `<defs><clipPath id="fc-clip-${part}"><rect x="${part === 'l' ? 0 : 60}" y="0" width="60" height="90"/></clipPath></defs>` : ''}
+  <g ${part ? `clip-path="url(#fc-clip-${part})"` : ''}><path d="${COOKIE_PATH}" fill="#eab65a" stroke="#8a5a1a" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M24 40 Q40 22 60 22 Q80 22 96 40" stroke="#fff3cf" stroke-width="4" fill="none" stroke-linecap="round" opacity=".8"/>
+  ${part ? '' : '<path d="M56 66 l10 -4 l2 6 l-10 4z" fill="#fff" stroke="#8a5a1a" stroke-width="1.2"/>'}</g>
+</svg>`;
+const fcImg = (id, cls) => { const im = fortuneImage(id); return im ? `<img class="${cls}" src="${im.src}" alt="" draggable="false">` : ''; };
+function machineHTML() {
+  const z = myZodiac(); const combo = fcImg(z.key, 'fc-combo');
+  if (combo) return combo;
+  const ch = charImage(z.key, 5, state.saju.yongsin);
+  return `<span class="fc-mwrap">${fcImg('machine', 'fc-mimg') || MACHINE_SVG}</span>${ch ? `<img class="fc-jisin" src="${ch}" alt="" draggable="false">` : ''}`;
+}
+const cookieWhole = () => fcImg('cookie', 'fc-cimg') || cookieSVG();
+const cookieHalf = (s) => fcImg(`cookie_${s}`, 'fc-cimg') || cookieSVG(s);
+function cookieCardHTML() {
+  const f = state.fortune; const opened = cookieOpened(load(COOKIE_KEY, {}), f.dateKey);
+  if (opened && !state.cookieReplay) {
+    return `<article class="card fc-card open" id="fc-card">
+      <div class="fc-top"><span class="fc-broken"><i class="l">${cookieHalf('l')}</i><i class="r">${cookieHalf('r')}</i></span>
+        <span class="fc-top-t"><b>🥠 오늘의 포춘 쿠키</b><button type="button" class="linkish" data-fc-replay>🔄 한 번 더 굴려 보기</button></span></div>
+      ${fiveCardHTML()}
+    </article>`;
+  }
+  return `<article class="card fc-card" id="fc-card">
+    <p class="fc-h">🥠 오늘의 포춘 쿠키</p>
+    <div class="fc-stage" id="fc-stage" data-step="idle">
+      <button type="button" class="fc-machine" data-fc-turn aria-label="지신이 포춘 기계를 돌려요">${machineHTML()}</button>
+      <button type="button" class="fc-cookie" data-fc-crack aria-label="포춘 쿠키 쪼개기"><span class="fc-whole">${cookieWhole()}</span><span class="fc-half l">${cookieHalf('l')}</span><span class="fc-half r">${cookieHalf('r')}</span><span class="fc-paper">오늘의 운세</span></button>
+    </div>
+    <p class="fc-guide" id="fc-guide">${opened ? '같은 운세가 한 번 더 굴러 나와요. 지신을 눌러 보세요' : `${esc(myZodiac().name)} 지신을 누르면 포춘 기계가 돌아가요`}</p>
   </article>`;
 }
+function turnMachine() {
+  const st = $('#fc-stage'); if (!st || st.dataset.step !== 'idle') return;
+  st.dataset.step = 'spin'; $('#fc-guide').textContent = '드르륵… 기계가 돌아가요';
+  setTimeout(() => { st.dataset.step = 'ready'; $('#fc-guide').textContent = '🥠 쿠키를 눌러 쪼개 보세요'; }, reduceMotion() ? 60 : 1700);
+}
+function crackCookie() {
+  const st = $('#fc-stage'); if (!st || st.dataset.step !== 'ready') return;
+  st.dataset.step = 'crack'; $('#fc-guide').textContent = '';
+  setTimeout(() => {
+    const dk = state.fortune.dateKey; const first = !cookieOpened(load(COOKIE_KEY, {}), dk);
+    save(COOKIE_KEY, cookieMark(load(COOKIE_KEY, {}), dk));
+    state.cookieReplay = false;
+    const card = $('#fc-card'); if (card) card.outerHTML = cookieCardHTML();
+    initScratch();
+    if (first) feedJisin('morning'); // 포춘 쿠키를 연 것 = 지신 아침밥
+    $('#five-card')?.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' });
+  }, reduceMotion() ? 60 : 1000);
+}
+document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-fc-turn]')) turnMachine();
+  else if (e.target.closest('[data-fc-crack]')) crackCookie();
+  else if (e.target.closest('[data-fc-replay]')) {
+    state.cookieReplay = true; const card = $('#fc-card'); if (card) card.outerHTML = cookieCardHTML();
+    $('#fc-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+});
+
+// ---------- v0.59 나만의 매일 습관 2가지: 다음 날 체크 · 체크 하나 = 복떡 2개(첫날은 오늘 바로 2개) ----------
+function habitsCardHTML() {
+  const f = state.fortune; const st = load(DHABIT_KEY, {}); const set = habitsSet(st);
+  const bal = loadTteok()?.balance || 0;
+  let body;
+  if (!set || state.dhEdit) {
+    const list = st.list || ['', ''];
+    body = `<p class="dh-lead">매일 하고 싶은 좋은 습관이나 행동 2가지를 직접 적거나 추천에서 골라 주세요. 다음 날 체크하면 하나에 ${TTEOK} ${HABIT_REWARD}개를 드려요.</p>
+      ${[0, 1].map((i) => `<label class="dh-in">습관 ${i + 1}<input type="text" id="dh-in-${i}" maxlength="${HABIT_MAX}" value="${esc(list[i] || '')}" placeholder="${i ? '예: 감사한 일 한 줄 쓰기' : '예: 물 여덟 잔 마시기'}"></label>`).join('')}
+      <p class="dh-rec-h">💡 내 사주에 맞춘 추천 <small>눌러서 넣기</small></p>
+      <div class="chips dh-recs">${recommendHabits(state.saju, f.dateKey).map((r) => `<button type="button" class="chip" data-dh-rec="${esc(r)}">${esc(r)}</button>`).join('')}</div>
+      <div class="actions"><button type="button" class="primary" data-dh-save>이 두 가지로 정하기</button>${set ? '<button type="button" class="ghost" data-dh-cancel>그대로 두기</button>' : ''}</div>`;
+  } else {
+    const target = checkTarget(st, f.dateKey); const first = target === f.dateKey; const row = checksOn(st, target);
+    const d = dateOfKey(target);
+    body = `<p class="dh-ask">${first ? `🎁 첫날 선물! 오늘은 바로 두 가지 모두 체크할 수 있어요.` : `어제(${d.month}월 ${d.day}일) 했나요? 체크 하나에 ${TTEOK} ${HABIT_REWARD}개`}</p>
+      <div class="dh-rows">${st.list.map((h, i) => `<button type="button" class="dh-row ${row[i] ? 'on' : ''}" role="checkbox" aria-checked="${row[i]}" data-dh-check="${i}" ${row[i] ? 'disabled' : ''}><span class="dh-box">${row[i] ? '✓' : ''}</span><span class="dh-t">${esc(h)}</span><small>${row[i] ? `완료 · ${TTEOK}+${HABIT_REWARD}` : `${TTEOK} +${HABIT_REWARD}`}</small></button>`).join('')}</div>
+      <p class="dh-week"><span>최근 7일</span>${recentChecks(st, f.dateKey).map((x) => `<i class="n${x.n}" title="${x.dateKey}">${x.n === 2 ? '✓' : x.n ? '·' : ''}</i>`).join('')}</p>
+      <p class="dh-note">${first ? '내일부터는 아침에 「어제 했나요?」로 체크해요.' : '오늘 한 것은 내일 아침에 체크해요.'} <button type="button" class="linkish" data-dh-edit>습관 바꾸기</button></p>`;
+  }
+  return `<article class="card dh-card" id="dh-card"><h3>✅ 나만의 매일 습관 2가지 <span class="tag">${TTEOK} ${bal}</span></h3>${body}</article>`;
+}
+const redrawHabits = () => { const c = $('#dh-card'); if (c) c.outerHTML = habitsCardHTML(); };
+document.addEventListener('click', (e) => {
+  const rec = e.target.closest('[data-dh-rec]');
+  if (rec) {
+    const a = $('#dh-in-0'); const b = $('#dh-in-1'); if (!a || !b) return;
+    const v = rec.dataset.dhRec; if (a.value.trim() === v || b.value.trim() === v) return;
+    (!a.value.trim() ? a : !b.value.trim() ? b : b).value = v; return;
+  }
+  if (e.target.closest('[data-dh-save]')) {
+    const list = [$('#dh-in-0')?.value || '', $('#dh-in-1')?.value || ''].map((x) => x.trim());
+    if (!list[0] || !list[1]) { toast('습관 두 가지를 모두 적거나 골라 주세요'); return; }
+    if (isCrisis(list.join(' '))) { showCare(); return; }
+    save(DHABIT_KEY, setHabits(load(DHABIT_KEY, {}), list, state.fortune.dateKey)); state.dhEdit = false; redrawHabits(); toast('✅ 오늘부터 함께 지켜 볼게요'); return;
+  }
+  if (e.target.closest('[data-dh-edit]')) { state.dhEdit = true; redrawHabits(); return; }
+  if (e.target.closest('[data-dh-cancel]')) { state.dhEdit = false; redrawHabits(); return; }
+  const ck = e.target.closest('[data-dh-check]');
+  if (ck) {
+    const r = checkHabit(load(DHABIT_KEY, {}), state.fortune.dateKey, Number(ck.dataset.dhCheck));
+    if (!r.gained) return;
+    save(DHABIT_KEY, r.store);
+    save(TTEOK_KEY, tteokGift(loadTteok(), '습관 체크', r.gained).store);
+    toast(`✓ 잘했어요! ${TTEOK} 복떡 +${r.gained}`);
+    if (r.all) feedJisin('dinner', { quiet: true }); // 두 가지 모두 체크 = 지신 저녁밥
+    redrawHabits();
+  }
+});
 document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-empathy]'); if (!b) return;
   save(EMPATHY_KEY, setEmpathy(load(EMPATHY_KEY, {}), state.fortune.dateKey, b.dataset.empathy));
@@ -3327,8 +3450,6 @@ document.addEventListener('click', (e) => {
 });
 
 function renderToday() {
-  { const v = tteokVisit(loadTteok(), state.fortune.dateKey); if (v.gained) save(TTEOK_KEY, v.store); }
-  if (!todayBowls(loadFood(), state.fortune.dateKey)[0].done) setTimeout(() => feedJisin('morning'), 0); // 오늘 운세를 본 것 = 아침밥
   logToday();
   logVisitNow();
   recordKaiun();
@@ -3337,11 +3458,10 @@ function renderToday() {
   const weekly = weeklyLetterHTML();
   $('[data-panel="today"]').innerHTML = `
     ${easySuggestHTML()}
-    ${diaryHTML()}
     ${wishDueHTML()}
-    ${fiveCardHTML()}
+    ${cookieCardHTML()}
+    ${habitsCardHTML()}
     <div class="fold-list">
-      ${foldHTML('habit', '☂️', '오늘의 좋은 습관 하나', '5분이면 끝나는 오늘의 한 걸음', habitCardHTML())}
       ${foldHTML('next', '📜', `${bd.y.sajuYear}년 운세`, `「${bd.b.title}」의 해 · 총운·분야별`, `${bookletHTML(bd)}${bookletFieldsHTML(bd)}`)}
       ${foldHTML('saju', '🀄', '내 사주', `일간 ${STEMS[sj.dayMaster]}(${STEMS_KO[sj.dayMaster]}) · 필요한 기운 ${ELEMENT_KO[sj.yongsin]}`, sajuOpenHTML())}
       ${weekly ? foldHTML('weekly', '💌', '이번 주 편지', '한 주 돌아보기', weekly) : ''}
