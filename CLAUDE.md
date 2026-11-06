@@ -109,7 +109,7 @@
 
 ## 실행·테스트
 - 로컬: `cd saju-app && python3 -m http.server 8000` → http://localhost:8000
-- 테스트: `cd saju-app && npm test` (node 테스트 파일 60개(갤러리 테스트에 이미지 연결 검사 포함), 모두 통과 상태 유지)
+- 테스트: `cd saju-app && npm test` (node 테스트 파일 58개(갤러리 테스트에 이미지 연결 검사 포함), 모두 통과 상태 유지)
 - 화면 확인: Playwright(`require('playwright')`, 크로미움 내장)로 스크린샷
 - 디자인 확인: `http://localhost:8000/?gallery=1` (12지신 띠×14단계×성별×오행, 부적 6종×5등급×2테마, 이모티콘 8표정×스타일×등급, 한정 소품 11종)
 
