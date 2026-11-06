@@ -4,8 +4,8 @@ import { existsSync } from 'node:fs';
 import { FORTUNE_IMAGES } from '../js/fortune-manifest.js';
 let pass = 0; const t = (n, f) => { f(); pass++; console.log('ok -', n); };
 const Z = ['rat', 'ox', 'tiger', 'rabbit', 'dragon', 'snake', 'horse', 'sheep', 'monkey', 'rooster', 'dog', 'pig'];
-const IDS = ['machine', 'cookie', 'cookie_l', 'cookie_r', ...Z];
-t('16장 모두 연결 · 다른 id 없음', () => {
+const IDS = ['machine', 'cookie', 'cookie_gold', 'cookie_l', 'cookie_r', ...Z]; // v0.61.1 황금 쿠키 추가 = 17장
+t('17장 모두 연결 · 다른 id 없음', () => {
   assert.deepEqual(Object.keys(FORTUNE_IMAGES).sort(), [...IDS].sort());
 });
 t('파일 있음 · 비율 정상(띠 그림은 기계+지신이라 가로가 조금 넓거나 비슷)', () => {

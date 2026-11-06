@@ -55,3 +55,19 @@ t('내일 맛보기: 봤다고 기록하면 다음 날 「열렸어요」 · 힌
   assert.match(tomorrowTeaser('제목', 66, 64).hint, /비슷한/);
 });
 console.log(`omen: ${pass} passed`);
+
+// v0.62 행운의 색·숫자 예언은 긁기 전까지 값 숨김
+{
+  const { omenOf: om } = await import('../js/omen.js');
+  const f0 = { dateKey: '2026-11-6', tenGod: '정재', luck: { color: '검정·남색', number: 1, time: '오전 9시~11시' } };
+  let seen = 0;
+  for (let i = 0; i < 80; i++) {
+    const o = om(f0, `p${i}`);
+    if (o.kind === 'color' || o.kind === 'number') {
+      seen++; assert.ok(o.hidden && !o.hidden.includes('검정') && !/숫자 1/.test(o.hidden), o.hidden);
+      assert.deepEqual(josaProblems(o.hidden), []);
+    } else assert.equal(o.hidden, null);
+  }
+  assert.ok(seen > 10);
+  console.log('ok - 행운의 색·숫자 예언은 긁기 전 값 숨김');
+}
