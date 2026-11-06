@@ -2859,7 +2859,10 @@ const SHAPE_SVG = {
 };
 const shapeSVG = (shape) => SHAPE_SVG[shape] ? `<svg class="fc-shape" viewBox="0 0 120 90" aria-hidden="true">${SHAPE_SVG[shape]}</svg>` : '';
 const cookieWhole = (gold) => (gold && fcImg('cookie_gold', 'fc-cimg fc-gold-img')) || fcImg('cookie', 'fc-cimg') || cookieSVG();
-const cookieHalf = (s) => fcImg(`cookie_${s}`, 'fc-cimg') || cookieSVG(s);
+// 반쪽 쿠키(v0.64.2): 황금 날은 황금 쿠키 그림을 지그재그로 갈라 쓰고(`.fc-gcut`), 명절 덧그림도 반쪽에 남김(띠·별은 양쪽, 달은 오른쪽, 창포 잎은 왼쪽)
+const HALF_SHAPE = { string: 'lr', redbean: 'lr', ribbon: 'lr', stars: 'lr', moon: 'r', leaf: 'l' };
+const halfShape = (s, sp) => (sp && (HALF_SHAPE[sp.shape] || '').includes(s) ? shapeSVG(sp.shape) : '');
+const cookieHalf = (s, gold = false, sp = null) => ((gold && fcImg('cookie_gold', `fc-cimg fc-gold-img fc-gcut ${s}`)) || fcImg(`cookie_${s}`, 'fc-cimg') || cookieSVG(s)) + halfShape(s, sp);
 const specialLine = (sp) => sp ? `<p class="fc-special">${sp.icon} <b>${esc(sp.name)}${sp.termName ? ` · ${esc(sp.termName)}` : ''} 특별 쿠키</b> ${esc(sp.line)}</p>` : '';
 function reactFace(r, z) {
   const u = emoImage(z.key, r.mood, state.saju.yongsin) || charImage(z.key, 5, state.saju.yongsin);
@@ -2871,7 +2874,7 @@ function cookieCardHTML() {
   const g = gold ? ' gold' : '';
   if (opened && !state.cookieReplay) {
     return `<article class="card fc-card open${g}" id="fc-card">
-      <div class="fc-top"><span class="fc-broken${g}"><i class="l">${cookieHalf('l')}</i><i class="r">${cookieHalf('r')}</i></span>
+      <div class="fc-top"><span class="fc-broken${g}"><i class="l">${cookieHalf('l', gold, sp)}</i><i class="r">${cookieHalf('r', gold, sp)}</i></span>
         <span class="fc-top-t"><b>${gold ? '✨ 오늘은 황금 쿠키' : '🥠 오늘의 포춘 쿠키'}</b><small class="fc-say-s" data-casual>${esc(z.name)} 지신 · 「${esc(r.line)}」</small><button type="button" class="linkish" data-fc-replay>🔄 한 번 더 굴려 보기</button></span></div>
       ${gold ? `<p class="fc-goldnote">✨ ${esc(GOLD_NOTE)}</p>` : ''}
       ${specialLine(sp)}
@@ -2885,7 +2888,7 @@ function cookieCardHTML() {
     ${sp ? `<p class="fc-badge">${sp.icon} 오늘은 ${esc(sp.name)} · 특별 쿠키가 기다려요</p>` : ''}
     <div class="fc-stage${fortuneImage(myZodiac().key) ? ' combo' : ''}${g}" id="fc-stage" data-step="idle">
       <button type="button" class="fc-machine" data-fc-turn aria-label="지신이 포춘 기계를 돌려요">${machineHTML()}</button>
-      <button type="button" class="fc-cookie" data-fc-crack aria-label="${gold ? '황금 ' : ''}포춘 쿠키 쪼개기"><span class="fc-whole">${cookieWhole(gold)}${sp ? shapeSVG(sp.shape) : ''}</span><span class="fc-half l">${cookieHalf('l')}</span><span class="fc-half r">${cookieHalf('r')}</span><span class="fc-paper">${esc(paper)}</span>${gold ? '<span class="fc-sparkle" aria-hidden="true"><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i></span>' : ''}</button>
+      <button type="button" class="fc-cookie" data-fc-crack aria-label="${gold ? '황금 ' : ''}포춘 쿠키 쪼개기"><span class="fc-whole">${cookieWhole(gold)}${sp ? shapeSVG(sp.shape) : ''}</span><span class="fc-half l">${cookieHalf('l', gold, sp)}</span><span class="fc-half r">${cookieHalf('r', gold, sp)}</span><span class="fc-paper">${esc(paper)}</span>${gold ? '<span class="fc-sparkle" aria-hidden="true"><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i></span>' : ''}</button>
       <div class="fc-react${r.big ? ' big' : ''}" aria-live="polite" hidden><span class="fc-face">${reactFace(r, z)}</span><p class="fc-say" data-casual>${esc(r.line)}</p></div>
     </div>
     <p class="fc-guide" id="fc-guide">${opened ? '같은 운세가 한 번 더 굴러 나와요. 지신을 눌러 보세요' : `${esc(myZodiac().name)} 지신을 누르면 포춘 기계가 돌아가요`}</p>
