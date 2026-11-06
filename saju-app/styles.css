@@ -2162,3 +2162,17 @@ html.easy .tl-story p { font-size: 1rem; }
 .cm-forge-link b { display: block; font-size: .9rem; color: var(--ink); }
 .cm-forge-link small { color: var(--muted); font-size: .78rem; word-break: keep-all; }
 @media (prefers-reduced-motion: reduce) { .cm-thumb { animation: none !important; } }
+
+/* v0.63 접어 둔 작은 칸: 작은 예언 · 매일 습관 */
+.mini-fold > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; }
+.mini-fold > summary::-webkit-details-marker { display: none; }
+.mini-fold > summary h3, .mini-fold > summary h4 { margin: 0; }
+.mini-fold > summary::after { content: '▾'; color: var(--muted); transition: transform .2s; flex: none; }
+.mini-fold[open] > summary::after { transform: rotate(180deg); }
+.mini-fold[open] > summary { margin-bottom: 8px; }
+.mini-hint { margin-left: auto; color: var(--muted); font-size: .8rem; white-space: nowrap; }
+.mini-fold > summary { flex-wrap: wrap; }
+.mini-fold > summary h3, .mini-fold > summary h4 { word-break: keep-all; }
+.dh-card.mini-fold > summary h3 { flex: 1 1 auto; }
+.dh-card.mini-fold > summary .mini-hint { order: 3; flex-basis: calc(100% - 24px); margin-left: 0; }
+.dh-card.mini-fold > summary::after { order: 2; }
