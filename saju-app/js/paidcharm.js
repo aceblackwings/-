@@ -41,34 +41,44 @@ export function wrapLines(text, per) {
   return lines;
 }
 
+/** 글자·장식 자리표(300×480). base = 코드 종이·v1 그림, gold2·red2 = v2 일러스트 카드(장식을 피해 잼, 2026-11-06 격자로 측정) */
+export const LAYOUTS = {
+  base: { head: 70, sub: 96, div1: 112, div2: 352, mid: 238, span: 1, x: 34, who: 386, made: 408, due: 428, seal: [214, 390, 64, 62], badge: 127, dueShort: false },
+  gold2: { head: 118, sub: 140, div1: 154, div2: 328, mid: 244, span: 0.86, x: 58, who: 350, made: 366, due: 381, seal: [194, 334, 52, 50], badge: 168, dueShort: true, small: true },
+  red2: { head: 100, sub: 120, div1: 134, div2: 310, mid: 224, span: 0.92, x: 64, who: 334, made: 352, due: 368, seal: [188, 316, 52, 50], badge: 148, dueShort: true, small: true },
+};
+const layoutKey = (d) => { const art = d.art ?? isArtPaper(d.kind); return art ? (d.kind === 'burn' ? 'red2' : 'gold2') : 'base'; };
+export const layoutOf = (d) => LAYOUTS[layoutKey(d)];
+
 /**
  * 부적 위 글자 배치(300×480 기준). SVG와 배경화면 캔버스가 같은 배치를 씀.
  * d = { kind: 'wish'|'burn', text, name, madeKey, dueKey, branch, done, doneKey, seal(기본 true) }
  * → [{ t, x, y, size, font, color, anchor, weight, spacing }]
  */
 export function charmLayout(d) {
-  const P = PAPER[d.kind] || PAPER.wish; const text = String(d.text || '').trim();
+  const P = PAPER[d.kind] || PAPER.wish; const L = layoutOf(d); const text = String(d.text || '').trim();
   const n = text.replace(/\s/g, '').length;
   const per = n <= 6 ? 6 : n <= 14 ? 7 : 8;
-  const size = n <= 4 ? 52 : n <= 6 ? 46 : n <= 14 ? 40 : 33;
+  const size = Math.round((n <= 4 ? 52 : n <= 6 ? 46 : n <= 14 ? 40 : 33) * L.span);
   const lines = text ? wrapLines(text, per).slice(0, 5) : [];
-  const lh = size * 1.18; const mid = 238;
+  const lh = size * 1.18; const mid = L.mid;
   const y0 = mid - ((lines.length - 1) * lh) / 2 + size * 0.34;
   const items = [
-    { t: P.head, x: 150, y: 70, size: 32, font: HANJA_FONT, color: P.headInk, anchor: 'middle', spacing: 6, stroke: P.headStroke, strokeW: P.headStrokeW },
-    { t: P.sub, x: 150, y: 96, size: 13, font: TEXT_FONT, color: P.subInk, anchor: 'middle', spacing: 2 },
+    { t: P.head, x: 150, y: L.head, size: L.small ? 30 : 32, font: HANJA_FONT, color: P.headInk, anchor: 'middle', spacing: 6, stroke: P.headStroke, strokeW: P.headStrokeW },
+    { t: P.sub, x: 150, y: L.sub, size: L.small ? 12 : 13, font: TEXT_FONT, color: P.subInk, anchor: 'middle', spacing: 2 },
     ...lines.map((t, i) => ({ t, x: 150, y: Math.round(y0 + i * lh), size, font: BRUSH_FONT, color: P.ink, anchor: 'middle' })),
   ];
   const who = d.name ? `${d.name} 님의 ${d.kind === 'burn' ? '걱정' : '소원'}` : `나의 ${d.kind === 'burn' ? '걱정' : '소원'}`;
-  items.push({ t: who, x: 34, y: 386, size: 14, font: TEXT_FONT, color: P.subInk, anchor: 'start', weight: 700 });
-  items.push({ t: `${dotDate(d.madeKey)} 지음`, x: 34, y: 408, size: 12, font: TEXT_FONT, color: P.subInk, anchor: 'start' });
-  if (d.kind === 'wish' && d.dueKey) items.push({ t: `이루고 싶은 날 · ${monthDay(d.dueKey)}`, x: 34, y: 428, size: 12, font: TEXT_FONT, color: P.subInk, anchor: 'start' });
+  const fs = L.small ? 11 : 12;
+  items.push({ t: who, x: L.x, y: L.who, size: L.small ? 13 : 14, font: TEXT_FONT, color: P.subInk, anchor: 'start', weight: 700 });
+  items.push({ t: `${dotDate(d.madeKey)} 지음`, x: L.x, y: L.made, size: fs, font: TEXT_FONT, color: P.subInk, anchor: 'start' });
+  if (d.kind === 'wish' && d.dueKey) items.push({ t: `${L.dueShort ? '이룰 날' : '이루고 싶은 날'} · ${monthDay(d.dueKey)}`, x: L.x, y: L.due, size: fs, font: TEXT_FONT, color: P.subInk, anchor: 'start' });
   if (d.seal !== false) {
-    const [a, b] = sealChars(d.branch);
-    items.push({ t: a, x: 246, y: 412, size: 21, font: HANJA_FONT, color: P.sealInk, anchor: 'middle', seal: true });
-    items.push({ t: b, x: 246, y: 438, size: 21, font: HANJA_FONT, color: P.sealInk, anchor: 'middle', seal: true });
+    const [a, b] = sealChars(d.branch); const [sx, sy, sw, sh] = L.seal; const cx = sx + sw / 2; const g = Math.round(sh * 0.34);
+    items.push({ t: a, x: cx, y: Math.round(sy + sh / 2 - 3), size: Math.round(sh * 0.34), font: HANJA_FONT, color: P.sealInk, anchor: 'middle', seal: true });
+    items.push({ t: b, x: cx, y: Math.round(sy + sh / 2 - 3 + g + 4), size: Math.round(sh * 0.34), font: HANJA_FONT, color: P.sealInk, anchor: 'middle', seal: true });
   }
-  if (d.done) items.push({ t: '成就', x: 150, y: 132, size: 15, font: HANJA_FONT, color: '#fff6e6', anchor: 'middle', badge: true });
+  if (d.done) items.push({ t: '成就', x: 150, y: L.badge + 5, size: 15, font: HANJA_FONT, color: '#fff6e6', anchor: 'middle', badge: true });
   return items;
 }
 
@@ -104,13 +114,13 @@ const DIVIDER = (M, y) => `<path d="M58 ${y} Q100 ${y - 1.4} 136 ${y}" fill="non
 const TWINKLE = (M, x, y, s) => `<path transform="translate(${x} ${y}) scale(${s})" d="M0 -6 Q0.9 -0.9 6 0 Q0.9 0.9 0 6 Q-0.9 0.9 -6 0 Q-0.9 -0.9 0 -6z" fill="${M}"/>`;
 
 /** 금박 장식 한 벌: 이중 테두리 · 모서리 구름무늬 · 연꽃 문양(글 뒤에 은은하게) · 제목 옆 구름 · 구분선 · 반짝임 */
-function ornamentSVG(P, M, kind, lite = false) {
+function ornamentSVG(P, M, kind, lite = false, L = LAYOUTS.base) {
   const lotusOp = kind === 'burn' ? 0.2 : 0.24;
   const petals = Array.from({ length: 12 }, (_, i) => `<path transform="rotate(${i * 30} 150 238)" d="M150 238 Q138 196 150 160 Q162 196 150 238z" fill="none" stroke="${M}" stroke-width="1.2"/>`).join('');
   const petals2 = Array.from({ length: 12 }, (_, i) => `<path transform="rotate(${i * 30 + 15} 150 238)" d="M150 238 Q143 212 150 190 Q157 212 150 238z" fill="${M}" opacity="0.5"/>`).join('');
   const cx = Math.max(44, Math.round(150 - P.sub.length * 7.6 - 26)); // 부제 길이에 맞춰 구름을 바깥으로
   const cloudFill = kind === 'burn' ? 'rgba(120, 25, 14, 0.55)' : 'rgba(255, 248, 224, 0.75)';
-  if (lite) return `<g class="pc-orn lite">${DIVIDER(M, 112)}${DIVIDER(M, 352)}${TWINKLE(M, 86, 146, 0.9)}${TWINKLE(M, 222, 322, 1.1)}</g>`;
+  if (lite) return `<g class="pc-orn lite">${DIVIDER(M, L.div1)}${DIVIDER(M, L.div2)}${TWINKLE(M, 96, L.div1 + 26, 0.8)}${TWINKLE(M, 206, L.div2 - 22, 1)}</g>`;
   return `<g class="pc-orn">
     <g opacity="${lotusOp}"><circle cx="150" cy="238" r="96" fill="none" stroke="${M}" stroke-width="1.4"/><circle cx="150" cy="238" r="88" fill="none" stroke="${M}" stroke-width="0.8" stroke-dasharray="2 4"/>${petals}${petals2}<circle cx="150" cy="238" r="10" fill="none" stroke="${M}" stroke-width="1.4"/></g>
     <rect x="8" y="8" width="284" height="464" rx="5" fill="none" stroke="${M}" stroke-width="4.5"/>
@@ -132,6 +142,7 @@ function ornamentSVG(P, M, kind, lite = false) {
 export function paidCharmSVG(d, opts = {}) {
   const P = PAPER[d.kind] || PAPER.wish; const id = `pc${++uid}`; const r = rng(`${d.kind}|${d.text}|${d.madeKey}`);
   const src = opts.paperSrc !== undefined ? opts.paperSrc : paperImage(d.kind);
+  const art = !!src && (opts.artPaper ?? d.art ?? isArtPaper(d.kind)); d = { ...d, art }; const L = layoutOf(d);
   let fiber = ''; let flake = '';
   if (!src) {
     for (let i = 0; i < 46; i++) {
@@ -146,8 +157,9 @@ export function paidCharmSVG(d, opts = {}) {
   const items = charmLayout(d);
   const hasSeal = items.some((x) => x.seal);
   const text = opts.noText ? '' : items.map((x) => `<text x="${x.x}" y="${x.y}" font-size="${x.size}" fill="${x.color}" text-anchor="${x.anchor}" font-family="${escX(x.font)}"${x.weight ? ` font-weight="${x.weight}"` : ''}${x.spacing ? ` letter-spacing="${x.spacing}"` : ''}${x.stroke ? ` stroke="${x.stroke}" stroke-width="${x.strokeW}" paint-order="stroke" stroke-linejoin="round"` : ''}>${escX(x.t)}</text>`).join('');
-  const seal = hasSeal ? `<g class="pc-seal"><rect x="214" y="390" width="64" height="62" rx="6" fill="${P.seal}"/><rect x="219" y="395" width="54" height="52" rx="3" fill="none" stroke="${P.sealInk}" stroke-width="1.6" opacity="0.8"/></g>` : '';
-  const badge = d.done ? `<circle cx="150" cy="127" r="21" fill="#c9962c" stroke="#fff3c4" stroke-width="2"/>` : '';
+  const [sx, sy, sw, sh] = L.seal;
+  const seal = hasSeal ? `<g class="pc-seal"><rect x="${sx}" y="${sy}" width="${sw}" height="${sh}" rx="6" fill="${P.seal}"/><rect x="${sx + 5}" y="${sy + 5}" width="${sw - 10}" height="${sh - 10}" rx="3" fill="none" stroke="${P.sealInk}" stroke-width="1.6" opacity="0.8"/></g>` : '';
+  const badge = d.done ? `<circle cx="150" cy="${L.badge}" r="21" fill="#c9962c" stroke="#fff3c4" stroke-width="2"/>` : '';
   const paper = src
     ? `<image href="${escX(src)}" x="0" y="0" width="300" height="480" preserveAspectRatio="xMidYMid slice"/>`
     : `<rect width="300" height="480" fill="url(#${id}g)"/><g fill="none" stroke="${P.fiber}" stroke-width="0.8">${fiber}</g><g fill="${P.flake}">${flake}</g>`;
@@ -158,7 +170,7 @@ export function paidCharmSVG(d, opts = {}) {
       <linearGradient id="${id}s" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.5" stop-color="#fffbe6" stop-opacity="0.55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
       <clipPath id="${id}c"><rect width="300" height="480" rx="4"/></clipPath></defs>
     ${paper}
-    ${ornamentSVG(P, M, d.kind, !!src && (opts.artPaper ?? isArtPaper(d.kind)))}
+    ${ornamentSVG(P, M, d.kind, art, L)}
     <g clip-path="url(#${id}c)"><rect class="pc-sheen" x="-150" y="-60" width="90" height="600" fill="url(#${id}s)" transform="translate(-200 0) rotate(18)"/></g>
     ${seal}${badge}${text}
   </svg>`;
@@ -240,6 +252,7 @@ export async function drawWallpaper(canvas, d, { paperSrc, title = '12지신 강
   ctx.globalAlpha = 1;
   try { await Promise.all([`60px ${BRUSH_FONT}`, `30px ${HANJA_FONT}`, `30px ${TEXT_FONT}`].map((f) => document.fonts?.load?.(f))); } catch { /* 글꼴 없으면 기본 글꼴 */ }
   const S = 2.5; const X = (WALL_W - CHARM_W * S) / 2; const Y = 470;
+  d = { ...d, art: !!paperSrc && isArtPaper(d.kind) };
   const svg = paidCharmSVG(d, { noText: true, paperSrc });
   const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
   try {

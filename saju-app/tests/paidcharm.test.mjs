@@ -27,12 +27,17 @@ t('부적 글자 배치·SVG: 종이 안쪽, 인장, 꺾쇠 안전, 생년월일
   const base = { text: '자격증 시험 꼭 합격하기', name: '하늘', madeKey: '2026-11-6', dueKey: '2026-12-6', branch: 4 };
   for (const kind of ['wish', 'burn']) {
     for (const text of ['합격', base.text, '가'.repeat(30), '다음 주 발표가 걱정돼요 <script>']) {
-      const items = P.charmLayout({ ...base, kind, text });
-      assert.ok(items.every((x) => x.x >= 0 && x.x <= 300 && x.y > 0 && x.y < 480), `${kind} ${text}`);
-      const body = items.filter((x) => x.font === P.BRUSH_FONT);
-      assert.ok(body.length >= 1 && body.length <= 5);
-      assert.ok(body.every((x) => x.y > 112 && x.y < 350), '본문은 위아래 선 사이');
-      assert.equal(items.filter((x) => x.seal).length, 2);
+      for (const art of [false, true]) { // 코드 종이·v1(base)과 v2 일러스트 카드 둘 다
+        const L = P.layoutOf({ kind, art });
+        const items = P.charmLayout({ ...base, kind, text, art });
+        assert.ok(items.every((x) => x.x >= 0 && x.x <= 300 && x.y > 0 && x.y < 480), `${kind} ${text}`);
+        const body = items.filter((x) => x.font === P.BRUSH_FONT);
+        assert.ok(body.length >= 1 && body.length <= 5);
+        assert.ok(body.every((x) => x.y - x.size * 0.8 > L.div1 && x.y < L.div2), `본문은 위아래 선 사이 ${kind} art=${art} ${text}`);
+        const [sx, sy] = L.seal; const left = items.filter((x) => x.anchor === 'start');
+        assert.ok(left.every((x) => x.y < sy - 2 || x.x + [...x.t].reduce((w, c) => w + (/[가-힣]/.test(c) ? 1 : 0.55), 0) * x.size < sx), `이름·날짜가 인장과 안 겹침 ${kind} art=${art}`);
+        assert.equal(items.filter((x) => x.seal).length, 2);
+      }
       const svg = P.paidCharmSVG({ ...base, kind, text });
       assert.ok(!svg.includes('<script>'));
       const words = [...svg.matchAll(/>([^<>]+)<\/text>/g)].map((m) => m[1]).join(' ');
@@ -40,7 +45,8 @@ t('부적 글자 배치·SVG: 종이 안쪽, 인장, 꺾쇠 안전, 생년월일
     }
   }
   const svg = P.paidCharmSVG({ ...base, kind: 'wish' });
-  assert.ok(svg.includes('所願成就') && svg.includes('하늘 님의 소원') && svg.includes('이루고 싶은 날 · 12월 6일') && svg.includes('龍神'));
+  assert.ok(svg.includes('所願成就') && svg.includes('하늘 님의 소원') && /(이루고 싶은|이룰) 날 · 12월 6일/.test(svg) && svg.includes('龍神'));
+  assert.ok(P.paidCharmSVG({ ...base, kind: 'wish' }, { paperSrc: null }).includes('이루고 싶은 날 · 12월 6일'));
   assert.ok(P.paidCharmSVG({ ...base, kind: 'burn' }).includes('消災降福'));
   const strip = (x) => x.replace(/pc\d+[gmsc]/g, '');
   assert.equal(strip(P.paidCharmSVG({ ...base, kind: 'wish' })), strip(P.paidCharmSVG({ ...base, kind: 'wish' })));
