@@ -1992,6 +1992,8 @@ function bookletData() {
   const b = buildBooklet({ y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, concern: state.profile.concern, gender: state.profile.gender, nextDaewoon: nextDw, calib: retroCalibNow(d.dw) });
   const st = bookletStory({ y, thisYear: prev, saju: state.saju, name: state.profile.name, gender: state.profile.gender });
   // v0.59 4단계: 첫 화면 = 요약판(결론·할 일), 「자세히 보기」 = 요약판과 같은 문장을 뺀 상세판
+  // v0.63 사용자 「한눈에 정리는 한 줄 요약까지만, 꼭 할 일은 삭제」 → 첫 블록만(상세판 겹침 빼기도 이 한 줄만 기준)
+  if (st.brief) st.brief = { ...st.brief, h: '📌 한눈에 정리', intro: '', blocks: st.brief.blocks.slice(0, 1) };
   return { d, y, b, sum: yearSummary({ b, st }) };
 }
 
@@ -2606,13 +2608,13 @@ function omenHTML() {
   const body = c.answered ? `<p class="omen-done">${c.answered === 'yes' ? '👀 예언이 맞았어요! 도장 쾅' : '오늘은 못 봤어도 괜찮아요. 내일 예언이 또 찾아와요.'}</p>`
     : c.today ? `<p class="omen-ask">오늘 하루, 이 신호를 봤나요?</p><div class="omen-btns"><button type="button" class="primary" data-omen="yes" data-omen-day="${f.dateKey}">👀 봤어요</button><button type="button" class="ghost" data-omen="no" data-omen-day="${f.dateKey}">아직 못 봤어요</button></div>`
       : `<p class="omen-wait">⏰ 오후 ${CHECK_HOUR - 12}시부터 「봤나요?」를 확인할 수 있어요. 하루 동안 살짝 눈여겨봐 주세요.</p>`;
-  return `<section class="omen-box" id="omen-box">
-    <h4>🔮 오늘의 작은 예언</h4>
+  return `<details class="omen-box mini-fold" id="omen-box" data-mini="omen"${state.miniOpen?.omen ? ' open' : ''}>
+    <summary><h4>🔮 오늘의 작은 예언</h4><small class="mini-hint">${c.answered ? '오늘 확인 끝' : c.today || c.yesterday ? '👀 확인할 예언이 있어요' : '눌러서 보기'}</small></summary>
     <p class="omen-text">${esc(omenVisibleText(o))}</p>
     ${body}
     ${yRow}
     <p class="omen-stamps"><span>이번 주 예언 도장</span>${stats.week.map((w, i) => `<i class="${w.v === 'yes' ? 'on' : w.v ? 'miss' : ''}" title="${DOW[i]}">${w.v === 'yes' ? '👀' : DOW[i]}</i>`).join('')}<small>누적 ${stats.hits}번 맞음</small></p>
-  </section>`;
+  </details>`;
 }
 function peekHTML() {
   const f = state.fortune; const st = load(OMEN_KEY, {}); const tk = shiftDay(f.dateKey, 1);
@@ -2777,11 +2779,11 @@ function santongHTML(Y) {
       <p class="st-grade"><b>${c.label}</b><small>${c.hanja}</small></p>
       <p class="st-head">${esc(c.head)}</p><p>${esc(c.body)}</p>
       <p class="st-act">✅ 올해의 한 가지: ${esc(c.act)}</p>
-      <ul class="st-items">${c.items.map((i) => `<li><span>${i.icon} ${i.label}</span><em>${esc(i.line)}</em></li>`).join('')}</ul>
-      ${c.low ? `<p class="st-low">🔥 옛날에는 좋지 않은 점괘를 나뭇가지에 묶어 두고 왔어요. 우리는 걱정 한 줄을 태워 액을 먼저 보내 봐요. <button type="button" class="linkish" data-go-burn>걱정 태우러 가기</button></p>` : ''}
-      <p class="muted st-note">산통 점괘는 새해에 재미로 뽑는 점이에요. 아래 운세 풀이는 내 사주로 계산한 내용이에요.</p>
+      <p class="muted st-note">산통 점괘는 새해에 재미로 뽑는 점이에요.</p>
     </div></section>`;
 }
+// v0.63 접어 둔 작은 칸(작은 예언·매일 습관)의 열림 상태 기억
+document.addEventListener('toggle', (e) => { const d = e.target; if (d?.dataset?.mini) { state.miniOpen = { ...(state.miniOpen || {}), [d.dataset.mini]: d.open }; } }, true);
 document.addEventListener('keydown', (e) => { const t = e.target.closest?.('.sc-tile'); if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); revealScratch(t); } });
 
 
@@ -2945,7 +2947,8 @@ function habitsCardHTML() {
       <p class="dh-week"><span>최근 7일</span>${recentChecks(st, f.dateKey).map((x) => `<i class="n${x.n}" title="${x.dateKey}">${x.n === 2 ? '✓' : x.n ? '·' : ''}</i>`).join('')}</p>
       <p class="dh-note">${first ? '내일부터는 아침에 「어제 했나요?」로 체크해요.' : '오늘 한 것은 내일 아침에 체크해요.'} <button type="button" class="linkish" data-dh-edit>습관 바꾸기</button></p>`;
   }
-  return `<article class="card dh-card" id="dh-card"><h3>✅ 나만의 매일 습관 2가지 <span class="tag">${TTEOK} ${bal}</span></h3>${body}</article>`;
+  const hint = !set ? '두 가지를 정해 보세요' : (() => { const tg = checkTarget(st, f.dateKey); const row = checksOn(st, tg); const left = st.list.filter((_, i) => !row[i]).length; return left ? `✔ 체크할 습관 ${left}개` : '오늘 체크 끝'; })();
+  return `<details class="card dh-card mini-fold" id="dh-card" data-mini="habit"${state.miniOpen?.habit || state.dhEdit ? ' open' : ''}><summary><h3>✅ 나만의 매일 습관 2가지 <span class="tag">${TTEOK} ${bal}</span></h3><small class="mini-hint">${hint}</small></summary>${body}</details>`;
 }
 const redrawHabits = () => { const c = $('#dh-card'); if (c) c.outerHTML = habitsCardHTML(); };
 document.addEventListener('click', (e) => {
