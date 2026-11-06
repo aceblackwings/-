@@ -1887,7 +1887,7 @@ html.easy .top h1 { font-size: 20px; }
 .burn-tip { margin: 0 0 8px; font-size: 0.84rem; }
 .burn-care { background: #fff3f6; border-radius: 12px; padding: 8px 10px; margin-bottom: 8px; font-size: 0.84rem; }
 .burn-care p { margin: 2px 0; }
-.burn-stage { position: relative; width: 100%; max-width: 280px; aspect-ratio: 280 / 360; margin: 0 auto 10px; border-radius: 10px; overflow: hidden; background: #2b2420; touch-action: none; }
+.burn-stage { position: relative; width: 100%; max-width: 250px; aspect-ratio: 300 / 480; margin: 0 auto 10px; border-radius: 10px; overflow: hidden; background: #2b2420; touch-action: none; }
 .burn-paper { position: absolute; inset: 0; background: #f5eedf; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 18px; box-sizing: border-box; }
 .burn-paper .bp-charm { width: 46%; }
 .burn-paper .bp-charm svg { width: 100%; height: auto; display: block; }
@@ -2018,3 +2018,66 @@ html.easy .top h1 { font-size: 20px; }
 .tl-story-more > summary::-webkit-details-marker { display: none; }
 .tl-story-more[open] > summary { margin-bottom: 6px; }
 html.easy .tl-story p { font-size: 1rem; }
+
+/* ===== v0.60 유료 부적: 금박 한지 · 붉은 한지 · 만드는 의식 · 씨앗 ===== */
+.paid-charm { width: 100%; height: auto; display: block; border-radius: 4px; }
+.wish-charm.paid svg { box-shadow: 0 2px 8px rgba(150, 105, 30, 0.25); border-radius: 3px; }
+.wish-charm.paid.glow svg, .rt-charm.glow svg { animation: pcGlow 1.8s ease-in-out infinite alternate; }
+.wish-charm.paid.done svg { box-shadow: 0 0 0 2px #f3d27a, 0 0 14px rgba(240, 180, 60, 0.75); }
+@keyframes pcGlow { from { filter: drop-shadow(0 0 3px rgba(243, 200, 90, 0.5)); } to { filter: drop-shadow(0 0 14px rgba(255, 205, 80, 0.95)); } }
+.wish-png { margin-top: 4px; min-height: 36px; padding: 4px 10px; font-size: 0.8rem; }
+.wish-wait .wish-png { display: inline-block; }
+.cp-top { display: grid; grid-template-columns: 96px 1fr; gap: 12px; align-items: center; }
+.cp-top:not(:has(.cp-preview)) { grid-template-columns: 1fr; }
+.cp-preview { display: block; width: 96px; transform: rotate(-3deg); }
+.cp-gets { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 0.88rem; line-height: 1.45; color: var(--hj-ink, #2b2420); }
+.cp-gets li { padding-left: 2px; }
+.rt-box { max-width: 380px; text-align: center; display: grid; gap: 10px; }
+.rt-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin: 0; padding: 0; list-style: none; }
+.rt-steps li { display: grid; justify-items: center; gap: 2px; padding: 6px 2px; border-radius: 6px; opacity: 0.45; font-size: 1.1rem; }
+.rt-steps li small { font-size: 0.7rem; font-family: var(--hj-serif, serif); }
+.rt-steps li.on { opacity: 1; background: rgba(184, 56, 42, 0.1); box-shadow: inset 0 0 0 1px rgba(184, 56, 42, 0.4); }
+.rt-steps li.done { opacity: 0.8; }
+.rt-tip { margin: 0; font-family: var(--hj-serif, serif); font-size: 0.95rem; min-height: 1.5em; color: var(--hj-ink, #2b2420); }
+.rt-body { min-height: 230px; display: grid; place-items: center; }
+.rt-ink { display: grid; justify-items: center; gap: 10px; width: 100%; }
+.rt-stone { position: relative; width: 200px; height: 150px; border-radius: 48% 48% 40% 40%; background: radial-gradient(ellipse at 50% 40%, #5a5550, #2e2a27 70%); box-shadow: inset 0 -6px 10px rgba(0, 0, 0, 0.45), 0 6px 14px rgba(0, 0, 0, 0.2); touch-action: none; cursor: grab; }
+.rt-well { position: absolute; left: 50%; top: 18%; width: 46%; height: 26%; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(ellipse, #0d0b0a, #1b1716); opacity: 0.15; transition: opacity 0.2s; }
+.rt-stick { position: absolute; left: 50%; top: 62%; width: 22px; height: 54px; transform: translate(-50%, -70%) rotate(12deg); border-radius: 4px; background: linear-gradient(90deg, #1b1716, #3a3330 45%, #1b1716); box-shadow: 0 0 0 1px #c9962c inset; pointer-events: none; }
+.rt-bar { width: 200px; height: 8px; border-radius: 4px; background: rgba(43, 36, 32, 0.12); overflow: hidden; }
+.rt-bar i { display: block; height: 100%; width: 0; background: #2b2420; transition: width 0.15s; }
+.rt-trace { display: grid; justify-items: center; gap: 10px; }
+.rt-trace canvas { width: 100%; max-width: 300px; aspect-ratio: 300 / 160; background: #fbf3df; border: 1px solid #d8c59a; border-radius: 4px; touch-action: none; }
+.rt-seal { display: grid; justify-items: center; gap: 10px; }
+.rt-charm { display: block; width: 130px; }
+.rt-charm.stamped .pc-seal { transform-box: fill-box; transform-origin: center; animation: pcStamp 0.45s ease-out; }
+@keyframes pcStamp { 0% { transform: scale(1.8); opacity: 0; } 60% { transform: scale(0.92); opacity: 1; } 100% { transform: scale(1); } }
+.rt-sealbtn { appearance: none; width: 72px; height: 72px; border-radius: 8px; border: none; background: #b8382a; color: #fff6e6; font-family: 'Song Myung', serif; font-size: 1.15rem; line-height: 1.05; display: grid; place-content: center; cursor: pointer; box-shadow: 0 6px 0 #7e2418, 0 8px 14px rgba(0, 0, 0, 0.2); transition: transform 0.12s, box-shadow 0.12s; touch-action: none; }
+.rt-sealbtn.holding, .rt-sealbtn.pressed { transform: translateY(5px); box-shadow: 0 1px 0 #7e2418, 0 2px 6px rgba(0, 0, 0, 0.2); }
+.rt-sealbtn:focus-visible { outline: 3px solid var(--hj-navy, #2f3e5c); outline-offset: 3px; }
+.rt-blow { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.rt-jisin { width: 110px; animation: rtBreath 1.6s ease-in-out infinite alternate; }
+.rt-jisin svg { width: 100%; height: auto; display: block; }
+@keyframes rtBreath { from { transform: translateX(0) scale(1); } to { transform: translateX(6px) scale(1.04); } }
+.rt-line { margin: 0; font-size: 0.95rem; line-height: 1.6; }
+.rt-done { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rt-done button, .rt-foot button { min-height: 48px; }
+.rt-foot button { width: 100%; }
+.burn-paper .bp-red { position: absolute; inset: 0; }
+.burn-paper .bp-red svg { width: 100%; height: 100%; border-radius: 0; }
+.burn-paper .bp-charm { position: absolute; top: 3%; left: 4%; width: 24%; transform: rotate(-8deg); opacity: 0.95; }
+.burn-paper { padding: 0; background: #a9321f; }
+.burn-seed[hidden] { display: none; }
+.burn-seed { position: absolute; left: 0; right: 0; top: 36%; display: grid; place-items: center; pointer-events: none; }
+.burn-seed span { font-size: 3.2rem; animation: seedGrow 1.1s ease-out both; filter: drop-shadow(0 0 10px rgba(255, 220, 120, 0.9)); }
+@keyframes seedGrow { 0% { transform: scale(0.2) translateY(20px); opacity: 0; } 70% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); } }
+.burn-end .burn-seedline { font-size: 0.95rem; line-height: 1.6; margin: 0 0 6px; color: #3f7a4f; }
+.burn-end .burn-seedline:empty { display: none; }
+.seed-garden { margin: 0 0 10px; padding: 8px 10px; border-radius: 12px; background: #f3faf2; font-size: 0.88rem; display: grid; gap: 2px; }
+.seed-garden span { font-size: 1.1rem; letter-spacing: 2px; word-break: break-all; }
+.seed-garden i { font-style: normal; }
+.seed-garden small { color: var(--muted); font-size: 0.76rem; }
+.seed-pot { font-size: 2.6rem; flex: none; width: 64px; text-align: center; }
+@media (prefers-reduced-motion: reduce) {
+  .wish-charm.paid.glow svg, .rt-charm.glow svg, .rt-jisin, .burn-seed span, .rt-charm.stamped .pc-seal { animation: none; }
+}
