@@ -43,7 +43,9 @@ export function omenOf(f, key = '') {
   else if (kind === 'number') { sign = `시계나 영수증에서 숫자 ${josa(String(L.number), '이/가')} 보이면`; act = '그 순간 오늘 할 일 하나를 바로 시작해 보세요'; }
   else if (kind === 'time') { sign = `${plainTime(L.time)} 사이에 반가운 소식이나 말 한마디가 들어오면`; act = '짧게라도 바로 답장해 보세요'; }
   else [sign, act] = PEOPLE[god];
-  return { kind, sign, act, text: `${sign} 좋은 신호예요. ${act}.` };
+  // v0.62 행운의 색·숫자는 긁기 전까지 숨김(오늘 카드의 긁기 칸과 짝) → hidden = 값을 뺀 문장
+  const hiddenSign = kind === 'color' ? '오늘 행운의 색 물건이 눈에 먼저 들어오면' : kind === 'number' ? '시계나 영수증에서 행운의 숫자가 보이면' : null;
+  return { kind, sign, act, text: `${sign} 좋은 신호예요. ${act}.`, hidden: hiddenSign ? `${hiddenSign} 좋은 신호예요. ${act}.` : null };
 }
 
 const norm = (s) => ({ days: { ...(s?.days || {}) }, peek: { ...(s?.peek || {}) }, shown: { ...(s?.shown || {}) } });
