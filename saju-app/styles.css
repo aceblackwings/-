@@ -1985,3 +1985,23 @@ html.easy .top h1 { font-size: 20px; }
 .cd-item.on:disabled { opacity: 1; }
 .wish-recs, .burn-recs { margin: 6px 0; align-items: center; }
 .hj-buy:disabled { opacity: .45; cursor: default; }
+/* v0.59 산통 점괘 */
+.st-box { margin: 0 0 16px; padding: 14px; border-radius: 16px; background: linear-gradient(170deg, #fffaf0, #fdf0e0); border: 1px solid rgba(208, 132, 58, .35); }
+.st-h { margin: 0 0 8px; font-family: var(--serif); font-weight: 700; color: var(--gold); }
+.st-h small { display: block; font-family: inherit; font-weight: 400; color: var(--muted); font-size: .8rem; }
+.st-tile { min-height: 96px; align-items: center; text-align: center; }
+.st-tile .st-grade { font-size: 1.8rem; font-family: var(--serif); }
+.st-foot { margin: 8px 0 0; font-size: .8rem; color: var(--muted); }
+.st-slip { padding: 14px; border-radius: 12px; background: #fffdf7; border: 1px dashed rgba(184, 56, 42, .4); line-height: 1.7; }
+.st-grade { display: flex; align-items: baseline; gap: 8px; margin: 0 0 6px; }
+.st-grade b { font-family: var(--serif); font-size: 2rem; color: #b8382a; }
+.st-grade small { color: var(--muted); font-size: 1rem; }
+.st-good .st-grade b { color: #d0843a; }
+.st-head { font-weight: 700; color: var(--ink); margin: 0 0 4px; }
+.st-act { font-weight: 600; }
+.st-items { list-style: none; padding: 0; margin: 10px 0; display: grid; gap: 6px; }
+.st-items li { display: grid; grid-template-columns: 118px 1fr; gap: 8px; font-size: .92rem; border-bottom: 1px dotted #ead8c4; padding-bottom: 6px; }
+.st-items li span { font-weight: 600; }
+.st-items li em { font-style: normal; }
+.st-low { background: #fff3ef; border-radius: 10px; padding: 8px 10px; font-size: .9rem; }
+.st-note { font-size: .78rem; margin: 8px 0 0; }

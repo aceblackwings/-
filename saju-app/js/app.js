@@ -83,6 +83,7 @@ import { scratchedOn, markScratched, clearedRatio } from './scratch.js';
 import { COOKIE_KEY, isOpened as cookieOpened, markOpened as cookieMark, todayTodo, cookieTiles } from './cookie.js';
 import { DHABIT_KEY, HABIT_REWARD, HABIT_MAX, isSet as habitsSet, recommendHabits, setHabits, checkTarget, checksOn, checkHabit, recentChecks } from './dailyhabit.js';
 import { fortuneImage } from './assets.js';
+import { SANTONG_KEY, drawYear as santongDraw, openYear as santongOpen, santongCard } from './santong.js';
 import { ohengGuide, roleOf, defaultOheng } from './oheng.js';
 import { omenOf, checkable, markOmen, markShown, omenStats, markPeek, peekedFor, tomorrowTeaser, shiftDay, dateOfKey, CHECK_HOUR, OMEN_REWARD } from './omen.js';
 import { BOWLS, STAGE_POINTS, DECOR, EMO_ORDER, EMO_KO, seedFood, feed, todayBowls, fedDays, stageForPoints, growthOf, daysLeft, heightCm, decorCount, emotesUnlocked, conditionOf, feedLine,
@@ -2697,6 +2698,11 @@ function scratchHTML() {
 }
 function revealScratch(tile) {
   if (!tile || tile.classList.contains('open')) return;
+  if (tile.dataset.santong) { // v0.59 산통 점괘: 그해에 한 번 열면 계속 열린 채
+    const Y = Number(tile.dataset.santong); save(SANTONG_KEY, santongOpen(load(SANTONG_KEY, {}), Y));
+    const b = $('#st-box'); if (b) b.outerHTML = santongHTML(Y);
+    toast(`🎋 ${Y}년 산통 점괘가 열렸어요`); return;
+  }
   const key = tile.dataset.sc; const dk = state.fortune.dateKey;
   save(SCRATCH_KEY, markScratched(load(SCRATCH_KEY, {}), dk, key));
   tile.classList.add('open');
@@ -2734,7 +2740,32 @@ function initScratch() {
     cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
   });
 }
-document.addEventListener('click', (e) => { if (e.target.closest('[data-sc-all]')) $$('.sc-tile:not(.open)').forEach(revealScratch); });
+document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-sc-all]')) $$('.sc-tile:not(.open):not([data-santong])').forEach(revealScratch);
+  if (e.target.closest('[data-st-all]')) revealScratch($('[data-santong]'));
+  if (e.target.closest('[data-go-burn]')) { selectTab('hero'); setTimeout(() => revealAndScroll('#fold-burn', 'start'), 200); }
+});
+
+/** 🎋 새해 산통 점괘(v0.59): 9단계 무작위 · 그해 고정 · 긁어서 확인 */
+function santongHTML(Y) {
+  const d = santongDraw(load(SANTONG_KEY, {}), Y); if (d.fresh) save(SANTONG_KEY, d.store);
+  const c = santongCard(d.grade);
+  if (!d.opened) {
+    setTimeout(initScratch, 0);
+    return `<section class="st-box" id="st-box"><p class="st-h">🎋 ${Y}년 산통 점괘 <small>산가지 통을 흔들어 뽑았어요 · 긁어서 확인하세요</small></p>
+      <div class="sc-grid"><div class="sc-tile wide st-tile" data-sc="santong" data-santong="${Y}" tabindex="0" role="button" aria-label="${Y}년 산통 점괘 긁어서 보기"><span class="sc-l">🎋 ${Y}년 산통 점괘</span><b class="sc-v st-grade">${c.label}</b><canvas class="sc-foil" aria-hidden="true"></canvas></div></div>
+      <p class="st-foot"><button type="button" class="linkish" data-st-all>한 번에 열기</button> · 한 해에 한 번만 뽑아요. 다시 들어와도 같은 점괘예요.</p></section>`;
+  }
+  return `<section class="st-box open st-${c.tier}" id="st-box"><p class="st-h">🎋 ${Y}년 산통 점괘</p>
+    <div class="st-slip">
+      <p class="st-grade"><b>${c.label}</b><small>${c.hanja}</small></p>
+      <p class="st-head">${esc(c.head)}</p><p>${esc(c.body)}</p>
+      <p class="st-act">✅ 올해의 한 가지: ${esc(c.act)}</p>
+      <ul class="st-items">${c.items.map((i) => `<li><span>${i.icon} ${i.label}</span><em>${esc(i.line)}</em></li>`).join('')}</ul>
+      ${c.low ? `<p class="st-low">🔥 옛날에는 좋지 않은 점괘를 나뭇가지에 묶어 두고 왔어요. 우리는 걱정 한 줄을 태워 액을 먼저 보내 봐요. <button type="button" class="linkish" data-go-burn>걱정 태우러 가기</button></p>` : ''}
+      <p class="muted st-note">산통 점괘는 새해에 재미로 뽑는 점이에요. 아래 운세 풀이는 내 사주로 계산한 내용이에요.</p>
+    </div></section>`;
+}
 document.addEventListener('keydown', (e) => { const t = e.target.closest?.('.sc-tile'); if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); revealScratch(t); } });
 
 
@@ -2900,6 +2931,7 @@ function foldHTML(id, icon, title, sub, body) {
 document.addEventListener('toggle', (e) => {
   const d = e.target; if (!(d instanceof HTMLElement) || !d.matches?.('details.fold') || !d.id) return;
   (state.folds ||= {})[d.id] = d.open;
+  if (d.open) setTimeout(initScratch, 30); // 접혀 있던 긁기 칸(산통 점괘 등)은 펼칠 때 준비
 }, true);
 /** 접힌 곳 안에 있는 대상도 펼친 뒤 보여 주기 */
 function revealAndScroll(sel, block = 'start') {
@@ -3413,7 +3445,7 @@ function renderToday() {
     ${cookieCardHTML()}
     ${habitsCardHTML()}
     <div class="fold-list">
-      ${foldHTML('next', '📜', `${bd.y.sajuYear}년 운세`, `「${bd.b.title}」의 해 · 총운·분야별`, `${bookletHTML(bd)}${bookletFieldsHTML(bd)}`)}
+      ${foldHTML('next', '📜', `${bd.y.sajuYear}년 운세`, `「${bd.b.title}」의 해 · 총운·분야별`, `${santongHTML(bd.y.sajuYear)}${bookletHTML(bd)}${bookletFieldsHTML(bd)}`)}
       ${foldHTML('saju', '🀄', '내 사주', `일간 ${STEMS[sj.dayMaster]}(${STEMS_KO[sj.dayMaster]}) · 필요한 기운 ${ELEMENT_KO[sj.yongsin]}`, sajuOpenHTML())}
       ${weekly ? foldHTML('weekly', '💌', '이번 주 편지', '한 주 돌아보기', weekly) : ''}
       ${foldHTML('more', '🔮', '운세 더 보기', '이번 주·이달·올해·10년 · 궁금한 질문', `<div class="fold-go"><button type="button" class="primary" data-go-tab="ask">🔮 궁금한 것 물어보기</button><button type="button" class="ghost" data-go-tab="report">📅 올해·5년 흐름</button></div>`)}
