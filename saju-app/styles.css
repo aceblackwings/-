@@ -2244,3 +2244,24 @@ body.cm-open { overflow: hidden; }
 .cm-card.burn-solo { width: min(220px, 70%); margin: 4px auto 0; display: flex; }
 .cm-card.lantern .cm-thumb { position: relative; }
 .cm-lt-badge { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); padding: 3px 10px; border-radius: 999px; background: #2f3e5c; color: #ffe6a6; font-style: normal; font-size: .72rem; font-weight: 700; white-space: nowrap; box-shadow: 0 0 12px rgba(255, 200, 90, .6); }
+
+/* v0.64.9 100일 등불 그림: 달밤 연못 바탕 + 날마다 자라는 등불 */
+.lantern-card { background: linear-gradient(100deg, rgba(36, 34, 70, .25) 0%, rgba(36, 34, 70, .78) 42%, rgba(36, 34, 70, .9) 100%), var(--lt-bg, none) left center / cover no-repeat, linear-gradient(160deg, #2b2a4a 0%, #3d2f52 100%); overflow: hidden; }
+.lantern-card .lt-lamp { width: 96px; height: 112px; }
+.lantern-card .lt-lamp img { position: relative; width: 100%; height: 100%; object-fit: contain; animation: lt-sway 4s ease-in-out infinite; transform-origin: 50% 0; filter: brightness(calc(.8 + var(--lt, .3) * .4)) drop-shadow(0 0 calc(var(--lt, .3) * 22px) rgba(255, 190, 90, .8)); }
+.lantern-card .lt-glow { inset: 6px; }
+.lantern-card .lt-wish, .lantern-card .lt-line, .lantern-card .lt-tag { text-shadow: 0 1px 6px rgba(20, 16, 50, .7); }
+.cm-thumb.lt-thumb { aspect-ratio: 5 / 8; border-radius: 10px; overflow: hidden; background: var(--lt-bg) 22% center / cover no-repeat, #2b2a4a; display: grid; place-items: center; }
+.cm-thumb.lt-thumb img { width: 92%; filter: drop-shadow(0 0 14px rgba(255, 196, 92, .75)); }
+.cm-lt-grow { margin: 4px 0 10px; padding: 10px 8px; border-radius: 14px; background: linear-gradient(160deg, #2b2a4a, #3d2f52); color: #fbf2e2; }
+.cm-lt-grow p { margin: 0 0 6px; font-size: .82rem; color: #f3d27a; text-align: center; }
+.cm-lt-grow ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.cm-lt-grow li { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.cm-lt-grow img { width: 100%; max-width: 72px; aspect-ratio: 1; object-fit: contain; filter: drop-shadow(0 0 8px rgba(255, 190, 90, .6)); }
+.cm-lt-grow b { font-size: .78rem; }
+.cm-lt-grow small { font-size: .68rem; color: rgba(251, 242, 226, .75); }
+.cm-lt-grow[hidden] { display: none; }
+.lt-kept-big { display: block; width: min(220px, 70%); margin: 0 auto 4px; filter: drop-shadow(0 0 18px rgba(255, 196, 92, .7)); }
+.wish-frame { position: relative; }
+.lt-kept-mini { position: absolute; top: -6px; right: -6px; width: 46px; filter: drop-shadow(0 0 6px rgba(255, 196, 92, .7)); }
+@media (prefers-reduced-motion: reduce) { .lantern-card .lt-lamp img { animation: none; } }

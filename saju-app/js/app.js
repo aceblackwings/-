@@ -5831,7 +5831,7 @@ function charmShowcaseHTML() {
     <p class="cm-show-h">✨ 세상에 하나뿐인 부적 <small>${esc(state.profile.name ? `${state.profile.name} 님 이름` : '내 이름')} · ${esc(myZodiac().name)} 지신 인장 · 붓글씨</small></p>
     <div class="cm-show-row">
       <button type="button" class="cm-card wish" data-cm-open="wish"><span class="cm-thumb">${paidCharmSVG(makerData('wish', ''))}</span><b>🌠 소원 부적</b><small>금박 부적에 담아 두면 그날 지신이 먼저 물어봐요</small><i class="cm-price">${won(CHARM_PRICE)}</i></button>
-      <button type="button" class="cm-card lantern" data-cm-open="wish" data-cm-tier="lantern"><span class="cm-thumb">${paidCharmSVG(makerData('wish', '', undefined, { lantern: true }))}<i class="cm-lt-badge">🏮 100일</i></span><b>🏮 100일 등불</b><small>100일 동안 홈에 켜 두고 지신과 매일 함께 빌어요</small><i class="cm-price">${won(LANTERN_PRICE)}</i></button>
+      <button type="button" class="cm-card lantern" data-cm-open="wish" data-cm-tier="lantern"><span class="cm-thumb lt-thumb" style="--lt-bg:url('${LT_ART('bg')}')"><img src="${LT_ART('stage3')}" alt=""><i class="cm-lt-badge">🏮 100일</i></span><b>🏮 100일 등불</b><small>날마다 밝아지고 연꽃이 피는 등불, 100일 동안 지신과 함께 빌어요</small><i class="cm-price">${won(LANTERN_PRICE)}</i></button>
     </div>
   </section>`;
 }
@@ -5875,6 +5875,7 @@ function openCharmMaker(kind, preset = '', tier = 'wish') {
     <button type="button" class="cm-x" data-cm="close" aria-label="닫기">✕</button>
     <p class="cm-eyebrow">✨ 세상에 하나뿐인 부적</p>
     <h3>${!wish ? '걱정을 붉은 부적에 적어 태워요' : t === 'lantern' ? '100일 소원 등불을 켜요' : '내 소원을 금박 부적에 담아요'}</h3>
+    ${wish ? ltGrowHTML(t !== 'lantern') : ''}
     <div class="cm-preview" id="cm-preview"></div>
     <p class="cm-live">✍️ 아래에 적는 대로 부적에 붓글씨로 쓰여요</p>
     <label class="cm-field"><span>${wish ? '🌠 소원 한 줄' : '🔥 걱정 한 줄'}</span>
@@ -5901,7 +5902,7 @@ function openCharmMaker(kind, preset = '', tier = 'wish') {
   const setTier = (nt) => {
     t = nt;
     box.querySelectorAll('[data-cm-tier]').forEach((b) => { const on = b.dataset.cmTier === t; b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on)); });
-    if (wish) { box.querySelector('.cm-date').hidden = t === 'lantern'; box.querySelector('.cm-for').hidden = t !== 'lantern'; box.querySelector('.cm-lt-note').hidden = t !== 'lantern'; }
+    if (wish) { box.querySelector('.cm-date').hidden = t === 'lantern'; box.querySelector('.cm-for').hidden = t !== 'lantern'; box.querySelector('.cm-lt-note').hidden = t !== 'lantern'; box.querySelector('.cm-lt-grow').hidden = t !== 'lantern'; }
     box.querySelector('.cm-gets').innerHTML = MAKER_GETS[t].map((x) => `<li>${esc(x)}</li>`).join('');
     const go = box.querySelector('.cm-go');
     go.innerHTML = t === 'lantern' ? `🏮 100일 등불 만들기 시작 <small>${won(LANTERN_PRICE)}</small>`
@@ -6104,13 +6105,20 @@ function openWishRitual(rec, onDone, opt = {}) {
   show(0);
 }
 /** v0.64 홈: 100일 소원 등불 — D-day, 오늘의 기도 한 줄, 10칸 밝기, 편지, 함께 빌기 */
+/** v0.64.9 100일 등불 그림(docs/prompts/lantern-100.md): 1~33일 stage1 · 34~66일 stage2 · 67~99일 stage3 · 100일 완주 kept */
+function LT_ART(k) { return `assets/lantern/${k}.webp`; }
+function ltStageArt(day) { return day >= LANTERN_DAYS ? 'kept' : day >= 67 ? 'stage3' : day >= 34 ? 'stage2' : 'stage1'; }
+function ltGrowHTML(hidden) {
+  const grow = [['stage1', '1일', '불씨'], ['stage2', '34일', '밝아짐'], ['stage3', '67일', '연꽃 활짝'], ['kept', '100일', '완주 등불']];
+  return `<div class="cm-lt-grow"${hidden ? ' hidden' : ''}><p>🏮 내 등불은 100일 동안 이렇게 자라요</p><ol>${grow.map(([k, d, t]) => `<li><img src="${LT_ART(k)}" alt="" loading="lazy"><b>${d}</b><small>${t}</small></li>`).join('')}</ol></div>`;
+}
 function lanternHTML() {
   const today = state.fortune.dateKey; const polite = politeNow();
   const list = activeLanterns(load(COLLECTION_KEY, [])).filter(({ r }) => lanternDay(r, today) < LANTERN_DAYS); // 100일째는 wishDueHTML이 물어봄
   return list.slice(0, 2).map(({ r, i }) => {
     const day = lanternDay(r, today); const st = lanternStage(day); const letter = letterDue(r, today); const prayed = prayedToday(r, today);
-    return `<div class="card lantern-card" data-casual style="--lt:${(0.3 + st * 0.07).toFixed(2)}">
-      <div class="lt-row"><span class="lt-lamp" aria-hidden="true"><i class="lt-glow"></i><b>🏮</b></span>
+    return `<div class="card lantern-card" data-casual style="--lt:${(0.3 + st * 0.07).toFixed(2)};--lt-bg:url('${LT_ART('bg')}')">
+      <div class="lt-row"><span class="lt-lamp" aria-hidden="true"><i class="lt-glow"></i><img src="${LT_ART(ltStageArt(day))}" alt=""></span>
         <div class="lt-t"><p class="lt-tag">🏮 100일 소원 등불 · <b>${day}일째</b> · D-${LANTERN_DAYS - day}</p>
         <p class="lt-wish">「${esc(r.wish)}」${r.forWho ? ` <small>${esc(forLabel(r.forWho))}</small>` : ''}</p>
         <p class="lt-line">💬 ${esc(lanternLine(r, day, polite))}</p></div></div>
@@ -6149,7 +6157,7 @@ document.addEventListener('click', (e) => {
     const i = Number(kp.dataset.ltKeep); const col = keepLantern(load(COLLECTION_KEY, []), i, today); save(COLLECTION_KEY, col);
     renderToday(); renderHero(false);
     const box = document.createElement('div'); box.className = 'evo-modal';
-    box.innerHTML = `<div class="evo-box wish-pop"><div class="wish-shine">${wishCharmHTML(col[i], true)}</div>
+    box.innerHTML = `<div class="evo-box wish-pop"><img class="lt-kept-big" src="${LT_ART('kept')}" alt="100일 완주 등불"><div class="wish-shine">${wishCharmHTML(col[i], true)}</div>
       <h3 style="margin:8px 0 4px">🏮 100일 완주 · 「${esc(col[i].wish)}」</h3>
       <p data-casual>${esc(keptLine(politeNow()))}</p>
       <div class="yday-btns" style="grid-template-columns:1fr 1fr"><button type="button" class="ghost" data-close-reward>고마워요</button><button type="button" class="primary" data-go-wall>🖼️ 소원 벽 보기</button></div></div>`;
@@ -6227,7 +6235,7 @@ function wishWallHTML() {
   const col = load(COLLECTION_KEY, []); const today = state.fortune.dateKey;
   const wall = wishWall(col); const wait = wishWaiting(col);
   const pngBtn = (r) => (r.paid ? `<button type="button" class="ghost wish-png" data-wish-png="${col.indexOf(r)}">📱 배경화면</button>` : '');
-  return `${wall.length ? `<div class="wish-wall">${wall.map((r) => `<figure class="wish-frame">${wishCharmHTML(r, true)}<figcaption><b>${esc(r.wish)}</b><small>${esc(wishDueLabel(r.doneKey, today))} ${r.result === 'kept' ? '🏮 100일 완주' : '이룸'}</small>${pngBtn(r)}</figcaption></figure>`).join('')}</div>`
+  return `${wall.length ? `<div class="wish-wall">${wall.map((r) => `<figure class="wish-frame">${wishCharmHTML(r, true)}${r.result === 'kept' ? `<img class="lt-kept-mini" src="${LT_ART('kept')}" alt="100일 완주 등불">` : ''}<figcaption><b>${esc(r.wish)}</b><small>${esc(wishDueLabel(r.doneKey, today))} ${r.result === 'kept' ? '🏮 100일 완주' : '이룸'}</small>${pngBtn(r)}</figcaption></figure>`).join('')}</div>`
     : '<p class="muted" style="margin:0 0 8px">아직 걸린 액자가 없어요. 소원을 적은 부적이 이루어지면 금빛 액자로 여기에 걸려요.</p>'}
     ${wait.length ? `<p class="wish-wait-h">⏳ 함께 기다리는 소원 ${wait.length}개</p><ul class="wish-wait">${wait.map((r) => `<li>${wishCharmHTML(r, false)}<span><b>${esc(r.wish)}</b><small>${esc(wishDueLabel(r.dueKey, today))}에 물어볼게요${r.mid ? ' · 빛이 진해졌어요' : ''}</small>${pngBtn(r)}</span></li>`).join('')}</ul>` : ''}
     <button type="button" class="ghost ki-go" data-wish-make>🌠 소원 부적 만들러 가기</button>`;
