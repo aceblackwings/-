@@ -1,0 +1,45 @@
+/* v0.65 함께 자라기: 기존 파스텔 색을 유지하며 읽기·실천·성장을 구분한다. */
+.main-tabs { grid-template-columns:repeat(3,minmax(0,1fr))!important; }
+.practice-card,.practice-records,.more-hub { padding:22px; }
+.pr-heading { display:flex;justify-content:space-between;align-items:start;gap:12px; }
+.pr-heading h2,.practice-records h2 { font-size:1.18rem;margin:6px 0 16px; }
+.pr-heading small,.practice-records>small { color:#805e6d;font-size:.8rem; }
+.pr-muted { color:#79636f;font-size:.86rem;line-height:1.7; }
+.pr-companion { display:flex;align-items:center;gap:16px;padding:14px;background:#fff5ef;border-radius:20px;margin:0 0 18px; }
+.pr-companion>.pr-portrait { width:96px;flex:0 0 96px; }
+.pr-portrait img,.pr-portrait svg { width:100%;height:auto;max-height:120px;object-fit:contain; }
+.pr-companion>div:last-child { flex:1;min-width:0; }
+.pr-progress-label { display:flex;justify-content:space-between;gap:8px;font-size:.85rem;margin:0 0 8px; }
+.pr-progress { background:#efdfe4;border-radius:10px;height:9px;overflow:hidden; }
+.pr-progress>span { display:block;background:linear-gradient(90deg,#eaa8b5,#bd8db4);height:100%;border-radius:10px;transition:width .5s; }
+.pr-cue { margin:12px 0 4px;color:#835b70;font-size:.9rem; }
+.pr-action { font-size:1.3rem;line-height:1.5;margin:4px 0 10px; }
+.pr-actions { display:flex;gap:10px;margin-top:20px;flex-wrap:wrap; }
+.pr-actions .primary { flex:1; }
+.practice-card button,.practice-records button,.more-hub button { min-height:44px;white-space:normal; }
+.pr-ideas { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0; }
+.pr-idea { text-align:left;display:flex;flex-direction:column;gap:7px;padding:14px;border:1px solid #ead4dc;border-radius:16px;background:#fffaf8;color:var(--text); }
+.pr-idea>span { font-size:1.5rem; }.pr-idea small { font-size:.76rem;color:#79636f;line-height:1.5; }
+#practice-form label { display:block;margin:14px 0;font-size:.87rem; }
+#practice-form input { width:100%;margin-top:6px;box-sizing:border-box; }
+#practice-form button { margin:6px 8px 0 0; }
+.pr-notice:empty { display:none; }.pr-notice { padding:12px;border-radius:12px;background:#eef6e9;color:#3f604b;margin:12px 0;line-height:1.6; }
+.pr-finished { padding:8px 0; }.pr-check { display:inline-grid;place-items:center;background:#e8f0e4;color:#446947;border-radius:50%;width:38px;height:38px;font-size:1.3rem; }
+.pr-week { display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin:18px 0; }
+.pr-week>div { display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 0;border-radius:12px;background:#f8f1f3; }
+.pr-week>.done { background:#edf4e9; }.pr-week small { color:#79636f; }
+.practice-records details>summary { cursor:pointer;padding:14px 0;min-height:44px;box-sizing:border-box; }
+.pr-month-nav { display:flex;align-items:center;justify-content:space-between;gap:10px; }.pr-month-nav h3 { font-size:1rem; }
+.pr-calendar { display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px; }
+.pr-calendar>small { text-align:center;padding:6px 0;color:#79636f; }
+.pr-day { border:1px solid transparent;background:#faf5f4;border-radius:10px;color:var(--text);padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0; }
+.pr-day.done { background:#eef5e9; }.pr-day.selected { border-color:#b87390; }.pr-day:disabled { opacity:.4; }
+.pr-day-detail { margin-top:14px;padding:14px;background:#fff8f4;border-radius:12px;font-size:.85rem; }
+.pr-count { display:flex;justify-content:space-between;gap:10px;font-size:.86rem; }.pr-legacy { border-top:1px solid #ecdde3;margin-top:14px;font-size:.85rem; }.pr-legacy button { margin:4px; }
+.more-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px; }
+.more-grid button { display:flex;flex-direction:column;text-align:left;gap:7px;background:#fff8f4;border:1px solid #ead4dc;border-radius:16px;padding:16px;color:var(--text); }
+.more-grid small { color:#79636f;font-size:.78rem;line-height:1.6; }
+.more-hub h2 { margin:6px 0 8px;font-size:1.25rem; }.more-hub h3 { font-size:.95rem;margin-top:25px; }
+.practice-card :focus-visible,.practice-records :focus-visible,.more-hub :focus-visible { outline:3px solid #9d668a;outline-offset:3px; }
+@media(max-width:370px){.practice-card,.practice-records,.more-hub{padding:16px}.pr-companion{gap:10px}.pr-companion>.pr-portrait{width:72px;flex-basis:72px}.pr-heading{flex-wrap:wrap}.pr-idea{padding:10px}}
+@media(prefers-reduced-motion:reduce){.pr-progress>span{transition:none}}
