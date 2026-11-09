@@ -26,7 +26,7 @@ def shade(img, top=.0, bottom=.55):
 
 
 def stamp(img, t, d, ctx, spec):
-    st = prog(t, .5, .25)
+    st = prog(t, spec.get("at", .5), .25)
     cross = prog(t, d * .6, .35) if spec.get("cross", True) else 0
     if st <= 0:
         return
@@ -80,9 +80,9 @@ def organs(img, t, d, ctx, spec):
 OVERLAYS = {f.__name__: f for f in (stamp, namecard, tag, counter, quote, organs)}
 
 
-def draw(img, t, d, ctx, spec):
+def draw(img, t, d, ctx, spec, note_text="※ 이해를 돕기 위한 자료 화면입니다"):
     shade(img, top=.45 if spec else 0)
     if spec:
         OVERLAYS[spec["type"]](img, t, d, ctx, spec)
-    note = gfx.text_img("※ 이해를 돕기 위한 자료 화면입니다", 24, "#ffffff", "Bold")
+    note = gfx.text_img(note_text, 24, "#ffffff", "Bold")
     put(img, note, S - note.width / 2 - 24, S - 26, 1, .6)

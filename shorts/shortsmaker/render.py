@@ -45,8 +45,8 @@ def chunk_text(text, keys=()):
     return [c.replace("\u00a0", " ") for c in out]
 
 
-def sub_runs(chunk, keys):
-    """핵심 낱말은 노랑으로."""
+def sub_runs(chunk, keys, base="#ffffff"):
+    """핵심 낱말은 노랑으로(대사 문장은 바탕 글자를 하늘색으로)."""
     marks = [False] * len(chunk)
     for k in keys:
         k = k.rstrip(",")
@@ -58,12 +58,12 @@ def sub_runs(chunk, keys):
     runs, cur, cm = [], "", None
     for ch, m in zip(chunk, marks):
         if cm is not None and m != cm:
-            runs.append((cur, "#ffe600" if cm else "#ffffff"))
+            runs.append((cur, "#ffe600" if cm else base))
             cur = ""
         cur += ch
         cm = m
     if cur:
-        runs.append((cur, "#ffe600" if cm else "#ffffff"))
+        runs.append((cur, "#ffe600" if cm else base))
     return runs
 
 
@@ -76,8 +76,9 @@ def build_timeline(story, times, tail=1.4):
         t = a
         for c in chunks:
             dt = (b - a) * len(c.replace(" ", "")) / total
-            img = gfx.text_img(c, 62, runs=sub_runs(c, seg.get("keys", [])), stroke=7, stroke_fill="#000000")
-            subs.append((t, t + dt, img))
+            base = "#bfe6ff" if seg.get("who") else "#ffffff"
+            img = gfx.text_img(c, 62, runs=sub_runs(c, seg.get("keys", []), base), stroke=7, stroke_fill="#000000")
+            subs.append((t, t + dt, img, c))
             t += dt
         clips = seg.get("_clips") or []
         if clips:  # 실제 영상 장면: 문장마다 따로, 영상 여러 개면 나눠서 컷 전환
@@ -114,7 +115,7 @@ def frame(t, base, scene_list, subs):
             _stream.update(key=key, s=footage.ClipStream(sc["clips"][ci], int(d / n * FPS) + 4))
         img = _stream["s"].read().copy()
         cl = (lt - ci * d / n)  # 컷 안 시간: 컷이 바뀔 때도 짧게 페이드
-        overlays.draw(img, lt, d, ctx, sc.get("overlay"))
+        overlays.draw(img, lt, d, ctx, sc.get("overlay"), NOTE["text"])
         lt_fade = min(lt, cl)
     else:
         img = scenes.background(sc["name"])
@@ -132,7 +133,7 @@ def frame(t, base, scene_list, subs):
         img = Image.blend(Image.new("RGBA", img.size, (0, 0, 0, 255)), img, f)
     out.alpha_composite(img, (0, SCENE_Y))
     # 끝 1초 페이드 아웃
-    for s0, s1, simg in subs:
+    for s0, s1, simg, _ in subs:
         if s0 <= t < s1:
             p = prog(t, s0, .14)
             gfx.put(out, simg, W / 2, SUB_Y, .88 + .12 * ease_back(p), ease_out(p * 1.5))
@@ -140,7 +141,11 @@ def frame(t, base, scene_list, subs):
     return out
 
 
+NOTE = {"text": "※ 이해를 돕기 위한 자료 화면입니다"}
+
+
 def render(story, times, video_path, preview=None):
+    NOTE["text"] = story.get("footage_note", NOTE["text"])
     base = title_base(story["title"], story.get("source_note"))
     scene_list, subs, end = build_timeline(story, times)
     n = int(math.ceil(end * FPS))
@@ -161,3 +166,15 @@ def render(story, times, video_path, preview=None):
     ff.stdin.close()
     ff.wait()
     return end
+
+
+def write_srt(story, times, path):
+    """편집 프로그램(캡컷 등)에 넣을 자막 파일 — 화면에 구운 자막과 같은 시간·끊김."""
+    _, subs, _ = build_timeline(story, times)
+
+    def ts(x):
+        ms = int(round(x * 1000))
+        return f"{ms // 3600000:02d}:{ms // 60000 % 60:02d}:{ms // 1000 % 60:02d},{ms % 1000:03d}"
+    with open(path, "w", encoding="utf-8") as f:
+        for i, (a, b, _, text) in enumerate(subs, 1):
+            f.write(f"{i}\n{ts(a)} --> {ts(b)}\n{text}\n\n")

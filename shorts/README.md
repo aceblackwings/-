@@ -26,6 +26,13 @@ python3 make_short.py stories/organ-donation-7.json --preview 2,10,30   # 그 �
 - 영상 장면 오른쪽 아래에 「※ 이해를 돕기 위한 자료 화면입니다」 자동 표시, 설명란에 영상 출처 자동 기재
 - 예: `stories/organ-donation-7-real.json`
 
+## 여러 목소리·편집 재료(v0.3)
+- `voices`: `{"배역": {"voice", "rate", "pitch"}}`, 문장에 `"who": "배역"`을 넣으면 그 목소리로 읽고 자막은 하늘색
+- 문장의 `pause`(초): 그 문장 뒤에 쉼 추가. 음성 앞뒤 빈 소리는 자동으로 잘라 냄
+- `source_note`(장면 아래 고지) · `footage_note`(자료 화면 문구) · `disclaimer`(설명란 첫 줄) · `hashtags`
+- 결과에 `<id>.srt` 자막 파일, `edit-kit/`(소리 없는 영상·내레이션·배경음악·자막)이 함께 나옴 → 캡컷 등에서 다시 편집할 때 사용
+- 예: `stories/incheon-envelope-80s.json`(창작 각색 사연 1분 20초판)
+
 ## 구조
 | 파일 | 하는 일 |
 |---|---|

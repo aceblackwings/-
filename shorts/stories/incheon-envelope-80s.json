@@ -1,0 +1,313 @@
+{
+  "id": "incheon-envelope-80s",
+  "style": "외국인 × 위기 순간의 한국인 도움 (창작 각색)",
+  "title": [
+    "폭우 속 공항에 고립된 미국 엄마",
+    "택시 기사가 내민 봉투 한 장"
+  ],
+  "voice": "ko-KR-InJoonNeural",
+  "rate": "+14%",
+  "voices": {
+    "박 기사": {
+      "voice": "ko-KR-HyunsuMultilingualNeural",
+      "rate": "+4%",
+      "pitch": "-8Hz"
+    },
+    "에밀리": {
+      "voice": "en-US-AvaMultilingualNeural",
+      "rate": "+6%"
+    },
+    "릴리": {
+      "voice": "ko-KR-SunHiNeural",
+      "rate": "+5%",
+      "pitch": "+45Hz"
+    }
+  },
+  "palette": "warm",
+  "source_note": "※ 실제 사례들에서 영감을 받아 각색한 창작 사연입니다 · 인물·지명 일부 가상",
+  "footage_note": "※ 이해를 돕기 위한 자료 화면입니다",
+  "disclaimer": "이 영상은 실제 사례들에서 영감을 받아 각색한 창작 사연입니다. 등장인물과 지명 일부는 가상이며, 영상 속 화면은 이해를 돕기 위한 자료 화면(Pixabay)입니다.",
+  "hashtags": "#감동사연 #인천공항 #택시기사 #해외입양 #한국인의정 #쇼츠",
+  "sources": [],
+  "segments": [
+    {
+      "scene": "hook",
+      "text": "새벽 1시, 호우경보가 내려진 인천공항.",
+      "keys": [
+        "호우경보"
+      ],
+      "footage": [
+        "pixabay:5278"
+      ],
+      "overlay": {
+        "type": "tag",
+        "text": "새벽 1:00 · 호우경보",
+        "bg": "#2a3550"
+      }
+    },
+    {
+      "scene": "hook",
+      "text": "열이 펄펄 끓는 일곱 살 딸을 안은, 한 미국인 엄마.",
+      "keys": [
+        "일곱 살 딸"
+      ],
+      "footage": [
+        "pixabay:10874"
+      ]
+    },
+    {
+      "scene": "hook",
+      "text": "카드는 막히고, 숙소는 취소되고, 막차도 끊겼습니다.",
+      "keys": [
+        "카드는 막히고"
+      ],
+      "footage": [
+        "pixabay:3593"
+      ],
+      "overlay": {
+        "type": "stamp",
+        "text": "결제 거절",
+        "cross": false,
+        "at": 0.3
+      }
+    },
+    {
+      "scene": "hook",
+      "text": "남은 돈은 단 23달러.",
+      "keys": [
+        "23달러"
+      ],
+      "footage": [
+        "pixabay:11722"
+      ],
+      "overlay": {
+        "type": "counter",
+        "from": 0,
+        "to": 23,
+        "suffix": "달러"
+      }
+    },
+    {
+      "scene": "hook",
+      "text": "남편 다니엘은 세 살 때 한국에서 입양된 사람.",
+      "keys": [
+        "입양"
+      ],
+      "footage": [
+        "pixabay:254002"
+      ],
+      "overlay": {
+        "type": "namecard",
+        "name": "다니엘 (고인)",
+        "chips": [
+          "한국계 입양인",
+          "2년 전 세상을 떠남"
+        ]
+      }
+    },
+    {
+      "scene": "hook",
+      "text": "아빠의 나라를 보여주겠다던 그 약속을 지키러 온 길이었죠.",
+      "keys": [
+        "아빠의 나라"
+      ],
+      "footage": [
+        "pixabay:176389"
+      ]
+    },
+    {
+      "scene": "hook",
+      "who": "릴리",
+      "text": "엄마, 아빠 나라는 왜 이렇게 추워?",
+      "keys": [],
+      "footage": [
+        "pixabay:149927"
+      ],
+      "overlay": {
+        "type": "tag",
+        "text": "릴리 (7세)",
+        "bg": "#b8862a"
+      }
+    },
+    {
+      "scene": "hook",
+      "who": "에밀리",
+      "text": "다니엘, 미안해. 나 아무것도 못 하겠어.",
+      "keys": [],
+      "footage": [
+        "pixabay:139743"
+      ],
+      "overlay": {
+        "type": "tag",
+        "text": "에밀리 (34세)",
+        "bg": "#5a4a7a"
+      },
+      "pause": 0.4
+    },
+    {
+      "scene": "hook",
+      "text": "그때, 낡은 택시 한 대가 멈춰 섭니다.",
+      "keys": [
+        "낡은 택시"
+      ],
+      "footage": [
+        "pixabay:332900"
+      ]
+    },
+    {
+      "scene": "hook",
+      "who": "박 기사",
+      "text": "애가 불덩이네. 돈 얘기는 나중에. 애부터 살리고.",
+      "keys": [
+        "애부터 살리고"
+      ],
+      "footage": [
+        "pixabay:131270",
+        "pixabay:35277"
+      ],
+      "overlay": {
+        "type": "tag",
+        "text": "박정수 기사 (62세)",
+        "bg": "#1d3b6a"
+      }
+    },
+    {
+      "scene": "hook",
+      "text": "응급실, 아이의 체온은 39.8도.",
+      "keys": [
+        "39.8도"
+      ],
+      "footage": [
+        "pixabay:145344"
+      ],
+      "overlay": {
+        "type": "tag",
+        "text": "39.8℃",
+        "size": 70,
+        "bg": "#c23b4a"
+      }
+    },
+    {
+      "scene": "hook",
+      "text": "그는 세 시간째, 대기실을 떠나지 않았습니다.",
+      "keys": [
+        "세 시간째"
+      ],
+      "footage": [
+        "pixabay:1383"
+      ]
+    },
+    {
+      "scene": "hook",
+      "who": "박 기사",
+      "text": "엄마가 먼저 먹어야 애도 봐요.",
+      "keys": [],
+      "footage": [
+        "pixabay:3595"
+      ]
+    },
+    {
+      "scene": "hook",
+      "text": "아침이 되자, 병원비는 이미 그가 계산한 뒤였습니다.",
+      "keys": [
+        "이미 그가 계산"
+      ],
+      "footage": [
+        "pixabay:26771"
+      ],
+      "overlay": {
+        "type": "stamp",
+        "text": "수납 완료",
+        "cross": false
+      }
+    },
+    {
+      "scene": "hook",
+      "text": "출국하는 날, 그가 건넨 하얀 봉투 하나.",
+      "keys": [
+        "하얀 봉투"
+      ],
+      "footage": [
+        "pixabay:5628"
+      ]
+    },
+    {
+      "scene": "hook",
+      "who": "박 기사",
+      "text": "비행기에서 열어요. 꼭.",
+      "keys": [],
+      "footage": [
+        "pixabay:140382"
+      ],
+      "pause": 0.3
+    },
+    {
+      "scene": "hook",
+      "text": "구름 위에서 편지를 읽던 그녀는, 끝내 오열합니다.",
+      "keys": [
+        "오열"
+      ],
+      "footage": [
+        "pixabay:383350"
+      ]
+    },
+    {
+      "scene": "hook",
+      "who": "박 기사",
+      "text": "저도 1986년, 세 살 된 아들을 미국으로 입양 보냈습니다.",
+      "keys": [
+        "세 살 된 아들"
+      ],
+      "footage": [
+        "pixabay:8851"
+      ],
+      "overlay": {
+        "type": "quote",
+        "text": "“저에게도 아들이 하나 있었습니다”",
+        "by": "— 박 기사의 편지 중"
+      }
+    },
+    {
+      "scene": "hook",
+      "who": "박 기사",
+      "text": "누군가 제 아들에게도 이렇게 친절했기를. 이건 빚이 아닙니다.",
+      "keys": [
+        "빚이 아닙니다"
+      ],
+      "footage": [
+        "pixabay:8851"
+      ],
+      "overlay": {
+        "type": "quote",
+        "text": "“이건 빚이 아닙니다”",
+        "by": "— 박 기사의 편지 중"
+      },
+      "pause": 0.4
+    },
+    {
+      "scene": "hook",
+      "text": "1년 뒤 봄, 그녀는 다시 한국에 왔습니다. 기사님의 아들을 함께 찾기 위해서요.",
+      "keys": [
+        "아들을 함께 찾기"
+      ],
+      "footage": [
+        "pixabay:268528"
+      ],
+      "overlay": {
+        "type": "tag",
+        "text": "1년 뒤 봄",
+        "bg": "#c2456a"
+      }
+    },
+    {
+      "scene": "hook",
+      "text": "당신에게도, 빗속에 멈춰 서 준 누군가가 있었나요?",
+      "keys": [
+        "멈춰 서 준 누군가"
+      ],
+      "footage": [
+        "pixabay:11283"
+      ]
+    }
+  ]
+}

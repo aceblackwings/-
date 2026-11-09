@@ -27,7 +27,8 @@ def main():
     os.makedirs(work, exist_ok=True)
 
     print("1/4 음성 합성")
-    narr, times = tts.synth(story["segments"], story.get("voice", "ko-KR-InJoonNeural"), story.get("rate", "+0%"), work)
+    narr, times = tts.synth(story["segments"], story.get("voice", "ko-KR-InJoonNeural"), story.get("rate", "+0%"), work,
+                             story.get("voices"))
     print(f"   대사 길이 {times[-1][1]:.1f}초")
     credits = []
     if any(seg.get("footage") for seg in story["segments"]):
@@ -60,12 +61,22 @@ def main():
                     os.path.join(out, "thumbnail.jpg")], check=True)
     with open(os.path.join(out, "description.txt"), "w", encoding="utf-8") as f:
         f.write(f"{story['title'][0]} {story['title'][1]}\n\n")
+        if story.get("disclaimer"):
+            f.write(story["disclaimer"] + "\n\n")
         f.write(" ".join(s["text"] for s in story["segments"]) + "\n\n")
-        f.write("출처\n" + "\n".join(f"- {u}" for u in story.get("sources", [])) + "\n")
+        if story.get("sources"):
+            f.write("출처\n" + "\n".join(f"- {u}" for u in story["sources"]) + "\n")
+        credits = list({c["page"]: c for c in credits}.values())  # 같은 영상을 두 번 써도 한 줄만
         if credits:
             f.write("\n자료 화면\n" + "".join(f"- {c['page']} ({c['license']}{', ' + c['by'] if c['by'] else ''})\n" for c in credits))
         f.write("\n그래픽·배경음악: 직접 제작(코드 생성) / 음성: Microsoft Edge TTS\n")
-        f.write("#장기기증 #생명나눔 #감동사연 #쇼츠\n")
+        f.write(story.get("hashtags", "#장기기증 #생명나눔 #감동사연 #쇼츠") + "\n")
+    render.write_srt(story, times, os.path.join(out, f"{story['id']}.srt"))
+    edit = os.path.join(out, "edit-kit")  # 캡컷 등에서 다시 편집할 재료
+    os.makedirs(edit, exist_ok=True)
+    for src, name in ((narr, "narration.wav"), (music, "bgm.wav"), (video, "video-no-audio.mp4")):
+        subprocess.run(["cp", src, os.path.join(edit, name)], check=True)
+    subprocess.run(["cp", os.path.join(out, f"{story['id']}.srt"), os.path.join(edit, "subtitles.srt")], check=True)
     print("완성:", final, f"({end:.1f}초)")
 
 
