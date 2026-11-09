@@ -1,0 +1,3 @@
+output/*/work/
+output/*/preview_*.jpg
+__pycache__/
