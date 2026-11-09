@@ -3,3 +3,4 @@ output/*/preview_*.jpg
 __pycache__/
 output/test-footage/
 output/*/edit-kit/
+output/*/capcut-kit/

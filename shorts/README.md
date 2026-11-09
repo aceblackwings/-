@@ -38,6 +38,9 @@ python3 make_short.py stories/organ-donation-7.json --preview 2,10,30   # 그 �
 - **API로 자동 합성**: 환경 변수 `ELEVENLABS_API_KEY` + `voices.<배역>.elevenlabs.voice_id` 를 채우면 일레븐랩스로 읽음(모델 eleven_multilingual_v2)
 - 화면 소재는 영상 `pixabay:ID` 외에 사진 `photo:ID`(Pixabay 사진, 천천히 확대)도 됨
 
+## 캡컷 재료(v0.5)
+`python3 make_short.py stories/<id>.json --edit-kit` → `output/<id>/capcut-kit/`: ① 자막 없는 화면 ② 배역별 음성 트랙(모두 영상과 같은 길이, 제자리에 놓여 있어 0초에 맞춰 넣기만 하면 됨) ③ 배경음악 ④ SRT 자막. 어색한 배역만 음소거하고 다른 음성으로 바꿔 넣을 때 씀.
+
 ## 구조
 | 파일 | 하는 일 |
 |---|---|

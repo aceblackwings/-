@@ -20,6 +20,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("story")
     ap.add_argument("--voice-sheet", action="store_true", help="일레븐랩스 웹에서 녹음할 문장표만 만들기")
+    ap.add_argument("--edit-kit", action="store_true", help="캡컷용: 자막 없는 화면 + 배역별 음성 트랙 + 자막 파일")
     ap.add_argument("--preview", help="쉼표로 나눈 초(예: 1,5,12) → 그 순간 화면만 그림으로 저장")
     args = ap.parse_args()
     story = json.load(open(args.story, encoding="utf-8"))
@@ -50,6 +51,10 @@ def main():
         for s, im in zip(secs, render.render(story, times, None, preview=secs)):
             im.save(os.path.join(out, f"preview_{s:05.1f}.jpg"), quality=88)
         print("미리보기 저장:", out)
+        return
+
+    if args.edit_kit:
+        make_edit_kit(story, times, work, out)
         return
 
     print("2/4 화면 합성")
@@ -88,6 +93,26 @@ def main():
         subprocess.run(["cp", src, os.path.join(edit, name)], check=True)
     subprocess.run(["cp", os.path.join(out, f"{story['id']}.srt"), os.path.join(edit, "subtitles.srt")], check=True)
     print("완성:", final, f"({end:.1f}초)")
+
+
+def make_edit_kit(story, times, work, out):
+    """캡컷에서 바로 쓰는 재료: 자막 없는 화면, 배역별 음성(같은 길이·같은 시간 위치), 배경음악, SRT."""
+    kit = os.path.join(out, "capcut-kit")
+    os.makedirs(kit, exist_ok=True)
+    print("자막 없는 화면 합성")
+    end = render.render(story, times, os.path.join(kit, "1_화면_자막없음.mp4"), draw_subs=False)
+    roles = {}
+    for i, (seg, (a, _)) in enumerate(zip(story["segments"], times)):
+        roles.setdefault(seg.get("who") or "내레이터", []).append((os.path.join(work, f"seg{i:02d}.wav"), a))
+    for n, (role, items) in enumerate(roles.items(), 2):
+        ins = sum((["-i", p] for p, _ in items), [])
+        mix = "".join(f"[{k}:a]adelay={int(a * 1000)}:all=1[d{k}];" for k, (_, a) in enumerate(items))
+        mix += "".join(f"[d{k}]" for k in range(len(items))) + f"amix=inputs={len(items)}:normalize=0,apad,atrim=0:{end:.2f}[o]"
+        subprocess.run(["ffmpeg", "-v", "error", "-y", *ins, "-filter_complex", mix, "-map", "[o]", "-ar", "44100",
+                        os.path.join(kit, f"{n}_음성_{role}.wav")], check=True)
+    music = bgm.make(os.path.join(kit, f"{n + 1}_배경음악.wav"), end, story.get("palette", "warm"))
+    render.write_srt(story, times, os.path.join(kit, f"{n + 2}_자막.srt"))
+    print("캡컷 재료:", kit)
 
 
 if __name__ == "__main__":

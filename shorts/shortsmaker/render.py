@@ -98,7 +98,7 @@ def build_timeline(story, times, tail=1.4):
 _stream = {}
 
 
-def frame(t, base, scene_list, subs):
+def frame(t, base, scene_list, subs, draw_subs=True):
     out = base.copy()
     sc = next(s for s in scene_list if s["start"] <= t < s["end"] + 1e-6) if t < scene_list[-1]["end"] else scene_list[-1]
     lt, d = t - sc["start"], sc["end"] - sc["start"]
@@ -133,7 +133,7 @@ def frame(t, base, scene_list, subs):
         img = Image.blend(Image.new("RGBA", img.size, (0, 0, 0, 255)), img, f)
     out.alpha_composite(img, (0, SCENE_Y))
     # 끝 1초 페이드 아웃
-    for s0, s1, simg, _ in subs:
+    for s0, s1, simg, _ in (subs if draw_subs else ()):
         if s0 <= t < s1:
             p = prog(t, s0, .14)
             gfx.put(out, simg, W / 2, SUB_Y, .88 + .12 * ease_back(p), ease_out(p * 1.5))
@@ -144,7 +144,7 @@ def frame(t, base, scene_list, subs):
 NOTE = {"text": "※ 이해를 돕기 위한 자료 화면입니다"}
 
 
-def render(story, times, video_path, preview=None):
+def render(story, times, video_path, preview=None, draw_subs=True):
     NOTE["text"] = story.get("footage_note", NOTE["text"])
     base = title_base(story["title"], story.get("source_note"))
     scene_list, subs, end = build_timeline(story, times)
@@ -156,7 +156,7 @@ def render(story, times, video_path, preview=None):
                            "-pix_fmt", "yuv420p", video_path], stdin=subprocess.PIPE)
     for i in range(n):
         t = i / FPS
-        fr = frame(t, base, scene_list, subs)
+        fr = frame(t, base, scene_list, subs, draw_subs)
         fade = min(1.0, (end - t) / 0.8)
         if fade < 1:
             fr = Image.blend(Image.new("RGBA", fr.size, (0, 0, 0, 255)), fr, max(0, fade))
