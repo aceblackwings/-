@@ -1975,6 +1975,7 @@ const kaiunChip = (period) => { const k = kaiunFor(kaiunNow(), period); return k
 document.addEventListener('click', (e) => {
   if (e.target.closest('[data-go-equip]')) {
     document.querySelectorAll('.evo-modal').forEach((x) => x.remove());
+    state.equipOpen = true; renderHero(false);
     selectTab('hero'); setTimeout(() => revealAndScroll($('.equip-list') || $('.slots'), 'center'), 120);
   }
   if (e.target.closest('[data-go-booklet]')) {
@@ -2576,20 +2577,20 @@ function grantSeasonItem() {
   if (!r.item) return;
   save(TTEOK_KEY, r.store);
   const owned = { ...(st.owned || {}) }; owned[r.item.id] = { ...(owned[r.item.id] || {}), item: true };
-  save(SEASON_KEY, { ...st, owned, equipped: st.equipped || r.item.id });
+  save(SEASON_KEY, { ...st, owned, equipped: r.item.id }); // v0.64.5: 꾸미기 칸을 없애 새 소품을 바로 착용
   renderToday(); renderHero(false);
   const box = document.createElement('div'); box.className = 'evo-modal';
   box.innerHTML = `<div class="evo-box scroll-pop">${itemThumb(r.item.key, 'item-big') || '<span style="font-size:3rem">🎀</span>'}
     <h3>🎀 계절 소품을 받았어요!</h3>
-    <p>꾸미기 조각 ${PIECES_PER_ITEM}개를 모아 <b>${esc(r.item.icon || '')} ${esc(r.item.name)} 「${esc(r.item.item)}」</b>${withEul(r.item.item).slice(-1)} 받았어요. ${st.equipped ? '내 수호신에서 지신에게 입혀 줄 수 있어요.' : '지신이 바로 착용했어요!'}</p>
-    <div class="yday-btns"><button type="button" class="primary" data-go-wardrobe>🐉 지신 꾸미러 가기</button><button type="button" class="ghost" data-close-reward>고마워요</button></div></div>`;
+    <p>꾸미기 조각 ${PIECES_PER_ITEM}개를 모아 <b>${esc(r.item.icon || '')} ${esc(r.item.name)} 「${esc(r.item.item)}」</b>${withEul(r.item.item).slice(-1)} 받았어요. 지신이 바로 착용했어요!</p>
+    <div class="yday-btns"><button type="button" class="primary" data-go-wardrobe>🐉 지신 보러 가기</button><button type="button" class="ghost" data-close-reward>고마워요</button></div></div>`;
   document.body.appendChild(box);
   box.addEventListener('click', (e) => { if (e.target === box || e.target.closest('[data-close-reward]')) box.remove(); });
 }
 document.addEventListener('click', (e) => {
   if (!e.target.closest('[data-go-wardrobe]')) return;
   document.querySelectorAll('.evo-modal').forEach((x) => x.remove());
-  selectTab('hero'); setTimeout(() => revealAndScroll('.wardrobe', 'center'), 200);
+  selectTab('hero'); setTimeout(() => revealAndScroll('#hero-stage', 'center'), 200);
 });
 
 function showScrollsOpened() {
@@ -3782,12 +3783,11 @@ function renderHero(animate) {
       ${kiProgressHTML(kst)}
       ${kiCardHTML({ inHero: true })}
       <div class="slots two">${slot(0)}${slot(1)}</div>
+      ${state.equipOpen ? `<div class="equip-pop" id="equip-pop">${equipBody}</div>` : `<p class="muted" style="font-size:0.8rem;text-align:center;margin:6px 0 0">빈 슬롯을 누르면 부적을 골라 달 수 있어요 (${candidates.length}장 보유)</p>`}
       <button type="button" class="ghost ki-go" data-go-tab="chat">💬 지신과 이야기하기</button>
     </div>
     <div class="fold-list">
-      ${foldHTML('equip', '🧧', '부적 달아 주기', `${candidates.length}장 보유 · 달면 올해·이달 개운이 올라요`, equipBody)}
       ${foldHTML('coordi', '👗', '오늘의 코디', coordiSub(), coordiHTML())}
-      ${foldHTML('wardrobe', '🎀', '지신 꾸미기', '계절 소품 · 꾸미기 세트', seasonWardrobeHTML())}
       ${foldHTML('wish', '🖼️', '이룬 소원 벽', wishSub(), wishWallHTML())}
       ${foldHTML('burn', '🔥', '걱정 태우기', '걱정 한 줄을 부적과 함께 태워 날려 보내요', burnHTML())}
     </div>`;
@@ -3812,7 +3812,9 @@ function renderHero(animate) {
   }));
   $$('[data-slot]', panel).forEach((el) => el.addEventListener('click', () => {
     const next = loadEquip();
-    if (el.dataset.slot === 'emote') next.emote = null; else next.charms[Number(el.dataset.slot)] = null;
+    if (el.dataset.slot === 'emote') next.emote = null;
+    else if (!next.charms[Number(el.dataset.slot)]) { state.equipOpen = !state.equipOpen; renderHero(false); return; }
+    else next.charms[Number(el.dataset.slot)] = null;
     saveEquip(next);
   }));
   $$('[data-emote]', panel).forEach((b) => b.addEventListener('click', () => {
@@ -5349,8 +5351,6 @@ function renderCompat() {
     </div>
     <div id="compat-result">${sel !== null && friends[sel] ? compatResultHTML(friends[sel], sel) : '<div class="card"><p class="muted" style="margin:0">친구를 추가하면 두 캐릭터가 함께 나오는 궁합 카드가 만들어집니다.</p></div>'}</div>
     <div class="fold-list">
-      ${(() => { const h = mailboxHTML(); return h ? foldHTML('mail', '📮', '친구 우편함', '응원 스티커 주고받기', h) : ''; })()}
-      ${(() => { const h = teamCardHTML(); return h ? foldHTML('team', '👥', '실시간 궁합방', '친구와 함께 접속해서 보기', h) : ''; })()}
       ${(() => { const h = dexHTML(); return h ? foldHTML('dex', '📖', '12띠 수집 도감', '궁합 본 친구 띠를 모아요', h) : ''; })()}
     </div>`;
 
