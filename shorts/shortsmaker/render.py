@@ -105,6 +105,7 @@ def frame(t, base, scene_list, subs, draw_subs=True):
     seg, a, b = sc["segs"][0]
     ctx = {"seg_text": " ".join(s[0]["text"] for s in sc["segs"]), "speech_off": a - sc["start"],
            "speech_len": sc["segs"][-1][2] - a}
+    ci = 0
     if sc.get("clips"):
         n = len(sc["clips"])
         ci = min(n - 1, int(lt / d * n))
@@ -122,10 +123,16 @@ def frame(t, base, scene_list, subs, draw_subs=True):
         scenes.SCENES[sc["name"]](img, lt, d, ctx)
         lt_fade = lt
     # 천천히 확대(켄 번스). 정지 그림은 더 크게 움직여 영상처럼 보이게(장면마다 방향을 바꿈)
-    still = sc.get("clips") and sc["clips"][0].lower().endswith((".png", ".jpg", ".jpeg", ".webp"))
-    k = lt / max(d, .1)
+    # 영상과 그림이 섞인 장면도 컷마다 따로: 그 컷의 시간으로 움직임 계산
+    clip_now = sc["clips"][ci] if sc.get("clips") else ""
+    still = clip_now.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))
+    if sc.get("clips"):
+        cut = d / len(sc["clips"])
+        k = (lt - ci * cut) / max(cut, .1)
+    else:
+        k = lt / max(d, .1)
     if still:
-        idx = scene_list.index(sc)
+        idx = scene_list.index(sc) + ci
         z = 1.06 + 0.10 * (k if idx % 2 == 0 else 1 - k)
         dx, dy = ((1, 0), (-1, 0), (0, 1), (0, -1))[idx % 4]
     else:

@@ -24,8 +24,8 @@
   },
   "palette": "warm",
   "source_note": "※ 실제 사례들에서 영감을 받아 각색한 창작 사연입니다 · 인물·지명 가상",
-  "footage_note": "※ AI로 제작한 이미지입니다",
-  "disclaimer": "이 영상은 실제 사례들에서 영감을 받아 각색한 창작 사연입니다. 등장인물과 지명은 가상이며, 영상 속 이미지는 AI로 제작되었습니다.",
+  "footage_note": "※ AI 이미지 · 자료 화면(Pixabay)",
+  "disclaimer": "이 영상은 실제 사례들에서 영감을 받아 각색한 창작 사연입니다. 등장인물과 지명은 가상이며, 인물 장면 이미지는 AI로 제작했고 일부 풍경은 자료 화면(Pixabay)입니다.",
   "hashtags": "#감동사연 #외국인노동자 #이웃 #한국인의정 #시골마을 #쇼츠",
   "sources": [],
   "segments": [
@@ -56,6 +56,7 @@
         "라주"
       ],
       "footage": [
+        "pixabay:380225",
         "file:images/village-funeral/03"
       ],
       "overlay": {
@@ -105,6 +106,7 @@
         "다시 일어나지 못했습니다"
       ],
       "footage": [
+        "pixabay:142579",
         "file:images/village-funeral/07"
       ]
     },
@@ -115,6 +117,7 @@
         "비행기표"
       ],
       "footage": [
+        "pixabay:307398",
         "file:images/village-funeral/08"
       ]
     },
@@ -147,7 +150,8 @@
         "발길이 끊이지"
       ],
       "footage": [
-        "file:images/village-funeral/10"
+        "file:images/village-funeral/10",
+        "pixabay:143419"
       ]
     },
     {
@@ -203,6 +207,7 @@
         "작은 나무"
       ],
       "footage": [
+        "pixabay:26155",
         "file:images/village-funeral/14"
       ]
     },
@@ -230,6 +235,7 @@
         "이 마을의 가족"
       ],
       "footage": [
+        "pixabay:34623",
         "file:images/village-funeral/16"
       ]
     },
@@ -240,7 +246,8 @@
         "이름 없이"
       ],
       "footage": [
-        "file:images/village-funeral/17"
+        "file:images/village-funeral/17",
+        "pixabay:135669"
       ]
     }
   ]
