@@ -18,6 +18,14 @@ python3 make_short.py stories/organ-donation-7.json --preview 2,10,30   # 그 �
 - 장면 이름: `hook` `profile` `clinic` `years` `ecg` `family` `organs` `seven` `candle` `ending` (`shortsmaker/scenes.py`)
 - 사실은 반드시 기사로 확인하고 `sources`에 주소를 남긴다(설명란에 자동 기재). 없는 인용문을 만들지 않는다.
 
+## 실제 영상 바탕(v0.2)
+문장에 `footage`(영어 검색어 1~2개, 또는 `file:경로`)와 `overlay`(얹을 그래픽)를 넣으면 그 문장은 실제 영상 위에 그래픽이 얹힌다.
+- 검색: Pixabay — 환경 변수 `PIXABAY_API_KEY` 필요. 얼굴·환자 위주 태그는 피하고, 길이가 충분한 영상을 고름
+- 얹는 그래픽: `stamp`(도장) `namecard`(이름표) `tag`(라벨) `counter`(숫자 올라감) `quote`(인용) `organs`(장기 아이콘)
+- `footage` 없는 문장은 기존 모션그래픽 장면(예: `ecg`, `seven`)
+- 영상 장면 오른쪽 아래에 「※ 이해를 돕기 위한 자료 화면입니다」 자동 표시, 설명란에 영상 출처 자동 기재
+- 예: `stories/organ-donation-7-real.json`
+
 ## 구조
 | 파일 | 하는 일 |
 |---|---|
@@ -26,7 +34,9 @@ python3 make_short.py stories/organ-donation-7.json --preview 2,10,30   # 그 �
 | `shortsmaker/scenes.py` | 장면별 모션그래픽(1080×1080) |
 | `shortsmaker/render.py` | 제목·장면·자막 합성, 천천히 확대, 페이드 → ffmpeg |
 | `shortsmaker/bgm.py` | 저작권 없는 배경음악 생성(패드 + 아르페지오) |
-| `shortsmaker/sources.py` | Pexels·Pixabay 무료 영상 검색(키가 있을 때, 아직 미시험) |
+| `shortsmaker/footage.py` | Pixabay 검색·내려받기·1080 정사각 색 보정 스트림 |
+| `shortsmaker/overlays.py` | 실제 영상 위 정보 그래픽 |
+| `shortsmaker/sources.py` | (예전) Pexels·Pixabay 검색 초안 — Pexels는 새 키 발급 중단 |
 
 ## 저작권 원칙
 - 영상 그래픽·음악은 코드로 직접 만든다. 외부 영상은 Pexels·Pixabay처럼 상업 이용이 허락된 것만 쓴다.

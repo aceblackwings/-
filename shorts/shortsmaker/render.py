@@ -4,7 +4,7 @@ import subprocess
 
 from PIL import Image
 
-from . import gfx, scenes
+from . import footage, gfx, overlays, scenes
 from .gfx import ease_back, ease_out, prog
 
 W, H, FPS = 1080, 1920, 30
@@ -79,7 +79,11 @@ def build_timeline(story, times, tail=1.4):
             img = gfx.text_img(c, 62, runs=sub_runs(c, seg.get("keys", [])), stroke=7, stroke_fill="#000000")
             subs.append((t, t + dt, img))
             t += dt
-        if scene_list and scene_list[-1]["name"] == seg["scene"]:
+        clips = seg.get("_clips") or []
+        if clips:  # 실제 영상 장면: 문장마다 따로, 영상 여러 개면 나눠서 컷 전환
+            scene_list.append({"name": seg.get("scene", "hook"), "segs": [(seg, a, b)], "clips": clips,
+                               "overlay": seg.get("overlay")})
+        elif scene_list and scene_list[-1]["name"] == seg["scene"] and not scene_list[-1].get("clips"):
             scene_list[-1]["segs"].append((seg, a, b))
         else:
             scene_list.append({"name": seg["scene"], "segs": [(seg, a, b)]})
@@ -90,6 +94,9 @@ def build_timeline(story, times, tail=1.4):
     return scene_list, subs, end
 
 
+_stream = {}
+
+
 def frame(t, base, scene_list, subs):
     out = base.copy()
     sc = next(s for s in scene_list if s["start"] <= t < s["end"] + 1e-6) if t < scene_list[-1]["end"] else scene_list[-1]
@@ -97,8 +104,22 @@ def frame(t, base, scene_list, subs):
     seg, a, b = sc["segs"][0]
     ctx = {"seg_text": " ".join(s[0]["text"] for s in sc["segs"]), "speech_off": a - sc["start"],
            "speech_len": sc["segs"][-1][2] - a}
-    img = scenes.background(sc["name"])
-    scenes.SCENES[sc["name"]](img, lt, d, ctx)
+    if sc.get("clips"):
+        n = len(sc["clips"])
+        ci = min(n - 1, int(lt / d * n))
+        key = (id(sc), ci)
+        if _stream.get("key") != key:
+            if _stream.get("s"):
+                _stream["s"].close()
+            _stream.update(key=key, s=footage.ClipStream(sc["clips"][ci], int(d / n * FPS) + 4))
+        img = _stream["s"].read().copy()
+        cl = (lt - ci * d / n)  # 컷 안 시간: 컷이 바뀔 때도 짧게 페이드
+        overlays.draw(img, lt, d, ctx, sc.get("overlay"))
+        lt_fade = min(lt, cl)
+    else:
+        img = scenes.background(sc["name"])
+        scenes.SCENES[sc["name"]](img, lt, d, ctx)
+        lt_fade = lt
     # 천천히 확대(켄 번스)
     z = 1.0 + 0.05 * (lt / max(d, .1))
     if z > 1.001:
@@ -106,7 +127,7 @@ def frame(t, base, scene_list, subs):
         o = (big.width - 1080) // 2
         img = big.crop((o, o, o + 1080, o + 1080))
     # 장면 시작: 0.2초 페이드 인
-    f = min(1.0, lt / 0.2)
+    f = min(1.0, lt_fade / 0.2)
     if f < 1:
         img = Image.blend(Image.new("RGBA", img.size, (0, 0, 0, 255)), img, f)
     out.alpha_composite(img, (0, SCENE_Y))

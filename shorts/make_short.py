@@ -11,7 +11,7 @@ import os
 import subprocess
 import sys
 
-from shortsmaker import bgm, render, tts
+from shortsmaker import bgm, footage, render, tts
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -29,6 +29,10 @@ def main():
     print("1/4 음성 합성")
     narr, times = tts.synth(story["segments"], story.get("voice", "ko-KR-InJoonNeural"), story.get("rate", "+0%"), work)
     print(f"   대사 길이 {times[-1][1]:.1f}초")
+    credits = []
+    if any(seg.get("footage") for seg in story["segments"]):
+        print("   실제 영상 소재 찾기")
+        credits = footage.resolve(story, times, work)
 
     if args.preview:
         secs = [float(x) for x in args.preview.split(",")]
@@ -58,7 +62,9 @@ def main():
         f.write(f"{story['title'][0]} {story['title'][1]}\n\n")
         f.write(" ".join(s["text"] for s in story["segments"]) + "\n\n")
         f.write("출처\n" + "\n".join(f"- {u}" for u in story.get("sources", [])) + "\n")
-        f.write("\n영상 그래픽·배경음악: 직접 제작(코드 생성) / 음성: Microsoft Edge TTS\n")
+        if credits:
+            f.write("\n자료 화면\n" + "".join(f"- {c['page']} ({c['license']}{', ' + c['by'] if c['by'] else ''})\n" for c in credits))
+        f.write("\n그래픽·배경음악: 직접 제작(코드 생성) / 음성: Microsoft Edge TTS\n")
         f.write("#장기기증 #생명나눔 #감동사연 #쇼츠\n")
     print("완성:", final, f"({end:.1f}초)")
 
