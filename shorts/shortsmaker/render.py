@@ -121,12 +121,21 @@ def frame(t, base, scene_list, subs, draw_subs=True):
         img = scenes.background(sc["name"])
         scenes.SCENES[sc["name"]](img, lt, d, ctx)
         lt_fade = lt
-    # 천천히 확대(켄 번스)
-    z = 1.0 + 0.05 * (lt / max(d, .1))
+    # 천천히 확대(켄 번스). 정지 그림은 더 크게 움직여 영상처럼 보이게(장면마다 방향을 바꿈)
+    still = sc.get("clips") and sc["clips"][0].lower().endswith((".png", ".jpg", ".jpeg", ".webp"))
+    k = lt / max(d, .1)
+    if still:
+        idx = scene_list.index(sc)
+        z = 1.06 + 0.10 * (k if idx % 2 == 0 else 1 - k)
+        dx, dy = ((1, 0), (-1, 0), (0, 1), (0, -1))[idx % 4]
+    else:
+        z, dx, dy = 1.0 + 0.05 * k, 0, 0
     if z > 1.001:
         big = img.resize((int(1080 * z), int(1080 * z)), Image.BILINEAR)
-        o = (big.width - 1080) // 2
-        img = big.crop((o, o, o + 1080, o + 1080))
+        room = (big.width - 1080) // 2
+        ox = int(room + dx * room * (k - .5) * .9)
+        oy = int(room + dy * room * (k - .5) * .9)
+        img = big.crop((ox, oy, ox + 1080, oy + 1080))
     # 장면 시작: 0.2초 페이드 인
     f = min(1.0, lt_fade / 0.2)
     if f < 1:

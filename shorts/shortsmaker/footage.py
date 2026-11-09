@@ -73,6 +73,30 @@ def pixabay_photo(pid, used):
             "by": h.get("user", ""), "license": "Pixabay Content License", "query": f"photo {h['id']}", "ext": "jpg"}
 
 
+def _find_image(path):
+    """확장자가 달라도 찾기(s01 → s01.png / s01.jpg / s01.webp)."""
+    if os.path.exists(path):
+        return path
+    base = os.path.splitext(path)[0]
+    for ext in (".png", ".jpg", ".jpeg", ".webp", ".mp4"):
+        if os.path.exists(base + ext):
+            return base + ext
+    return None
+
+
+def _placeholder(path, clip_dir):
+    from PIL import ImageDraw
+    from .gfx import text_img, put
+    name = os.path.splitext(os.path.basename(path))[0]
+    img = Image.new("RGBA", (SIZE, SIZE), (34, 30, 44, 255))
+    dr = ImageDraw.Draw(img)
+    dr.rectangle([40, 40, SIZE - 40, SIZE - 40], outline=(120, 110, 140, 255), width=6)
+    put(img, text_img(f"그림 {name} 자리", 90, "#d9cfe8"), SIZE / 2, SIZE / 2)
+    out = os.path.join(clip_dir, f"placeholder-{name}.png")
+    img.convert("RGB").save(out)
+    return out
+
+
 def _download(url, path):
     with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=180) as r, open(path, "wb") as f:
         f.write(r.read())
@@ -91,8 +115,14 @@ def resolve(story, times, work):
         seg["_clips"] = []
         for it in items:
             if it.startswith("file:"):
-                seg["_clips"].append(it[5:])
-                credits.append({"query": "(직접 넣은 파일)", "page": os.path.basename(it[5:]), "by": "", "license": "직접 확보"})
+                path = it[5:]
+                if not os.path.isabs(path):  # 쇼츠 폴더 기준 경로
+                    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), path)
+                found = _find_image(path)
+                if not found:  # 그림이 아직 없으면 임시 화면(미리보기용)
+                    found = _placeholder(path, clip_dir)
+                    print(f"   · 그림 없음 → 임시 화면: {os.path.basename(path)}")
+                seg["_clips"].append(found)
                 continue
             slug = re.sub(r"[^a-z0-9]+", "-", it.lower()).strip("-")
             if it.startswith("photo:"):

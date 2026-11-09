@@ -1,0 +1,247 @@
+{
+  "id": "village-funeral",
+  "style": "외국인 × 한국인 사연 (창작 각색)",
+  "title": [
+    "가족 없이 떠난 외국인 노동자",
+    "장례식에 마을 전체가 왔다"
+  ],
+  "voice": "ko-KR-InJoonNeural",
+  "rate": "+14%",
+  "voice_dir": "voices/village-funeral",
+  "voices": {
+    "내레이터": {
+      "voice": "ko-KR-InJoonNeural",
+      "rate": "+14%"
+    },
+    "라주": {
+      "voice": "en-US-AndrewMultilingualNeural",
+      "rate": "-2%"
+    },
+    "이장": {
+      "voice": "ko-KR-HyunsuMultilingualNeural",
+      "rate": "-4%"
+    }
+  },
+  "palette": "warm",
+  "source_note": "※ 실제 사례들에서 영감을 받아 각색한 창작 사연입니다 · 인물·지명 가상",
+  "footage_note": "※ AI로 제작한 이미지입니다",
+  "disclaimer": "이 영상은 실제 사례들에서 영감을 받아 각색한 창작 사연입니다. 등장인물과 지명은 가상이며, 영상 속 이미지는 AI로 제작되었습니다.",
+  "hashtags": "#감동사연 #외국인노동자 #이웃 #한국인의정 #시골마을 #쇼츠",
+  "sources": [],
+  "segments": [
+    {
+      "scene": "hook",
+      "text": "가족 한 명 없이 떠난, 외국인 노동자의 장례식.",
+      "keys": [
+        "외국인 노동자"
+      ],
+      "footage": [
+        "file:images/village-funeral/01"
+      ]
+    },
+    {
+      "scene": "hook",
+      "text": "그런데 그날, 마을 사람 모두가 검은 옷을 입고 나타났습니다.",
+      "keys": [
+        "마을 사람 모두"
+      ],
+      "footage": [
+        "file:images/village-funeral/02"
+      ]
+    },
+    {
+      "scene": "hook",
+      "text": "네팔에서 온 서른한 살 라주. 경북의 작은 사과 마을에서 7년을 일했습니다.",
+      "keys": [
+        "라주"
+      ],
+      "footage": [
+        "file:images/village-funeral/03"
+      ],
+      "overlay": {
+        "type": "namecard",
+        "name": "라주",
+        "chips": [
+          "31세",
+          "네팔",
+          "사과 마을 7년"
+        ]
+      }
+    },
+    {
+      "scene": "hook",
+      "text": "무거운 짐은 대신 들고, 혼자 사는 할머니 집 앞 눈까지 치우던 청년이었죠.",
+      "keys": [
+        "눈까지 치우던"
+      ],
+      "footage": [
+        "file:images/village-funeral/04"
+      ]
+    },
+    {
+      "scene": "hook",
+      "text": "월급은 대부분, 네팔의 어머니와 동생 학비로 보냈습니다.",
+      "keys": [
+        "어머니와 동생"
+      ],
+      "footage": [
+        "file:images/village-funeral/05"
+      ]
+    },
+    {
+      "scene": "hook",
+      "who": "라주",
+      "text": "할머니, 저 내년엔 꼭 엄마 보러 가요.",
+      "keys": [],
+      "footage": [
+        "file:images/village-funeral/06"
+      ],
+      "pause": 0.3
+    },
+    {
+      "scene": "hook",
+      "text": "하지만 지난겨울, 일을 마치고 돌아가던 길에 쓰러진 그는 다시 일어나지 못했습니다.",
+      "keys": [
+        "다시 일어나지 못했습니다"
+      ],
+      "footage": [
+        "file:images/village-funeral/07"
+      ]
+    },
+    {
+      "scene": "hook",
+      "text": "네팔의 가족은, 비행기표 살 돈조차 없었습니다.",
+      "keys": [
+        "비행기표"
+      ],
+      "footage": [
+        "file:images/village-funeral/08"
+      ]
+    },
+    {
+      "scene": "hook",
+      "text": "장례를 치러 줄 사람이 없다는 소식에, 이장님이 나섰습니다.",
+      "keys": [
+        "이장님"
+      ],
+      "footage": [
+        "file:images/village-funeral/09"
+      ]
+    },
+    {
+      "scene": "hook",
+      "who": "이장",
+      "text": "우리 마을 사람이 갔는데, 우리가 보내 줘야지.",
+      "keys": [
+        "우리가 보내 줘야지"
+      ],
+      "footage": [
+        "file:images/village-funeral/09"
+      ],
+      "pause": 0.3
+    },
+    {
+      "scene": "hook",
+      "text": "아흔 살 어르신부터 초등학생까지, 빈소엔 발길이 끊이지 않았습니다.",
+      "keys": [
+        "발길이 끊이지"
+      ],
+      "footage": [
+        "file:images/village-funeral/10"
+      ]
+    },
+    {
+      "scene": "hook",
+      "text": "라주가 눈을 치워 주던 할머니는, 그가 좋아하던 된장국을 영정 앞에 올렸습니다.",
+      "keys": [
+        "된장국"
+      ],
+      "footage": [
+        "file:images/village-funeral/11"
+      ]
+    },
+    {
+      "scene": "hook",
+      "text": "마을 사람들은 돈을 모아, 그를 고향으로 보낼 비용을 마련했습니다.",
+      "keys": [
+        "고향으로"
+      ],
+      "footage": [
+        "file:images/village-funeral/12"
+      ]
+    },
+    {
+      "scene": "hook",
+      "text": "영상통화로 이 모습을 본 어머니는, 두 손을 모았습니다.",
+      "keys": [
+        "두 손을 모았습니다"
+      ],
+      "footage": [
+        "file:images/village-funeral/13"
+      ]
+    },
+    {
+      "scene": "hook",
+      "text": "우리 아들에게, 여기에도 가족이 있었군요.",
+      "keys": [
+        "여기에도 가족"
+      ],
+      "footage": [
+        "file:images/village-funeral/13"
+      ],
+      "overlay": {
+        "type": "quote",
+        "text": "“여기에도 가족이 있었군요”",
+        "by": "— 라주의 어머니"
+      },
+      "pause": 0.4
+    },
+    {
+      "scene": "hook",
+      "text": "이듬해 봄, 사과밭 한쪽에 작은 나무 한 그루가 심어졌습니다.",
+      "keys": [
+        "작은 나무"
+      ],
+      "footage": [
+        "file:images/village-funeral/14"
+      ]
+    },
+    {
+      "scene": "hook",
+      "text": "나무 앞 팻말엔 이렇게 적혔습니다. 우리 마을 사람, 라주.",
+      "keys": [
+        "우리 마을 사람, 라주"
+      ],
+      "footage": [
+        "file:images/village-funeral/15"
+      ],
+      "overlay": {
+        "type": "tag",
+        "text": "우리 마을 사람, 라주",
+        "size": 60,
+        "bg": "#5a3a1a"
+      },
+      "pause": 0.4
+    },
+    {
+      "scene": "hook",
+      "text": "말도, 고향도 달랐지만, 그는 분명 이 마을의 가족이었습니다.",
+      "keys": [
+        "이 마을의 가족"
+      ],
+      "footage": [
+        "file:images/village-funeral/16"
+      ]
+    },
+    {
+      "scene": "hook",
+      "text": "여러분 곁에도, 이름 없이 우리를 돕는 이웃이 있나요?",
+      "keys": [
+        "이름 없이"
+      ],
+      "footage": [
+        "file:images/village-funeral/17"
+      ]
+    }
+  ]
+}
