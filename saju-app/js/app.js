@@ -3551,6 +3551,7 @@ function renderToday() {
     if (k === 'feng') selectTab('feng');
   }));
   $('#btn-buy')?.addEventListener('click', openShop);
+  if (state.lastTab === 'more') renderMore();
 }
 
 function scoreColor(v) {
@@ -6159,7 +6160,7 @@ document.addEventListener('click', (e) => {
       <div class="yday-btns" style="grid-template-columns:1fr 1fr"><button type="button" class="ghost" data-close-reward>고마워요</button><button type="button" class="primary" data-go-wall>🖼️ 소원 벽 보기</button></div></div>`;
     document.body.appendChild(box);
     box.addEventListener('click', (ev) => {
-      if (ev.target.closest('[data-go-wall]')) { box.remove(); selectTab('hero'); setTimeout(() => revealAndScroll('#fold-wish'), 50); return; }
+      if (ev.target.closest('[data-go-wall]')) { box.remove(); selectTab('more'); setTimeout(() => revealAndScroll('#fold-wish-space'), 50); return; }
       if (ev.target.closest('[data-close-reward]') || ev.target === box) box.remove();
     });
   }
@@ -6261,7 +6262,7 @@ document.addEventListener('click', (e) => {
     <div class="yday-btns" style="grid-template-columns:1fr 1fr"><button type="button" class="ghost" data-close-reward>고마워요</button><button type="button" class="primary" data-go-wall>🖼️ 이룬 소원 벽 보기</button></div></div>`;
   document.body.appendChild(box);
   box.addEventListener('click', (ev) => {
-    if (ev.target.closest('[data-go-wall]')) { box.remove(); selectTab('hero'); setTimeout(() => revealAndScroll('#fold-wish'), 50); return; }
+    if (ev.target.closest('[data-go-wall]')) { box.remove(); selectTab('more'); setTimeout(() => revealAndScroll('#fold-wish-space'), 50); return; }
     if (ev.target.closest('[data-close-reward]') || ev.target === box) box.remove();
   });
 });
