@@ -4,6 +4,9 @@ import os
 import subprocess
 import wave
 
+import json
+import urllib.request
+
 import edge_tts
 
 SR = 44100
@@ -19,6 +22,29 @@ async def _say(text, voice, rate, out_mp3, pitch="+0Hz"):
     await edge_tts.Communicate(text, voice, rate=rate, pitch=pitch, **kw).save(out_mp3)
 
 
+def _eleven(text, cfg, out_mp3):
+    """ElevenLabs API(환경 변수 ELEVENLABS_API_KEY). cfg: voice_id·model·stability·similarity·style."""
+    key = os.environ["ELEVENLABS_API_KEY"]
+    body = {"text": text, "model_id": cfg.get("model", "eleven_multilingual_v2"),
+            "voice_settings": {"stability": cfg.get("stability", 0.45), "similarity_boost": cfg.get("similarity", 0.8),
+                               "style": cfg.get("style", 0.3), "use_speaker_boost": True}}
+    req = urllib.request.Request(f"https://api.elevenlabs.io/v1/text-to-speech/{cfg['voice_id']}?output_format=mp3_44100_128",
+                                 data=json.dumps(body).encode(), headers={"xi-api-key": key, "Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=120) as r, open(out_mp3, "wb") as f:
+        f.write(r.read())
+
+
+def _premade(voice_dir, i):
+    """일레븐랩스 웹 등에서 직접 만든 음성: voice_dir/01.mp3(문장 순서 번호, 1부터)."""
+    if not voice_dir:
+        return None
+    for ext in ("mp3", "wav", "m4a"):
+        p = os.path.join(voice_dir, f"{i + 1:02d}.{ext}")
+        if os.path.exists(p):
+            return p
+    return None
+
+
 def _to_wav(src, dst):
     # 음성 앞뒤에 붙는 빈 소리를 잘라 문장 사이가 늘어지지 않게 한다
     trim = ("silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.03,areverse,"
@@ -31,7 +57,7 @@ def _dur(path):
         return w.getnframes() / w.getframerate()
 
 
-def synth(segments, voice, rate, work, voices=None):
+def synth(segments, voice, rate, work, voices=None, voice_dir=None):
     """segments: [{text, who?}] → (narration.wav 경로, [(시작, 끝)] 문장별 시간).
 
     voices: {"배역": {"voice", "rate", "pitch"}} — 문장의 who 가 있으면 그 배역 목소리로 읽는다."""
@@ -41,15 +67,23 @@ def synth(segments, voice, rate, work, voices=None):
     for i, seg in enumerate(segments):
         mp3 = os.path.join(work, f"seg{i:02d}.mp3")
         wav = os.path.join(work, f"seg{i:02d}.wav")
-        for attempt in range(3):
-            try:
-                v = voices.get(seg.get("who"), {})
-                asyncio.run(_say(seg.get("say", seg["text"]), v.get("voice", voice), v.get("rate", rate), mp3,
-                                 v.get("pitch", "+0Hz")))
-                break
-            except Exception:
-                if attempt == 2:
-                    raise
+        v = voices.get(seg.get("who") or "내레이터", {})
+        made = _premade(voice_dir, i)
+        if made:  # 직접 만든 음성 파일이 있으면 그대로
+            mp3 = made
+        else:
+            el = v.get("elevenlabs")
+            for attempt in range(3):
+                try:
+                    if el and os.environ.get("ELEVENLABS_API_KEY"):
+                        _eleven(seg.get("say", seg["text"]), el, mp3)
+                    else:
+                        asyncio.run(_say(seg.get("say", seg["text"]), v.get("voice", voice), v.get("rate", rate), mp3,
+                                         v.get("pitch", "+0Hz")))
+                    break
+                except Exception:
+                    if attempt == 2:
+                        raise
         _to_wav(mp3, wav)
         d = _dur(wav)
         times.append((t, t + d))

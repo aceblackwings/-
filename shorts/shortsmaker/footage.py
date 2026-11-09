@@ -62,6 +62,17 @@ def pixabay_by_id(vid, used):
             "license": "Pixabay Content License", "query": f"id {h['id']}"}
 
 
+def pixabay_photo(pid, used):
+    """「photo:ID」 — Pixabay 사진 한 장(천천히 확대되는 정지 화면으로 씀)."""
+    key = os.environ.get("PIXABAY_API_KEY")
+    hits = _get(f"https://pixabay.com/api/?key={key}&id={int(pid)}").get("hits", [])
+    if not hits:
+        return None
+    h = hits[0]
+    return {"id": f"p{h['id']}", "url": h.get("largeImageURL") or h["webformatURL"], "page": h["pageURL"],
+            "by": h.get("user", ""), "license": "Pixabay Content License", "query": f"photo {h['id']}", "ext": "jpg"}
+
+
 def _download(url, path):
     with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=180) as r, open(path, "wb") as f:
         f.write(r.read())
@@ -84,14 +95,16 @@ def resolve(story, times, work):
                 credits.append({"query": "(직접 넣은 파일)", "page": os.path.basename(it[5:]), "by": "", "license": "직접 확보"})
                 continue
             slug = re.sub(r"[^a-z0-9]+", "-", it.lower()).strip("-")
-            if it.startswith("pixabay:"):
+            if it.startswith("photo:"):
+                hit = pixabay_photo(it[6:], used)
+            elif it.startswith("pixabay:"):
                 hit = pixabay_by_id(it[8:], used)
             else:
                 hit = pixabay_search(it, need, used)
             if not hit:
                 print(f"   ! 검색 결과 없음: {it} → 그래픽 배경으로 대체")
                 continue
-            path = os.path.join(clip_dir, f"{slug}-{hit['id']}.mp4")
+            path = os.path.join(clip_dir, f"{slug}-{hit['id']}.{hit.get('ext', 'mp4')}")
             if not os.path.exists(path):
                 _download(hit["url"], path)
             seg["_clips"].append(path)
@@ -105,7 +118,9 @@ class ClipStream:
 
     def __init__(self, path, frames, offset=0.6):
         vf = (f"scale={SIZE}:{SIZE}:force_original_aspect_ratio=increase,crop={SIZE}:{SIZE},fps={FPS},{GRADE}")
-        self.p = subprocess.Popen(["ffmpeg", "-v", "error", "-stream_loop", "-1", "-ss", str(offset), "-i", path,
+        still = path.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))
+        src = ["-loop", "1", "-i", path] if still else ["-stream_loop", "-1", "-ss", str(offset), "-i", path]
+        self.p = subprocess.Popen(["ffmpeg", "-v", "error", *src,
                                    "-vf", vf, "-frames:v", str(frames + 2), "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
                                   stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         self.last = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 255))

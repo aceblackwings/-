@@ -19,6 +19,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("story")
+    ap.add_argument("--voice-sheet", action="store_true", help="일레븐랩스 웹에서 녹음할 문장표만 만들기")
     ap.add_argument("--preview", help="쉼표로 나눈 초(예: 1,5,12) → 그 순간 화면만 그림으로 저장")
     args = ap.parse_args()
     story = json.load(open(args.story, encoding="utf-8"))
@@ -26,9 +27,18 @@ def main():
     work = os.path.join(out, "work")
     os.makedirs(work, exist_ok=True)
 
+    if args.voice_sheet:
+        sheet = os.path.join(out, "voice-sheet.txt")
+        with open(sheet, "w", encoding="utf-8") as f:
+            f.write(f"# {story['id']} 음성 문장표 — 파일 이름을 번호대로 저장해 {story.get('voice_dir', 'voices/' + story['id'])}/ 에 넣기\n\n")
+            for i, seg in enumerate(story["segments"]):
+                f.write(f"{i + 1:02d}.mp3  [{seg.get('who') or '내레이터'}]  {seg.get('say', seg['text'])}\n")
+        print("문장표:", sheet)
+        return
+
     print("1/4 음성 합성")
     narr, times = tts.synth(story["segments"], story.get("voice", "ko-KR-InJoonNeural"), story.get("rate", "+0%"), work,
-                             story.get("voices"))
+                             story.get("voices"), story.get("voice_dir") and os.path.join(HERE, story["voice_dir"]))
     print(f"   대사 길이 {times[-1][1]:.1f}초")
     credits = []
     if any(seg.get("footage") for seg in story["segments"]):

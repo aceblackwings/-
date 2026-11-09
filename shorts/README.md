@@ -33,6 +33,11 @@ python3 make_short.py stories/organ-donation-7.json --preview 2,10,30   # 그 �
 - 결과에 `<id>.srt` 자막 파일, `edit-kit/`(소리 없는 영상·내레이션·배경음악·자막)이 함께 나옴 → 캡컷 등에서 다시 편집할 때 사용
 - 예: `stories/incheon-envelope-80s.json`(창작 각색 사연 1분 20초판)
 
+## 일레븐랩스 음성(v0.4)
+- **웹에서 직접 만든 음성 쓰기**: `python3 make_short.py stories/<id>.json --voice-sheet` → `output/<id>/voice-sheet.txt`(번호·배역·문장). 일레븐랩스 웹에서 문장마다 만들어 `01.mp3, 02.mp3 …`로 이름 붙여 `voice_dir`(예: `voices/<id>/`)에 넣고 다시 실행하면 그 파일을 그대로 씀(없는 번호만 Edge TTS)
+- **API로 자동 합성**: 환경 변수 `ELEVENLABS_API_KEY` + `voices.<배역>.elevenlabs.voice_id` 를 채우면 일레븐랩스로 읽음(모델 eleven_multilingual_v2)
+- 화면 소재는 영상 `pixabay:ID` 외에 사진 `photo:ID`(Pixabay 사진, 천천히 확대)도 됨
+
 ## 구조
 | 파일 | 하는 일 |
 |---|---|

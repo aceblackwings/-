@@ -31,7 +31,7 @@ def make(path, seconds, palette="warm"):
     chords = CHORDS.get(palette, CHORDS["warm"])
     bar = 4.0  # 코드 하나 4초
     total = int((seconds + 2) * SR)
-    out = np.zeros(total + SR * 4)
+    out = np.zeros(total + int((bar + 4) * SR))  # 마지막 코드가 넘쳐도 들어가게
     i = 0
     rng = np.random.default_rng(7)
     while i * bar < seconds + 2:
