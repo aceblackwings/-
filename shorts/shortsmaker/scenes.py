@@ -176,7 +176,7 @@ def ecg(img, t, d, ctx):
     small = layer.resize((S, S), Image.LANCZOS)
     img.alpha_composite(gfx.glow(small, 12, 1.5, "#ff4646" if flat else "#5affaa"))
     img.alpha_composite(small)
-    label(img, "2024. 7. 1", S / 2, S * .14, 50, "#ffffff", ease_out(prog(t, 0, .4)), bg="#e0405a")
+    label(img, "2024. 7", S / 2, S * .14, 50, "#ffffff", ease_out(prog(t, 0, .4)), bg="#e0405a")
     if flat:
         f = prog(t, flat_at, .5)
         label(img, "갑작스러운 심정지", S / 2, S * .7, 70, "#ff8080", ease_out(f), .9 + .1 * ease_back(f))

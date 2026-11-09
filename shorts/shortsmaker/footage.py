@@ -47,6 +47,21 @@ def pixabay_search(query, need_sec, used):
     return None
 
 
+def pixabay_by_id(vid, used):
+    """「pixabay:ID」 — 눈으로 고른 영상을 번호로 정확히 지정(검색 결과가 엉뚱할 때)."""
+    key = os.environ.get("PIXABAY_API_KEY")
+    if not key:
+        raise RuntimeError("PIXABAY_API_KEY 가 없습니다(환경 변수 등록 후 새 세션에서 실행).")
+    hits = _get(f"https://pixabay.com/api/videos/?key={key}&id={int(vid)}").get("hits", [])
+    if not hits:
+        return None
+    h = hits[0]
+    v = h["videos"].get("medium") or h["videos"].get("large") or h["videos"].get("small")
+    used.add(h["id"])
+    return {"id": h["id"], "url": v["url"], "page": h["pageURL"], "by": h.get("user", ""),
+            "license": "Pixabay Content License", "query": f"id {h['id']}"}
+
+
 def _download(url, path):
     with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=180) as r, open(path, "wb") as f:
         f.write(r.read())
@@ -69,7 +84,10 @@ def resolve(story, times, work):
                 credits.append({"query": "(직접 넣은 파일)", "page": os.path.basename(it[5:]), "by": "", "license": "직접 확보"})
                 continue
             slug = re.sub(r"[^a-z0-9]+", "-", it.lower()).strip("-")
-            hit = pixabay_search(it, need, used)
+            if it.startswith("pixabay:"):
+                hit = pixabay_by_id(it[8:], used)
+            else:
+                hit = pixabay_search(it, need, used)
             if not hit:
                 print(f"   ! 검색 결과 없음: {it} → 그래픽 배경으로 대체")
                 continue

@@ -1,5 +1,6 @@
 """모션그래픽 재료: 글꼴, 이징, 아이콘(4배로 그려 매끈하게), 빛 번짐, 글자 그림."""
 import math
+import os
 from functools import lru_cache
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
@@ -10,7 +11,12 @@ SS = 4  # 아이콘 매끈하게 그리는 배율
 
 @lru_cache(maxsize=64)
 def font(size, weight="Black"):
-    return ImageFont.truetype(f"{FONT_DIR}NotoSansCJK-{weight}.ttc", int(size), index=1)  # index 1 = KR
+    # 굵기 파일이 없으면(fonts-noto-cjk-extra 미설치) Bold → Regular 로 대신 씀
+    for w in (weight, "Bold", "Regular"):
+        path = f"{FONT_DIR}NotoSansCJK-{w}.ttc"
+        if os.path.exists(path):
+            return ImageFont.truetype(path, int(size), index=1)  # index 1 = KR
+    raise OSError("Noto Sans CJK 글꼴이 없습니다(fonts-noto-cjk 설치 필요)")
 
 
 # ---------- 이징 ----------

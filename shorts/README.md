@@ -19,7 +19,7 @@ python3 make_short.py stories/organ-donation-7.json --preview 2,10,30   # 그 �
 - 사실은 반드시 기사로 확인하고 `sources`에 주소를 남긴다(설명란에 자동 기재). 없는 인용문을 만들지 않는다.
 
 ## 실제 영상 바탕(v0.2)
-문장에 `footage`(영어 검색어 1~2개, 또는 `file:경로`)와 `overlay`(얹을 그래픽)를 넣으면 그 문장은 실제 영상 위에 그래픽이 얹힌다.
+문장에 `footage`(영어 검색어 1~2개, 눈으로 고른 영상 번호 `pixabay:ID`, 또는 `file:경로`)와 `overlay`(얹을 그래픽)를 넣으면 그 문장은 실제 영상 위에 그래픽이 얹힌다.
 - 검색: Pixabay — 환경 변수 `PIXABAY_API_KEY` 필요. 얼굴·환자 위주 태그는 피하고, 길이가 충분한 영상을 고름
 - 얹는 그래픽: `stamp`(도장) `namecard`(이름표) `tag`(라벨) `counter`(숫자 올라감) `quote`(인용) `organs`(장기 아이콘)
 - `footage` 없는 문장은 기존 모션그래픽 장면(예: `ecg`, `seven`)
