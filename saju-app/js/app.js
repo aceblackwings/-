@@ -1204,7 +1204,7 @@ function tlDaewoon(d) {
     <div class="dw-chips">${chips}</div>
     <p class="why-calc">${d.dw.forward ? '순행' : '역행'} 대운 · ${d.dw.startAge}세 시작 (태어난 날부터 절기까지 ${d.dw.days}일 ÷ 3 · 정확히는 ${dwExact(d.dw)}부터)${cur ? ` · 근거: ${explainParts(layersAt(s, state.fortune.date, state.profile.gender).daewoon.parts)}` : ''}</p>
     <button class="ghost tl-read" type="button" data-tl-step="read-daewoon">📖 대운 풀이 자세히 읽기</button>
-    ${stepBtn('앞으로 5년 흐름 보기', 'five')}`;
+`;
   return tlCard('daewoon', sum, body);
 }
 
@@ -3318,7 +3318,7 @@ function todoTteokHTML() {
     <div class="todo3-head"><h3>✅ 오늘 할 일 <small>${n}/3</small></h3><button type="button" class="tteok-chip" data-tteok-shop>${TTEOK} <b>${st?.balance || 0}</b></button></div>
     <ol class="todo3-list">${tasks.map((t) => `<li class="${t.done ? 'done' : ''}"><span class="t3-ic">${t.done ? '✔' : t.icon}</span><span class="t3-l">${t.label}<small>${TTEOK} +${t.reward}</small></span>${t.done ? '<em>완료</em>' : `<button type="button" class="ghost" ${GO[t.key][0]}>${GO[t.key][1]}</button>`}</li>`).join('')}</ol>
     <div class="todo3-bar"><i style="width:${(n / 3) * 100}%"></i></div>
-    <p class="todo3-pieces">🎀 꾸미기 조각 <b>${Math.min(st?.pieces || 0, PIECES_PER_ITEM)}/${PIECES_PER_ITEM}</b> <span class="pc-dots">${Array.from({ length: PIECES_PER_ITEM }, (_, i) => `<i class="${i < (st?.pieces || 0) ? 'on' : ''}"></i>`).join('')}</span><small>할 일 하나에 1개 · 다 모으면 계절 소품(${esc(nextSeasonItemName())})</small></p>
+    ${!SHOW_SEASON_ITEMS ? '' : `<p class="todo3-pieces">🎀 꾸미기 조각 <b>${Math.min(st?.pieces || 0, PIECES_PER_ITEM)}/${PIECES_PER_ITEM}</b> <span class="pc-dots">${Array.from({ length: PIECES_PER_ITEM }, (_, i) => `<i class="${i < (st?.pieces || 0) ? 'on' : ''}"></i>`).join('')}</span><small>할 일 하나에 1개 · 다 모으면 계절 소품(${esc(nextSeasonItemName())})</small></p>`}
     <p class="todo3-foot">${n === 3 ? '🎉 오늘은 2027년 운세와 내 사주가 무료로 열렸어요!' : `세 가지를 다 하면 오늘은 <b>2027년 운세</b>와 <b>내 사주</b>가 무료로 열려요 (보너스 ${TTEOK}+${ALL_BONUS}).`}</p>
   </article>`;
 }
@@ -3434,9 +3434,10 @@ function renderTarot() {
   const T = tarotState(); const tp = TAROT_TOPICS.find((x) => x.key === T.topic);
   let body = '';
   const tbal = loadTteok()?.balance || 0;
-  if (tbal < TAROT_COST.one && T.step !== 'result') {
-    body = `<div class="tr-lock"><p class="tr-lock-h">🔒 타로는 ${TTEOK} 복떡 ${TAROT_COST.one}개로 한 번 볼 수 있어요</p>
-      <p>지금 가진 복떡 <b>${tbal}</b>개 · ${TAROT_COST.one - tbal}개 더 모으면 열려요.</p>
+  const tmin = Math.min(TAROT_COST.one, TAROT_COST.three);
+  if (tbal < tmin && T.step !== 'result') {
+    body = `<div class="tr-lock"><p class="tr-lock-h">🔒 타로는 ${TTEOK} 복떡 ${tmin}개부터 볼 수 있어요</p>
+      <p>지금 가진 복떡 <b>${tbal}</b>개 · ${tmin - tbal}개 더 모으면 열려요.</p>
       <p class="muted">복떡은 오늘 화면의 「나만의 매일 습관」을 체크하면(하나에 2개) 모을 수 있어요. 지신 코디에서 별 3개 이상이어도 받아요.</p>
       <button type="button" class="primary" data-go-habits>✅ 습관 체크하러 가기</button></div>`;
   } else if (T.step === 'topic') {
@@ -3486,7 +3487,7 @@ function renderTarot() {
 /** 타로 이용 안내: 하루 1회 무료, 그다음은 복떡(가진 복떡 표시) */
 function tarotPriceNoteHTML() {
   const st = loadTteok();
-  return `<p class="muted tr-price-note">🃏 타로는 한 번에 ${TTEOK} 복떡 ${TAROT_COST.one}개(한 장 ${TAROT_COST.one}개 · 세 장 ${TAROT_COST.three}개) · 가진 복떡 ${st?.balance || 0}개 · <a href="#" data-tteok-shop>복떡 모으는 법</a></p>`;
+  return `<p class="muted tr-price-note">🃏 타로는 ${TTEOK} 복떡으로 봐요: 한 장 ${TAROT_COST.one}개 · 세 장 ${TAROT_COST.three}개 · 가진 복떡 ${st?.balance || 0}개 · <a href="#" data-tteok-shop>복떡 모으는 법</a></p>`;
 }
 
 function tarotNewDeck(T) { T.deck = shuffleDeck(); T.picks = []; T.step = 'pick'; }
@@ -3538,7 +3539,7 @@ function renderToday() {
     <div class="fold-list">
       ${foldHTML('saju', '🀄', '내 사주', `일간 ${STEMS[sj.dayMaster]}(${STEMS_KO[sj.dayMaster]}) · 필요한 기운 ${ELEMENT_KO[sj.yongsin]}`, sajuOpenHTML())}
       ${weekly ? foldHTML('weekly', '💌', '이번 주 편지', '한 주 돌아보기', weekly) : ''}
-      ${foldHTML('more', '🔮', '운세 더 보기', '이번 주·이달·올해·10년 · 궁금한 질문', `<div class="fold-go"><button type="button" class="primary" data-go-tab="ask">🔮 궁금한 것 물어보기</button><button type="button" class="ghost" data-go-tab="report">📅 올해·5년 흐름</button></div>`)}
+      ${foldHTML('more', '🔮', '운세 더 보기', '이번 주·이달·올해·10년 · 궁금한 질문', `<div class="fold-go"><button type="button" class="primary" data-go-tab="ask">🔮 궁금한 것 물어보기</button></div>`)}
     </div>`;
 
   $('#btn-daily')?.addEventListener('click', claimDaily);
@@ -4009,10 +4010,11 @@ function seasonTick(questKeys) {
   for (const k of questKeys) {
     const r = recordSeason(st, ss.id, k, state.fortune.dateKey);
     st = r.state; got.push(...r.unlocked);
+    if (!SHOW_SEASON_ITEMS && r.unlocked.some((t) => t.reward === 'item')) delete st.owned[ss.id].item;
   }
   save(SEASON_KEY, st);
   if (questKeys.some((k) => SEASON_MISSIONS.some((m) => m.key === k))) setTimeout(refreshSeasonCard, 0);
-  return got.map((t) => t.reward === 'item' ? `🏮 ${itemName(ss)} 무료 획득! 캐릭터 탭에서 장착해 보세요` : t.reward === 'title' ? `🏮 한정 칭호 「${titleName(ss)}」 획득!` : `🏮 한정 스티커 「${ss.sticker}」 획득!`);
+  return got.filter((t) => !(!SHOW_SEASON_ITEMS && t.reward === 'item')).map((t) => t.reward === 'item' ? `🏮 ${itemName(ss)} 무료 획득! 캐릭터 탭에서 장착해 보세요` : t.reward === 'title' ? `🏮 한정 칭호 「${titleName(ss)}」 획득!` : `🏮 한정 스티커 「${ss.sticker}」 획득!`);
 }
 
 function refreshSeasonCard() {
