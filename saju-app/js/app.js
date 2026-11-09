@@ -415,7 +415,7 @@ function initForm() {
 // v0.43 단순화(2026-11-04 사용자 결정): 주 탭 4개(오늘·타로·궁합·지신). 운세 보기는 오늘 아래, 상담은 지신 아래
 const TAB_PARENT = { ask: 'today', cards: 'today', saju: 'today', report: 'today', feng: 'today', chat: 'hero', charm: 'hero', emoji: 'hero', story: 'hero', gallery: 'hero', records: 'hero' };
 const SUBNAV = {
-  today: [['today', '← 오늘'], ['ask', '🔮 운세 더 보기'], ['saju', '🀄 내 사주'], ['report', '📅 올해·5년'], ['feng', '🧭 풍수 지도']],
+  today: [['today', '← 오늘'], ['ask', '🔮 운세 더 보기'], ['saju', '🀄 내 사주'], ['feng', '🧭 풍수 지도']],
   hero: [['hero', '← 지신']],
 };
 
@@ -1132,7 +1132,6 @@ function tlWeek(d) {
     <div class="wk-bars">${bars}</div>
     ${flowStoryHTML(weekStory(w))}
     <div class="tl-kit">${['wealth', 'love', 'career'].map((c) => { const b = bestCat(c); return `<span>${CATEGORIES.find((x) => x.key === c).icon} ${CATEGORIES.find((x) => x.key === c).label} 최고: ${dowOf(b.date)}요일 ${b.scores[c]}</span>`; }).join('')}</div>
-    <details class="why"><summary>요일별 한 줄 보기</summary><ul class="wk-lines">${lines}</ul></details>
     ${stepBtn(`${dowOf(w.best.date)}요일을 어떻게 쓸지 수호신과 계획하기`, 'chat-week')}
     ${wealthWeekHTML(w)}`;
   return tlCard('week', sum, body);
@@ -3372,7 +3371,7 @@ function openTteokShop(need = 0) {
     <h4>🎁 모으기 (모두 무료)</h4>
     <ul class="ts-free"><li>✅ 나만의 습관 체크 하나 +2 <small>(첫날은 바로 2개 = +4)</small></li><li>👗 지신 코디 별 ★3 +1 · ★4 +2 · ★5 +3 <small>(부위마다 하루 한 번)</small></li></ul>
     <h4>🍡 쓰기</h4>
-    <ul class="ts-free"><li>🃏 타로 한 번 ${TAROT_COST.one}개</li><li>💞 새 친구 궁합 ${COMPAT_COST}개 <small>(같은 친구는 다시 무료)</small></li><li>🌠 소원 부적: ${CHARM_TTEOK}개면 한 번 무료 <small>(아니면 ${won(CHARM_PRICE)} · 🏮 100일 등불은 복떡 불가 · 🔥 걱정 태우기는 늘 무료)</small></li></ul>
+    <ul class="ts-free"><li>🃏 타로 한 장 ${TAROT_COST.one}개 · 세 장 ${TAROT_COST.three}개</li><li>💞 새 친구 궁합 ${COMPAT_COST}개 <small>(같은 친구는 다시 무료)</small></li><li>🌠 소원 부적: ${CHARM_TTEOK}개면 한 번 무료 <small>(아니면 ${won(CHARM_PRICE)} · 🏮 100일 등불은 복떡 불가 · 🔥 걱정 태우기는 늘 무료)</small></li></ul>
     ${(st?.log || []).length ? `<h4>최근 기록</h4><ul class="ts-free">${st.log.slice(0, 6).map((l) => `<li>${esc(l.text)} <b>${l.n > 0 ? '+' : ''}${l.n}</b></li>`).join('')}</ul>` : ''}
     <div class="yday-btns"><button type="button" class="primary" data-go-habits>✅ 습관 체크하러 가기</button><button type="button" class="ghost" data-close-shop>닫기</button></div></div>`;
   document.body.appendChild(box);
@@ -3487,7 +3486,7 @@ function renderTarot() {
 /** 타로 이용 안내: 하루 1회 무료, 그다음은 복떡(가진 복떡 표시) */
 function tarotPriceNoteHTML() {
   const st = loadTteok();
-  return `<p class="muted tr-price-note">🃏 타로는 한 번에 ${TTEOK} 복떡 ${TAROT_COST.one}개(한 장·세 장 같음) · 가진 복떡 ${st?.balance || 0}개 · <a href="#" data-tteok-shop>복떡 모으는 법</a></p>`;
+  return `<p class="muted tr-price-note">🃏 타로는 한 번에 ${TTEOK} 복떡 ${TAROT_COST.one}개(한 장 ${TAROT_COST.one}개 · 세 장 ${TAROT_COST.three}개) · 가진 복떡 ${st?.balance || 0}개 · <a href="#" data-tteok-shop>복떡 모으는 법</a></p>`;
 }
 
 function tarotNewDeck(T) { T.deck = shuffleDeck(); T.picks = []; T.step = 'pick'; }
@@ -5829,8 +5828,8 @@ function charmShowcaseHTML() {
   return `<section class="cm-show" aria-label="세상에 하나뿐인 부적">
     <p class="cm-show-h">✨ 세상에 하나뿐인 부적 <small>${esc(state.profile.name ? `${state.profile.name} 님 이름` : '내 이름')} · ${esc(myZodiac().name)} 지신 인장 · 붓글씨</small></p>
     <div class="cm-show-row">
-      <button type="button" class="cm-card wish" data-cm-open="wish"><span class="cm-thumb">${paidCharmSVG(makerData('wish', ''))}</span><b>🌠 소원 부적</b><small>금박 부적에 담아 두면 그날 지신이 먼저 물어봐요 · 100일 등불도</small><i class="cm-price">990원부터</i></button>
-      <button type="button" class="cm-card burn" data-cm-open="burn"><span class="cm-thumb">${paidCharmSVG(makerData('burn', ''))}</span><b>🔥 걱정 태우기</b><small>걱정을 적어 태우면, 그 자리에 작은 씨앗이 남아요</small><i class="cm-price free">무료 · 하루 한 번</i></button>
+      <button type="button" class="cm-card wish" data-cm-open="wish"><span class="cm-thumb">${paidCharmSVG(makerData('wish', ''))}</span><b>🌠 소원 부적</b><small>금박 부적에 담아 두면 그날 지신이 먼저 물어봐요</small><i class="cm-price">${won(CHARM_PRICE)}</i></button>
+      <button type="button" class="cm-card lantern" data-cm-open="wish" data-cm-tier="lantern"><span class="cm-thumb">${paidCharmSVG(makerData('wish', '', undefined, { lantern: true }))}<i class="cm-lt-badge">🏮 100일</i></span><b>🏮 100일 등불</b><small>100일 동안 홈에 켜 두고 지신과 매일 함께 빌어요</small><i class="cm-price">${won(LANTERN_PRICE)}</i></button>
     </div>
   </section>`;
 }
@@ -5873,11 +5872,7 @@ function openCharmMaker(kind, preset = '', tier = 'wish') {
   box.innerHTML = `<div class="evo-box cm-box ${kind}" role="dialog" aria-label="${wish ? '소원 부적 만들기' : '걱정 태우기'}">
     <button type="button" class="cm-x" data-cm="close" aria-label="닫기">✕</button>
     <p class="cm-eyebrow">✨ 세상에 하나뿐인 부적</p>
-    <h3>${wish ? '내 소원을 금박 부적에 담아요' : '걱정을 붉은 부적에 적어 태워요'}</h3>
-    ${wish ? `<div class="cm-tiers" role="radiogroup" aria-label="소원 부적 고르기">
-      <button type="button" role="radio" class="cm-tier" data-cm-tier="wish"><b>🌠 소원 부적</b><span class="cm-tier-p">${won(CHARM_PRICE)}</span><small>그날 지신이 한 번 물어봐요 · 복떡 ${CHARM_TTEOK}개로도</small></button>
-      <button type="button" role="radio" class="cm-tier" data-cm-tier="lantern"><i class="cm-tier-tag">추천</i><b>🏮 100일 소원 등불</b><span class="cm-tier-p">${won(LANTERN_PRICE)}</span><small>100일 동안 매일 빌어 줘요 · 편지 3통 · 가족 소원</small></button>
-    </div>` : ''}
+    <h3>${!wish ? '걱정을 붉은 부적에 적어 태워요' : t === 'lantern' ? '100일 소원 등불을 켜요' : '내 소원을 금박 부적에 담아요'}</h3>
     <div class="cm-preview" id="cm-preview"></div>
     <p class="cm-live">✍️ 아래에 적는 대로 부적에 붓글씨로 쓰여요</p>
     <label class="cm-field"><span>${wish ? '🌠 소원 한 줄' : '🔥 걱정 한 줄'}</span>
@@ -5965,7 +5960,7 @@ function openCharmMaker(kind, preset = '', tier = 'wish') {
   if (!matchMedia('(pointer: coarse)').matches) setTimeout(() => input.focus({ preventScroll: true }), 60);
 }
 document.addEventListener('click', (e) => {
-  const o = e.target.closest('[data-cm-open]'); if (o) { openCharmMaker(o.dataset.cmOpen, o.dataset.cmPreset || ''); return; }
+  const o = e.target.closest('[data-cm-open]'); if (o) { openCharmMaker(o.dataset.cmOpen, o.dataset.cmPreset || '', o.dataset.cmTier || 'wish'); return; }
   if (e.target.closest('[data-cm-hide]')) { save(CMNUDGE_KEY, { hide: state.fortune.dateKey }); $$('.cm-nudge').forEach((x) => x.remove()); toast('오늘은 부적 제안을 그만 보여 드릴게요'); }
 });
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -6337,7 +6332,7 @@ function burnHTML() {
   return `<div class="burn-intro">
     ${seedGardenHTML()}
     <p class="muted" style="margin:0 0 8px">옛날에는 소원과 걱정을 종이에 적어 태워 하늘로 보냈어요(소지). 걱정 한 줄을 붉은 한지 부적에 적어 손끝으로 태워 보세요. <b>적은 걱정은 어디에도 저장하지 않아요.</b></p>
-    <button type="button" class="primary ki-go" data-cm-open="burn">🔥 걱정 태우러 가기 · 무료</button>
+    <button type="button" class="cm-card burn burn-solo" data-cm-open="burn"><span class="cm-thumb">${paidCharmSVG(makerData('burn', ''))}</span><b>🔥 걱정 태우기</b><small>걱정을 적어 태우면, 그 자리에 작은 씨앗이 남아요</small><i class="cm-price free">무료 · 하루 한 번</i></button>
   </div>`;
 }
 document.addEventListener('click', (e) => {

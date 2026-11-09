@@ -2238,3 +2238,9 @@ body.cm-open { overflow: hidden; }
 /* v0.64.6 지신 말풍선 안 「지신과 이야기하기」 */
 .hero-say-box .say-chat { display: block; width: 100%; margin-top: 10px; padding: 10px 12px; border: 1.5px solid #f3c6d4; border-radius: 999px; background: #fff6f9; color: #b0466c; font: inherit; font-size: 0.88rem; font-weight: 700; cursor: pointer; }
 .hero-say-box .say-chat:active { transform: scale(0.98); }
+
+/* v0.64.7 진열장 = 소원 부적 + 100일 등불, 걱정 태우기 카드는 접힘 안에 하나 */
+.cm-card.lantern .cm-thumb { animation: cm-float 3.6s 1.8s ease-in-out infinite; }
+.cm-card.burn-solo { width: min(220px, 70%); margin: 4px auto 0; display: flex; }
+.cm-card.lantern .cm-thumb { position: relative; }
+.cm-lt-badge { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); padding: 3px 10px; border-radius: 999px; background: #2f3e5c; color: #ffe6a6; font-style: normal; font-size: .72rem; font-weight: 700; white-space: nowrap; box-shadow: 0 0 12px rgba(255, 200, 90, .6); }
