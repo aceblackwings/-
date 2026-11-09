@@ -1939,7 +1939,7 @@ function kaiunBoxHTML(period, base) {
   const hasLegend = load(COLLECTION_KEY, []).some((r) => r.rarity === 'legend');
   const capLine = cs.capped ? `<p class="kaiun-cap">🏆 올해 개운이 가득 찼어요. 넘친 기운은 <b>다음 해 개운 +${cs.carry}</b>로 이월돼요.${hasLegend ? ' 다음 목표: 전설 부적을 7칸 키워 신화 부적 만들기!' : ' 다음 목표: 전설 부적 모으기!'}</p>` : '';
   return `<div class="kaiun-box ${L.empty ? 'empty' : ''}"><p>🧧 ${score}${esc(L.text)}</p>${capLine}
-    <button type="button" class="linkish" data-go-equip>${L.empty ? '부적 달아 주러 가기 →' : '부적·지신 돌보러 가기 →'}</button> <button type="button" class="linkish" data-kaiun-graph>📈 나의 개운 그래프</button>
+    ${SHOW_CHARM_SLOTS ? `<button type="button" class="linkish" data-go-equip>${L.empty ? '부적 달아 주러 가기 →' : '부적·지신 돌보러 가기 →'}</button> ` : ''}<button type="button" class="linkish" data-kaiun-graph>📈 나의 개운 그래프</button>
     <small>개운은 게임 요소예요. 타고난 사주와 정통 점수는 바뀌지 않아요.</small></div>`;
 }
 /** B1 오늘의 개운 반영 올해 점수를 기록(하루 한 번 갱신) */
@@ -2509,7 +2509,7 @@ function completeNote() {
     ${slotOpened ? '<p class="eq-pair">🎎 같은 종류 부적이 두 장 모여 <b>두 번째 부적 슬롯</b>이 열렸어요. 함께 달면 쌍부적!</p>' : ''}
     ${[...grownLines, ...fedLines].map((x) => `<p class="cg-line">${esc(x)}</p>`).join('')}
     ${story ? `<div class="nt-story"><b>📖 새 이야기가 열렸어요 · ${esc(story.title)}</b><p>${esc(story.text)}</p><small>내 수호신 > 수호신의 이야기에서 다시 볼 수 있어요</small></div>` : ''}
-    <div class="yday-btns" style="grid-template-columns:1fr 1fr"><button type="button" class="ghost" data-close-reward>고마워요</button><button type="button" class="primary" data-go-equip>🧧 부적 달아 주기 →</button></div></div>`;
+    ${SHOW_CHARM_SLOTS ? `<div class="yday-btns" style="grid-template-columns:1fr 1fr"><button type="button" class="ghost" data-close-reward>고마워요</button><button type="button" class="primary" data-go-equip>🧧 부적 달아 주기 →</button></div>` : '<div class="yday-btns"><button type="button" class="primary" data-close-reward>고마워요</button></div>'}</div>`;
   document.body.appendChild(box);
   box.addEventListener('click', (e) => { if (e.target.closest('[data-close-reward]') || e.target === box) box.remove(); });
 }
@@ -2568,6 +2568,7 @@ function tteokTask(key) {
 
 /** v0.42.1 꾸미기 조각 6개 → 계절 소품 하나(지금 시즌부터 다가오는 순서로 아직 없는 것) */
 function grantSeasonItem() {
+  if (!SHOW_SEASON_ITEMS) return;
   const today = dateToJdn(state.fortune.date.year, state.fortune.date.month, state.fortune.date.day);
   const y = state.fortune.date.year;
   const list = [...seasonsAround(y), ...seasonsAround(y + 1)].filter((x, i, a) => x.endJdn >= today && a.findIndex((z) => z.id === x.id) === i).sort((a, b) => a.startJdn - b.startJdn);
@@ -3725,16 +3726,19 @@ function recordOf(t) {
 
 const sameRecord = (a, b) => a && b && a.type === b.type && a.theme === b.theme && a.element === b.element && a.rarity === b.rarity && a.dateKey === b.dateKey;
 
+// v0.64.6 사용자 「단순하게」: 부적 슬롯·계절 소품은 잠시 숨김(기록·도감은 그대로, 다시 켜려면 true)
+const SHOW_CHARM_SLOTS = false;
+const SHOW_SEASON_ITEMS = false;
 function heroOptions() {
   const eq = loadEquip();
   const stage = loadGrowth().evolved;
   // 두 번째 부적 슬롯: 진화 3단계 또는 같은 종류 부적 2장(쌍부적 재료)이 모이면 열림 (2026-11-03 사용자 요청)
   const base = STAGE_UNLOCKS[stage - 1];
   const unlock = { ...base, charmSlots: Math.max(base.charmSlots, setUnlocked(load(COLLECTION_KEY, [])) ? 2 : 1) };
-  const charms = eq.charms.map((r, i) => (i < unlock.charmSlots ? charmFromRecord(r) : null));
+  const charms = eq.charms.map((r, i) => (SHOW_CHARM_SLOTS && i < unlock.charmSlots ? charmFromRecord(r) : null));
   const emote = unlock.emote ? eq.emote : null;
   const cd = state.fortune && load(COORDI_KEY, {}).days?.[state.fortune.dateKey]; // 오늘 코디했으면 하트에 맞는 표정
-  return { eq, charms, mood: emote || (cd ? COORDI_MOOD[cd.hearts - 1] : todayEmote(state.fortune)), emote, stage, unlock, season: seasonLook(loadSeason()) };
+  return { eq, charms, mood: emote || (cd ? COORDI_MOOD[cd.hearts - 1] : todayEmote(state.fortune)), emote, stage, unlock, season: SHOW_SEASON_ITEMS ? seasonLook(loadSeason()) : null };
 }
 
 function renderHero(animate) {
@@ -3761,7 +3765,6 @@ function renderHero(animate) {
 
 
   // v0.43 단순화: 지신 그림 + 기운 게이지 + 오늘 카드만 펼치고 나머지는 접힘
-  const kst = loadKi(); const kc = todayKiCard(kst, f.dateKey);
   const equipBody = `${candidates.length ? `<div class="equip-list">${candidates.map((r, i) => {
         const on = eq.charms.some((c) => sameRecord(c, r));
         return `<button type="button" data-equip="${i}" class="${on ? 'on' : ''}" title="${esc(r.label)}">${renderTalismanSVG(charmFromRecord(r))}</button>`;
@@ -3770,7 +3773,7 @@ function renderHero(animate) {
       ${charmCareHTML(eq, collection)}`;
   $('[data-panel="hero"]').innerHTML = `
     <div class="card hero-main">
-      ${speechBubble(state.heroLine ? [state.heroLine] : todayLines().slice(0, 2), 'hero-say')}
+      <div class="speech hero-say-box"><div class="hero-say">${(state.heroLine ? [state.heroLine] : todayLines().slice(0, 2)).map((l) => `<p>${esc(l)}</p>`).join('')}</div><button type="button" class="say-chat" data-go-tab="chat">💬 지신과 이야기하기</button></div>
       <div class="hero-stage ${animate ? 'reveal' : ''}" id="hero-stage" title="눌러서 성장 단계 보기">${coordiWrap(decorWrap(svg), loadCoordi().days[f.dateKey]?.outfit)}</div>
       <p class="muted" style="font-size:0.8rem;text-align:center;margin:6px 0 0">👆 지신을 누르면 앞으로 자랄 모습을 미리 볼 수 있어요</p>
       <h3 class="hero-title" style="text-align:center">${info.title}</h3>
@@ -3778,13 +3781,9 @@ function renderHero(animate) {
       ${jisinGrowHTML()}
       ${charmShowcaseHTML()}
       ${secondJisinHTML()}
-      <h4 class="ki-gh">🐉 지신 기운 게이지 <small>★ 부족한 기운</small></h4>
-      ${kiGaugeHTML(kc ? kc.element : -1)}
-      ${kiProgressHTML(kst)}
       ${kiCardHTML({ inHero: true })}
-      <div class="slots two">${slot(0)}${slot(1)}</div>
-      ${state.equipOpen ? `<div class="equip-pop" id="equip-pop">${equipBody}</div>` : `<p class="muted" style="font-size:0.8rem;text-align:center;margin:6px 0 0">빈 슬롯을 누르면 부적을 골라 달 수 있어요 (${candidates.length}장 보유)</p>`}
-      <button type="button" class="ghost ki-go" data-go-tab="chat">💬 지신과 이야기하기</button>
+      ${SHOW_CHARM_SLOTS ? `<div class="slots two">${slot(0)}${slot(1)}</div>
+      ${state.equipOpen ? `<div class="equip-pop" id="equip-pop">${equipBody}</div>` : `<p class="muted" style="font-size:0.8rem;text-align:center;margin:6px 0 0">빈 슬롯을 누르면 부적을 골라 달 수 있어요 (${candidates.length}장 보유)</p>`}` : ''}
     </div>
     <div class="fold-list">
       ${foldHTML('coordi', '👗', '오늘의 코디', coordiSub(), coordiHTML())}
@@ -3830,7 +3829,8 @@ function renderHero(animate) {
     state.heroLine = say('tap');
     const bubble = $('.hero-say', panel);
     bubble.innerHTML = `<p>${esc(state.heroLine)}</p>`;
-    bubble.classList.remove('pop'); void bubble.offsetWidth; bubble.classList.add('pop');
+    const sbox = bubble.closest('.hero-say-box') || bubble;
+    sbox.classList.remove('pop'); void sbox.offsetWidth; sbox.classList.add('pop');
     const st = $('#hero-stage', panel);
     st.classList.remove('jump'); void st.offsetWidth; st.classList.add('jump');
     setTimeout(openGrowthPreview, 350);
@@ -6268,6 +6268,7 @@ document.addEventListener('click', (e) => {
 // ---------- ② 지신 데일리 코디 ----------
 function loadCoordi() { return { ...emptyCoordi(), ...load(COORDI_KEY, {}) }; }
 function seasonHandItem() {
+  if (!SHOW_SEASON_ITEMS) return null;
   const st = loadSeason(); const owned = ownedItems(st); if (!owned.length) return null;
   const eq = owned.find((x) => x.id === st.equipped) || owned[0];
   return { id: COORDI_SEASON, icon: '🏮', name: eq.item || '계절 소품', key: eq.key };
@@ -6324,7 +6325,7 @@ document.addEventListener('click', (e) => {
   else if (sr.done) toast(`👗 코디 완성 · 별 ${sr.stars}개 · 별 3개부터 복떡을 받아요`);
   else toast(`👗 ${COORDI_SLOTS.find((x) => x.key === slot)?.label || ''} 골랐어요`);
   renderHero(false); refreshCoordi();
-  if (c.piece) {
+  if (SHOW_SEASON_ITEMS && c.piece) {
     const tt = { ...emptyTteok(), ...(loadTteok() || {}) }; tt.pieces = (tt.pieces || 0) + 1; save(TTEOK_KEY, tt);
     toast(`🎀 ${c.streak}일 연속 코디! 꾸미기 조각 1개를 받았어요`);
     if (tt.pieces >= PIECES_PER_ITEM) setTimeout(grantSeasonItem, 300);

@@ -11,7 +11,9 @@
 > 6. **Claude 쪽에만 있는 것**: 미리보기 아티팩트 게시, `sample`·`room`·`db` 기능, 구글 드라이브 그림 받기 — 이 작업은 Claude Code가 맡음. Codex는 그림이 필요하면 프롬프트(`docs/prompts/`)와 넣는 도구 사용법만 남김.
 > 7. **역할 나누기(기본안, 사용자가 바꿀 수 있음)**: Codex = 출시 구조(Firebase 로그인·구매 기록 동기화·Capacitor 포장·웹 PG/인앱 결제·약관 페이지), Claude Code = 사주 엔진·운세 문장·화면 연출·그림 연결·미리보기.
 >
-> **진행 중**: [Claude Code · claude/laughing-edison-56v6up · 지신 탭 단순화(부적 슬롯·계절 소품 숨김, 기운 카드만, 이야기하기 말풍선으로) · saju-app/js/app.js·styles.css]
+> **진행 중**: (없음)
+
+> **✅ v0.64.6(2026-11-09, 사용자 「부적 슬롯 1·2와 계절 소품은 숨기고 단순하게 · 기운 카드는 카드 내용만 · 지신과 이야기하기는 지신 위 말풍선 창으로」, Claude Code)**: app.js 스위치 `SHOW_CHARM_SLOTS = false`·`SHOW_SEASON_ITEMS = false`(다시 켜면 예전대로, 저장 기록·도감은 지우지 않음). 부적: 지신 탭 슬롯·고르기 칸 숨김, 지신 그림에 장착 부적 안 그림(`heroOptions` charms 비움), 「부적 달아 주러 가기」(개운 상자)·쪽지 보상 창 「🧧 부적 달아 주기」 버튼 숨김. 계절 소품: 지신 그림·성장 미리 보기·스토리 카드에 안 그림(`heroOptions` season null), 코디 손 칸 「계절 소품」(`seasonHandItem`) 숨김, 코디 연속 조각·`grantSeasonItem` 멈춤. 기운: 「지신 기운 게이지」·연속/누적 줄(`kiGaugeHTML`·`kiProgressHTML`)을 지신 탭에서 빼고 `kiCardHTML`만. 「💬 지신과 이야기하기」는 지신 위 말풍선(`.hero-say-box` 안 `.say-chat`, 대사 칸 `.hero-say`만 바뀜)으로. 확인: `npm test` 통과, Playwright 390px 오류 0·말풍선 버튼 → 상담 화면 열림. 미리보기 버전 104.
 
 > **✅ v0.64.5(2026-11-09, 사용자 「궁합의 친구 우편함·실시간 궁합방, 지신 창의 부적 달아 주기·지신 꾸미기 삭제 — 창만 길고 겹친다」, Claude Code)**: ① 궁합 탭 접힘 = 「12띠 수집 도감」만(`mailboxHTML`·`teamCardHTML`·`initRealtime` 코드는 남김, 화면에서만 뺌). ② 지신 탭 접힘 = 오늘의 코디·이룬 소원 벽·걱정 태우기. 부적 달기는 **빈 슬롯을 누르면** 슬롯 아래 고르기 칸(`state.equipOpen` → `#equip-pop`, 예전 `equipBody` 그대로 = 부적 목록·부적 돌보기), 찬 슬롯을 누르면 해제(예전대로), `data-go-equip`(홈 개운 상자·쪽지 보상 창)은 고르기 칸을 열고 이동. ③ 지신 꾸미기 칸(`seasonWardrobeHTML`) 삭제 → 계절 소품을 새로 받으면 **바로 착용**(예전엔 착용 중이면 꾸미기 칸에서 바꿔야 했음), 보상 창 버튼 「🐉 지신 보러 가기」 → `#hero-stage`. 계절 소품 바꿔 끼우기는 「지신 꾸미기 A안(착용 모양 그림 11장을 코디 칸에 합치기)」 때 코디 안으로 넣을 예정. 확인: `npm test` 통과, Playwright 390px로 궁합·지신 탭 접힘 목록·빈 슬롯 → 고르기 칸 열림·오류 0. 미리보기 버전 103.
 

@@ -2234,3 +2234,7 @@ body.cm-open { overflow: hidden; }
 .cm-box [hidden] { display: none !important; }
 .lantern-card .ghost, .lantern-card button.ghost { background: rgba(255, 255, 255, .08); color: #fbf2e2; border: 1px solid rgba(251, 242, 226, .45); }
 .lantern-card button:disabled { opacity: .7; }
+
+/* v0.64.6 지신 말풍선 안 「지신과 이야기하기」 */
+.hero-say-box .say-chat { display: block; width: 100%; margin-top: 10px; padding: 10px 12px; border: 1.5px solid #f3c6d4; border-radius: 999px; background: #fff6f9; color: #b0466c; font: inherit; font-size: 0.88rem; font-weight: 700; cursor: pointer; }
+.hero-say-box .say-chat:active { transform: scale(0.98); }
