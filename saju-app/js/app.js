@@ -3524,6 +3524,9 @@ function renderToday() {
   const bd = bookletData(); const sj = state.saju;
   const weekly = weeklyLetterHTML();
   $('[data-panel="today"]').innerHTML = `
+    <div class="fold-list">
+      ${foldHTML('next', '📜', `${bd.y.sajuYear}년 운세`, `「${bd.b.title}」의 해 · 총운·분야별`, `${santongHTML(bd.y.sajuYear)}${bookletHTML(bd)}${bookletFieldsHTML(bd)}`)}
+    </div>
     ${easySuggestHTML()}
     ${wishDueHTML()}
     ${wishMidHTML()}
@@ -3532,7 +3535,6 @@ function renderToday() {
     ${cookieCardHTML()}
     ${habitsCardHTML()}
     <div class="fold-list">
-      ${foldHTML('next', '📜', `${bd.y.sajuYear}년 운세`, `「${bd.b.title}」의 해 · 총운·분야별`, `${santongHTML(bd.y.sajuYear)}${bookletHTML(bd)}${bookletFieldsHTML(bd)}`)}
       ${foldHTML('saju', '🀄', '내 사주', `일간 ${STEMS[sj.dayMaster]}(${STEMS_KO[sj.dayMaster]}) · 필요한 기운 ${ELEMENT_KO[sj.yongsin]}`, sajuOpenHTML())}
       ${weekly ? foldHTML('weekly', '💌', '이번 주 편지', '한 주 돌아보기', weekly) : ''}
       ${foldHTML('more', '🔮', '운세 더 보기', '이번 주·이달·올해·10년 · 궁금한 질문', `<div class="fold-go"><button type="button" class="primary" data-go-tab="ask">🔮 궁금한 것 물어보기</button><button type="button" class="ghost" data-go-tab="report">📅 올해·5년 흐름</button></div>`)}
