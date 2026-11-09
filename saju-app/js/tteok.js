@@ -112,7 +112,7 @@ export function claimItem(store, seasons, ownedIds) {
 // 복떡 꾸러미(10개 1,100원)가 현금 상품이 되고, 매일 들르기·할 일로 모은 복떡으로도 더 볼 수 있음
 // v0.59(2026-11-06 사용자 결정): 복떡은 습관 체크(하나에 2개)·코디 별 보상으로만 모으고, 타로는 할 때마다 3개(무료 없음)
 export const TAROT_FREE_PER_DAY = 0;
-export const TAROT_COST = { one: 3, three: 3 };
+export const TAROT_COST = { one: 1, three: 2 }; // v0.64.7 사용자 「한 장은 떡 1개」 · v0.64.8 사용자 「세 장은 떡 2개」
 export const tarotUsed = (store, dateKey) => norm(store).days[dateKey]?.tarot || 0;
 /** 이번 뽑기 값: { free: true } 또는 { free: false, cost } */
 export function tarotPrice(store, dateKey, spread) {
