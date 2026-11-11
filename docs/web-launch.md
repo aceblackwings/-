@@ -49,3 +49,13 @@
 - **환불 기준**: 초안은 「오류·중복 결제 전액 환불, 만든 뒤 단순 변심은 제한」입니다. 더 너그럽게(예: 7일 안 무조건 환불) 하시려면 `tools/legal_pages.mjs`의 환불 규정과 결제 창 문장을 바꿉니다.
 - **약관·처리방침은 초안**입니다. 회사 정보를 채운 뒤 한 번 읽어 확정해 주세요. 호스팅을 Cloudflare가 아닌 곳으로 하면 처리방침 4번 표의 회사 이름을 바꿔야 합니다.
 - 미리보기 전용 기능(AI 상담 `sample`·궁합방·우편함)은 일반 웹에서는 준비된 답변·숨김으로 동작합니다.
+
+## 5. Cloudflare 화면이 Workers로 나올 때 (2026-11-11 추가)
+
+새 Cloudflare 화면에서는 저장소를 연결하면 Pages 대신 Workers 배포 화면이 나옵니다. 이 저장소는 두 방식 모두 됩니다.
+
+- 설정 파일: 저장소 루트 `wrangler.jsonc`, 결제 승인: `worker/index.js`, 사이트에 안 올리는 파일: `saju-app/.assetsignore`
+- 화면 입력: 프로젝트 명칭 `zodiac12`(설정 파일의 name과 같아야 함) · 빌드 명령 비움 · 배치 명령 `npx wrangler deploy`
+- 배포되면 `zodiac12.계정이름.workers.dev` 주소가 생깁니다.
+- 비밀 키: Worker 설정 → 변수 및 비밀 → `TOSS_SECRET_KEY`
+- **도메인 연결**: Workers는 도메인이 Cloudflare에 등록돼 있어야 사용자 지정 도메인을 붙일 수 있습니다. Cloudflare에 `ockstar.com`을 추가 → 안내되는 네임서버 2개를 가비아 「타사 네임서버」에 입력 → Worker 설정의 도메인에 `12jisin.ockstar.com` 추가.

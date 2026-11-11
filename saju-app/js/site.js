@@ -9,10 +9,10 @@ export const BIZ = {
   regNo: '309-07-95515', // 사업자등록번호 000-00-00000
   mailOrderNo: '',   // 통신판매업 신고번호 (신고 전에는 빈 값 → 「신고 진행 중」)
   address: '부산광역시 부산진구 동평로 162, 309동 602호(부암동, 서면동일파크스위트3차)', // 사업장 주소
-  phone: '',         // 고객센터 전화번호
-  email: '',         // 고객센터 이메일
+  phone: '010-8379-6078', // 고객센터 전화번호
+  email: 'acesamdole1@naver.com', // 고객센터 이메일
   privacyOfficer: '',// 개인정보 보호책임자 (비우면 대표자)
-  domain: '',        // 정식 주소 (예: https://example.kr, 끝에 / 없이)
+  domain: 'https://12jisin.ockstar.com', // 정식 주소 (예: https://example.kr, 끝에 / 없이)
   hours: '평일 10:00~17:00 (이메일은 24시간 접수)',
 };
 
