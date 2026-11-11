@@ -1782,7 +1782,7 @@ html.easy .top h1 { font-size: 20px; }
 .sc-v { font-size: 0.98rem; color: var(--ink); line-height: 1.4; }
 .sc-tile.open .sc-v { animation: sc-pop 0.5s ease; }
 @keyframes sc-pop { 0% { transform: scale(0.85); opacity: 0.3; } 100% { transform: scale(1); opacity: 1; } }
-.sc-foil { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; transition: opacity 0.35s; }
+.sc-foil { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: pan-y; cursor: grab; transition: opacity 0.35s; } /* v0.66: 위아래로 쓸면 화면이 움직이고, 좌우로 문지르면 긁힘(예전 none은 폰에서 칸 위 스크롤을 막음) */
 .sc-foil.gone { opacity: 0; }
 .sc-all { display: block; margin: 6px auto 0; }
 
@@ -2265,3 +2265,39 @@ body.cm-open { overflow: hidden; }
 .wish-frame { position: relative; }
 .lt-kept-mini { position: absolute; top: -6px; right: -6px; width: 46px; filter: drop-shadow(0 0 6px rgba(255, 196, 92, .7)); }
 @media (prefers-reduced-motion: reduce) { .lantern-card .lt-lamp img { animation: none; } }
+
+/* ======================================================================
+   v0.65 웹 출시: 바닥글 사업자 정보 · 약관 링크 · 가입 동의 줄 · 결제 창 고지
+   ====================================================================== */
+.foot-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; margin: 12px 0 8px; font-size: 0.82rem; }
+.foot-links a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; padding: 6px 2px; }
+.foot-biz { font-style: normal; line-height: 1.7; font-size: 0.74rem; color: var(--muted); }
+.foot-biz span { display: inline-block; margin: 0 5px; }
+.foot-biz b { font-weight: 600; color: var(--text); }
+.foot-biz a { color: var(--text); }
+.foot-ver { margin-top: 8px !important; opacity: 0.85; }
+.agree-note { font-size: 0.8rem; color: var(--muted); line-height: 1.6; margin: 12px 0 10px; }
+.agree-note a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+.cp-legal { text-align: left; line-height: 1.6; }
+.cp-legal a { color: var(--hj-navy, #2f3e5c); text-decoration: underline; text-underline-offset: 3px; }
+
+/* v0.66 효과음 버튼(머리줄, 글씨 크게 모드에서도 크기 고정) */
+#btn-sound, html.easy #btn-sound { min-width: 40px; min-height: 40px; padding: 4px 8px; font-size: 16px; line-height: 1; }
+#btn-sound[aria-pressed="false"] { opacity: .65; }
+
+/* ======================================================================
+   v0.66.1 팝업 창이 화면보다 길 때 멈추던 문제(사용자 「운세를 보다 아래로 올리면 화면이 멈춰 껐다 켜야 함」)
+   원인: .evo-modal·.reveal-modal이 가운데 고정(grid place-items: center)인데 창 안 스크롤이 없어,
+   작은 폰에서 진화 창(약 700~750px)의 「확인」 버튼이 화면 밖으로 잘림 → 쓸어도 뒤 페이지만 움직이고 닫을 수 없음
+   고침: 창 자체가 스크롤되게(넘치면 위부터 보이고 아래로 쓸어 버튼까지), 뒤 페이지는 창이 떠 있는 동안 멈춤.
+   화면 고정은 body에 붙인 이름표(cm-open·hj-open) 대신 「지금 창이 실제로 떠 있는지」(:has)로 정해서,
+   창이 다른 길로 닫혀 이름표만 남아도 화면이 굳지 않게 함
+   ====================================================================== */
+.evo-modal, .reveal-modal {
+  display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  padding-top: max(16px, env(safe-area-inset-top, 0px)); padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+}
+.evo-modal > *, .reveal-modal > * { margin: auto; flex-shrink: 0; } /* 짧으면 가운데, 길면 위부터 */
+.hj-reader { overscroll-behavior: contain; }
+body.hj-open, body.cm-open { overflow: visible; }
+body:has(> .evo-modal, > .reveal-modal, > .hj-reader) { overflow: hidden; }

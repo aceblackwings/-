@@ -82,6 +82,7 @@ import { drawKiCard, todayKiCard, stageForDays, nextStage, kiCardText, rarityLab
 import { buildDiary, logVisit, markRead, isRead } from './diary.js';
 import { scratchedOn, markScratched, clearedRatio } from './scratch.js';
 import { cookieReaction, specialOf, isGolden, GOLD_NOTE, tierOf } from './cookieplus.js';
+import { SOUND_KEY, soundOn, toggleSound, setSoundEnabled, unlockSound, sfx, jingle } from './sound.js';
 import { COOKIE_KEY, isOpened as cookieOpened, markOpened as cookieMark, todayTodo, cookieTiles } from './cookie.js';
 import { DHABIT_KEY, HABIT_REWARD, HABIT_MAX, isSet as habitsSet, recommendHabits, setHabits, checkTarget, checksOn, checkHabit, recentChecks } from './dailyhabit.js';
 import { fortuneImage } from './assets.js';
@@ -103,6 +104,8 @@ import {
 const WISH_RECS = ['자격증 시험 합격', '가족 모두 건강하기', '좋은 인연 만나기', '이직에 성공하기', '저축 100만 원 모으기', '꾸준히 운동하기'];
 const BURN_RECS = ['괜히 불안한 마음', '나를 지치게 한 말', '자꾸 미루는 버릇', '꽉 막힌 일의 답답함', '다툰 뒤 남은 서운함', '잠 못 들게 하는 걱정'];
 const CHARMPAY_KEY = 'unmyeong2099.charmpay';
+import { PAY, payMode, fillBiz } from './site.js';
+import { PENDING_KEY, makeOrder, tossRequest, parseReturn, cleanSearch, checkReturn, pendingAlive, payLogEntry, failLine, alreadyDone } from './pay.js';
 const SEEDS_KEY = 'unmyeong2099.seeds'; // v0.60 걱정 씨앗 {list:[{at, el, answer}]} — 걱정 글은 없음
 
 const STORE_KEY = 'unmyeong2099.profile';
@@ -177,6 +180,43 @@ function save(key, value) {
   try { localStorage.setItem(key, text); MEM_STORE.delete(key); } catch { storeBlocked = true; MEM_STORE.set(key, text); }
 }
 
+
+/** 🔔 효과음(v0.66): 머리줄 🔊 버튼으로 켜고 끔, 첫 손가락 누름에서 소리 장치를 깨움, 버튼을 누르면 작은 「톡」 */
+function setupSound() {
+  const on = soundOn(load(SOUND_KEY, {})); setSoundEnabled(on); paintSoundBtn(on);
+  const wake = () => unlockSound();
+  document.addEventListener('pointerdown', wake, { capture: true, passive: true });
+  document.addEventListener('keydown', wake, { capture: true, passive: true });
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('#btn-sound')) {
+      const st = toggleSound(load(SOUND_KEY, {})); save(SOUND_KEY, st); const now = soundOn(st);
+      setSoundEnabled(now); paintSoundBtn(now); if (now) { unlockSound(); sfx('pop'); }
+      toast(now ? '🔊 효과음을 켰어요' : '🔇 효과음을 껐어요'); return;
+    }
+    // 탭은 따로 「탭 바꾸기」 소리, 긁기 칸·인장·태우기는 각자 소리가 있어 「톡」은 빼고
+    const b = e.target.closest('button, [role="button"], summary, a[href], [data-tab]');
+    if (!b || b.disabled || b.closest('[data-tab], #tabs, #subnav, .sc-tile, .rt-sealbtn')) return;
+    sfx('tap');
+  }, true);
+}
+/** 📱 폰 자판(v0.66): 입력 칸을 누르면 자판이 올라온 뒤 그 칸이 가려지지 않게 화면을 위로 올려 줌
+ *  (iOS 사파리는 고정 창 안 입력 칸을 자판 뒤에 두는 일이 있어, 화면 높이가 바뀌면 칸을 가운데로) */
+function keepFieldVisible(el) {
+  if (!el || !/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.type === 'checkbox' || el.type === 'radio') return;
+  const vv = window.visualViewport;
+  const fix = () => {
+    if (document.activeElement !== el) return;
+    const r = el.getBoundingClientRect(); const h = vv ? vv.height : window.innerHeight;
+    if (r.bottom > h - 12 || r.top < 0) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  };
+  setTimeout(fix, 320); vv?.addEventListener('resize', fix, { once: true });
+}
+document.addEventListener('focusin', (e) => keepFieldVisible(e.target));
+function paintSoundBtn(on) {
+  const b = $('#btn-sound'); if (!b) return;
+  b.textContent = on ? '🔊' : '🔇'; b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  const t = on ? '효과음 끄기' : '효과음 켜기'; b.title = t; b.setAttribute('aria-label', t);
+}
 
 function toast(msg, ms) {
   document.querySelectorAll('.toast').forEach((t) => t.remove());
@@ -402,11 +442,14 @@ function initForm() {
   });
 
   applyEasyClass();
+  setupSound();
   const qs = new URLSearchParams(location.search);
   if (saved && saved.gender && saved.concern && !solarDateOf(saved).error && qs.get('auto') !== '0') start(saved);
   else if (qs.has('gallery')) start({ name: '미리보기', calendar: 'solar', year: 1998, month: 5, day: 20, time: '09:30', timeUnknown: false, lonCorr: true, zasi: 'early', gender: 'female', concern: 'job' }); // 저장하지 않는 견본 프로필
   if (qs.has('gallery') && state.saju) selectTab('gallery');
   handleEasyLink();
+  fillBiz(document);
+  setTimeout(resumePay, 0); // 모듈이 끝까지 준비된 뒤에(아래쪽 상수들을 쓰므로)
 }
 
 // ---------- 탭 ----------
@@ -441,6 +484,7 @@ function selectTab(name) {
   if (name === 'feng') renderFeng();
   if (name === 'chat') { renderChat(); getSample().then(() => renderChat()); }
   if (name === 'today' && state.fortune) grow((g) => complete(g, state.fortune.dateKey, 'fortune', qBonus('fortune')));
+  sfx('tab');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -2354,7 +2398,7 @@ function showEquipMoment(r) {
   const info = characterInfo(state.saju, state.profile); const t = charmFromRecord(r);
   const n = fillOf(load(CHARMGROW_KEY, {}), r);
   const pair = pairType(loadEquip().charms);
-  const box = document.createElement('div'); box.className = 'evo-modal';
+  const box = document.createElement('div'); box.className = 'evo-modal'; sfx('sparkle');
   box.innerHTML = `<div class="evo-box eq-moment"><div class="eq-glow"><div class="nt-charm">${renderTalismanSVG(t)}</div></div>
     <h3 style="margin:10px 0 4px">${esc(labelForRec(r))} 장착</h3>
     <div class="speech"><p>${esc(equipLine(r.type, isRooster()))}</p></div>
@@ -2499,7 +2543,7 @@ function completeNote() {
   completeActMission();
   renderToday(); renderHero(false);
   setTimeout(() => tteokTask('habit'), 50);
-  const box = document.createElement('div'); box.className = 'evo-modal';
+  const box = document.createElement('div'); box.className = 'evo-modal'; jingle('charm');
   box.innerHTML = `<div class="evo-box" style="text-align:center"><h3 style="margin:0 0 6px">🧧 쪽지 보상</h3>
     <div class="nt-charm">${renderTalismanSVG(t)}</div>
     <p style="margin:10px 0 4px"><b>${label}</b>를 받았어요</p>
@@ -2727,7 +2771,7 @@ function scratchHTML() {
   const all = tiles.every((t) => open.has(t.key));
   setTimeout(initScratch, 0);
   return `<section class="sc-box" id="sc-box">
-    <p class="sc-h">🍀 오늘의 행운 · 오늘 할 일 <small>${all ? '모두 열었어요' : '손가락으로 긁어 보세요'}</small></p>
+    <p class="sc-h">🍀 오늘의 행운 · 오늘 할 일 <small>${all ? '모두 열었어요' : '손가락으로 좌우로 문질러 보세요'}</small></p>
     <div class="sc-grid">${tiles.map((t) => `<div class="sc-tile ${open.has(t.key) ? 'open' : ''} ${t.wide ? 'wide' : ''}" data-sc="${t.key}" tabindex="0" role="button" aria-label="${t.label} 긁어서 보기">
       <span class="sc-l">${t.icon} ${t.label}</span><b class="sc-v">${esc(t.value)}</b>${t.sub ? `<small class="sc-sub">${esc(t.sub)}</small>` : ''}${open.has(t.key) ? '' : '<canvas class="sc-foil" aria-hidden="true"></canvas>'}</div>`).join('')}</div>
     ${all ? '' : '<button type="button" class="linkish sc-all" data-sc-all>한 번에 모두 열기</button>'}
@@ -2735,6 +2779,7 @@ function scratchHTML() {
 }
 function revealScratch(tile) {
   if (!tile || tile.classList.contains('open')) return;
+  sfx('pop');
   if (tile.dataset.santong) { // v0.59 산통 점괘: 그해에 한 번 열면 계속 열린 채
     const Y = Number(tile.dataset.santong); save(SANTONG_KEY, santongOpen(load(SANTONG_KEY, {}), Y));
     const b = $('#st-box'); if (b) b.outerHTML = santongHTML(Y);
@@ -2762,14 +2807,14 @@ function initScratch() {
     ctx.fillStyle = 'rgba(255,255,255,0.35)'; for (let i = 0; i < 40; i++) ctx.fillRect(Math.random() * cv.width, Math.random() * cv.height, 2 * dpr, 2 * dpr);
     ctx.fillStyle = '#6a5a8a'; ctx.font = `600 ${13 * dpr}px "Gowun Dodum", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(tile.querySelector('.sc-l').textContent, cv.width / 2, cv.height / 2 - 10 * dpr);
-    ctx.font = `${11 * dpr}px "Gowun Dodum", sans-serif`; ctx.fillText('✦ 긁어 보세요 ✦', cv.width / 2, cv.height / 2 + 12 * dpr);
+    ctx.font = `${11 * dpr}px "Gowun Dodum", sans-serif`; ctx.fillText('✦ 좌우로 문질러요 ✦', cv.width / 2, cv.height / 2 + 12 * dpr);
     ctx.globalCompositeOperation = 'destination-out';
     let down = false; let moves = 0; let lastP = null;
     const at = (e) => { const b = cv.getBoundingClientRect(); return [(e.clientX - b.left) * dpr, (e.clientY - b.top) * dpr]; };
     const scrape = (p) => {
       ctx.lineWidth = 30 * dpr; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(...(lastP || p)); ctx.lineTo(...p); ctx.stroke();
-      ctx.beginPath(); ctx.arc(p[0], p[1], 15 * dpr, 0, Math.PI * 2); ctx.fill(); lastP = p;
+      ctx.beginPath(); ctx.arc(p[0], p[1], 15 * dpr, 0, Math.PI * 2); ctx.fill(); lastP = p; sfx('scratch');
       if (++moves % 6 === 0 && clearedRatio(ctx.getImageData(0, 0, cv.width, cv.height).data) > 0.45) { down = false; revealScratch(tile); }
     };
     cv.addEventListener('pointerdown', (e) => { down = true; lastP = null; cv.setPointerCapture?.(e.pointerId); scrape(at(e)); });
@@ -2926,6 +2971,7 @@ const REACT_MS = 1500;
 function crackCookie() {
   const st = $('#fc-stage'); if (!st || st.dataset.step !== 'ready') return;
   st.dataset.step = 'crack'; $('#fc-guide').textContent = '';
+  sfx('crack'); if (st.classList.contains('gold')) setTimeout(() => jingle('gold'), 250);
   const showFortune = () => {
     const dk = state.fortune.dateKey; const first = !cookieOpened(load(COOKIE_KEY, {}), dk);
     save(COOKIE_KEY, cookieMark(load(COOKIE_KEY, {}), dk));
@@ -2994,7 +3040,7 @@ document.addEventListener('click', (e) => {
     const r = checkHabit(load(DHABIT_KEY, {}), state.fortune.dateKey, Number(ck.dataset.dhCheck));
     if (!r.gained) return;
     save(DHABIT_KEY, r.store);
-    save(TTEOK_KEY, tteokGift(loadTteok(), '습관 체크', r.gained).store);
+    save(TTEOK_KEY, tteokGift(loadTteok(), '습관 체크', r.gained).store); sfx('coin');
     toast(`✓ 잘했어요! ${TTEOK} 복떡 +${r.gained}`);
     if (r.all) feedJisin('dinner', { quiet: true }); // 두 가지 모두 체크 = 지신 저녁밥
     redrawHabits();
@@ -3050,6 +3096,7 @@ function feedJisin(key, { quiet = false } = {}) {
   const before = foodPoints();
   const r = feed(loadFood(), state.fortune.dateKey, key);
   if (r.already) return;
+  if (!quiet) sfx('grow');
   save(FOOD_KEY, r.store);
   checkSecondEvolution(before);
   const b = BOWLS.find((x) => x.key === key);
@@ -3136,7 +3183,7 @@ function checkSecondEvolution(beforePoints) {
 function showSecondEvolution(sec, from, to) {
   if (document.querySelector('.evo-modal, .hj-reader')) { setTimeout(() => showSecondEvolution(sec, from, to), 1200); return; }
   const info = secondInfo(sec); const nm = stageName(to, info.female);
-  const box = document.createElement('div'); box.className = 'evo-modal';
+  const box = document.createElement('div'); box.className = 'evo-modal'; jingle('evolve');
   box.innerHTML = `<div class="evo-box">
     <p class="muted" style="margin:0">두 번째 지신 진화</p>
     <div class="evo-stage"><div class="evo-before">${renderCharacterSVG({ ...info, stage: from }, { stage: from, width: 220, mood: 'wow', backdrop: true })}</div><div class="evo-after">${renderCharacterSVG({ ...info, stage: to }, { stage: to, width: 220, mood: 'excited', backdrop: true, animate: true })}</div><div class="evo-flash"></div></div>
@@ -3503,7 +3550,7 @@ document.addEventListener('click', (e) => {
   } else if (el.hasAttribute('data-tarot-reveal')) {
     const u = useTarot(loadTteok(), state.fortune.dateKey, T.spread);
     if (!u.ok) { toast(`${TTEOK} 복떡 ${u.cost}개가 필요해요 (${u.need}개 부족) · 습관을 체크해 모아 보세요`); goHabits(); return; }
-    save(TTEOK_KEY, u.store);
+    save(TTEOK_KEY, u.store); sfx('flip');
     toast(`${TTEOK} 복떡 ${u.cost}개를 지신에게 줬어요. 카드를 펼칠게요`);
     T.result = readTarot({ topic: T.topic, spread: T.spread, situ: T.situ, picks: T.picks.map((i) => T.deck[i]), name: state.profile.name });
     T.step = 'result';
@@ -5001,7 +5048,7 @@ function doDraw() {
 function showReveal(charm, pack, done) {
   const best = pack.best;
   const el = document.createElement('div');
-  el.className = `reveal-modal r-${best}`;
+  el.className = `reveal-modal r-${best}`; jingle(['legend', 'mythic', 'hero'].includes(best) ? 'rare' : 'charm');
   const emo = renderEmoticonSVG(state.saju, state.fortune, { stage: heroOptions().stage, profile: state.profile, mood: pack.emote.key, style: 'neon', tag: '', rarity: pack.emote.rarity, caption: EMOTES.find((e) => e.key === pack.emote.key).label });
   const card = (inner, r, label, i) => `<div class="rv-card" style="--d:${0.15 + i * 0.25}s;--c:${RARITY_COLOR[r]}"><div class="rv-inner">${inner}</div><b style="color:${RARITY_COLOR[r]}">${RARITY_LABEL[r]}</b><small>${label}</small></div>`;
   el.innerHTML = `<div class="rv-box">
@@ -5288,7 +5335,7 @@ function showEvolution(info, from, to) {
   const before = renderCharacterSVG(info, { stage: from, width: 260, mood: 'wow', backdrop: true });
   const after = renderCharacterSVG(info, { stage: to, width: 260, mood: 'excited', charms, emote, season, backdrop: true, animate: true });
   const el = document.createElement('div');
-  el.className = 'evo-modal';
+  el.className = 'evo-modal'; jingle('evolve');
   el.innerHTML = `<div class="evo-box">
     <p class="muted" style="margin:0">EVOLUTION</p>
     <div class="evo-stage"><div class="evo-before">${before}</div><div class="evo-after">${after}</div><div class="evo-flash"></div></div>
@@ -5312,7 +5359,9 @@ function showEvolution(info, from, to) {
     })()}
     <div class="actions" style="justify-content:center"><button class="primary" type="button" data-evo="ok">확인</button><button class="ghost" type="button" data-evo="share">📸 진화 공유 카드</button></div></div>`;
   document.body.appendChild(el);
-  el.querySelector('[data-evo=ok]').addEventListener('click', () => { el.remove(); renderHero(true); renderEmoji(); renderToday(); });
+  const evoOk = () => { el.remove(); renderHero(true); renderEmoji(); renderToday(); };
+  el.querySelector('[data-evo=ok]').addEventListener('click', evoOk);
+  el.addEventListener('click', (ev) => { if (ev.target === el) evoOk(); }); // v0.66.1 창 바깥을 눌러도 닫힘(버튼이 안 보여도 빠져나올 수 있게)
   el.querySelector('[data-evo=share]').addEventListener('click', () => { el.remove(); renderHero(false); state.storyTemplate = 'evolve'; selectTab('story'); });
 }
 
@@ -5755,7 +5804,77 @@ function bindWishForm(panel) {
 }
 /** v0.64 결제 창(인장 찍는 순간): 소원 부적 990원 또는 복떡 50개 · 100일 등불 2,900원(돈으로만) · 걱정 태우기는 무료라 결제 없음
  *  v0.60: 받는 것 4줄 + 부적 미리보기(preview = paidCharmSVG 데이터) */
-function openCharmPay(kind, onOk, onCancel = () => {}, preview = null) {
+/** v0.65 토스페이먼츠 결제창 SDK(처음 결제할 때만 불러옴) */
+let tossLoading = null;
+function loadToss() {
+  if (window.TossPayments) return Promise.resolve(window.TossPayments);
+  tossLoading ||= new Promise((ok, no) => {
+    const sc = document.createElement('script'); sc.src = PAY.sdk; sc.async = true;
+    sc.onload = () => (window.TossPayments ? ok(window.TossPayments) : no(new Error('sdk')));
+    sc.onerror = () => { tossLoading = null; no(new Error('sdk')); };
+    document.head.appendChild(sc);
+  });
+  return tossLoading;
+}
+/** 결제창으로 이동 — 만들던 부적 기록을 기기에 「기다리는 주문」으로 두고 다녀온다(소원 글은 결제 회사로 보내지 않음) */
+async function goTossPay(kind, rec) {
+  const order = makeOrder(kind, rec); if (!order) throw new Error('order');
+  save(PENDING_KEY, order);
+  if (storeBlocked) { save(PENDING_KEY, null); throw new Error('store'); }
+  const Toss = await loadToss();
+  const payment = Toss(PAY.tossClientKey).payment({ customerKey: Toss.ANONYMOUS });
+  await payment.requestPayment(tossRequest(order, location.origin, location.pathname + cleanSearch(location.search)));
+}
+/** 결제 승인 함수 호출 */
+async function confirmOnServer(p) {
+  const res = await fetch(PAY.confirmUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentKey: p.paymentKey, orderId: p.orderId, amount: p.amount }) });
+  let body = {}; try { body = await res.json(); } catch { /* 빈 응답 */ }
+  return body;
+}
+/** 결제가 끝난 부적을 도감에 저장(결제창에 다녀온 뒤라 의식 연출보다 저장이 먼저) */
+function commitPaidCharm(r) {
+  const today = state.fortune.dateKey;
+  const listNow = load(COLLECTION_KEY, []); listNow.unshift(r); save(COLLECTION_KEY, trimCollection(listNow, 60));
+  renderHero(false); renderToday();
+  const lead = isLantern(r) ? `🏮 100일 등불을 켰어요. 「${r.wish}」, 오늘부터 홈에서 매일 함께 빌어요`
+    : `🌠 ${wishMadeLine(r.wish, wishDueLabel(r.dueKey, today), politeNow())}`;
+  grow((g) => complete(g, today, 'charm', qBonus('charm')), lead);
+}
+/** 결제창에서 돌아왔을 때(또는 승인 확인이 끊겼다가 다시 열었을 때): 승인 → 저장 → 인장 찍는 장면부터 이어서 */
+async function resumePay() {
+  const ret = parseReturn(location.search);
+  if (ret) history.replaceState(null, '', location.pathname + cleanSearch(location.search) + location.hash);
+  let p = load(PENDING_KEY, null);
+  if (!state.fortune) return;
+  if (ret?.status === 'fail') {
+    toast(failLine(ret.code), 6000);
+    if (pendingAlive(p) && !p.paymentKey) { save(PENDING_KEY, null); selectTab('hero'); openWishRitual(p.rec, () => commitPaidCharm(p.rec), { startAt: 2 }); }
+    return;
+  }
+  if (ret?.status === 'success') {
+    const c = checkReturn(ret, p);
+    if (!c.ok) { toast(`${c.message || '결제 정보를 확인하지 못했어요.'} 승인되지 않은 결제는 자동으로 취소되어 돈이 나가지 않아요`, 7000); return; }
+    p = { ...p, paymentKey: ret.paymentKey }; save(PENDING_KEY, p);
+  }
+  if (!pendingAlive(p)) { if (p) save(PENDING_KEY, null); return; }
+  if (!p.paymentKey) return; // 결제창에서 그냥 돌아온 경우 — 기록만 두었다가 하루 뒤 지움
+  toast('결제를 확인하고 있어요…', 4000);
+  let body;
+  try { body = await confirmOnServer(p); } catch { toast('결제 확인이 잠시 끊겼어요. 이 화면을 다시 열면 이어서 확인해요', 7000); return; }
+  if (!body.ok && !alreadyDone(body.code)) {
+    if (body.code === 'PG_UNREACHABLE' || body.code === 'NO_SECRET') { toast(`${body.message} 이 화면을 다시 열면 이어서 확인해요`, 7000); return; }
+    save(PENDING_KEY, null);
+    toast(`결제가 승인되지 않았어요(${body.message || body.code || '확인 실패'}). 돈은 나가지 않았어요`, 8000);
+    return;
+  }
+  const log = load(CHARMPAY_KEY, []); log.unshift(payLogEntry(p, body)); save(CHARMPAY_KEY, log.slice(0, 50));
+  save(PENDING_KEY, null);
+  commitPaidCharm(p.rec);
+  selectTab('hero');
+  openWishRitual(p.rec, () => {}, { paid: true, startAt: 2 });
+}
+function openCharmPay(kind, onOk, onCancel = () => {}, preview = null, rec = null) {
+  const mode = rec ? payMode() : 'trial'; const real = mode !== 'trial';
   document.querySelectorAll('.pay-modal').forEach((x) => x.remove());
   const lantern = kind === 'lantern'; const price = lantern ? LANTERN_PRICE : CHARM_PRICE;
   const bal = loadTteok()?.balance || 0; const can = !lantern && bal >= CHARM_TTEOK;
@@ -5768,10 +5887,11 @@ function openCharmPay(kind, onOk, onCancel = () => {}, preview = null) {
       <ul class="cp-gets">${(PAY_GETS[lantern ? 'lantern' : 'wish'] || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
     <p class="hj-desc">먹을 갈고 이름까지 정성껏 쓰셨어요. 결제하면 인장이 찍히고, 지신이 기운을 불어넣어요.</p>
     <p class="hj-price"><b>${won(price)}</b> <small>${lantern ? '한 번 결제로 100일' : '한 장'} · 운세 점수와는 상관없어요</small></p>
-    <button type="button" class="hj-buy" data-cp="pay">체험판으로 인장 찍기 (결제 없음)</button>
-    ${lantern ? '<p class="hj-note">100일 등불은 복떡으로는 만들 수 없어요 · 지금은 체험판이라 실제 결제 없이 켜져요</p>'
+    <button type="button" class="hj-buy" data-cp="pay">${real ? `카드로 결제하고 인장 찍기 · ${won(price)}` : '체험판으로 인장 찍기 (결제 없음)'}</button>
+    ${real ? `<p class="hj-note cp-legal">${mode === 'test' ? '<b>시험 결제 중이에요(실제 돈은 나가지 않아요).</b> ' : ''}결제하면 바로 만들어지는 디지털 상품이에요. 내 소원으로 한 장씩 만들기 때문에 <b>만든 뒤에는 단순 변심 환불이 어려워요</b>(오류·중복 결제는 전액 환불). 부적은 <b>이 기기의 이 브라우저에만</b> 저장돼요. 결제하면 <a href="legal/terms.html" target="_blank" rel="noopener">이용약관</a>·<a href="legal/refund.html" target="_blank" rel="noopener">환불 규정</a>에 동의한 것으로 봐요.</p>` : ''}
+    ${lantern ? `<p class="hj-note">100일 등불은 복떡으로는 만들 수 없어요${real ? '' : ' · 지금은 체험판이라 실제 결제 없이 켜져요'}</p>`
       : `<button type="button" class="hj-buy navy" data-cp="tteok" ${can ? '' : 'disabled'}>${TTEOK} 복떡 ${CHARM_TTEOK}개로 무료 인장 찍기</button>
-    <p class="hj-note">${can ? `가진 복떡 ${bal}개 · ${CHARM_TTEOK}개를 쓰면 한 번 무료예요` : `복떡 ${CHARM_TTEOK}개가 모이면 한 번 무료 · 지금 ${bal}개`} · 지금은 체험판이라 실제 결제 없이 만들어져요</p>`}
+    <p class="hj-note">${can ? `가진 복떡 ${bal}개 · ${CHARM_TTEOK}개를 쓰면 한 번 무료예요` : `복떡 ${CHARM_TTEOK}개가 모이면 한 번 무료 · 지금 ${bal}개`}${real ? '' : ' · 지금은 체험판이라 실제 결제 없이 만들어져요'}</p>`}
     <button type="button" class="ghost" data-cp="close" style="width:100%">아직 안 찍을래요</button>
   </div>`;
   document.body.appendChild(box);
@@ -5783,6 +5903,15 @@ function openCharmPay(kind, onOk, onCancel = () => {}, preview = null) {
       if (lantern) return;
       const r = useCharmTteok(loadTteok(), 'wish'); if (!r.ok) return;
       save(TTEOK_KEY, r.store); toast(`${TTEOK} 복떡 ${CHARM_TTEOK}개로 만들었어요`);
+    } else if (real) { // v0.65 실제 결제: 토스 결제창에 다녀온 뒤 resumePay가 승인·저장·인장을 이어서 함
+      if (b.disabled) return;
+      b.disabled = true; b.textContent = '결제창을 여는 중…';
+      goTossPay(kind, rec).catch((err) => {
+        save(PENDING_KEY, null);
+        b.disabled = false; b.textContent = `카드로 결제하고 인장 찍기 · ${won(price)}`;
+        toast(err?.message === 'store' ? '이 화면은 기록 저장이 꺼져 있어 결제할 수 없어요. 일반 창에서 열어 주세요' : failLine(err?.code), 6000);
+      });
+      return;
     } else {
       const log = load(CHARMPAY_KEY, []); log.unshift({ kind, price, at: Date.now(), via: 'trial' }); save(CHARMPAY_KEY, log.slice(0, 50));
     }
@@ -5932,6 +6061,7 @@ function openCharmMaker(kind, preset = '', tier = 'wish') {
       const by = (state.profile.name || '').slice(0, 8); const seal = zIdx();
       let r;
       if (t === 'lantern') r = makeLantern(base, { wish: text, forWho, by, seal, today });
+      if (t === 'lantern') jingle('lantern');
       else {
         const due = dueFromInput(date.value, today);
         if (!due) { toast('날짜는 오늘이나 그 뒤로 골라 주세요'); return; }
@@ -5992,7 +6122,7 @@ const wallName = (d) => `wish-charm-${String(d.madeKey || '').replace(/-/g, '')}
 function openWishRitual(rec, onDone, opt = {}) {
   document.querySelectorAll('.ritual-modal').forEach((x) => x.remove());
   const d = paidDataOf(rec); const polite = politeNow(); const reduce = reducedMotion();
-  const lantern = isLantern(rec); let paid = false;
+  const lantern = isLantern(rec); let paid = !!opt.paid;
   const box = document.createElement('div'); box.className = 'evo-modal ritual-modal';
   box.innerHTML = `<div class="evo-box hanji rt-box" role="dialog" aria-label="${lantern ? '100일 소원 등불 만들기' : '소원 부적 만들기'}">
     <ol class="rt-steps">${RITUAL_STEPS.map((x, i) => `<li data-rt-i="${i}"><span>${x.icon}</span><small>${x.title}</small></li>`).join('')}</ol>
@@ -6068,13 +6198,14 @@ function openWishRitual(rec, onDone, opt = {}) {
       if (!paid) { // 결제하는 순간 = 인장 찍는 순간
         asking = true; btn.classList.remove('holding');
         openCharmPay(lantern ? 'lantern' : 'wish', () => { asking = false; paid = true; stamp(); },
-          () => { asking = false; tip.textContent = '인장은 결제한 뒤에 찍혀요. 마음이 정해지면 다시 꾹 눌러 주세요'; }, d);
+          () => { asking = false; tip.textContent = '인장은 결제한 뒤에 찍혀요. 마음이 정해지면 다시 꾹 눌러 주세요'; }, d, rec);
         return;
       }
       done = true;
       const skip = box.querySelector('[data-rt-skip]'); if (skip) { skip.hidden = false; skip.textContent = '건너뛰고 완성하기'; }
       const quitB = box.querySelector('[data-rt-quit]'); if (quitB) quitB.hidden = true;
       try { navigator.vibrate?.(STAMP_BUZZ); } catch { /* 진동이 없는 기기 */ }
+      sfx('stamp');
       body.querySelector('.rt-charm').innerHTML = paidCharmSVG(d); body.querySelector('.rt-charm').classList.add('stamped');
       btn.classList.add('pressed'); tip.textContent = '쾅! 인장이 찍혔어요';
       later(() => show(3), 1000);
@@ -6083,6 +6214,7 @@ function openWishRitual(rec, onDone, opt = {}) {
     const up = () => { btn.classList.remove('holding'); if (!done && t0 && Date.now() - t0 < SEAL_HOLD) tip.textContent = '조금 더 꾹 눌러 주세요'; t0 = 0; };
     btn.addEventListener('pointerup', up); btn.addEventListener('pointerleave', up);
     btn.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); stamp(); } });
+    if (paid) { tip.textContent = '결제가 끝났어요. 인장을 찍을게요'; later(stamp, 700); } // v0.65 결제창에서 돌아온 경우
   }
   function blow() {
     box.querySelector('.rt-foot').hidden = true;
@@ -6102,7 +6234,8 @@ function openWishRitual(rec, onDone, opt = {}) {
     if (e.target.closest('[data-rt-quit]')) { quit(); return; }
     if (e.target.closest('[data-rt-skip]')) { if (paid) end(); else if (step < 2) show(2); }
   });
-  show(0);
+  if (paid) { const q = box.querySelector('[data-rt-quit]'); if (q) q.hidden = true; }
+  show(opt.startAt || 0);
 }
 /** v0.64 홈: 100일 소원 등불 — D-day, 오늘의 기도 한 줄, 10칸 밝기, 편지, 함께 빌기 */
 /** v0.64.9 100일 등불 그림(docs/prompts/lantern-100.md): 1~33일 stage1 · 34~66일 stage2 · 67~99일 stage3 · 100일 완주 kept */
@@ -6136,7 +6269,7 @@ document.addEventListener('click', (e) => {
   const today = state.fortune.dateKey;
   const pr = e.target.closest('[data-lt-pray]');
   if (pr) {
-    const i = Number(pr.dataset.ltPray); save(COLLECTION_KEY, lanternPray(load(COLLECTION_KEY, []), i, today));
+    const i = Number(pr.dataset.ltPray); save(COLLECTION_KEY, lanternPray(load(COLLECTION_KEY, []), i, today)); sfx('bell');
     toast(politeNow() ? '🙏 오늘도 함께 빌었어요. 등불이 조금 따뜻해졌어요' : '🙏 오늘도 함께 빌었어. 등불이 조금 따뜻해졌어'); renderToday(); return;
   }
   const lt = e.target.closest('[data-lt-letter]');
@@ -6154,7 +6287,7 @@ document.addEventListener('click', (e) => {
   }
   const kp = e.target.closest('[data-lt-keep]');
   if (kp) {
-    const i = Number(kp.dataset.ltKeep); const col = keepLantern(load(COLLECTION_KEY, []), i, today); save(COLLECTION_KEY, col);
+    const i = Number(kp.dataset.ltKeep); const col = keepLantern(load(COLLECTION_KEY, []), i, today); save(COLLECTION_KEY, col); jingle('wish');
     renderToday(); renderHero(false);
     const box = document.createElement('div'); box.className = 'evo-modal';
     box.innerHTML = `<div class="evo-box wish-pop"><img class="lt-kept-big" src="${LT_ART('kept')}" alt="100일 완주 등불"><div class="wish-shine">${wishCharmHTML(col[i], true)}</div>
@@ -6254,7 +6387,7 @@ document.addEventListener('click', (e) => {
     toast(`⏳ ${wishLaterLine(r, wishDueLabel(next[i].dueKey, today), politeNow())}`);
     renderToday(); renderHero(false); return;
   }
-  const doneCol = wishFulfill(col, i, today); save(COLLECTION_KEY, doneCol);
+  const doneCol = wishFulfill(col, i, today); save(COLLECTION_KEY, doneCol); jingle('wish');
   renderToday(); renderHero(false);
   const dr = doneCol[i];
   const box = document.createElement('div'); box.className = 'evo-modal';
@@ -6326,7 +6459,7 @@ document.addEventListener('click', (e) => {
   const c = coordiClaim(next, f.dateKey); next = c.store;
   const sr = coordiStars(next, f.dateKey); next = sr.store; save(COORDI_KEY, next);
   state.heroLine = coordiLine(r.res.hearts, politeNow());
-  if (sr.gained) { save(TTEOK_KEY, tteokGift(loadTteok(), `코디 별 ${sr.stars}개`, sr.gained).store); toast(`👗 코디 완성 · 별 ${sr.stars}개! ${TTEOK} 복떡 +${sr.gained}`); }
+  if (sr.gained) { save(TTEOK_KEY, tteokGift(loadTteok(), `코디 별 ${sr.stars}개`, sr.gained).store); sfx('coin'); toast(`👗 코디 완성 · 별 ${sr.stars}개! ${TTEOK} 복떡 +${sr.gained}`); }
   else if (sr.done) toast(`👗 코디 완성 · 별 ${sr.stars}개 · 별 3개부터 복떡을 받아요`);
   else toast(`👗 ${COORDI_SLOTS.find((x) => x.key === slot)?.label || ''} 골랐어요`);
   renderHero(false); refreshCoordi();
@@ -6450,7 +6583,7 @@ function openBurn(worry, idx) {
     const x = ((ev.clientX - b.left) / b.width) * g.w; const y = ((ev.clientY - b.top) / b.height) * g.h;
     if (reduce) { box.querySelector('.burn-stage').classList.add('fade'); setTimeout(finish, 700); return; }
     ignite(g, x, y, 1);
-    if (!lit) { lit = true; box.querySelector('.burn-tip').textContent = '불이 번지고 있어요…'; raf = requestAnimationFrame(tick); }
+    if (!lit) { lit = true; sfx('fire'); box.querySelector('.burn-tip').textContent = '불이 번지고 있어요…'; raf = requestAnimationFrame(tick); }
   };
   cv.addEventListener('pointerdown', (ev) => { ev.preventDefault(); light(ev); });
   cv.addEventListener('pointermove', (ev) => { if (ev.buttons) light(ev); });

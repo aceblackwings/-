@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /screenshots/
+Disallow: /tests/
+Disallow: /tools/
