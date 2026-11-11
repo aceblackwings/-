@@ -2265,3 +2265,18 @@ body.cm-open { overflow: hidden; }
 .wish-frame { position: relative; }
 .lt-kept-mini { position: absolute; top: -6px; right: -6px; width: 46px; filter: drop-shadow(0 0 6px rgba(255, 196, 92, .7)); }
 @media (prefers-reduced-motion: reduce) { .lantern-card .lt-lamp img { animation: none; } }
+
+/* ======================================================================
+   v0.65 웹 출시: 바닥글 사업자 정보 · 약관 링크 · 가입 동의 줄 · 결제 창 고지
+   ====================================================================== */
+.foot-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; margin: 12px 0 8px; font-size: 0.82rem; }
+.foot-links a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; padding: 6px 2px; }
+.foot-biz { font-style: normal; line-height: 1.7; font-size: 0.74rem; color: var(--muted); }
+.foot-biz span { display: inline-block; margin: 0 5px; }
+.foot-biz b { font-weight: 600; color: var(--text); }
+.foot-biz a { color: var(--text); }
+.foot-ver { margin-top: 8px !important; opacity: 0.85; }
+.agree-note { font-size: 0.8rem; color: var(--muted); line-height: 1.6; margin: 12px 0 10px; }
+.agree-note a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+.cp-legal { text-align: left; line-height: 1.6; }
+.cp-legal a { color: var(--hj-navy, #2f3e5c); text-decoration: underline; text-underline-offset: 3px; }

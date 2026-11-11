@@ -81,5 +81,5 @@ test('가격: 소원 990(복떡 가능) · 등불 2,900(복떡 불가) · 걱정
   assert.ok(!/openCharmPay\('burn'/.test(app), '걱정 태우기에는 결제 창이 없음');
   assert.ok(/if \(lantern\) return;/.test(app), '등불은 복떡 버튼이 눌려도 무료가 되지 않음');
   const pay = app.slice(app.indexOf('function openCharmPay('), app.indexOf('/** 도감에 저장할 기록'));
-  assert.ok(pay.includes("lantern ? '<p class=\"hj-note\">100일 등불은 복떡으로는"), '등불 결제 창에는 복떡 버튼 대신 안내');
+  assert.ok(pay.includes('lantern ? `<p class="hj-note">100일 등불은 복떡으로는'), '등불 결제 창에는 복떡 버튼 대신 안내');
 });

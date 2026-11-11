@@ -1,0 +1,30 @@
+/* v0.65 약관·처리방침·환불 규정·상품 안내 공통 — 읽기 쉬운 문서 모양(앱과 같은 파스텔 바탕) */
+:root { --bg: #fff6f3; --text: #4b3942; --ink: #3a2a33; --muted: #7d6873; --line: #ecd9d6; --accent: #c2577a; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Noto Sans KR', system-ui, -apple-system, 'Malgun Gothic', sans-serif; line-height: 1.8; font-size: 16px; -webkit-text-size-adjust: 100%; }
+.lg-wrap { max-width: 760px; margin: 0 auto; padding: 20px 16px 48px; }
+.lg-top { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 0.9rem; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.lg-top a { color: var(--text); padding: 6px 2px; text-underline-offset: 3px; }
+.lg-top a[aria-current] { font-weight: 700; color: var(--accent); text-decoration: none; }
+.lg-top .home { font-weight: 700; text-decoration: none; margin-right: auto; }
+h1 { font-size: 1.5rem; color: var(--ink); margin: 26px 0 4px; line-height: 1.4; }
+h2 { font-size: 1.08rem; color: var(--ink); margin: 30px 0 6px; }
+p, li { overflow-wrap: anywhere; }
+.lg-date { color: var(--muted); font-size: 0.88rem; margin: 0 0 18px; }
+.lg-sum { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 14px 0; }
+.lg-sum ul { margin: 0; padding-left: 20px; }
+ol, ul { padding-left: 22px; margin: 6px 0; }
+.lg-table { overflow-x: auto; margin: 10px 0; }
+table { border-collapse: collapse; width: 100%; min-width: 480px; font-size: 0.92rem; background: #fff; }
+th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+th { background: #fbeae8; color: var(--ink); white-space: nowrap; }
+a { color: var(--accent); }
+.lg-biz { margin-top: 36px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 0.82rem; color: var(--muted); line-height: 1.8; font-style: normal; }
+.lg-biz b { color: var(--text); font-weight: 600; }
+.lg-biz span { display: inline-block; margin-right: 10px; }
+.lg-prod { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin: 12px 0; }
+.lg-prod article { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.lg-prod h3 { margin: 0 0 4px; font-size: 1.05rem; color: var(--ink); }
+.lg-prod .price { font-size: 1.25rem; font-weight: 800; color: var(--accent); margin: 6px 0; font-variant-numeric: tabular-nums; }
+.lg-btn { display: inline-block; background: var(--accent); color: #fff; border-radius: 999px; padding: 12px 22px; text-decoration: none; font-weight: 700; min-height: 48px; }
+#pay-log:empty { display: none; }
