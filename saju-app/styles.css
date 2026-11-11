@@ -2284,3 +2284,20 @@ body.cm-open { overflow: hidden; }
 /* v0.66 효과음 버튼(머리줄, 글씨 크게 모드에서도 크기 고정) */
 #btn-sound, html.easy #btn-sound { min-width: 40px; min-height: 40px; padding: 4px 8px; font-size: 16px; line-height: 1; }
 #btn-sound[aria-pressed="false"] { opacity: .65; }
+
+/* ======================================================================
+   v0.66.1 팝업 창이 화면보다 길 때 멈추던 문제(사용자 「운세를 보다 아래로 올리면 화면이 멈춰 껐다 켜야 함」)
+   원인: .evo-modal·.reveal-modal이 가운데 고정(grid place-items: center)인데 창 안 스크롤이 없어,
+   작은 폰에서 진화 창(약 700~750px)의 「확인」 버튼이 화면 밖으로 잘림 → 쓸어도 뒤 페이지만 움직이고 닫을 수 없음
+   고침: 창 자체가 스크롤되게(넘치면 위부터 보이고 아래로 쓸어 버튼까지), 뒤 페이지는 창이 떠 있는 동안 멈춤.
+   화면 고정은 body에 붙인 이름표(cm-open·hj-open) 대신 「지금 창이 실제로 떠 있는지」(:has)로 정해서,
+   창이 다른 길로 닫혀 이름표만 남아도 화면이 굳지 않게 함
+   ====================================================================== */
+.evo-modal, .reveal-modal {
+  display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  padding-top: max(16px, env(safe-area-inset-top, 0px)); padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+}
+.evo-modal > *, .reveal-modal > * { margin: auto; flex-shrink: 0; } /* 짧으면 가운데, 길면 위부터 */
+.hj-reader { overscroll-behavior: contain; }
+body.hj-open, body.cm-open { overflow: visible; }
+body:has(> .evo-modal, > .reveal-modal, > .hj-reader) { overflow: hidden; }

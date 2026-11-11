@@ -5359,7 +5359,9 @@ function showEvolution(info, from, to) {
     })()}
     <div class="actions" style="justify-content:center"><button class="primary" type="button" data-evo="ok">확인</button><button class="ghost" type="button" data-evo="share">📸 진화 공유 카드</button></div></div>`;
   document.body.appendChild(el);
-  el.querySelector('[data-evo=ok]').addEventListener('click', () => { el.remove(); renderHero(true); renderEmoji(); renderToday(); });
+  const evoOk = () => { el.remove(); renderHero(true); renderEmoji(); renderToday(); };
+  el.querySelector('[data-evo=ok]').addEventListener('click', evoOk);
+  el.addEventListener('click', (ev) => { if (ev.target === el) evoOk(); }); // v0.66.1 창 바깥을 눌러도 닫힘(버튼이 안 보여도 빠져나올 수 있게)
   el.querySelector('[data-evo=share]').addEventListener('click', () => { el.remove(); renderHero(false); state.storyTemplate = 'evolve'; selectTab('story'); });
 }
 
