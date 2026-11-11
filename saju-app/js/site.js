@@ -12,7 +12,7 @@ export const BIZ = {
   phone: '010-8379-6078', // 고객센터 전화번호
   email: 'acesamdole1@naver.com', // 고객센터 이메일
   privacyOfficer: '',// 개인정보 보호책임자 (비우면 대표자)
-  domain: 'https://12jisin.ockstar.kr', // 정식 주소 (예: https://example.kr, 끝에 / 없이)
+  domain: 'https://12jisin.ockstar.com', // 정식 주소 (예: https://example.kr, 끝에 / 없이)
   hours: '평일 10:00~17:00 (이메일은 24시간 접수)',
 };
 

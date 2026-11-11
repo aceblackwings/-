@@ -5,4 +5,4 @@ Disallow: /screenshots/
 Disallow: /tests/
 Disallow: /tools/
 
-Sitemap: https://12jisin.ockstar.kr/sitemap.xml
+Sitemap: https://12jisin.ockstar.com/sitemap.xml
