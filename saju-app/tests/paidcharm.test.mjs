@@ -61,7 +61,7 @@ t('의식: 4단계 · 진동은 도장 때만 · 따라 쓸 글', () => {
   assert.equal(P.traceText('김하늘별님'), '김하늘별'); assert.equal(P.traceText(''), '소원');
   const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
   assert.equal((app.match(/navigator\.vibrate/g) || []).length, 1, '진동은 도장 한 곳');
-  assert.ok(!/new Audio|AudioContext|\.play\(\)/.test(app), '소리 없음');
+  assert.ok(!/new Audio|AudioContext|\.play\(\)/.test(app), '소리는 sound.js 한 곳에서만(v0.65)');
 });
 
 t('걱정 씨앗: 날짜·기운만 저장, 7일 뒤 안부, 가벼워지면 꽃', () => {

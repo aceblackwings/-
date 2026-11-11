@@ -11,7 +11,9 @@
 > 6. **Claude 쪽에만 있는 것**: 미리보기 아티팩트 게시, `sample`·`room`·`db` 기능, 구글 드라이브 그림 받기 — 이 작업은 Claude Code가 맡음. Codex는 그림이 필요하면 프롬프트(`docs/prompts/`)와 넣는 도구 사용법만 남김.
 > 7. **역할 나누기(기본안, 사용자가 바꿀 수 있음)**: Codex = 출시 구조(Firebase 로그인·구매 기록 동기화·Capacitor 포장·웹 PG/인앱 결제·약관 페이지), Claude Code = 사주 엔진·운세 문장·화면 연출·그림 연결·미리보기.
 >
-> **진행 중**: [Claude Code · ccr-bc5fae19-mc9c4g · 효과음·짧은 음악, 타로 세 장 복떡 3개, 모바일 화면 위로 안 올라감 점검 · saju-app/js/app.js·styles.css·tteok.js·새 sound.js·index.html]
+> **진행 중**: (없음)
+
+> **✅ v0.65(2026-11-11, 사용자 「클릭·성장·등불·부적 나타날 때 효과음과 짧은 음악 · 타로 세 장 복떡 다시 3개 · 모바일에서 화면이 위로 안 올라감 점검」, Claude Code)**: ① **효과음·짧은 음악** 새 모듈 `sound.js`(테스트 `tests/sound.test.mjs` 5): 소리 파일 없이 Web Audio로 그 자리에서 만듦(용량 0), 음계는 국악 5음(도·레·미·솔·라). 효과음 `sfx(이름)` = tap(버튼 「톡」, 전역 클릭 캡처) · tab(탭·하위 메뉴, `selectTab`) · grow(지신 밥 `feedJisin`) · sparkle(부적 장착 `showEquipMoment`) · flip(타로 펼치기) · crack(쿠키 쪼개짐) · scratch(긁기, 70ms 간격)·pop(칸 열림 `revealScratch`) · stamp(인장, 진동과 함께) · bell(등불 함께 빌기) · fire(걱정 태우기 불 붙음) · coin(복떡 받기: 습관·코디 별). 짧은 음악 `jingle(이름)` 1~2.5초 = evolve(진화 `showEvolution`·두 번째 지신) · charm/rare(쪽지 보상 부적·뽑기 `showReveal`, 영웅 이상 rare) · lantern(등불 만들기) · wish(소원 이룸·100일 완주) · gold(황금 쿠키). 머리줄 🔊/🔇 버튼 `#btn-sound`(저장 `unmyeong2099.sound` {on}, 기본 켬), 폰 규칙대로 첫 손가락 누름(`unlockSound`) 전에는 소리 안 냄, 소리 장치가 없으면 조용히 넘어감. **v0.60의 「소리 없음」 결정을 사용자가 바꿈** → paidcharm·cookieplus 테스트는 「소리는 sound.js 한 곳에서만」으로 고침(진동은 여전히 도장 한 곳). ② `TAROT_COST.three` 2 → **3**(안내 문구 자동). ③ **모바일 스크롤**: 원인 = 오늘 운세 카드 긁기 칸(`.sc-foil`)과 산통 점괘 칸이 `touch-action: none`이라 그 위에서 쓸면 화면이 안 움직임(Playwright 터치 재현: 칸 위에서 위로 쓸기 892 → 892) → `pan-y`(위아래 = 스크롤, 좌우로 문지르면 긁힘, 안내 「좌우로 문질러 보세요」), 고친 뒤 892 → 452, 좌우 문지르기로 칸 열림 확인. 덧붙여 입력 칸에 손가락을 대면 자판이 올라온 뒤 칸이 가려지지 않게 화면을 올려 줌(`keepFieldVisible`, visualViewport). 창 안 그림 도구(걱정 태우기 종이·벼루·이름 쓰기 칸)는 손가락 그리기용이라 그대로 둠. 확인: `npm test` 통과, iPhone 13 에뮬레이션 4탭 위아래 스크롤·오류 0·360px 머리줄 넘침 없음.
 
 > **✅ v0.64.10(2026-11-09, 사용자 「등불 다시 올렸어」, Claude Code)**: 100일 완주 등불 `assets/lantern/kept.webp`만 새 그림(hf_20261109_143427)으로 교체 — 12지신 메달 12개가 모두 다름(원숭이 들어감, 양 한 번). 손질은 v0.64.9 항목 참고(용 메달 되살리기·빛무리 금빛). 코드 변경 없음. 확인: `npm test` 통과, 어두운·밝은 바탕에서 눈으로 확인.
 
@@ -155,7 +157,7 @@
 
 ## 실행·테스트
 - 로컬: `cd saju-app && python3 -m http.server 8000` → http://localhost:8000
-- 테스트: `cd saju-app && npm test` (node 테스트 파일 62개(갤러리 테스트에 이미지 연결 검사 포함), 모두 통과 상태 유지)
+- 테스트: `cd saju-app && npm test` (node 테스트 파일 63개(갤러리 테스트에 이미지 연결 검사 포함), 모두 통과 상태 유지)
 - 화면 확인: Playwright(`require('playwright')`, 크로미움 내장)로 스크린샷
 - 디자인 확인: `http://localhost:8000/?gallery=1` (12지신 띠×14단계×성별×오행, 부적 6종×5등급×2테마, 이모티콘 8표정×스타일×등급, 한정 소품 11종)
 
@@ -201,6 +203,7 @@
 | wish.js / coordi.js / burn.js | **v0.57**: 소원 부적 `attachWish`·`dueWish`·`fulfill`·`postpone`·`wallOf`·`trimCollection` / 데일리 코디 `WARDROBE`·`coordiHearts`·`saveDay`·`claimStreak` / 걱정 태우기 `burnable`·`burnResult`·`makeGrid`·`stepFire`(저장 안 함). 화면 app.js `wishFormHTML`·`wishDueHTML`·`wishWallHTML`·`coordiHTML`·`coordiWrap`·`burnHTML`·`openBurn` |
 | flowstory.js | **v0.59 4단계 나의 흐름 요약**: `weekStory`·`yearStory`·`decadeStory`(이번 주 1천·올해 2천·10년 3천 자 이내, 다른 화면과 문장 겹침 0). 요약판은 storyreport.js `yearSummary`·`textsOf`, 상세판 겹침 빼기는 premium.js `finish(skip)`·`mendChapters` |
 | cookie.js / dailyhabit.js / santong.js | **v0.59**: 포춘 쿠키 `todayTodo`·`cookieTiles` / 나만의 습관 2가지 `checkTarget`·`checkHabit`·`recommendHabits` / 산통 점괘 `drawYear`·`santongCard`. 화면 app.js `cookieCardHTML`·`habitsCardHTML`·`santongHTML`·`openCharmPay` |
+| sound.js | **v0.65 효과음·짧은 음악**: `sfx`·`jingle`·`unlockSound`·`setSoundEnabled`·`soundOn`·`toggleSound`(저장 `unmyeong2099.sound`). 화면 app.js `setupSound`·`paintSoundBtn`, 머리줄 `#btn-sound` |
 | lantern.js | **v0.64 100일 소원 등불·걱정 태우기 무료**: `makeLantern`·`lanternDay`·`lanternStage`·`lanternLine`·`letterDue`·`lanternLetter`·`pray`·`keepLantern`·`canBurnToday`. 화면 app.js `lanternHTML`·`openCharmMaker` 상품 고르기·`openWishRitual` 인장 결제 |
 | paidcharm.js | **v0.60 유료 부적**: 종이 `paidCharmSVG`·`charmLayout`·`sealChars`, 의식 상수 `RITUAL_STEPS`·`STAMP_BUZZ`, 걱정 씨앗 `plantSeed`·`seedToAsk`·`answerSeed`·`seedStage`, 배경화면 `drawWallpaper`, 결제 창 `PAY_GETS`. 화면 app.js `openWishRitual`·`saveWallpaper`·`wishMidHTML`·`seedAskHTML`·`seedGardenHTML` |
 | cookieplus.js | **v0.61 포춘 쿠키 1부**: 지신 한마디 `cookieReaction`·`REACT`·`tierOf` / 절기·명절 `specialOf`·`TERMS24`·`HOLIDAYS6` / 황금 쿠키 `isGolden`·`GOLD_NOTE`. 화면 app.js `cookieInfo`·`cookieCardHTML`·`crackCookie`·`SHAPE_SVG` |

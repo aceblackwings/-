@@ -82,6 +82,7 @@ import { drawKiCard, todayKiCard, stageForDays, nextStage, kiCardText, rarityLab
 import { buildDiary, logVisit, markRead, isRead } from './diary.js';
 import { scratchedOn, markScratched, clearedRatio } from './scratch.js';
 import { cookieReaction, specialOf, isGolden, GOLD_NOTE, tierOf } from './cookieplus.js';
+import { SOUND_KEY, soundOn, toggleSound, setSoundEnabled, unlockSound, sfx, jingle } from './sound.js';
 import { COOKIE_KEY, isOpened as cookieOpened, markOpened as cookieMark, todayTodo, cookieTiles } from './cookie.js';
 import { DHABIT_KEY, HABIT_REWARD, HABIT_MAX, isSet as habitsSet, recommendHabits, setHabits, checkTarget, checksOn, checkHabit, recentChecks } from './dailyhabit.js';
 import { fortuneImage } from './assets.js';
@@ -177,6 +178,43 @@ function save(key, value) {
   try { localStorage.setItem(key, text); MEM_STORE.delete(key); } catch { storeBlocked = true; MEM_STORE.set(key, text); }
 }
 
+
+/** 🔔 효과음(v0.65): 머리줄 🔊 버튼으로 켜고 끔, 첫 손가락 누름에서 소리 장치를 깨움, 버튼을 누르면 작은 「톡」 */
+function setupSound() {
+  const on = soundOn(load(SOUND_KEY, {})); setSoundEnabled(on); paintSoundBtn(on);
+  const wake = () => unlockSound();
+  document.addEventListener('pointerdown', wake, { capture: true, passive: true });
+  document.addEventListener('keydown', wake, { capture: true, passive: true });
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('#btn-sound')) {
+      const st = toggleSound(load(SOUND_KEY, {})); save(SOUND_KEY, st); const now = soundOn(st);
+      setSoundEnabled(now); paintSoundBtn(now); if (now) { unlockSound(); sfx('pop'); }
+      toast(now ? '🔊 효과음을 켰어요' : '🔇 효과음을 껐어요'); return;
+    }
+    // 탭은 따로 「탭 바꾸기」 소리, 긁기 칸·인장·태우기는 각자 소리가 있어 「톡」은 빼고
+    const b = e.target.closest('button, [role="button"], summary, a[href], [data-tab]');
+    if (!b || b.disabled || b.closest('[data-tab], #tabs, #subnav, .sc-tile, .rt-sealbtn')) return;
+    sfx('tap');
+  }, true);
+}
+/** 📱 폰 자판(v0.65): 입력 칸을 누르면 자판이 올라온 뒤 그 칸이 가려지지 않게 화면을 위로 올려 줌
+ *  (iOS 사파리는 고정 창 안 입력 칸을 자판 뒤에 두는 일이 있어, 화면 높이가 바뀌면 칸을 가운데로) */
+function keepFieldVisible(el) {
+  if (!el || !/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.type === 'checkbox' || el.type === 'radio') return;
+  const vv = window.visualViewport;
+  const fix = () => {
+    if (document.activeElement !== el) return;
+    const r = el.getBoundingClientRect(); const h = vv ? vv.height : window.innerHeight;
+    if (r.bottom > h - 12 || r.top < 0) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  };
+  setTimeout(fix, 320); vv?.addEventListener('resize', fix, { once: true });
+}
+document.addEventListener('focusin', (e) => keepFieldVisible(e.target));
+function paintSoundBtn(on) {
+  const b = $('#btn-sound'); if (!b) return;
+  b.textContent = on ? '🔊' : '🔇'; b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  const t = on ? '효과음 끄기' : '효과음 켜기'; b.title = t; b.setAttribute('aria-label', t);
+}
 
 function toast(msg, ms) {
   document.querySelectorAll('.toast').forEach((t) => t.remove());
@@ -402,6 +440,7 @@ function initForm() {
   });
 
   applyEasyClass();
+  setupSound();
   const qs = new URLSearchParams(location.search);
   if (saved && saved.gender && saved.concern && !solarDateOf(saved).error && qs.get('auto') !== '0') start(saved);
   else if (qs.has('gallery')) start({ name: '미리보기', calendar: 'solar', year: 1998, month: 5, day: 20, time: '09:30', timeUnknown: false, lonCorr: true, zasi: 'early', gender: 'female', concern: 'job' }); // 저장하지 않는 견본 프로필
@@ -441,6 +480,7 @@ function selectTab(name) {
   if (name === 'feng') renderFeng();
   if (name === 'chat') { renderChat(); getSample().then(() => renderChat()); }
   if (name === 'today' && state.fortune) grow((g) => complete(g, state.fortune.dateKey, 'fortune', qBonus('fortune')));
+  sfx('tab');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -2354,7 +2394,7 @@ function showEquipMoment(r) {
   const info = characterInfo(state.saju, state.profile); const t = charmFromRecord(r);
   const n = fillOf(load(CHARMGROW_KEY, {}), r);
   const pair = pairType(loadEquip().charms);
-  const box = document.createElement('div'); box.className = 'evo-modal';
+  const box = document.createElement('div'); box.className = 'evo-modal'; sfx('sparkle');
   box.innerHTML = `<div class="evo-box eq-moment"><div class="eq-glow"><div class="nt-charm">${renderTalismanSVG(t)}</div></div>
     <h3 style="margin:10px 0 4px">${esc(labelForRec(r))} 장착</h3>
     <div class="speech"><p>${esc(equipLine(r.type, isRooster()))}</p></div>
@@ -2499,7 +2539,7 @@ function completeNote() {
   completeActMission();
   renderToday(); renderHero(false);
   setTimeout(() => tteokTask('habit'), 50);
-  const box = document.createElement('div'); box.className = 'evo-modal';
+  const box = document.createElement('div'); box.className = 'evo-modal'; jingle('charm');
   box.innerHTML = `<div class="evo-box" style="text-align:center"><h3 style="margin:0 0 6px">🧧 쪽지 보상</h3>
     <div class="nt-charm">${renderTalismanSVG(t)}</div>
     <p style="margin:10px 0 4px"><b>${label}</b>를 받았어요</p>
@@ -2727,7 +2767,7 @@ function scratchHTML() {
   const all = tiles.every((t) => open.has(t.key));
   setTimeout(initScratch, 0);
   return `<section class="sc-box" id="sc-box">
-    <p class="sc-h">🍀 오늘의 행운 · 오늘 할 일 <small>${all ? '모두 열었어요' : '손가락으로 긁어 보세요'}</small></p>
+    <p class="sc-h">🍀 오늘의 행운 · 오늘 할 일 <small>${all ? '모두 열었어요' : '손가락으로 좌우로 문질러 보세요'}</small></p>
     <div class="sc-grid">${tiles.map((t) => `<div class="sc-tile ${open.has(t.key) ? 'open' : ''} ${t.wide ? 'wide' : ''}" data-sc="${t.key}" tabindex="0" role="button" aria-label="${t.label} 긁어서 보기">
       <span class="sc-l">${t.icon} ${t.label}</span><b class="sc-v">${esc(t.value)}</b>${t.sub ? `<small class="sc-sub">${esc(t.sub)}</small>` : ''}${open.has(t.key) ? '' : '<canvas class="sc-foil" aria-hidden="true"></canvas>'}</div>`).join('')}</div>
     ${all ? '' : '<button type="button" class="linkish sc-all" data-sc-all>한 번에 모두 열기</button>'}
@@ -2735,6 +2775,7 @@ function scratchHTML() {
 }
 function revealScratch(tile) {
   if (!tile || tile.classList.contains('open')) return;
+  sfx('pop');
   if (tile.dataset.santong) { // v0.59 산통 점괘: 그해에 한 번 열면 계속 열린 채
     const Y = Number(tile.dataset.santong); save(SANTONG_KEY, santongOpen(load(SANTONG_KEY, {}), Y));
     const b = $('#st-box'); if (b) b.outerHTML = santongHTML(Y);
@@ -2762,14 +2803,14 @@ function initScratch() {
     ctx.fillStyle = 'rgba(255,255,255,0.35)'; for (let i = 0; i < 40; i++) ctx.fillRect(Math.random() * cv.width, Math.random() * cv.height, 2 * dpr, 2 * dpr);
     ctx.fillStyle = '#6a5a8a'; ctx.font = `600 ${13 * dpr}px "Gowun Dodum", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(tile.querySelector('.sc-l').textContent, cv.width / 2, cv.height / 2 - 10 * dpr);
-    ctx.font = `${11 * dpr}px "Gowun Dodum", sans-serif`; ctx.fillText('✦ 긁어 보세요 ✦', cv.width / 2, cv.height / 2 + 12 * dpr);
+    ctx.font = `${11 * dpr}px "Gowun Dodum", sans-serif`; ctx.fillText('✦ 좌우로 문질러요 ✦', cv.width / 2, cv.height / 2 + 12 * dpr);
     ctx.globalCompositeOperation = 'destination-out';
     let down = false; let moves = 0; let lastP = null;
     const at = (e) => { const b = cv.getBoundingClientRect(); return [(e.clientX - b.left) * dpr, (e.clientY - b.top) * dpr]; };
     const scrape = (p) => {
       ctx.lineWidth = 30 * dpr; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(...(lastP || p)); ctx.lineTo(...p); ctx.stroke();
-      ctx.beginPath(); ctx.arc(p[0], p[1], 15 * dpr, 0, Math.PI * 2); ctx.fill(); lastP = p;
+      ctx.beginPath(); ctx.arc(p[0], p[1], 15 * dpr, 0, Math.PI * 2); ctx.fill(); lastP = p; sfx('scratch');
       if (++moves % 6 === 0 && clearedRatio(ctx.getImageData(0, 0, cv.width, cv.height).data) > 0.45) { down = false; revealScratch(tile); }
     };
     cv.addEventListener('pointerdown', (e) => { down = true; lastP = null; cv.setPointerCapture?.(e.pointerId); scrape(at(e)); });
@@ -2926,6 +2967,7 @@ const REACT_MS = 1500;
 function crackCookie() {
   const st = $('#fc-stage'); if (!st || st.dataset.step !== 'ready') return;
   st.dataset.step = 'crack'; $('#fc-guide').textContent = '';
+  sfx('crack'); if (st.classList.contains('gold')) setTimeout(() => jingle('gold'), 250);
   const showFortune = () => {
     const dk = state.fortune.dateKey; const first = !cookieOpened(load(COOKIE_KEY, {}), dk);
     save(COOKIE_KEY, cookieMark(load(COOKIE_KEY, {}), dk));
@@ -2994,7 +3036,7 @@ document.addEventListener('click', (e) => {
     const r = checkHabit(load(DHABIT_KEY, {}), state.fortune.dateKey, Number(ck.dataset.dhCheck));
     if (!r.gained) return;
     save(DHABIT_KEY, r.store);
-    save(TTEOK_KEY, tteokGift(loadTteok(), '습관 체크', r.gained).store);
+    save(TTEOK_KEY, tteokGift(loadTteok(), '습관 체크', r.gained).store); sfx('coin');
     toast(`✓ 잘했어요! ${TTEOK} 복떡 +${r.gained}`);
     if (r.all) feedJisin('dinner', { quiet: true }); // 두 가지 모두 체크 = 지신 저녁밥
     redrawHabits();
@@ -3050,6 +3092,7 @@ function feedJisin(key, { quiet = false } = {}) {
   const before = foodPoints();
   const r = feed(loadFood(), state.fortune.dateKey, key);
   if (r.already) return;
+  if (!quiet) sfx('grow');
   save(FOOD_KEY, r.store);
   checkSecondEvolution(before);
   const b = BOWLS.find((x) => x.key === key);
@@ -3136,7 +3179,7 @@ function checkSecondEvolution(beforePoints) {
 function showSecondEvolution(sec, from, to) {
   if (document.querySelector('.evo-modal, .hj-reader')) { setTimeout(() => showSecondEvolution(sec, from, to), 1200); return; }
   const info = secondInfo(sec); const nm = stageName(to, info.female);
-  const box = document.createElement('div'); box.className = 'evo-modal';
+  const box = document.createElement('div'); box.className = 'evo-modal'; jingle('evolve');
   box.innerHTML = `<div class="evo-box">
     <p class="muted" style="margin:0">두 번째 지신 진화</p>
     <div class="evo-stage"><div class="evo-before">${renderCharacterSVG({ ...info, stage: from }, { stage: from, width: 220, mood: 'wow', backdrop: true })}</div><div class="evo-after">${renderCharacterSVG({ ...info, stage: to }, { stage: to, width: 220, mood: 'excited', backdrop: true, animate: true })}</div><div class="evo-flash"></div></div>
@@ -3503,7 +3546,7 @@ document.addEventListener('click', (e) => {
   } else if (el.hasAttribute('data-tarot-reveal')) {
     const u = useTarot(loadTteok(), state.fortune.dateKey, T.spread);
     if (!u.ok) { toast(`${TTEOK} 복떡 ${u.cost}개가 필요해요 (${u.need}개 부족) · 습관을 체크해 모아 보세요`); goHabits(); return; }
-    save(TTEOK_KEY, u.store);
+    save(TTEOK_KEY, u.store); sfx('flip');
     toast(`${TTEOK} 복떡 ${u.cost}개를 지신에게 줬어요. 카드를 펼칠게요`);
     T.result = readTarot({ topic: T.topic, spread: T.spread, situ: T.situ, picks: T.picks.map((i) => T.deck[i]), name: state.profile.name });
     T.step = 'result';
@@ -5001,7 +5044,7 @@ function doDraw() {
 function showReveal(charm, pack, done) {
   const best = pack.best;
   const el = document.createElement('div');
-  el.className = `reveal-modal r-${best}`;
+  el.className = `reveal-modal r-${best}`; jingle(['legend', 'mythic', 'hero'].includes(best) ? 'rare' : 'charm');
   const emo = renderEmoticonSVG(state.saju, state.fortune, { stage: heroOptions().stage, profile: state.profile, mood: pack.emote.key, style: 'neon', tag: '', rarity: pack.emote.rarity, caption: EMOTES.find((e) => e.key === pack.emote.key).label });
   const card = (inner, r, label, i) => `<div class="rv-card" style="--d:${0.15 + i * 0.25}s;--c:${RARITY_COLOR[r]}"><div class="rv-inner">${inner}</div><b style="color:${RARITY_COLOR[r]}">${RARITY_LABEL[r]}</b><small>${label}</small></div>`;
   el.innerHTML = `<div class="rv-box">
@@ -5288,7 +5331,7 @@ function showEvolution(info, from, to) {
   const before = renderCharacterSVG(info, { stage: from, width: 260, mood: 'wow', backdrop: true });
   const after = renderCharacterSVG(info, { stage: to, width: 260, mood: 'excited', charms, emote, season, backdrop: true, animate: true });
   const el = document.createElement('div');
-  el.className = 'evo-modal';
+  el.className = 'evo-modal'; jingle('evolve');
   el.innerHTML = `<div class="evo-box">
     <p class="muted" style="margin:0">EVOLUTION</p>
     <div class="evo-stage"><div class="evo-before">${before}</div><div class="evo-after">${after}</div><div class="evo-flash"></div></div>
@@ -5932,6 +5975,7 @@ function openCharmMaker(kind, preset = '', tier = 'wish') {
       const by = (state.profile.name || '').slice(0, 8); const seal = zIdx();
       let r;
       if (t === 'lantern') r = makeLantern(base, { wish: text, forWho, by, seal, today });
+      if (t === 'lantern') jingle('lantern');
       else {
         const due = dueFromInput(date.value, today);
         if (!due) { toast('날짜는 오늘이나 그 뒤로 골라 주세요'); return; }
@@ -6075,6 +6119,7 @@ function openWishRitual(rec, onDone, opt = {}) {
       const skip = box.querySelector('[data-rt-skip]'); if (skip) { skip.hidden = false; skip.textContent = '건너뛰고 완성하기'; }
       const quitB = box.querySelector('[data-rt-quit]'); if (quitB) quitB.hidden = true;
       try { navigator.vibrate?.(STAMP_BUZZ); } catch { /* 진동이 없는 기기 */ }
+      sfx('stamp');
       body.querySelector('.rt-charm').innerHTML = paidCharmSVG(d); body.querySelector('.rt-charm').classList.add('stamped');
       btn.classList.add('pressed'); tip.textContent = '쾅! 인장이 찍혔어요';
       later(() => show(3), 1000);
@@ -6136,7 +6181,7 @@ document.addEventListener('click', (e) => {
   const today = state.fortune.dateKey;
   const pr = e.target.closest('[data-lt-pray]');
   if (pr) {
-    const i = Number(pr.dataset.ltPray); save(COLLECTION_KEY, lanternPray(load(COLLECTION_KEY, []), i, today));
+    const i = Number(pr.dataset.ltPray); save(COLLECTION_KEY, lanternPray(load(COLLECTION_KEY, []), i, today)); sfx('bell');
     toast(politeNow() ? '🙏 오늘도 함께 빌었어요. 등불이 조금 따뜻해졌어요' : '🙏 오늘도 함께 빌었어. 등불이 조금 따뜻해졌어'); renderToday(); return;
   }
   const lt = e.target.closest('[data-lt-letter]');
@@ -6154,7 +6199,7 @@ document.addEventListener('click', (e) => {
   }
   const kp = e.target.closest('[data-lt-keep]');
   if (kp) {
-    const i = Number(kp.dataset.ltKeep); const col = keepLantern(load(COLLECTION_KEY, []), i, today); save(COLLECTION_KEY, col);
+    const i = Number(kp.dataset.ltKeep); const col = keepLantern(load(COLLECTION_KEY, []), i, today); save(COLLECTION_KEY, col); jingle('wish');
     renderToday(); renderHero(false);
     const box = document.createElement('div'); box.className = 'evo-modal';
     box.innerHTML = `<div class="evo-box wish-pop"><img class="lt-kept-big" src="${LT_ART('kept')}" alt="100일 완주 등불"><div class="wish-shine">${wishCharmHTML(col[i], true)}</div>
@@ -6254,7 +6299,7 @@ document.addEventListener('click', (e) => {
     toast(`⏳ ${wishLaterLine(r, wishDueLabel(next[i].dueKey, today), politeNow())}`);
     renderToday(); renderHero(false); return;
   }
-  const doneCol = wishFulfill(col, i, today); save(COLLECTION_KEY, doneCol);
+  const doneCol = wishFulfill(col, i, today); save(COLLECTION_KEY, doneCol); jingle('wish');
   renderToday(); renderHero(false);
   const dr = doneCol[i];
   const box = document.createElement('div'); box.className = 'evo-modal';
@@ -6326,7 +6371,7 @@ document.addEventListener('click', (e) => {
   const c = coordiClaim(next, f.dateKey); next = c.store;
   const sr = coordiStars(next, f.dateKey); next = sr.store; save(COORDI_KEY, next);
   state.heroLine = coordiLine(r.res.hearts, politeNow());
-  if (sr.gained) { save(TTEOK_KEY, tteokGift(loadTteok(), `코디 별 ${sr.stars}개`, sr.gained).store); toast(`👗 코디 완성 · 별 ${sr.stars}개! ${TTEOK} 복떡 +${sr.gained}`); }
+  if (sr.gained) { save(TTEOK_KEY, tteokGift(loadTteok(), `코디 별 ${sr.stars}개`, sr.gained).store); sfx('coin'); toast(`👗 코디 완성 · 별 ${sr.stars}개! ${TTEOK} 복떡 +${sr.gained}`); }
   else if (sr.done) toast(`👗 코디 완성 · 별 ${sr.stars}개 · 별 3개부터 복떡을 받아요`);
   else toast(`👗 ${COORDI_SLOTS.find((x) => x.key === slot)?.label || ''} 골랐어요`);
   renderHero(false); refreshCoordi();
@@ -6450,7 +6495,7 @@ function openBurn(worry, idx) {
     const x = ((ev.clientX - b.left) / b.width) * g.w; const y = ((ev.clientY - b.top) / b.height) * g.h;
     if (reduce) { box.querySelector('.burn-stage').classList.add('fade'); setTimeout(finish, 700); return; }
     ignite(g, x, y, 1);
-    if (!lit) { lit = true; box.querySelector('.burn-tip').textContent = '불이 번지고 있어요…'; raf = requestAnimationFrame(tick); }
+    if (!lit) { lit = true; sfx('fire'); box.querySelector('.burn-tip').textContent = '불이 번지고 있어요…'; raf = requestAnimationFrame(tick); }
   };
   cv.addEventListener('pointerdown', (ev) => { ev.preventDefault(); light(ev); });
   cv.addEventListener('pointermove', (ev) => { if (ev.buttons) light(ev); });

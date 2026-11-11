@@ -1782,7 +1782,7 @@ html.easy .top h1 { font-size: 20px; }
 .sc-v { font-size: 0.98rem; color: var(--ink); line-height: 1.4; }
 .sc-tile.open .sc-v { animation: sc-pop 0.5s ease; }
 @keyframes sc-pop { 0% { transform: scale(0.85); opacity: 0.3; } 100% { transform: scale(1); opacity: 1; } }
-.sc-foil { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; transition: opacity 0.35s; }
+.sc-foil { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: pan-y; cursor: grab; transition: opacity 0.35s; } /* v0.65: 위아래로 쓸면 화면이 움직이고, 좌우로 문지르면 긁힘(예전 none은 폰에서 칸 위 스크롤을 막음) */
 .sc-foil.gone { opacity: 0; }
 .sc-all { display: block; margin: 6px auto 0; }
 
@@ -2265,3 +2265,7 @@ body.cm-open { overflow: hidden; }
 .wish-frame { position: relative; }
 .lt-kept-mini { position: absolute; top: -6px; right: -6px; width: 46px; filter: drop-shadow(0 0 6px rgba(255, 196, 92, .7)); }
 @media (prefers-reduced-motion: reduce) { .lantern-card .lt-lamp img { animation: none; } }
+
+/* v0.65 효과음 버튼(머리줄, 글씨 크게 모드에서도 크기 고정) */
+#btn-sound, html.easy #btn-sound { min-width: 40px; min-height: 40px; padding: 4px 8px; font-size: 16px; line-height: 1; }
+#btn-sound[aria-pressed="false"] { opacity: .65; }
