@@ -52,3 +52,18 @@ ok('약관·처리방침·환불 규정에 꼭 들어갈 내용');
 ok('바닥글 사업자 정보·약관 링크 · 가입 동의 줄 · 결제 창 고지');
 
 console.log(`site.test: ${n}개 통과`);
+
+// 회사 홈페이지(ockstar.com): 생성기 결과와 같음 · 사업자 정보 · 12지신 강림 링크
+{
+  const { companyPage, CONTENTS, COMPANY_URL } = await import('../tools/company_page.mjs');
+  const html = readFileSync(new URL('../../company/site/index.html', import.meta.url), 'utf8');
+  assert.equal(html, companyPage(), 'company/site/index.html — 글을 고쳤으면 node saju-app/tools/company_page.mjs 다시 실행');
+  for (const x of [BIZ.name, BIZ.owner, BIZ.regNo, BIZ.address, BIZ.phone, BIZ.email]) assert.ok(html.includes(x), `회사 홈페이지에 ${x}`);
+  assert.ok(html.includes(`href="${BIZ.domain}/"`) && html.includes('12지신 강림'), '콘텐츠 목록에 12지신 강림');
+  assert.ok(CONTENTS.length >= 1 && COMPANY_URL === 'https://ockstar.com');
+  assert.deepEqual(josaProblems(textOf(html)), [], '회사 홈페이지 조사');
+  const cfg = readFileSync(new URL('../../company/wrangler.jsonc', import.meta.url), 'utf8');
+  assert.ok(cfg.includes('"name": "ockstar-home"') && cfg.includes('"directory": "./site"'));
+  for (const f of ['company.css', 'img/12jisin.webp', 'robots.txt']) readFileSync(new URL(`../../company/site/${f}`, import.meta.url));
+}
+console.log('  ✓ 회사 홈페이지: 생성기 결과와 같음 · 사업자 정보 · 12지신 강림 링크 · 배포 설정');
