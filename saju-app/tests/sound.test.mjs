@@ -1,4 +1,4 @@
-// v0.65 효과음·짧은 음악: 소리 파일 없이 Web Audio로 만들고, 끄면 소리를 내지 않음
+// v0.66 효과음·짧은 음악: 소리 파일 없이 Web Audio로 만들고, 끄면 소리를 내지 않음
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

@@ -104,6 +104,8 @@ import {
 const WISH_RECS = ['자격증 시험 합격', '가족 모두 건강하기', '좋은 인연 만나기', '이직에 성공하기', '저축 100만 원 모으기', '꾸준히 운동하기'];
 const BURN_RECS = ['괜히 불안한 마음', '나를 지치게 한 말', '자꾸 미루는 버릇', '꽉 막힌 일의 답답함', '다툰 뒤 남은 서운함', '잠 못 들게 하는 걱정'];
 const CHARMPAY_KEY = 'unmyeong2099.charmpay';
+import { PAY, payMode, fillBiz } from './site.js';
+import { PENDING_KEY, makeOrder, tossRequest, parseReturn, cleanSearch, checkReturn, pendingAlive, payLogEntry, failLine, alreadyDone } from './pay.js';
 const SEEDS_KEY = 'unmyeong2099.seeds'; // v0.60 걱정 씨앗 {list:[{at, el, answer}]} — 걱정 글은 없음
 
 const STORE_KEY = 'unmyeong2099.profile';
@@ -179,7 +181,7 @@ function save(key, value) {
 }
 
 
-/** 🔔 효과음(v0.65): 머리줄 🔊 버튼으로 켜고 끔, 첫 손가락 누름에서 소리 장치를 깨움, 버튼을 누르면 작은 「톡」 */
+/** 🔔 효과음(v0.66): 머리줄 🔊 버튼으로 켜고 끔, 첫 손가락 누름에서 소리 장치를 깨움, 버튼을 누르면 작은 「톡」 */
 function setupSound() {
   const on = soundOn(load(SOUND_KEY, {})); setSoundEnabled(on); paintSoundBtn(on);
   const wake = () => unlockSound();
@@ -197,7 +199,7 @@ function setupSound() {
     sfx('tap');
   }, true);
 }
-/** 📱 폰 자판(v0.65): 입력 칸을 누르면 자판이 올라온 뒤 그 칸이 가려지지 않게 화면을 위로 올려 줌
+/** 📱 폰 자판(v0.66): 입력 칸을 누르면 자판이 올라온 뒤 그 칸이 가려지지 않게 화면을 위로 올려 줌
  *  (iOS 사파리는 고정 창 안 입력 칸을 자판 뒤에 두는 일이 있어, 화면 높이가 바뀌면 칸을 가운데로) */
 function keepFieldVisible(el) {
   if (!el || !/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.type === 'checkbox' || el.type === 'radio') return;
@@ -446,6 +448,8 @@ function initForm() {
   else if (qs.has('gallery')) start({ name: '미리보기', calendar: 'solar', year: 1998, month: 5, day: 20, time: '09:30', timeUnknown: false, lonCorr: true, zasi: 'early', gender: 'female', concern: 'job' }); // 저장하지 않는 견본 프로필
   if (qs.has('gallery') && state.saju) selectTab('gallery');
   handleEasyLink();
+  fillBiz(document);
+  setTimeout(resumePay, 0); // 모듈이 끝까지 준비된 뒤에(아래쪽 상수들을 쓰므로)
 }
 
 // ---------- 탭 ----------
@@ -5798,7 +5802,77 @@ function bindWishForm(panel) {
 }
 /** v0.64 결제 창(인장 찍는 순간): 소원 부적 990원 또는 복떡 50개 · 100일 등불 2,900원(돈으로만) · 걱정 태우기는 무료라 결제 없음
  *  v0.60: 받는 것 4줄 + 부적 미리보기(preview = paidCharmSVG 데이터) */
-function openCharmPay(kind, onOk, onCancel = () => {}, preview = null) {
+/** v0.65 토스페이먼츠 결제창 SDK(처음 결제할 때만 불러옴) */
+let tossLoading = null;
+function loadToss() {
+  if (window.TossPayments) return Promise.resolve(window.TossPayments);
+  tossLoading ||= new Promise((ok, no) => {
+    const sc = document.createElement('script'); sc.src = PAY.sdk; sc.async = true;
+    sc.onload = () => (window.TossPayments ? ok(window.TossPayments) : no(new Error('sdk')));
+    sc.onerror = () => { tossLoading = null; no(new Error('sdk')); };
+    document.head.appendChild(sc);
+  });
+  return tossLoading;
+}
+/** 결제창으로 이동 — 만들던 부적 기록을 기기에 「기다리는 주문」으로 두고 다녀온다(소원 글은 결제 회사로 보내지 않음) */
+async function goTossPay(kind, rec) {
+  const order = makeOrder(kind, rec); if (!order) throw new Error('order');
+  save(PENDING_KEY, order);
+  if (storeBlocked) { save(PENDING_KEY, null); throw new Error('store'); }
+  const Toss = await loadToss();
+  const payment = Toss(PAY.tossClientKey).payment({ customerKey: Toss.ANONYMOUS });
+  await payment.requestPayment(tossRequest(order, location.origin, location.pathname + cleanSearch(location.search)));
+}
+/** 결제 승인 함수 호출 */
+async function confirmOnServer(p) {
+  const res = await fetch(PAY.confirmUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentKey: p.paymentKey, orderId: p.orderId, amount: p.amount }) });
+  let body = {}; try { body = await res.json(); } catch { /* 빈 응답 */ }
+  return body;
+}
+/** 결제가 끝난 부적을 도감에 저장(결제창에 다녀온 뒤라 의식 연출보다 저장이 먼저) */
+function commitPaidCharm(r) {
+  const today = state.fortune.dateKey;
+  const listNow = load(COLLECTION_KEY, []); listNow.unshift(r); save(COLLECTION_KEY, trimCollection(listNow, 60));
+  renderHero(false); renderToday();
+  const lead = isLantern(r) ? `🏮 100일 등불을 켰어요. 「${r.wish}」, 오늘부터 홈에서 매일 함께 빌어요`
+    : `🌠 ${wishMadeLine(r.wish, wishDueLabel(r.dueKey, today), politeNow())}`;
+  grow((g) => complete(g, today, 'charm', qBonus('charm')), lead);
+}
+/** 결제창에서 돌아왔을 때(또는 승인 확인이 끊겼다가 다시 열었을 때): 승인 → 저장 → 인장 찍는 장면부터 이어서 */
+async function resumePay() {
+  const ret = parseReturn(location.search);
+  if (ret) history.replaceState(null, '', location.pathname + cleanSearch(location.search) + location.hash);
+  let p = load(PENDING_KEY, null);
+  if (!state.fortune) return;
+  if (ret?.status === 'fail') {
+    toast(failLine(ret.code), 6000);
+    if (pendingAlive(p) && !p.paymentKey) { save(PENDING_KEY, null); selectTab('hero'); openWishRitual(p.rec, () => commitPaidCharm(p.rec), { startAt: 2 }); }
+    return;
+  }
+  if (ret?.status === 'success') {
+    const c = checkReturn(ret, p);
+    if (!c.ok) { toast(`${c.message || '결제 정보를 확인하지 못했어요.'} 승인되지 않은 결제는 자동으로 취소되어 돈이 나가지 않아요`, 7000); return; }
+    p = { ...p, paymentKey: ret.paymentKey }; save(PENDING_KEY, p);
+  }
+  if (!pendingAlive(p)) { if (p) save(PENDING_KEY, null); return; }
+  if (!p.paymentKey) return; // 결제창에서 그냥 돌아온 경우 — 기록만 두었다가 하루 뒤 지움
+  toast('결제를 확인하고 있어요…', 4000);
+  let body;
+  try { body = await confirmOnServer(p); } catch { toast('결제 확인이 잠시 끊겼어요. 이 화면을 다시 열면 이어서 확인해요', 7000); return; }
+  if (!body.ok && !alreadyDone(body.code)) {
+    if (body.code === 'PG_UNREACHABLE' || body.code === 'NO_SECRET') { toast(`${body.message} 이 화면을 다시 열면 이어서 확인해요`, 7000); return; }
+    save(PENDING_KEY, null);
+    toast(`결제가 승인되지 않았어요(${body.message || body.code || '확인 실패'}). 돈은 나가지 않았어요`, 8000);
+    return;
+  }
+  const log = load(CHARMPAY_KEY, []); log.unshift(payLogEntry(p, body)); save(CHARMPAY_KEY, log.slice(0, 50));
+  save(PENDING_KEY, null);
+  commitPaidCharm(p.rec);
+  selectTab('hero');
+  openWishRitual(p.rec, () => {}, { paid: true, startAt: 2 });
+}
+function openCharmPay(kind, onOk, onCancel = () => {}, preview = null, rec = null) {
+  const mode = rec ? payMode() : 'trial'; const real = mode !== 'trial';
   document.querySelectorAll('.pay-modal').forEach((x) => x.remove());
   const lantern = kind === 'lantern'; const price = lantern ? LANTERN_PRICE : CHARM_PRICE;
   const bal = loadTteok()?.balance || 0; const can = !lantern && bal >= CHARM_TTEOK;
@@ -5811,10 +5885,11 @@ function openCharmPay(kind, onOk, onCancel = () => {}, preview = null) {
       <ul class="cp-gets">${(PAY_GETS[lantern ? 'lantern' : 'wish'] || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
     <p class="hj-desc">먹을 갈고 이름까지 정성껏 쓰셨어요. 결제하면 인장이 찍히고, 지신이 기운을 불어넣어요.</p>
     <p class="hj-price"><b>${won(price)}</b> <small>${lantern ? '한 번 결제로 100일' : '한 장'} · 운세 점수와는 상관없어요</small></p>
-    <button type="button" class="hj-buy" data-cp="pay">체험판으로 인장 찍기 (결제 없음)</button>
-    ${lantern ? '<p class="hj-note">100일 등불은 복떡으로는 만들 수 없어요 · 지금은 체험판이라 실제 결제 없이 켜져요</p>'
+    <button type="button" class="hj-buy" data-cp="pay">${real ? `카드로 결제하고 인장 찍기 · ${won(price)}` : '체험판으로 인장 찍기 (결제 없음)'}</button>
+    ${real ? `<p class="hj-note cp-legal">${mode === 'test' ? '<b>시험 결제 중이에요(실제 돈은 나가지 않아요).</b> ' : ''}결제하면 바로 만들어지는 디지털 상품이에요. 내 소원으로 한 장씩 만들기 때문에 <b>만든 뒤에는 단순 변심 환불이 어려워요</b>(오류·중복 결제는 전액 환불). 부적은 <b>이 기기의 이 브라우저에만</b> 저장돼요. 결제하면 <a href="legal/terms.html" target="_blank" rel="noopener">이용약관</a>·<a href="legal/refund.html" target="_blank" rel="noopener">환불 규정</a>에 동의한 것으로 봐요.</p>` : ''}
+    ${lantern ? `<p class="hj-note">100일 등불은 복떡으로는 만들 수 없어요${real ? '' : ' · 지금은 체험판이라 실제 결제 없이 켜져요'}</p>`
       : `<button type="button" class="hj-buy navy" data-cp="tteok" ${can ? '' : 'disabled'}>${TTEOK} 복떡 ${CHARM_TTEOK}개로 무료 인장 찍기</button>
-    <p class="hj-note">${can ? `가진 복떡 ${bal}개 · ${CHARM_TTEOK}개를 쓰면 한 번 무료예요` : `복떡 ${CHARM_TTEOK}개가 모이면 한 번 무료 · 지금 ${bal}개`} · 지금은 체험판이라 실제 결제 없이 만들어져요</p>`}
+    <p class="hj-note">${can ? `가진 복떡 ${bal}개 · ${CHARM_TTEOK}개를 쓰면 한 번 무료예요` : `복떡 ${CHARM_TTEOK}개가 모이면 한 번 무료 · 지금 ${bal}개`}${real ? '' : ' · 지금은 체험판이라 실제 결제 없이 만들어져요'}</p>`}
     <button type="button" class="ghost" data-cp="close" style="width:100%">아직 안 찍을래요</button>
   </div>`;
   document.body.appendChild(box);
@@ -5826,6 +5901,15 @@ function openCharmPay(kind, onOk, onCancel = () => {}, preview = null) {
       if (lantern) return;
       const r = useCharmTteok(loadTteok(), 'wish'); if (!r.ok) return;
       save(TTEOK_KEY, r.store); toast(`${TTEOK} 복떡 ${CHARM_TTEOK}개로 만들었어요`);
+    } else if (real) { // v0.65 실제 결제: 토스 결제창에 다녀온 뒤 resumePay가 승인·저장·인장을 이어서 함
+      if (b.disabled) return;
+      b.disabled = true; b.textContent = '결제창을 여는 중…';
+      goTossPay(kind, rec).catch((err) => {
+        save(PENDING_KEY, null);
+        b.disabled = false; b.textContent = `카드로 결제하고 인장 찍기 · ${won(price)}`;
+        toast(err?.message === 'store' ? '이 화면은 기록 저장이 꺼져 있어 결제할 수 없어요. 일반 창에서 열어 주세요' : failLine(err?.code), 6000);
+      });
+      return;
     } else {
       const log = load(CHARMPAY_KEY, []); log.unshift({ kind, price, at: Date.now(), via: 'trial' }); save(CHARMPAY_KEY, log.slice(0, 50));
     }
@@ -6036,7 +6120,7 @@ const wallName = (d) => `wish-charm-${String(d.madeKey || '').replace(/-/g, '')}
 function openWishRitual(rec, onDone, opt = {}) {
   document.querySelectorAll('.ritual-modal').forEach((x) => x.remove());
   const d = paidDataOf(rec); const polite = politeNow(); const reduce = reducedMotion();
-  const lantern = isLantern(rec); let paid = false;
+  const lantern = isLantern(rec); let paid = !!opt.paid;
   const box = document.createElement('div'); box.className = 'evo-modal ritual-modal';
   box.innerHTML = `<div class="evo-box hanji rt-box" role="dialog" aria-label="${lantern ? '100일 소원 등불 만들기' : '소원 부적 만들기'}">
     <ol class="rt-steps">${RITUAL_STEPS.map((x, i) => `<li data-rt-i="${i}"><span>${x.icon}</span><small>${x.title}</small></li>`).join('')}</ol>
@@ -6112,7 +6196,7 @@ function openWishRitual(rec, onDone, opt = {}) {
       if (!paid) { // 결제하는 순간 = 인장 찍는 순간
         asking = true; btn.classList.remove('holding');
         openCharmPay(lantern ? 'lantern' : 'wish', () => { asking = false; paid = true; stamp(); },
-          () => { asking = false; tip.textContent = '인장은 결제한 뒤에 찍혀요. 마음이 정해지면 다시 꾹 눌러 주세요'; }, d);
+          () => { asking = false; tip.textContent = '인장은 결제한 뒤에 찍혀요. 마음이 정해지면 다시 꾹 눌러 주세요'; }, d, rec);
         return;
       }
       done = true;
@@ -6128,6 +6212,7 @@ function openWishRitual(rec, onDone, opt = {}) {
     const up = () => { btn.classList.remove('holding'); if (!done && t0 && Date.now() - t0 < SEAL_HOLD) tip.textContent = '조금 더 꾹 눌러 주세요'; t0 = 0; };
     btn.addEventListener('pointerup', up); btn.addEventListener('pointerleave', up);
     btn.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); stamp(); } });
+    if (paid) { tip.textContent = '결제가 끝났어요. 인장을 찍을게요'; later(stamp, 700); } // v0.65 결제창에서 돌아온 경우
   }
   function blow() {
     box.querySelector('.rt-foot').hidden = true;
@@ -6147,7 +6232,8 @@ function openWishRitual(rec, onDone, opt = {}) {
     if (e.target.closest('[data-rt-quit]')) { quit(); return; }
     if (e.target.closest('[data-rt-skip]')) { if (paid) end(); else if (step < 2) show(2); }
   });
-  show(0);
+  if (paid) { const q = box.querySelector('[data-rt-quit]'); if (q) q.hidden = true; }
+  show(opt.startAt || 0);
 }
 /** v0.64 홈: 100일 소원 등불 — D-day, 오늘의 기도 한 줄, 10칸 밝기, 편지, 함께 빌기 */
 /** v0.64.9 100일 등불 그림(docs/prompts/lantern-100.md): 1~33일 stage1 · 34~66일 stage2 · 67~99일 stage3 · 100일 완주 kept */

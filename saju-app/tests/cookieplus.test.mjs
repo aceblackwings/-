@@ -68,7 +68,7 @@ t('황금 쿠키: 10번에 한 번 · 같은 날은 같음 · 사람마다 다�
   assert.ok(diff > 20);
 });
 
-t('소리는 sound.js에서만(v0.65) · 진동은 도장에만', () => {
+t('소리는 sound.js에서만(v0.66) · 진동은 도장에만', () => {
   const src = readFileSync(new URL('../js/cookieplus.js', import.meta.url), 'utf8').replace(/\/\/.*$/gm, '');
   assert.ok(!/vibrate|Audio|AudioContext|speechSynthesis/.test(src));
   const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');

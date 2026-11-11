@@ -33,7 +33,7 @@ t('계절 소품: 할 일 하나 = 조각 1개, 6개면 아직 없는 다음 시
   assert.equal(claimItem(r.store, seasons, new Set()).item, null, '조각 모자라면 없음');
   assert.equal(claimItem(s, seasons, new Set(['ipdong-2026', 'dongji-2026'])).item, null, '다 가지면 조각 유지');
 });
-t('타로(v0.65): 무료 없음 · 한 장 복떡 1개 · 세 장 3개(모자라면 못 펼침)', () => {
+t('타로(v0.66): 무료 없음 · 한 장 복떡 1개 · 세 장 3개(모자라면 못 펼침)', () => {
   let s = { balance: 5, days: {}, log: [], unlocked: {}, pieces: 0 };
   assert.deepEqual(tarotPrice(s, D, 'three'), { free: false, cost: 3 });
   assert.deepEqual(tarotPrice(s, D, 'one'), { free: false, cost: 1 });

@@ -1,0 +1,10 @@
+{
+  "name": "12지신 강림 – 사주·신년운세·타로·습관",
+  "short_name": "12지신 강림",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#fff6f3",
+  "theme_color": "#fff6f3",
+  "lang": "ko",
+  "icons": [{ "src": "assets/char/dragon_s3.webp", "sizes": "768x768", "type": "image/webp", "purpose": "any" }]
+}
