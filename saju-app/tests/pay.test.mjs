@@ -97,3 +97,24 @@ ok('승인 함수: 가격표로 금액 재확인 · 비밀 키 전달 · 거절�
 ok('시크릿 키는 환경 변수에만 · 승인 함수는 저장 없음');
 
 console.log(`pay.test: ${n}개 통과`);
+
+// 7. Workers 진입점(worker/index.js): 결제 승인만 받고 나머지는 정적 파일로
+{
+  const { default: worker, handlePay } = await import('../../worker/index.js');
+  const o = makeOrder('lantern', { wish: 'x' }, 1794000000000);
+  const post = (body, headers = {}) => new Request('https://12jisin.ockstar.com/api/pay/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) });
+  const okFetch = async () => ({ ok: true, status: 200, json: async () => ({ status: 'DONE', totalAmount: 2900, method: '카드' }) });
+  const r1 = await handlePay(post({ paymentKey: 'pk', orderId: o.orderId, amount: 2900 }), { TOSS_SECRET_KEY: 'test_sk_x' }, okFetch);
+  assert.equal(r1.status, 200); assert.equal((await r1.json()).kind, 'lantern');
+  assert.equal((await handlePay(post({ paymentKey: 'pk', orderId: o.orderId, amount: 2900 }, { Origin: 'https://evil.example' }), { TOSS_SECRET_KEY: 'k' }, okFetch)).status, 403);
+  assert.equal((await handlePay(new Request('https://a.b/api/pay/confirm'), {}, okFetch)).status, 405);
+  assert.equal((await handlePay(post({ paymentKey: 'pk', orderId: o.orderId, amount: 2900 }), {}, okFetch)).status, 500, '비밀 키가 없으면 승인하지 않음');
+  let served = 0; const env = { ASSETS: { fetch: async () => { served += 1; return new Response('page'); } } };
+  assert.equal(await (await worker.fetch(new Request('https://a.b/index.html'), env)).text(), 'page'); assert.equal(served, 1);
+  assert.equal((await worker.fetch(new Request('https://a.b/api/other'), env)).status, 404);
+  const cfg = readFileSync(new URL('../../wrangler.jsonc', import.meta.url), 'utf8');
+  assert.ok(cfg.includes('"directory": "./saju-app"') && cfg.includes('"main": "worker/index.js"') && !/sk_/.test(cfg));
+  const ignore = readFileSync(new URL('../.assetsignore', import.meta.url), 'utf8');
+  for (const d of ['tests', 'tools', 'functions', 'screenshots']) assert.ok(ignore.split('\n').includes(d), `사이트에 안 올리는 폴더 ${d}`);
+}
+console.log('  ✓ Workers 진입점: 결제 승인·다른 곳 요청 거절·정적 파일 넘기기·배포 설정');

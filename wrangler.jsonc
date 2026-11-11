@@ -1,0 +1,13 @@
+// 12지신 강림 웹 배포 설정 (Cloudflare Workers + 정적 파일) — docs/web-launch.md
+// · 화면 파일은 saju-app/ 폴더를 그대로 올리고, 결제 승인(/api/pay/confirm)만 worker/index.js가 받는다.
+// · 비밀 키는 여기 적지 않는다 → Cloudflare 화면의 「변수 및 비밀」에 TOSS_SECRET_KEY 로 등록.
+// · Cloudflare에서 만든 프로젝트 이름이 아래 name 과 같아야 한다.
+{
+  "name": "zodiac12",
+  "main": "worker/index.js",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "./saju-app",
+    "binding": "ASSETS"
+  }
+}
