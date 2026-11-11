@@ -1,0 +1,59 @@
+/* 유니유통 회사 홈페이지 — 한지 바탕·먹·인주 한 점. 밝은/어두운 화면 모두 지원 */
+:root {
+  --paper: #faf7f1; --card: #ffffff; --ink: #1f2430; --ink2: #5a6072; --line: #e6dfd2;
+  --seal: #b8382a; --navy: #2f3e5c; --tile: #fdeee9;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --paper: #14171f; --card: #1c212c; --ink: #eef0f5; --ink2: #a7aec0; --line: #2c3342; --seal: #e2695a; --navy: #9db4e6; --tile: #262c3b; }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif; line-height: 1.75; font-size: 16px; -webkit-text-size-adjust: 100%; word-break: keep-all; overflow-wrap: anywhere; }
+a { color: inherit; }
+.wrap { max-width: 960px; margin: 0 auto; padding: 0 20px; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 0; }
+.mark { display: flex; align-items: baseline; gap: 10px; text-decoration: none; }
+.mark b { font-size: 1.25rem; letter-spacing: 0.14em; font-weight: 800; }
+.mark small { color: var(--ink2); font-size: 0.85rem; }
+.top nav { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.top nav a { text-decoration: none; color: var(--ink2); font-size: 0.92rem; padding: 10px 10px; border-radius: 8px; }
+.top nav a:hover { color: var(--ink); background: var(--line); }
+.hero { padding: 56px 0 44px; border-bottom: 1px solid var(--line); }
+.hero .eyebrow { display: inline-flex; align-items: center; gap: 8px; color: var(--seal); font-weight: 700; font-size: 0.86rem; letter-spacing: 0.06em; margin: 0 0 14px; }
+.hero .eyebrow::before { content: ''; width: 10px; height: 10px; background: var(--seal); border-radius: 2px; }
+.hero h1 { font-size: clamp(1.7rem, 5.2vw, 2.7rem); line-height: 1.35; margin: 0 0 16px; letter-spacing: -0.01em; text-wrap: balance; }
+.hero p { color: var(--ink2); max-width: 36em; margin: 0; font-size: 1.04rem; }
+section { padding: 48px 0; border-bottom: 1px solid var(--line); }
+section h2 { font-size: 1.3rem; margin: 0 0 6px; }
+section .lead { color: var(--ink2); margin: 0 0 24px; }
+.grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.item { background: var(--card); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; }
+.item .pic { background: var(--tile); display: grid; place-items: center; padding: 22px 22px 10px; }
+.item .pic img { width: min(100%, 300px); height: auto; display: block; }
+.item .body { padding: 18px 20px 22px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.item .tag { align-self: flex-start; font-size: 0.78rem; font-weight: 700; color: var(--navy); border: 1px solid currentColor; border-radius: 999px; padding: 2px 10px; }
+.item h3 { margin: 0; font-size: 1.2rem; }
+.item p { margin: 0; color: var(--ink2); }
+.item ul { margin: 0; padding-left: 18px; color: var(--ink2); font-size: 0.95rem; }
+.btn { margin-top: auto; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 48px; padding: 0 22px; border-radius: 999px; background: var(--ink); color: var(--paper); text-decoration: none; font-weight: 700; }
+.btn:hover { filter: brightness(1.15); }
+.btn:focus-visible, .top nav a:focus-visible, .mark:focus-visible { outline: 3px solid var(--seal); outline-offset: 3px; }
+.item.soon { border-style: dashed; background: transparent; justify-content: center; min-height: 180px; }
+.item.soon .body { justify-content: center; }
+.info { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 10px 22px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px 24px; }
+.info dt { color: var(--ink2); font-size: 0.92rem; }
+.info dd { margin: 0; font-variant-numeric: tabular-nums; }
+.contact { display: flex; flex-wrap: wrap; gap: 12px; }
+.contact a { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); text-decoration: none; font-weight: 600; }
+.contact a:hover { border-color: var(--ink2); }
+.hours { color: var(--ink2); font-size: 0.92rem; margin: 14px 0 0; }
+footer { padding: 28px 0 48px; color: var(--ink2); font-size: 0.85rem; display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: space-between; }
+footer a { color: var(--ink2); }
+@media (max-width: 520px) {
+  .info { grid-template-columns: 1fr; gap: 2px 0; } .info dd { margin-bottom: 10px; }
+  .hero { padding: 36px 0 32px; } section { padding: 36px 0; }
+  .mark small { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+footer a { display: inline-block; padding: 8px 0; }
+.item.soon { align-self: start; }

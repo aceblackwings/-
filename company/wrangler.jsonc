@@ -1,0 +1,8 @@
+// 유니유통 회사 홈페이지(ockstar.com) 배포 설정 — 정적 파일만 올린다(서버 코드 없음).
+// Cloudflare 프로젝트 이름 = 아래 name, 배치 명령 = npx wrangler deploy --config company/wrangler.jsonc
+// 글은 saju-app/tools/company_page.mjs 에서 고치고 `node saju-app/tools/company_page.mjs` 실행.
+{
+  "name": "ockstar-home",
+  "compatibility_date": "2025-09-01",
+  "assets": { "directory": "./site" }
+}
