@@ -11,7 +11,7 @@
 > 6. **Claude 쪽에만 있는 것**: 미리보기 아티팩트 게시, `sample`·`room`·`db` 기능, 구글 드라이브 그림 받기 — 이 작업은 Claude Code가 맡음. Codex는 그림이 필요하면 프롬프트(`docs/prompts/`)와 넣는 도구 사용법만 남김.
 > 7. **역할 나누기(기본안, 사용자가 바꿀 수 있음)**: Codex = 출시 구조(Firebase 로그인·구매 기록 동기화·Capacitor 포장·웹 PG/인앱 결제·약관 페이지), Claude Code = 사주 엔진·운세 문장·화면 연출·그림 연결·미리보기.
 >
-> **진행 중**: (없음)
+> **진행 중**: [Claude Code · ccr-bc5fae19-mc9c4g · 효과음·짧은 음악, 타로 세 장 복떡 3개, 모바일 화면 위로 안 올라감 점검 · saju-app/js/app.js·styles.css·tteok.js·새 sound.js·index.html]
 
 > **✅ v0.64.10(2026-11-09, 사용자 「등불 다시 올렸어」, Claude Code)**: 100일 완주 등불 `assets/lantern/kept.webp`만 새 그림(hf_20261109_143427)으로 교체 — 12지신 메달 12개가 모두 다름(원숭이 들어감, 양 한 번). 손질은 v0.64.9 항목 참고(용 메달 되살리기·빛무리 금빛). 코드 변경 없음. 확인: `npm test` 통과, 어두운·밝은 바탕에서 눈으로 확인.
 
