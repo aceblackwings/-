@@ -1,7 +1,7 @@
 // v0.65 웹 결제(토스페이먼츠) 순수 로직 + 승인 함수
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { PAY_PRODUCTS, makeOrderId, kindOfOrder, verifyOrder, makeOrder, pendingAlive, tossRequest, parseReturn, cleanSearch, checkReturn, payLogEntry, failLine, confirmPayment, PENDING_MAX_MS, makeCustomerKey, validCustomerKey, confirmIdemKey, CUSTOMER_KEY } from '../js/pay.js';
+import { PAY_PRODUCTS, makeOrderId, kindOfOrder, verifyOrder, makeOrder, pendingAlive, tossRequest, parseReturn, cleanSearch, checkReturn, payLogEntry, failLine, confirmPayment, PENDING_MAX_MS, makeCustomerKey, validCustomerKey, confirmIdemKey, CUSTOMER_KEY, ABANDON_LINE, EASY_PAYS, easyPayOrder, isAppleDevice } from '../js/pay.js';
 import { CHARM_PRICE } from '../js/tteok.js';
 import { LANTERN_PRICE } from '../js/lantern.js';
 import { toneProblems } from '../js/habit.js';
@@ -50,7 +50,7 @@ ok('돌아온 주소 읽기 · 주문·금액 어긋남 거절 · 주소 정리'
 
 // 4. 결제 내역·안내 문장
 const log = payLogEntry(order, { method: '카드', receiptUrl: 'https://r' }, 5);
-assert.deepEqual(Object.keys(log).sort(), ['at', 'kind', 'method', 'orderId', 'price', 'receipt', 'via'].sort());
+assert.deepEqual(Object.keys(log).sort(), ['at', 'ez', 'kind', 'method', 'orderId', 'price', 'receipt', 'via'].sort());
 assert.ok(!JSON.stringify(log).includes('엄마'), '결제 내역에 소원 글 없음');
 for (const c of ['PAY_PROCESS_CANCELED', 'REJECT_CARD_COMPANY', 'UNKNOWN', undefined]) {
   const line = failLine(c); assert.ok(line.includes('돈은 나가지 않았어요')); assert.deepEqual(toneProblems(line), []);
@@ -144,6 +144,40 @@ ok('시크릿 키는 환경 변수에만 · 승인 함수는 저장 없음');
   assert.ok(app.includes('payment({ customerKey })') && !app.includes('Toss.ANONYMOUS'));
 }
 ok('v0.71 구매자 번호 규칙 · 멱등키 · 승인 끊김/이미 처리 = 조회로 확인 · 어긋난 조회는 거절');
+
+// 9. v0.71.1 결제를 마치지 않고 돌아왔을 때 안내가 보이게
+{
+  assert.ok(ABANDON_LINE.includes('돈은 나가지 않았어요')); assert.deepEqual(toneProblems(ABANDON_LINE), []);
+  const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
+  assert.ok(app.includes('backToRitual(ABANDON_LINE)'), '뒤로 가기로 돌아오면 안내 + 인장 화면');
+  assert.ok(app.includes("window.addEventListener('pageshow'"), '뒤로 가기 페이지 되살림(bfcache)도 처리');
+  assert.equal((app.match(/if \(opt\.notice\) tip\.textContent = opt\.notice;/g) || []).length, 2, '소원 부적·등불 의식 창 안에 안내');
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  const z = Number((css.match(/\.toast \{ z-index: (\d+); \}/) || [])[1]);
+  assert.ok(z > 200, '토스트가 모든 창(최대 z-index 200)보다 위');
+}
+ok('v0.71.1 결제 취소·뒤로 가기 안내가 창 위·의식 창 안에 보임');
+
+// 10. v0.72 간편결제 바로가기: 순서 · 아이폰은 애플페이 · 자체창(DIRECT) 요청
+{
+  const android = 'Mozilla/5.0 (Linux; Android 14; SM-S918N) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36';
+  const iphone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148';
+  const ipadDesk = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/17.0 Safari/605.1.15';
+  assert.deepEqual(easyPayOrder(android), ['NAVERPAY', 'KAKAOPAY', 'SAMSUNGPAY', 'TOSSPAY']);
+  assert.deepEqual(easyPayOrder(iphone), ['NAVERPAY', 'KAKAOPAY', 'APPLEPAY', 'TOSSPAY']);
+  assert.equal(isAppleDevice(ipadDesk, 5), true, '데스크톱 모드 아이패드'); assert.equal(isAppleDevice(ipadDesk, 0), false, '맥 컴퓨터');
+  for (const c of ['NAVERPAY', 'KAKAOPAY', 'SAMSUNGPAY', 'APPLEPAY', 'TOSSPAY']) assert.ok(EASY_PAYS[c].label, `${c} 이름`);
+  const o = makeOrder('wish', { wish: '비밀 소원' }, 1794000000000);
+  const ez = tossRequest(o, 'https://e.kr', '/', 'NAVERPAY');
+  assert.deepEqual(ez.card, { flowMode: 'DIRECT', easyPay: 'NAVERPAY' }, '자체창으로 바로 열기');
+  assert.equal(ez.method, 'CARD'); assert.equal(ez.amount.value, 990);
+  assert.equal(tossRequest(o, 'https://e.kr', '/').card, undefined, '카드 버튼은 통합결제창 그대로');
+  assert.equal(tossRequest(o, 'https://e.kr', '/', 'HACK').card, undefined, '모르는 코드는 무시');
+  assert.ok(!JSON.stringify(ez).includes('비밀'));
+  const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
+  assert.ok(app.includes('data-ez="${c}"') && app.includes('goTossPay(kind, rec, ez)'), '결제 창 버튼 → 바로 열기');
+}
+ok('v0.72 간편결제 순서(네이버·카카오·삼성/애플·토스) · 자체창 요청 · 카드는 통합결제창');
 
 console.log(`pay.test: ${n}개 통과`);
 
