@@ -43,7 +43,7 @@ test('화면 연결: 지신 탭 접힘·홈 안내·가입 첫 화면 가져오�
   assert.ok(/data-bk-file/.test(html) && /data-bk="import"/.test(html), '가입 첫 화면에서 가져오기');
   const bk = app.slice(app.indexOf('// ---------- 백업 (v0.23 → v0.70)'), app.indexOf('// ---------- 12지신 신수 카드'));
   assert.ok(!/fetch\(|XMLHttpRequest|sendBeacon/.test(bk), '백업은 서버로 보내지 않음');
-  assert.ok(bk.includes('navigator.share'), '폰은 공유 창');
+  assert.ok(bk.includes('a.download'), '백업은 파일로 저장(v0.70.3 사용자 결정)');
   assert.ok(bk.includes('생년월일이 들어 있어요'), '다른 사람에게 보내지 말라는 안내');
 });
 
@@ -58,4 +58,14 @@ test('v0.70.1 카카오톡으로 보낼 수 있게: 백업 파일은 .txt(text/p
   // 예전 .json 백업 내용도 그대로 읽힘
   const old = B.backupText(B.makeBackup({ 'unmyeong2099.profile': '{"name":"a"}' }));
   assert.equal(B.parseBackup(old).ok, true);
+});
+
+test('v0.70.3 백업 버튼은 「지금 백업하기」 하나 = 파일로 저장(공유·복사 없음)', () => {
+  const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
+  const card = app.slice(app.indexOf('function backupCardHTML('), app.indexOf('/** 가져오기 칸'));
+  assert.equal((card.match(/data-bk="/g) || []).length, 1, '카드 안 버튼은 지금 백업하기 하나');
+  assert.ok(card.includes('data-bk="save"') && !card.includes('data-bk="copy"'), '글자로 복사 없음');
+  const save = app.slice(app.indexOf('function saveBackupFile('), app.indexOf("document.addEventListener('click', async (e) => {", app.indexOf('function saveBackupFile(')));
+  assert.ok(save.includes('a.download = name') && !save.includes('navigator.share') && !save.includes('clipboard'), '파일 내려받기만');
+  assert.ok(!/act === 'copy'/.test(app), '복사 처리도 없음');
 });

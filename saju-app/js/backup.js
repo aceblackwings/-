@@ -87,3 +87,4 @@ export function backupSummary(b) {
   if (wishes) parts.push(`소원 부적 ${wishes}장`);
   return parts.join(' · ');
 }
+
