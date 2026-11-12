@@ -65,7 +65,24 @@ test('v0.70.3 백업 버튼은 「지금 백업하기」 하나 = 파일로 저�
   const card = app.slice(app.indexOf('function backupCardHTML('), app.indexOf('/** 가져오기 칸'));
   assert.equal((card.match(/data-bk="/g) || []).length, 1, '카드 안 버튼은 지금 백업하기 하나');
   assert.ok(card.includes('data-bk="save"') && !card.includes('data-bk="copy"'), '글자로 복사 없음');
-  const save = app.slice(app.indexOf('function saveBackupFile('), app.indexOf("document.addEventListener('click', async (e) => {", app.indexOf('function saveBackupFile(')));
-  assert.ok(save.includes('a.download = name') && !save.includes('navigator.share') && !save.includes('clipboard'), '파일 내려받기만');
+  const save = app.slice(app.indexOf('function saveBackupFile('), app.indexOf('/** 가져오기(파일'));
+  assert.ok(save.includes('a.download = name') && !save.includes('navigator.share') && !save.includes('clipboard'), '파일 내려받기만(앱 안 브라우저는 옮기기 창으로)');
   assert.ok(!/act === 'copy'/.test(app), '복사 처리도 없음');
+});
+
+test('v0.70.4 카카오톡 안 브라우저: 내려받기 대신 크롬·사파리로 기록 옮기기', async () => {
+  assert.equal(B.inAppBrowser('Mozilla/5.0 (Linux; Android 14; SM-S918N) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36;KAKAOTALK 2410800'), 'kakao');
+  assert.equal(B.inAppBrowser('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 KAKAOTALK 10.8.0'), 'kakao');
+  assert.equal(B.inAppBrowser('Mozilla/5.0 (Linux; Android 14) Chrome/120 Mobile Safari/537.36'), null, '크롬은 그대로 내려받기');
+  assert.equal(B.inAppBrowser('Mozilla/5.0 (iPhone) Version/17.0 Mobile/15E148 Safari/604.1'), null, '사파리도');
+  assert.ok(B.externalOpenUrl('kakao', 'https://12jisin.ockstar.com/#bk=x').startsWith('kakaotalk://web/openExternal?url=https%3A%2F%2F12jisin'));
+  const b = B.makeBackup({ 'unmyeong2099.profile': JSON.stringify({ name: '민지' }), 'unmyeong2099.collection': JSON.stringify([{ paid: 'lantern', wish: '합격' }]) });
+  const code = await B.packBackup(b);
+  const viaHash = decodeURIComponent(encodeURIComponent(B.MOVE_HASH + code)).slice(B.MOVE_HASH.length);
+  assert.equal(B.parseBackup(await B.unpackBackup(viaHash)).ok, true, '주소 # 뒤로 넘겨도 그대로');
+  await assert.rejects(B.unpackBackup(code.slice(0, 30)), /잘렸거나/);
+  const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
+  const save = app.slice(app.indexOf('function saveBackupFile('), app.indexOf('/** 가져오기(파일'));
+  assert.ok(save.indexOf('inAppBrowser(') < save.indexOf('a.download'), '앱 안 브라우저면 내려받기 전에 옮기기 창');
+  assert.ok(/history\.replaceState\(null, '', location\.pathname \+ location\.search\)/.test(app), '생년월일이 든 주소는 바로 지움');
 });

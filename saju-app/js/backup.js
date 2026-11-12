@@ -88,3 +88,50 @@ export function backupSummary(b) {
   return parts.join(' · ');
 }
 
+// ---------- v0.70.4 카카오톡 안 브라우저에서 백업 ----------
+// 사용자 확인(v0.70.3): 「지금 백업하기」 → 「지원하지 않는 파일 형식」 = 카카오톡 앱 안 브라우저가 내려받기를 막음.
+// 게다가 앱 안 브라우저는 저장 공간이 따로라 크롬으로 그냥 열면 기록이 없음
+// → 기록을 줄인 「12JISIN1:…」 코드를 주소 # 뒤에 붙여 바깥 브라우저로 넘기고(# 뒤는 서버로 안 감), 거기서 가져온 뒤 파일로 저장.
+export const CODE_PREFIX = '12JISIN1:';
+const toB64 = (buf) => { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
+const fromB64 = (b64) => { const s = atob(b64); const u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; };
+export const canPack = () => typeof CompressionStream === 'function' && typeof DecompressionStream === 'function';
+
+/** 백업 → 「12JISIN1:…」 코드(줄일 수 없는 브라우저면 그냥 백업 글자) */
+export async function packBackup(b) {
+  const text = backupText(b);
+  if (!canPack()) return text;
+  const gz = await new Response(new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer();
+  return CODE_PREFIX + toB64(gz);
+}
+/** 붙여 넣은 글자 → 백업 글자. 코드가 있으면 풀고(앞뒤 안내 문장·줄바꿈은 무시), 없으면 그대로 */
+export async function unpackBackup(raw) {
+  const s = String(raw || ''); const at = s.indexOf(CODE_PREFIX);
+  if (at < 0) return s;
+  if (!canPack()) throw new Error('이 브라우저에서는 백업 코드를 풀 수 없어요. 크롬·사파리 최신 버전에서 열어 주세요.');
+  const code = s.slice(at + CODE_PREFIX.length).replace(/\s+/g, '').match(/^[A-Za-z0-9+/=]*/)[0];
+  try {
+    return await new Response(new Blob([fromB64(code)]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  } catch { throw new Error('백업 코드가 중간에 잘렸거나 바뀌었어요. 코드 전체를 다시 복사해 붙여 넣어 주세요.'); }
+}
+/** 카카오톡 등에 보낼 메시지(맨 앞 안내 한 줄 + 코드) */
+
+/** 내려받기를 막는 앱 안 브라우저 */
+export function inAppBrowser(ua = '') {
+  const u = String(ua);
+  if (/KAKAOTALK/i.test(u)) return 'kakao';
+  if (/\bLine\//i.test(u)) return 'line';
+  if (/NAVER\(inapp|NAVER/i.test(u) && !/Whale/i.test(u)) return 'naver';
+  if (/Instagram/i.test(u)) return 'instagram';
+  if (/FBAN|FBAV/i.test(u)) return 'facebook';
+  if (/DaumApps|everytimeApp|BAND\//i.test(u)) return 'other';
+  return null;
+}
+export const IN_APP_NAME = { kakao: '카카오톡', line: '라인', naver: '네이버 앱', instagram: '인스타그램', facebook: '페이스북', other: '앱' };
+/** 바깥 브라우저로 여는 주소(카카오톡·라인은 앱이 지원하는 방법, 나머지는 null) */
+export function externalOpenUrl(kind, url) {
+  if (kind === 'kakao') return `kakaotalk://web/openExternal?url=${encodeURIComponent(url)}`;
+  if (kind === 'line') { const [base, hash = ''] = String(url).split('#'); return `${base}${base.includes('?') ? '&' : '?'}openExternalBrowser=1${hash ? `#${hash}` : ''}`; }
+  return null;
+}
+export const MOVE_HASH = '#bk=';

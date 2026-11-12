@@ -2433,3 +2433,6 @@ body:has(> .evo-modal, > .reveal-modal, > .hj-reader) { overflow: hidden; }
 .bk-nudge .bk-row { grid-template-columns: 1.7fr 1fr; }
 .bk-row button { white-space: nowrap; padding-left: 10px; padding-right: 10px; }
 .bk-one { width: 100%; min-height: 52px; font-size: 1.02rem; }
+.bk-move { display: grid; gap: 10px; text-align: left; } .bk-move h3 { margin: 0; font-size: 1.05rem; line-height: 1.45; word-break: keep-all; }
+.bk-move p { margin: 0; font-size: 0.88rem; line-height: 1.65; word-break: keep-all; } .bk-move textarea { width: 100%; box-sizing: border-box; font-size: 0.72rem; }
+.bk-move { box-sizing: border-box; width: min(360px, calc(100vw - 32px)); } .bk-move > * { min-width: 0; } .bk-move .bk-one { white-space: normal; }
