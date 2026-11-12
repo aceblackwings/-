@@ -70,7 +70,7 @@ import { emptyEasy, setEasy, dismissEasy, suggestEasy, easyTerms, hasEasyTerms, 
 import { expertTable, sinsalOf, calcBasis, STAGE_NOTE, twelveStage, makeChart, addChart, removeChart, emptyCharts, RELATIONS , sinsal12Of, SINSAL12_NOTE } from './expert.js';
 import { CARD_AREAS, SPREADS, drawReading } from './cards.js';
 import { weekWealth, SAFETY_LINES } from './wealthweek.js';
-import { makeBackup, parseBackup, backupText, backupFileName, PREFIX as BACKUP_PREFIX } from './backup.js';
+import { makeBackup, parseBackup, backupText, backupFileName, PREFIX as BACKUP_PREFIX, BACKUP_INFO_KEY, backupNeed, markBackedUp, snoozeBackup, daysSinceBackup, backupNudgeLine, backupSummary, paidItems } from './backup.js';
 import { emptyRecords, logDay, pendingFeedback, setFeedback, addItem, hasItem, setItemMemo, removeItem, dayList, stats as recordStats, streak as recordStreak, FEEDBACK, ITEM_KIND, MEMO_MAX } from './records.js';
 import { makeCode, normalizeCode, publicCard, cardToSaju, cleanCard, pendingCheers, joinTeamRoom, openMailbox, CHEER_MESSAGES, CHEER_DAILY_LIMIT, CHEER_CHARGE, cheerText, cheerId } from './realtime.js';
 import { dailySpots, distanceM, treasureRarity, bearingName, ARRIVE_RADIUS, DEMO_CENTER, PARTNER_SAMPLES } from './fengshui.js';
@@ -1597,25 +1597,53 @@ function renderRecords() {
     ${backupCardHTML()}`;
 }
 
-// ---------- 백업 (v0.23): 이 기기의 기록을 파일·글자로 내보내고 가져오기 ----------
+// ---------- 백업 (v0.23 → v0.70): 로그인이 없으니 기록을 지키는 길 = 백업 ----------
+// v0.70(2026-11-12 사용자 결정 「로그인 없음 · 기기 저장 + 백업 안내」): 지신 탭 접힘 「📦 기록 백업 · 새 폰으로 옮기기」,
+// 결제 뒤·오래되면 홈·지신 탭 안내 카드, 폰은 공유 창(카카오톡 나에게·드라이브), 가입 첫 화면에서 가져오기
+function backupInfo() { return load(BACKUP_INFO_KEY, {}) || {}; }
+function backupSub() {
+  const n = state.fortune ? daysSinceBackup(backupInfo(), state.fortune.dateKey) : null;
+  return n === null ? '아직 백업한 적 없어요 · 폰을 바꿔도 이어서 쓰려면' : n === 0 ? '오늘 백업했어요' : `마지막 백업 ${n}일 전`;
+}
 function backupCardHTML() {
-  return `<div class="card backup" id="backup">
-    <h3>💾 백업</h3>
-    <p class="muted" style="margin:-4px 0 10px;font-size:0.84rem">기록·수호신·부적·사주 정보는 이 기기에만 저장돼요. 기기를 바꾸거나 브라우저 기록을 지우기 전에 백업해 두세요.</p>
-    <div class="bk-row"><button type="button" class="primary" data-bk="file">📥 파일로 저장</button><button type="button" class="ghost" data-bk="copy">📋 글자로 복사</button></div>
-    <details class="bk-in"><summary>📤 백업 가져오기</summary>
-      <label class="bk-file">백업 파일 고르기<input type="file" accept=".json,application/json" data-bk-file></label>
-      <textarea rows="3" placeholder="또는 복사해 둔 백업 글자를 붙여 넣기" data-bk-text></textarea>
-      <button type="button" class="ghost" data-bk="import" style="width:100%">가져오기</button>
-    </details>
+  const info = backupInfo(); const today = state.fortune?.dateKey; const n = today ? daysSinceBackup(info, today) : null;
+  const paid = paidItems(load(COLLECTION_KEY, [])).length;
+  return `<div class="card backup">
+    <h3>📦 기록 백업 · 새 폰으로 옮기기</h3>
+    <p class="muted bk-why">로그인 없이 쓰는 앱이라 사주 정보·지신·부적·등불이 <b>이 기기에만</b> 저장돼요. 폰을 바꾸거나 앱·사이트 기록을 지우기 전에 백업 파일을 만들어 두면, 새 폰에서 그대로 이어서 쓸 수 있어요.</p>
+    <p class="bk-state">${n === null ? '아직 백업한 적이 없어요' : n === 0 ? '✅ 오늘 백업했어요' : `마지막 백업: ${n}일 전`}${paid ? ` · 산 부적·등불 ${paid}개` : ''}</p>
+    <div class="bk-row"><button type="button" class="primary" data-bk="save">📦 지금 백업하기</button><button type="button" class="ghost" data-bk="copy">📋 글자로 복사</button></div>
+    <p class="bk-tip">폰에서는 공유 창이 열려요. <b>카카오톡 「나와의 채팅」</b>이나 <b>구글 드라이브·iCloud</b>에 보내 두면 잃어버리지 않아요.</p>
+    ${backupImportHTML()}
     <p class="bk-warn">⚠️ 백업에는 생년월일이 들어 있어요. 다른 사람에게 보내거나 공개된 곳에 올리지 마세요.</p>
   </div>`;
+}
+/** 가져오기 칸(지신 탭·기록함·가입 첫 화면이 같이 씀) */
+function backupImportHTML(summary = '📥 새 폰에서 백업 가져오기') {
+  return `<details class="bk-in"><summary>${summary}</summary>
+      <label class="bk-file">백업 파일 고르기<input type="file" accept=".json,application/json,text/plain" data-bk-file></label>
+      <textarea rows="3" placeholder="또는 복사해 둔 백업 글자를 붙여 넣기" data-bk-text></textarea>
+      <button type="button" class="ghost" data-bk="import" style="width:100%">가져오기</button>
+    </details>`;
+}
+/** 홈·지신 탭 맨 위 안내(결제한 뒤 백업 안 함 · 마지막 백업이 오래됨) */
+function backupNudgeHTML() {
+  if (!state.fortune) return '';
+  const info = backupInfo(); const need = backupNeed(info, load(COLLECTION_KEY, []), state.fortune.dateKey);
+  if (!need) return '';
+  return `<div class="card bk-nudge" role="note"><p><b>📦 ${need === 'paid' ? '산 부적·등불을 지켜 주세요' : '기록 백업할 때가 됐어요'}</b><br>${esc(backupNudgeLine(need, info, state.fortune.dateKey))}</p>
+    <div class="bk-row"><button type="button" class="primary" data-bk="save">📦 지금 백업하기</button><button type="button" class="ghost" data-bk="snooze">나중에</button></div></div>`;
+}
+function afterBackup() {
+  if (state.fortune) save(BACKUP_INFO_KEY, markBackedUp(backupInfo(), state.fortune.dateKey));
+  if (state.fortune) { renderToday(); renderHero(false); if ($('[data-panel="records"]') && !$('[data-panel="records"]').classList.contains('hidden')) renderRecords(); }
 }
 
 function currentBackup() {
   const entries = {};
   try { for (let k = 0; k < localStorage.length; k++) { const key = localStorage.key(k); if (key.startsWith(BACKUP_PREFIX)) entries[key] = localStorage.getItem(key); } } catch { /* 저장소 없음 */ }
   MEM_STORE.forEach((v, key) => { if (key.startsWith(BACKUP_PREFIX)) entries[key] = v; }); // 저장소가 막힌 창의 기록도 백업에
+  if (state.fortune) entries[BACKUP_INFO_KEY] = JSON.stringify(markBackedUp(backupInfo(), state.fortune.dateKey)); // 백업 파일 안에도 「오늘 백업함」
   return makeBackup(entries);
 }
 
@@ -1623,7 +1651,9 @@ function restoreBackup(text) {
   const r = parseBackup(text);
   if (!r.ok) { toast(`⚠️ ${r.error}`); return; }
   const when = r.savedAt ? r.savedAt.slice(0, 10) : '알 수 없는 날';
-  if (!confirm(`${when}에 만든 백업(${r.count}가지 기록)으로 바꿀까요?\n지금 이 기기의 기록은 백업 내용으로 덮어써져요.`)) return;
+  let inside = ''; try { inside = backupSummary(JSON.parse(text.trim())); } catch { /* 위에서 이미 확인 */ }
+  const had = !!load(STORE_KEY, null);
+  if (!confirm(`${when}에 만든 백업(${r.count}가지 기록${inside ? ` · ${inside}` : ''})을 가져올까요?${had ? '\n지금 이 기기의 기록은 백업 내용으로 덮어써져요.' : ''}`)) return;
   try {
     Object.keys(localStorage).filter((k) => k.startsWith(BACKUP_PREFIX)).forEach((k) => localStorage.removeItem(k));
     Object.entries(r.entries).forEach(([k, v]) => localStorage.setItem(k, v));
@@ -1631,29 +1661,40 @@ function restoreBackup(text) {
     // 저장소가 막힌 창: 이 창의 메모리로 불러와 바로 다시 그림(새로고침하면 사라짐)
     [...MEM_STORE.keys()].filter((k) => k.startsWith(BACKUP_PREFIX)).forEach((k) => MEM_STORE.delete(k));
     Object.entries(r.entries).forEach(([k, v]) => MEM_STORE.set(k, v));
-    const p = load(STORE_KEY, null); toast('💾 백업을 이 창에 불러왔어요'); if (p) start(p, 'today'); return;
+    const p = load(STORE_KEY, null); toast('📦 백업을 이 창에 불러왔어요'); if (p) start(p, 'today'); return;
   }
-  toast('💾 백업을 가져왔어요. 다시 불러올게요');
+  toast('📦 백업을 가져왔어요. 다시 불러올게요');
   setTimeout(() => location.reload(), 700);
+}
+/** 저장: 폰은 공유 창(카카오톡 나에게·드라이브), 그 밖은 내려받기 */
+async function saveBackupFile() {
+  const bk = currentBackup(); const name = backupFileName(bk);
+  const blob = new Blob([backupText(bk)], { type: 'application/json' });
+  const file = typeof File === 'function' ? new File([blob], name, { type: 'application/json' }) : null;
+  if (file && matchMedia('(pointer: coarse)').matches && navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: '12지신 강림 기록 백업' }); afterBackup(); toast('📦 백업 파일을 보냈어요. 다른 사람에게는 보내지 마세요'); return; } catch (e) { if (e?.name === 'AbortError') return; }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  afterBackup();
+  toast(`📦 ${bk.count}가지 기록을 「${name}」 파일로 저장했어요`);
 }
 
 document.addEventListener('click', async (e) => {
   const b = e.target.closest('[data-bk]'); if (!b) return;
-  const act = b.dataset.bk;
-  if (act === 'file') {
-    const bk = currentBackup();
-    const url = URL.createObjectURL(new Blob([backupText(bk)], { type: 'application/json' }));
-    const a = document.createElement('a'); a.href = url; a.download = backupFileName(bk); document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-    toast(`📥 ${bk.count}가지 기록을 파일로 저장했어요`);
-  }
+  const act = b.dataset.bk; const box = b.closest('.backup, .bk-in, .bk-nudge, .step') || document;
+  if (act === 'save' || act === 'file') { saveBackupFile(); return; }
+  if (act === 'snooze') { if (state.fortune) save(BACKUP_INFO_KEY, snoozeBackup(backupInfo(), state.fortune.dateKey)); renderToday(); renderHero(false); toast('일주일 뒤에 다시 알려 드릴게요. 지신 탭 「📦 기록 백업」에서 언제든 할 수 있어요'); return; }
   if (act === 'copy') {
     const txt = backupText(currentBackup());
-    try { await navigator.clipboard.writeText(txt); toast('📋 백업 글자를 복사했어요. 메모장 등 안전한 곳에 붙여 두세요'); } catch {
-      const ta = $('[data-bk-text]'); if (ta) { $('.bk-in').open = true; ta.value = txt; ta.select(); } toast('복사가 막혀 있어요. 아래 칸의 글자를 직접 복사해 주세요');
+    try { await navigator.clipboard.writeText(txt); afterBackup(); toast('📋 백업 글자를 복사했어요. 카카오톡 「나와의 채팅」이나 메모장에 붙여 두세요'); } catch {
+      const ta = box.querySelector('[data-bk-text]'); const d = box.querySelector('.bk-in');
+      if (ta) { if (d) d.open = true; ta.value = txt; ta.select(); } toast('복사가 막혀 있어요. 아래 칸의 글자를 직접 복사해 주세요');
     }
+    return;
   }
-  if (act === 'import') restoreBackup($('[data-bk-text]')?.value || '');
+  if (act === 'import') restoreBackup(box.querySelector('[data-bk-text]')?.value || '');
 });
 document.addEventListener('change', (e) => {
   const inp = e.target.closest('[data-bk-file]'); if (!inp || !inp.files[0]) return;
@@ -3578,6 +3619,7 @@ function renderToday() {
     ${wishDueHTML()}
     ${wishMidHTML()}
     ${lanternHTML()}
+    ${backupNudgeHTML()}
     ${seedAskHTML()}
     ${cookieCardHTML()}
     ${habitsCardHTML()}
@@ -3824,6 +3866,7 @@ function renderHero(animate) {
       <h3 class="hero-title" style="text-align:center">${info.title}</h3>
       <p style="margin:0 0 10px;text-align:center"><span class="rarity-badge" style="color:var(--gold)">${stageName(gs.stage, info.female)} · 진화 ${gs.stage}단계</span>${currentDex().title ? ` <span class="rarity-badge" style="color:#ff8fb3">📖 ${currentDex().title}</span>` : ''}${seasonTitle() ? ` <span class="rarity-badge season-title">🏮 ${esc(seasonTitle())}</span>` : ''}</p>
       ${jisinGrowHTML()}
+      ${backupNudgeHTML()}
       ${charmShowcaseHTML()}
       ${secondJisinHTML()}
       ${kiCardHTML({ inHero: true })}
@@ -3834,6 +3877,7 @@ function renderHero(animate) {
       ${foldHTML('coordi', '👗', '오늘의 코디', coordiSub(), coordiHTML())}
       ${foldHTML('wish', '🖼️', '이룬 소원 벽', wishSub(), wishWallHTML())}
       ${foldHTML('burn', '🔥', '걱정 태우기', '걱정 한 줄을 부적과 함께 태워 날려 보내요', burnHTML())}
+      ${foldHTML('backup', '📦', '기록 백업 · 새 폰으로 옮기기', backupSub(), backupCardHTML())}
     </div>`;
 
   const panel = $('[data-panel="hero"]');
@@ -6233,6 +6277,7 @@ function openWishRitual(rec, onDone, opt = {}) {
     body.innerHTML = `<div class="rt-blow"><span class="rt-jisin">${renderCharacterSVG(info, { mood: 'love', stage: info.stage, width: 110 })}</span>
       <span class="rt-charm glow">${paidCharmSVG(d)}</span></div>
       <p class="rt-line" data-casual>💬 ${esc(line)}</p>
+      <p class="bk-after hj">📦 이 부적은 이 폰에만 저장돼요. 완성한 뒤 「지금 백업하기」를 눌러 두면 폰을 바꿔도 이어져요.</p>
       <div class="rt-done"><button type="button" class="ghost" data-rt-wall>📱 배경화면 저장</button><button type="button" class="primary" data-rt-end>완성!</button></div>`;
     tip.textContent = lantern ? '🏮 100일 소원 등불이 켜졌어요 · 내일부터 홈에서 매일 만나요' : '🌠 세상에 하나뿐인 소원 부적이 완성됐어요';
     body.querySelector('[data-rt-wall]').addEventListener('click', () => saveWallpaper(d, wallName(d)));
@@ -6385,6 +6430,7 @@ function openLanternRitual(rec, onDone, opt = {}) {
     body.innerHTML = `<div class="lt-fin"><span class="rt-jisin">${renderCharacterSVG(info, { mood: 'love', stage: info.stage, width: 90 })}</span>
         <p class="rt-line" data-casual>💬 ${esc(floatLine(rec, polite))}</p></div>
       <p class="lt-env-h">💌 봉투에 넣어 둔 편지 세 통</p>${ltEnvelopesHTML(envs)}
+      <p class="bk-after">📦 이 등불은 이 폰에만 저장돼요. 완성한 뒤 「지금 백업하기」를 눌러 두면 폰을 바꿔도 이어져요.</p>
       <button type="button" class="primary lt-rt-go" data-rt-end>완성! 홈에서 매일 만나요</button>`;
     tip.textContent = '🏮 100일 소원 등불이 켜졌어요 · 내일부터 홈 연못에서 매일 만나요';
     body.querySelector('[data-rt-end]').addEventListener('click', end);

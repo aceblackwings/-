@@ -2415,3 +2415,20 @@ body:has(> .evo-modal, > .reveal-modal, > .hj-reader) { overflow: hidden; }
   .lt-sc-lamp, .lt-sc-lamp img, .lt-sc-glow, .lt-sc-ribbon { transition: none; animation: none !important; }
   .lt-rb, .lt-env.arrived .lt-env-ic, .lt-wick.done .lt-wick-tip, .lt-petals i.new, .lt-scene.floated .lt-sc-ring { animation: none; }
 }
+
+/* ---------- v0.70 기록 백업 안내(로그인 없음 결정 후속) ---------- */
+.fold-body > .card.backup { margin: 0; padding: 0; border: 0; background: none; box-shadow: none; }
+.fold-body > .card.backup > h3 { display: none; } /* 접힘 제목과 같음 */
+.bk-why { margin: 0 0 8px; font-size: 0.84rem; line-height: 1.65; }
+.bk-state { margin: 0 0 10px; font-size: 0.86rem; font-weight: 700; color: var(--text); }
+.bk-tip { margin: 8px 0 0; font-size: 0.78rem; line-height: 1.6; color: var(--muted); }
+.bk-row button { min-height: 48px; }
+.bk-nudge { border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent); background: color-mix(in srgb, var(--gold) 8%, var(--card, #fff)); }
+.bk-nudge p { margin: 0 0 10px; font-size: 0.88rem; line-height: 1.65; word-break: keep-all; }
+.bk-nudge p b { font-size: 0.95rem; }
+.bk-signup { margin: 14px 0 0; padding: 10px 12px; border-radius: 12px; border: 1px dashed var(--line); }
+.bk-signup summary { color: var(--text); font-weight: 600; }
+.bk-after { margin: 8px 0 4px; font-size: 0.78rem; line-height: 1.55; color: #f6d9b0; word-break: keep-all; }
+.bk-after.hj { color: var(--hj-ink2, #5b4d42); }
+.bk-nudge .bk-row { grid-template-columns: 1.7fr 1fr; }
+.bk-row button { white-space: nowrap; padding-left: 10px; padding-right: 10px; }
