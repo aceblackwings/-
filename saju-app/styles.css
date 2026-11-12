@@ -1809,7 +1809,6 @@ html.easy .top h1 { font-size: 20px; }
 .oh-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
 .oh-chips span { display: flex; flex-direction: column; padding: 8px 10px; border-radius: 12px; background: #fff; border: 1px solid var(--line); font-size: 0.85rem; line-height: 1.45; }
 .oh-chips b { font-size: 0.74rem; color: var(--muted); font-weight: 600; }
-.oh-go { width: 100%; }
 
 /* ===== v0.57 소원 부적 · 지신 데일리 코디 · 걱정 태우기 ===== */
 .wish-form { margin: 12px 0 0; padding: 12px 14px; border-radius: 16px; background: #fff8ec; border: 1px dashed rgba(208, 132, 58, 0.45); display: grid; gap: 8px; }
@@ -2301,3 +2300,10 @@ body.cm-open { overflow: hidden; }
 .hj-reader { overscroll-behavior: contain; }
 body.hj-open, body.cm-open { overflow: visible; }
 body:has(> .evo-modal, > .reveal-modal, > .hj-reader) { overflow: hidden; }
+
+/* v0.68 「광고 없음 · 운세 무료」 알리기 */
+.free-badge { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.free-badge span { font-size: 0.8rem; font-weight: 700; color: var(--neon); background: color-mix(in srgb, var(--neon) 10%, transparent); border: 1px solid color-mix(in srgb, var(--neon) 30%, transparent); border-radius: 999px; padding: 3px 10px; }
+.hj-free { margin: 0; font-size: 0.95rem; color: var(--hj-ink, #2b2420); line-height: 1.7; }
+.hj-free small { display: block; font-size: 0.8rem; color: var(--hj-ink2, #5a4e46); }
+.hj-free a { color: var(--hj-red, #b8382a); }

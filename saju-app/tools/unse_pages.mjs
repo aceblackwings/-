@@ -136,7 +136,7 @@ const head = (title, desc, extra = '') => `<!doctype html>
   <link rel="stylesheet" href="unse.css">${extra}
 </head>
 <body>`;
-const footer = `<footer class="u-foot"><p>띠 운세는 같은 해에 태어난 모든 사람의 큰 흐름이에요. 사주는 확률적인 해석이며, 건강·법률·투자 판단은 전문가와 함께 하세요.</p><p><a href="../../index.html">12지신 강림</a> · 무료 사주 · 2027 신년운세 · 12지신 타로</p></footer>
+const footer = `<footer class="u-foot"><p>띠 운세는 같은 해에 태어난 모든 사람의 큰 흐름이에요. 사주는 확률적인 해석이며, 건강·법률·투자 판단은 전문가와 함께 하세요.</p><p><a href="../../index.html">12지신 강림</a> · 광고 없는 무료 사주 · 2027 신년운세 · 12지신 타로</p></footer>
 </body>
 </html>
 `;
@@ -201,7 +201,7 @@ export function indexHTML() {
   <div class="u-grid">${TTI.map((t) => `<a class="u-tile" href="${t.key}.html"><img src="../../assets/char/${t.key}_s3.webp" alt="" width="96" height="96" loading="lazy"><b>${t.name}띠</b><small>${t.kw}</small></a>`).join('')}</div>
   <section class="u-cta">
     <h2>띠 운세보다 더 정확하게</h2>
-    <p>생년월일과 태어난 시간으로 보는 무료 사주, 2027년 신년운세 책자, 12지신 타로와 궁합까지 한곳에서 볼 수 있어요.</p>
+    <p>생년월일과 태어난 시간으로 보는 무료 사주, 2027년 신년운세 책자, 12지신 타로와 궁합까지 광고 없이 모두 무료로 볼 수 있어요.</p>
     <a class="u-btn" href="../../index.html">12지신 강림 시작하기 →</a>
   </section>
 </main>

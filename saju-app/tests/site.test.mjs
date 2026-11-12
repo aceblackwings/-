@@ -67,3 +67,16 @@ console.log(`site.test: ${n}개 통과`);
   for (const f of ['company.css', 'img/12jisin.webp', 'robots.txt']) readFileSync(new URL(`../../company/site/${f}`, import.meta.url));
 }
 console.log('  ✓ 회사 홈페이지: 생성기 결과와 같음 · 사업자 정보 · 12지신 강림 링크 · 배포 설정');
+
+// v0.68 「광고 없음 · 운세 무료」 알리기 + 내 오행 부적 버튼 삭제
+{
+  const index = read('index.html'); const app = read('js/app.js'); const free = textOf(read('legal/free.html'));
+  assert.ok(index.includes('href="legal/free.html"') && index.includes('class="free-badge"') && /<title>[^<]*광고 없는 무료 사주/.test(index), '바닥글 링크 · 가입 배지 · 제목');
+  assert.ok(app.includes('광고 없이 무료로 읽으셨어요'), '상세판·정통사주 끝 문구');
+  assert.ok(free.includes('소원 부적') && free.includes('100일 소원 등불') && free.includes('운세 점수는 바뀌지 않습니다'), '운영 방법 페이지');
+  assert.ok(!/완전 무료/.test(free + textOf(index)), '「완전 무료」라고 쓰지 않음(유료 상품이 있음)');
+  assert.ok(!/광고 시청|광고 없음<\/small>/.test(app), '광고가 있는 것처럼 읽히는 옛 문구 없음');
+  assert.deepEqual(josaProblems(free), [], '조사');
+  assert.ok(!/기운 부적 만들러 가기/.test(app), '내 오행: 눌러도 반응 없던 부적 버튼 삭제');
+}
+console.log('  ✓ 광고 없는 무료 운세 페이지 · 가입 배지 · 상세판 끝 문구 · 오행 부적 버튼 삭제');

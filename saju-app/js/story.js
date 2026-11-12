@@ -134,7 +134,7 @@ function footer(ctx, { url, accent }) {
   ctx.strokeStyle = accent; ctx.lineWidth = 3; ctx.shadowColor = accent; ctx.shadowBlur = 24; ctx.stroke();
   ctx.restore();
   glowText(ctx, '나도 오늘의 부적 받기 ✦', 540, y + 76, { font: `800 50px ${SANS}`, align: 'center', glow: accent, blur: 18 });
-  glowText(ctx, url, 540, y + 130, { font: `400 30px ${MONO}`, color: '#9a94c4', align: 'center' });
+  glowText(ctx, `광고 없는 무료 사주 · ${url}`, 540, y + 130, { font: `400 30px ${MONO}`, color: '#9a94c4', align: 'center' });
   glowText(ctx, '※ 효과 수치는 재미를 위한 게임 요소입니다', 540, 1730, { font: `400 26px ${SANS}`, color: 'rgba(154,148,196,0.7)', align: 'center' });
 }
 
