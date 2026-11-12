@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const B = (k) => `<b data-biz="${k}"></b>`;
-const NAV = [['terms', '이용약관'], ['privacy', '개인정보 처리방침'], ['refund', '환불 규정'], ['shop', '상품 안내']];
+const NAV = [['terms', '이용약관'], ['privacy', '개인정보 처리방침'], ['refund', '환불 규정'], ['shop', '상품 안내'], ['free', '광고 없는 무료 운세']];
 
 const terms = `
 <h1>이용약관</h1>
@@ -241,7 +241,38 @@ const shop = `
 </ul>
 <p style="margin-top:22px"><a class="lg-btn" href="../index.html">🐉 12지신 강림 시작하기</a></p>`;
 
-const PAGES = { terms: ['이용약관', terms], privacy: ['개인정보 처리방침', privacy], refund: ['환불 규정', refund], shop: ['상품 안내', shop] };
+const free = `
+<h1>광고 없는 무료 운세</h1>
+<p class="lg-date">12지신 강림은 광고를 싣지 않고, 운세는 모두 무료로 보여 드립니다. 어떻게 운영하는지 그대로 알려 드립니다.</p>
+
+<h2>1. 무료로 보는 것</h2>
+<ul>
+  <li>사주(내 사주·정통사주 자세히 보기), 오늘의 운세와 포춘 쿠키</li>
+  <li>2027년 신년운세(요약판과 자세히 보기), 나의 흐름(이번 주·올해·10년)</li>
+  <li>12지신 타로, 궁합, 지신 키우기, 걱정 태우기(하루 한 번)</li>
+</ul>
+<p>타로와 새 친구 궁합에 쓰는 🍡 복떡은 습관 체크와 코디로 모으는 무료 재화입니다. 복떡은 돈으로 팔지 않습니다.</p>
+
+<h2>2. 광고를 싣지 않는 이유</h2>
+<p>사주 화면에는 생년월일로 계산한 내용이 그대로 보입니다. 광고 프로그램을 같은 화면에 넣으면 그 내용이 바깥으로 나갈 수 있어서, 처음부터 광고를 넣지 않기로 했습니다. 생년월일과 사주는 서버로 보내지 않고 이 기기에만 저장합니다. 자세한 내용은 <a href="privacy.html">개인정보 처리방침</a>에 있습니다.</p>
+
+<h2>3. 돈을 버는 방법</h2>
+<p>파는 것은 두 가지뿐입니다. 원하는 분만 고르는 상품이고, 사지 않아도 모든 운세를 똑같이 볼 수 있습니다.</p>
+<ul>
+  <li>🌠 소원 부적 <span data-price="wish"></span>: 내 이름과 지신 인장이 찍힌 금박 부적 한 장</li>
+  <li>🏮 100일 소원 등불 <span data-price="lantern"></span>: 100일 동안 함께 켜 두는 등불과 지신의 편지</li>
+</ul>
+<p>자동 결제나 구독은 없습니다. 자세한 구성은 <a href="shop.html">상품 안내</a>, 환불은 <a href="refund.html">환불 규정</a>을 봐 주세요.</p>
+
+<h2>4. 지키는 약속</h2>
+<ul>
+  <li>결제해도 운세 점수는 바뀌지 않습니다. 같은 날, 같은 사람이면 누구나 같은 점수를 봅니다.</li>
+  <li>구매를 재촉하거나 같은 제안을 되풀이하지 않습니다. 제안 카드의 ✕를 누르면 그날은 다시 보이지 않습니다.</li>
+  <li>가격은 처음부터 다 보여 드리고, 결제 전에 만들어질 모습을 미리 볼 수 있습니다.</li>
+</ul>
+<p style="margin-top:22px"><a class="lg-btn" href="../index.html">🐉 12지신 강림 시작하기</a></p>`;
+
+const PAGES = { terms: ['이용약관', terms], privacy: ['개인정보 처리방침', privacy], refund: ['환불 규정', refund], shop: ['상품 안내', shop], free: ['광고 없는 무료 운세', free] };
 
 export function legalPage(key) {
   const [title, body] = PAGES[key];

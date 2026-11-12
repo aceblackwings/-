@@ -668,7 +668,6 @@ function ohengCardHTML() {
       <p class="oh-bh">✅ ${g.fill ? '이렇게 채워 보세요' : '기운이 처질 때 이렇게'}</p>
       <ul class="oh-bring">${g.bring.map((b) => `<li>${esc(b)}</li>`).join('')}</ul>
       <div class="oh-chips">${g.chips.map(([k, v]) => `<span><b>${k}</b>${esc(v)}</span>`).join('')}</div>
-      ${g.fill ? `<button type="button" class="primary oh-go" data-go="charm">🧧 ${g.name} 기운 부적 만들러 가기</button>` : ''}
     </section>
   </article>`;
 }
@@ -745,7 +744,6 @@ function renderSajuFull() {
         </div>
       </div>
       <p class="muted">${strengthText(s)}</p>
-      <button class="primary" type="button" data-go="charm" style="width:100%">부족한 ${ELEMENT_KO[s.weakest]} 기운 부적 만들러 가기 →</button>
     </div>
     ${daewoonCardHTML()}
     ${expertCardHTML()}
@@ -2239,7 +2237,7 @@ function openReader(kind, jump = null) {
       <nav class="hj-index">${rep.sections.map((s, i) => s.appendix ? '' : `<a href="#hj-s${i}" data-hj-jump="hj-s${i}">${esc(s.h)}</a>`).join('')}${rep.sections.some((s) => s.appendix) ? `<a href="#hj-appendix" data-hj-jump="hj-appendix" class="hj-ap-link">📎 부록 · 풀이의 근거</a>` : ''}</nav>
       ${rep.sections.map((s, i) => s.appendix ? '' : secHTML(s, i)).join('')}
       ${rep.sections.some((s) => s.appendix) ? `<details class="hj-appendix" id="hj-appendix"><summary>📎 부록 · 풀이의 근거 <small>사주 용어로 된 계산 근거예요. 궁금한 분만 펼쳐 보세요</small></summary>${rep.sections.map((s, i) => s.appendix ? secHTML(s, i) : '').join('')}</details>` : ''}
-      <footer class="hj-end"><p>— 끝 —</p><button type="button" class="hj-buy" data-reader-close>닫기</button></footer>
+      <footer class="hj-end"><p>— 끝 —</p><p class="hj-free" data-raw>🍵 여기까지 ${kChars(rep.chars)}, 광고 없이 무료로 읽으셨어요.<small>12지신 강림의 운세는 모두 무료이고 광고가 없어요. <a href="legal/free.html" target="_blank" rel="noopener">어떻게 운영하나요?</a></small></p><button type="button" class="hj-buy" data-reader-close>닫기</button></footer>
     </article>`;
   document.body.appendChild(box); document.body.classList.add('hj-open');
   if (jump) requestAnimationFrame(() => { const t = box.querySelector(`#${jump}`); const d = t?.closest('details'); if (d) d.open = true; t?.scrollIntoView({ block: 'start' }); });
@@ -3659,7 +3657,7 @@ function renderCharm(animate) {
             <button class="ghost" type="button" data-story="charm">스토리 공유 ↗</button>
           </div>
           <p class="prob">획득 확률: ${RARITIES.map((r) => `<span style="color:${r.color}">${r.label} ${r.weight}%</span>`).join('')}</p>
-          <p class="muted" style="font-size:0.78rem">오늘 첫 부적은 하루 동안 고정됩니다. 다시 뽑기 ${c.reroll}회 (실서비스에서는 광고 시청이나 재화 사용)</p>
+          <p class="muted" style="font-size:0.78rem">오늘 첫 부적은 하루 동안 고정됩니다. 다시 뽑기 ${c.reroll}회</p>
         </div>
       </div>
     </div>
@@ -5073,7 +5071,7 @@ function openShop() {
   el.innerHTML = `<div class="evo-box shop">
     <h3 style="margin-top:0">➕ 추가 뽑기</h3>
     <div class="shop-item"><div><b>추가 뽑기 3회권</b><small>오늘 하루 추가 뽑기 ${EXTRA_PER_DAY}회</small></div><button class="primary" type="button" data-buy="extra" ${g.extraBought || sub ? 'disabled' : ''}>${PRICES.extra.toLocaleString()}원</button></div>
-    <div class="shop-item sub"><div><b>👑 12지신 수호 구독</b><small>매일 추가 뽑기 ${EXTRA_PER_DAY}회 · 월별 운세 리포트 상세 · 광고 없음</small></div><button class="primary" type="button" data-buy="sub" ${sub ? 'disabled' : ''}>${sub ? '구독 중' : `월 ${PRICES.subscription.toLocaleString()}원`}</button></div>
+    <div class="shop-item sub"><div><b>👑 12지신 수호 구독</b><small>매일 추가 뽑기 ${EXTRA_PER_DAY}회 · 월별 운세 리포트 상세</small></div><button class="primary" type="button" data-buy="sub" ${sub ? 'disabled' : ''}>${sub ? '구독 중' : `월 ${PRICES.subscription.toLocaleString()}원`}</button></div>
     ${sub ? '<button class="ghost" type="button" data-buy="cancel" style="width:100%">구독 해지 (프로토타입)</button>' : ''}
     <p class="muted" style="font-size:0.75rem">※ 프로토타입이라 실제 결제는 일어나지 않습니다. 정식 버전에서는 앱스토어 결제로 처리합니다. 추가 뽑기 부적의 오행 충전은 50%로, 꾸준히 매일 오는 무료 사용자와의 공정성을 지킵니다.</p>
     <button class="ghost" type="button" data-buy="close" style="width:100%">닫기</button></div>`;
