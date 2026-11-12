@@ -105,7 +105,7 @@ const WISH_RECS = ['자격증 시험 합격', '가족 모두 건강하기', '좋
 const BURN_RECS = ['괜히 불안한 마음', '나를 지치게 한 말', '자꾸 미루는 버릇', '꽉 막힌 일의 답답함', '다툰 뒤 남은 서운함', '잠 못 들게 하는 걱정'];
 const CHARMPAY_KEY = 'unmyeong2099.charmpay';
 import { PAY, payMode, fillBiz } from './site.js';
-import { ABANDON_LINE, PENDING_KEY, CUSTOMER_KEY, makeCustomerKey, validCustomerKey, makeOrder, tossRequest, parseReturn, cleanSearch, checkReturn, pendingAlive, payLogEntry, failLine, alreadyDone } from './pay.js';
+import { EASY_PAYS, easyPayOrder, ABANDON_LINE, PENDING_KEY, CUSTOMER_KEY, makeCustomerKey, validCustomerKey, makeOrder, tossRequest, parseReturn, cleanSearch, checkReturn, pendingAlive, payLogEntry, failLine, alreadyDone } from './pay.js';
 const SEEDS_KEY = 'unmyeong2099.seeds'; // v0.60 걱정 씨앗 {list:[{at, el, answer}]} — 걱정 글은 없음
 
 const STORE_KEY = 'unmyeong2099.profile';
@@ -5917,7 +5917,7 @@ function loadToss() {
   return tossLoading;
 }
 /** 결제창으로 이동 — 만들던 부적 기록을 기기에 「기다리는 주문」으로 두고 다녀온다(소원 글은 결제 회사로 보내지 않음) */
-async function goTossPay(kind, rec) {
+async function goTossPay(kind, rec, easyPay = null) {
   const order = makeOrder(kind, rec); if (!order) throw new Error('order');
   save(PENDING_KEY, order);
   if (storeBlocked) { save(PENDING_KEY, null); throw new Error('store'); }
@@ -5926,7 +5926,7 @@ async function goTossPay(kind, rec) {
   let customerKey = load(CUSTOMER_KEY, null);
   if (!validCustomerKey(customerKey)) { customerKey = makeCustomerKey(); save(CUSTOMER_KEY, customerKey); }
   const payment = Toss(PAY.tossClientKey).payment({ customerKey });
-  await payment.requestPayment(tossRequest(order, location.origin, location.pathname + cleanSearch(location.search)));
+  await payment.requestPayment(tossRequest(order, location.origin, location.pathname + cleanSearch(location.search), easyPay));
 }
 /** 결제 승인 함수 호출 */
 async function confirmOnServer(p) {
@@ -5992,7 +5992,11 @@ function openCharmPay(kind, onOk, onCancel = () => {}, preview = null, rec = nul
   const lantern = kind === 'lantern'; const price = lantern ? LANTERN_PRICE : CHARM_PRICE;
   const bal = loadTteok()?.balance || 0; const can = !lantern && bal >= CHARM_TTEOK;
   const nm = lantern ? '🏮 100일 소원 등불' : '🌠 소원 부적';
-  const payVerb = lantern ? '카드로 결제하고 불 붙이기' : '카드로 결제하고 인장 찍기';
+  // v0.72 간편결제 바로가기 4개(누르면 그 앱이 바로 열림) + 그 밖의 카드는 통합결제창
+  const ezOrder = easyPayOrder(navigator.userAgent, navigator.maxTouchPoints || 0);
+  const ezHTML = real ? `<p class="cp-ez-h">간편하게 결제하기 · ${won(price)}</p>
+    <div class="cp-ez">${ezOrder.map((c) => `<button type="button" class="cp-ez-b" data-cp="pay" data-ez="${c}">${EASY_PAYS[c].label}</button>`).join('')}</div>` : '';
+  const cardVerb = lantern ? '💳 다른 카드로 결제하고 불 붙이기' : '💳 다른 카드로 결제하고 인장 찍기';
   const box = document.createElement('div'); box.className = 'evo-modal pay-modal';
   box.innerHTML = `<div class="evo-box hanji hj-pay" role="dialog" aria-label="${nm}">
     <p class="hj-eyebrow">${nm}</p>
@@ -6001,7 +6005,7 @@ function openCharmPay(kind, onOk, onCancel = () => {}, preview = null, rec = nul
       <ul class="cp-gets">${(PAY_GETS[lantern ? 'lantern' : 'wish'] || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
     <p class="hj-desc">${lantern ? '소원 리본을 묶고 100일 길까지 보셨어요. 결제하면 심지에 불이 붙고, 등불을 연못에 띄워요.' : '먹을 갈고 이름까지 정성껏 쓰셨어요. 결제하면 인장이 찍히고, 지신이 기운을 불어넣어요.'}</p>
     <p class="hj-price"><b>${won(price)}</b> <small>${lantern ? '한 번 결제로 100일' : '한 장'} · 운세 점수와는 상관없어요</small></p>
-    <button type="button" class="hj-buy" data-cp="pay">${real ? `${payVerb} · ${won(price)}` : `체험판으로 ${lantern ? '불 붙이기' : '인장 찍기'} (결제 없음)`}</button>
+    ${ezHTML}<button type="button" class="hj-buy${real ? ' cp-card' : ''}" data-cp="pay">${real ? `${cardVerb} · ${won(price)}` : `체험판으로 ${lantern ? '불 붙이기' : '인장 찍기'} (결제 없음)`}</button>
     ${real ? `<p class="hj-note cp-legal">${mode === 'test' ? '<b>시험 결제 중이에요(실제 돈은 나가지 않아요).</b> ' : ''}결제하면 바로 만들어지는 디지털 상품이에요. 내 소원으로 한 장씩 만들기 때문에 <b>만든 뒤에는 단순 변심 환불이 어려워요</b>(오류·중복 결제는 전액 환불). ${lantern ? '등불은' : '부적은'} <b>이 기기의 이 브라우저에만</b> 저장돼요. 결제하면 <a href="legal/terms.html" target="_blank" rel="noopener">이용약관</a>·<a href="legal/refund.html" target="_blank" rel="noopener">환불 규정</a>에 동의한 것으로 봐요.</p>` : ''}
     ${lantern ? `<p class="hj-note">100일 등불은 복떡으로는 만들 수 없어요${real ? '' : ' · 지금은 체험판이라 실제 결제 없이 켜져요'}</p>`
       : `<button type="button" class="hj-buy navy" data-cp="tteok" ${can ? '' : 'disabled'}>${TTEOK} 복떡 ${CHARM_TTEOK}개로 무료 인장 찍기</button>
@@ -6019,10 +6023,12 @@ function openCharmPay(kind, onOk, onCancel = () => {}, preview = null, rec = nul
       save(TTEOK_KEY, r.store); toast(`${TTEOK} 복떡 ${CHARM_TTEOK}개로 만들었어요`);
     } else if (real) { // v0.65 실제 결제: 토스 결제창에 다녀온 뒤 resumePay가 승인·저장·인장을 이어서 함
       if (b.disabled) return;
-      b.disabled = true; b.textContent = '결제창을 여는 중…';
-      goTossPay(kind, rec).catch((err) => {
+      const ez = b.dataset.ez || null; const label = b.textContent;
+      box.querySelectorAll('[data-cp="pay"]').forEach((x) => { x.disabled = true; });
+      b.textContent = ez ? `${EASY_PAYS[ez].label} 여는 중…` : '결제창을 여는 중…';
+      goTossPay(kind, rec, ez).catch((err) => {
         save(PENDING_KEY, null);
-        b.disabled = false; b.textContent = `${payVerb} · ${won(price)}`;
+        box.querySelectorAll('[data-cp="pay"]').forEach((x) => { x.disabled = false; }); b.textContent = label;
         toast(err?.message === 'store' ? '이 화면은 기록 저장이 꺼져 있어 결제할 수 없어요. 일반 창에서 열어 주세요' : failLine(err?.code), 6000);
       });
       return;

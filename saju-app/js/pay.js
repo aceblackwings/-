@@ -37,8 +37,23 @@ export function makeOrder(kind, rec, now = Date.now(), rand = Math.random) {
 }
 export const pendingAlive = (p, now = Date.now()) => !!(p && p.orderId && p.rec && now - (p.at || 0) < PENDING_MAX_MS);
 
-/** 토스 결제 요청 값 — 소원 글은 넣지 않는다 */
-export function tossRequest(order, origin, path = '/') {
+/** v0.72 간편결제 바로가기(결제창(구버전) 자체창: card.flowMode 'DIRECT' + easyPay 코드 — 토스 SDK 문서 「간편결제사 코드」).
+ *  통합결제창(DEFAULT)은 easyPay를 무시해 순서를 정할 수 없어서, 우리 결제 창에 버튼을 둔다.
+ *  순서(사용자 결정 2026-11-12, 2025 이용 조사 참고): 네이버페이 → 카카오페이 → 삼성페이(아이폰은 애플페이) → 토스페이 */
+export const EASY_PAYS = {
+  NAVERPAY: { label: '네이버페이' },
+  KAKAOPAY: { label: '카카오페이' },
+  SAMSUNGPAY: { label: '삼성페이' },
+  APPLEPAY: { label: '애플페이' },
+  TOSSPAY: { label: '토스페이' },
+};
+export const isAppleDevice = (ua = '', touch = 0) => /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && touch > 1);
+export function easyPayOrder(ua = '', touch = 0) {
+  return ['NAVERPAY', 'KAKAOPAY', isAppleDevice(ua, touch) ? 'APPLEPAY' : 'SAMSUNGPAY', 'TOSSPAY'];
+}
+
+/** 토스 결제 요청 값 — 소원 글은 넣지 않는다. easyPay를 주면 그 간편결제 창을 바로 연다 */
+export function tossRequest(order, origin, path = '/', easyPay = null) {
   const base = `${origin}${path}`; const sep = base.includes('?') ? '&' : '?';
   return {
     method: 'CARD',
@@ -47,6 +62,7 @@ export function tossRequest(order, origin, path = '/') {
     orderName: order.name,
     successUrl: `${base}${sep}pay=success`,
     failUrl: `${base}${sep}pay=fail`,
+    ...(EASY_PAYS[easyPay] ? { card: { flowMode: 'DIRECT', easyPay } } : {}),
   };
 }
 
@@ -77,7 +93,7 @@ export function checkReturn(ret, pending, now = Date.now()) {
 
 /** 결제 내역 한 줄(기기 저장, 소원 글 없음) */
 export function payLogEntry(order, res = {}, now = Date.now()) {
-  return { kind: order.kind, price: order.amount, at: now, via: 'toss', orderId: order.orderId, method: res.method || '', receipt: res.receiptUrl || '' };
+  return { kind: order.kind, price: order.amount, at: now, via: 'toss', orderId: order.orderId, method: res.method || '', ez: res.easyPay || '', receipt: res.receiptUrl || '' };
 }
 
 /** v0.71.1 결제창에서 뒤로 가기 등으로 결제를 마치지 않고 돌아온 경우 */
@@ -116,7 +132,7 @@ async function lookupDone(orderId, paymentKey, amount, auth, fetchImpl) {
   } catch { /* 조회도 끊김 → 원래 결과로 */ }
   return null;
 }
-const doneBody = (orderId, v, data) => ({ ok: true, orderId, kind: v.kind, amount: v.amount, method: data.method || '', approvedAt: data.approvedAt || '', receiptUrl: data.receipt?.url || '' });
+const doneBody = (orderId, v, data) => ({ ok: true, orderId, kind: v.kind, amount: v.amount, method: data.method || '', easyPay: data.easyPay?.provider || '', approvedAt: data.approvedAt || '', receiptUrl: data.receipt?.url || '' });
 
 /**
  * 결제 승인(서버 함수 본체) — 호스팅과 상관없이 쓸 수 있게 fetch를 넘겨받는다.
