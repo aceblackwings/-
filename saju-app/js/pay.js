@@ -80,11 +80,14 @@ export function payLogEntry(order, res = {}, now = Date.now()) {
   return { kind: order.kind, price: order.amount, at: now, via: 'toss', orderId: order.orderId, method: res.method || '', receipt: res.receiptUrl || '' };
 }
 
+/** v0.71.1 결제창에서 뒤로 가기 등으로 결제를 마치지 않고 돌아온 경우 */
+export const ABANDON_LINE = '결제를 마치지 않고 돌아오셨어요. 돈은 나가지 않았어요. 마음이 정해지면 다시 해 보세요';
+
 /** 사용자가 결제창을 그냥 닫은 경우인지 */
 export const isUserCancel = (code) => ['PAY_PROCESS_CANCELED', 'USER_CANCEL'].includes(String(code || ''));
 /** 실패 안내 문장(겁주지 않게, 돈이 나가지 않았다는 점을 먼저) */
 export function failLine(code) {
-  if (isUserCancel(code)) return '결제를 그만두셨어요. 돈은 나가지 않았어요. 마음이 정해지면 다시 인장을 눌러 주세요';
+  if (isUserCancel(code)) return '결제를 그만두셨어요. 돈은 나가지 않았어요. 마음이 정해지면 다시 해 보세요';
   if (code === 'REJECT_CARD_COMPANY' || code === 'PAY_PROCESS_ABORTED') return '카드사에서 결제가 이루어지지 않았어요. 돈은 나가지 않았어요. 다른 카드로 다시 해 보세요';
   return '결제가 끝나지 않았어요. 돈은 나가지 않았어요. 잠시 뒤 다시 해 보세요';
 }

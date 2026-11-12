@@ -2436,3 +2436,6 @@ body:has(> .evo-modal, > .reveal-modal, > .hj-reader) { overflow: hidden; }
 .bk-move { display: grid; gap: 10px; text-align: left; } .bk-move h3 { margin: 0; font-size: 1.05rem; line-height: 1.45; word-break: keep-all; }
 .bk-move p { margin: 0; font-size: 0.88rem; line-height: 1.65; word-break: keep-all; } .bk-move textarea { width: 100%; box-sizing: border-box; font-size: 0.72rem; }
 .bk-move { box-sizing: border-box; width: min(360px, calc(100vw - 32px)); } .bk-move > * { min-width: 0; } .bk-move .bk-one { white-space: normal; }
+
+/* v0.71.1 토스트는 결제·의식 창(.evo-modal z30, .reveal-modal z40)보다 위에 — 결제 취소 안내가 창 뒤에 가려지던 문제 */
+.toast { z-index: 250; }

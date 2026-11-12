@@ -1,7 +1,7 @@
 // v0.65 웹 결제(토스페이먼츠) 순수 로직 + 승인 함수
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { PAY_PRODUCTS, makeOrderId, kindOfOrder, verifyOrder, makeOrder, pendingAlive, tossRequest, parseReturn, cleanSearch, checkReturn, payLogEntry, failLine, confirmPayment, PENDING_MAX_MS, makeCustomerKey, validCustomerKey, confirmIdemKey, CUSTOMER_KEY } from '../js/pay.js';
+import { PAY_PRODUCTS, makeOrderId, kindOfOrder, verifyOrder, makeOrder, pendingAlive, tossRequest, parseReturn, cleanSearch, checkReturn, payLogEntry, failLine, confirmPayment, PENDING_MAX_MS, makeCustomerKey, validCustomerKey, confirmIdemKey, CUSTOMER_KEY, ABANDON_LINE } from '../js/pay.js';
 import { CHARM_PRICE } from '../js/tteok.js';
 import { LANTERN_PRICE } from '../js/lantern.js';
 import { toneProblems } from '../js/habit.js';
@@ -144,6 +144,19 @@ ok('시크릿 키는 환경 변수에만 · 승인 함수는 저장 없음');
   assert.ok(app.includes('payment({ customerKey })') && !app.includes('Toss.ANONYMOUS'));
 }
 ok('v0.71 구매자 번호 규칙 · 멱등키 · 승인 끊김/이미 처리 = 조회로 확인 · 어긋난 조회는 거절');
+
+// 9. v0.71.1 결제를 마치지 않고 돌아왔을 때 안내가 보이게
+{
+  assert.ok(ABANDON_LINE.includes('돈은 나가지 않았어요')); assert.deepEqual(toneProblems(ABANDON_LINE), []);
+  const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
+  assert.ok(app.includes('backToRitual(ABANDON_LINE)'), '뒤로 가기로 돌아오면 안내 + 인장 화면');
+  assert.ok(app.includes("window.addEventListener('pageshow'"), '뒤로 가기 페이지 되살림(bfcache)도 처리');
+  assert.equal((app.match(/if \(opt\.notice\) tip\.textContent = opt\.notice;/g) || []).length, 2, '소원 부적·등불 의식 창 안에 안내');
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  const z = Number((css.match(/\.toast \{ z-index: (\d+); \}/) || [])[1]);
+  assert.ok(z > 200, '토스트가 모든 창(최대 z-index 200)보다 위');
+}
+ok('v0.71.1 결제 취소·뒤로 가기 안내가 창 위·의식 창 안에 보임');
 
 console.log(`pay.test: ${n}개 통과`);
 

@@ -105,7 +105,7 @@ const WISH_RECS = ['자격증 시험 합격', '가족 모두 건강하기', '좋
 const BURN_RECS = ['괜히 불안한 마음', '나를 지치게 한 말', '자꾸 미루는 버릇', '꽉 막힌 일의 답답함', '다툰 뒤 남은 서운함', '잠 못 들게 하는 걱정'];
 const CHARMPAY_KEY = 'unmyeong2099.charmpay';
 import { PAY, payMode, fillBiz } from './site.js';
-import { PENDING_KEY, CUSTOMER_KEY, makeCustomerKey, validCustomerKey, makeOrder, tossRequest, parseReturn, cleanSearch, checkReturn, pendingAlive, payLogEntry, failLine, alreadyDone } from './pay.js';
+import { ABANDON_LINE, PENDING_KEY, CUSTOMER_KEY, makeCustomerKey, validCustomerKey, makeOrder, tossRequest, parseReturn, cleanSearch, checkReturn, pendingAlive, payLogEntry, failLine, alreadyDone } from './pay.js';
 const SEEDS_KEY = 'unmyeong2099.seeds'; // v0.60 걱정 씨앗 {list:[{at, el, answer}]} — 걱정 글은 없음
 
 const STORE_KEY = 'unmyeong2099.profile';
@@ -450,6 +450,8 @@ function initForm() {
   handleEasyLink();
   fillBiz(document);
   setTimeout(resumePay, 0); // 모듈이 끝까지 준비된 뒤에(아래쪽 상수들을 쓰므로)
+  // v0.71.1 결제창에서 브라우저 뒤로 가기로 돌아오면 페이지가 저장된 채로 되살아나(bfcache) init이 다시 돌지 않음 → 열려 있던 결제 창을 닫고 이어서 처리
+  window.addEventListener('pageshow', (e) => { if (!e.persisted) return; document.querySelectorAll('.pay-modal').forEach((x) => x.remove()); resumePay(); });
   setTimeout(handleMovedBackup, 0); // v0.70.4 카카오톡 안 브라우저에서 넘어온 기록
   if (!showBackup()) document.querySelectorAll('.bk-signup').forEach((x) => { x.hidden = true; }); // v0.70.5 가입 화면 백업 가져오기도 숨김
 }
@@ -5947,9 +5949,14 @@ async function resumePay() {
   if (ret) history.replaceState(null, '', location.pathname + cleanSearch(location.search) + location.hash);
   let p = load(PENDING_KEY, null);
   if (!state.fortune) return;
+  // v0.71.1 결제를 마치지 않았을 때(취소·실패·뒤로 가기): 안내를 인장/심지 화면 안에도 띄움(토스트만 쓰면 창 뒤에 가려졌음)
+  const backToRitual = (line) => {
+    save(PENDING_KEY, null); selectTab('hero');
+    openRitualFor(p.rec, () => commitPaidCharm(p.rec), { notice: line });
+    toast(line, 6000);
+  };
   if (ret?.status === 'fail') {
-    toast(failLine(ret.code), 6000);
-    if (pendingAlive(p) && !p.paymentKey) { save(PENDING_KEY, null); selectTab('hero'); openRitualFor(p.rec, () => commitPaidCharm(p.rec), {}); }
+    if (pendingAlive(p) && !p.paymentKey) backToRitual(failLine(ret.code)); else toast(failLine(ret.code), 6000);
     return;
   }
   if (ret?.status === 'success') {
@@ -5958,7 +5965,7 @@ async function resumePay() {
     p = { ...p, paymentKey: ret.paymentKey }; save(PENDING_KEY, p);
   }
   if (!pendingAlive(p)) { if (p) save(PENDING_KEY, null); return; }
-  if (!p.paymentKey) return; // 결제창에서 그냥 돌아온 경우 — 기록만 두었다가 하루 뒤 지움
+  if (!p.paymentKey) { backToRitual(ABANDON_LINE); return; } // 결제창에서 뒤로 가기로 돌아온 경우(토스가 failUrl로 보내지 않음)
   toast('결제를 확인하고 있어요…', 4000);
   let body;
   try { body = await confirmOnServer(p); } catch { toast('결제 확인이 잠시 끊겼어요. 이 화면을 다시 열면 이어서 확인해요', 7000); return; }
@@ -6348,6 +6355,7 @@ function openWishRitual(rec, onDone, opt = {}) {
   });
   if (paid) { const q = box.querySelector('[data-rt-quit]'); if (q) q.hidden = true; }
   show(opt.startAt || 0);
+  if (opt.notice) tip.textContent = opt.notice; // v0.71.1 결제를 마치지 않고 돌아온 안내
 }
 /** v0.64 홈: 100일 소원 등불 — D-day, 오늘의 기도 한 줄, 10칸 밝기, 편지, 함께 빌기 */
 /** v0.64.9 100일 등불 그림(docs/prompts/lantern-100.md): 1~33일 stage1 · 34~66일 stage2 · 67~99일 stage3 · 100일 완주 kept */
@@ -6500,6 +6508,7 @@ function openLanternRitual(rec, onDone, opt = {}) {
   });
   if (paid) { const q = box.querySelector('[data-rt-quit]'); if (q) q.hidden = true; }
   show(opt.startAt || 0);
+  if (opt.notice) tip.textContent = opt.notice; // v0.71.1 결제를 마치지 않고 돌아온 안내
 }
 /** 매일 함께 빌기 = 연꽃잎 하나 · 10장이면 연꽃 한 송이(지어낸 숫자 없이 내 기록만) */
 function ltLotusHTML(r, fresh = false) {
