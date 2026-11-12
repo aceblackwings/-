@@ -19,7 +19,9 @@ export function makeBackup(entries, now = new Date()) {
 }
 
 export const backupText = (b) => JSON.stringify(b);
-export const backupFileName = (b) => `zodiac12-backup-${b.savedAt.slice(0, 10)}.json`;
+// v0.70.1: 카카오톡이 .json 파일을 「지원하지 않는 파일 형식」으로 거절 → 글자 파일(.txt)로 저장(내용은 같은 JSON, 예전 .json도 가져오기 됨)
+export const BACKUP_MIME = 'text/plain';
+export const backupFileName = (b) => `zodiac12-backup-${b.savedAt.slice(0, 10)}.txt`;
 
 /**
  * 백업 글자 → 복원할 항목. 잘못된 파일이면 {ok:false, error}

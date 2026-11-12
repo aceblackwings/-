@@ -49,7 +49,7 @@ t('백업: 앱 키만 담고, 다시 읽으면 같은 값으로 복원', () => {
   const store = { [`${PREFIX}profile`]: JSON.stringify({ year: 1990 }), [`${PREFIX}records`]: JSON.stringify({ days: { '2026-11-2': { score: 70 } }, items: [] }), [`${PREFIX}raw`]: 'not-json', other: 'x' };
   const b = makeBackup(store, new Date('2026-11-02T10:00:00Z'));
   assert.equal(b.count, 3); assert.ok(!('other' in b.data));
-  assert.equal(backupFileName(b), 'zodiac12-backup-2026-11-02.json');
+  assert.equal(backupFileName(b), 'zodiac12-backup-2026-11-02.txt', '카카오톡이 받는 글자 파일');
   const r = parseBackup(backupText(b));
   assert.ok(r.ok); assert.equal(r.count, 3); assert.ok(r.hasProfile);
   assert.deepEqual(JSON.parse(r.entries[`${PREFIX}records`]), JSON.parse(store[`${PREFIX}records`]));
