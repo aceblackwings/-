@@ -1,7 +1,7 @@
 // v0.65 웹 결제(토스페이먼츠) 순수 로직 + 승인 함수
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { PAY_PRODUCTS, makeOrderId, kindOfOrder, verifyOrder, makeOrder, pendingAlive, tossRequest, parseReturn, cleanSearch, checkReturn, payLogEntry, failLine, confirmPayment, PENDING_MAX_MS } from '../js/pay.js';
+import { PAY_PRODUCTS, makeOrderId, kindOfOrder, verifyOrder, makeOrder, pendingAlive, tossRequest, parseReturn, cleanSearch, checkReturn, payLogEntry, failLine, confirmPayment, PENDING_MAX_MS, makeCustomerKey, validCustomerKey, confirmIdemKey, CUSTOMER_KEY } from '../js/pay.js';
 import { CHARM_PRICE } from '../js/tteok.js';
 import { LANTERN_PRICE } from '../js/lantern.js';
 import { toneProblems } from '../js/habit.js';
@@ -95,6 +95,55 @@ ok('승인 함수: 가격표로 금액 재확인 · 비밀 키 전달 · 거절�
   assert.ok(app.includes('resumePay()') && app.includes('commitPaidCharm(p.rec)'));
 }
 ok('시크릿 키는 환경 변수에만 · 승인 함수는 저장 없음');
+
+// 8. v0.71 토스 문서 대조 보강: 구매자 번호 · 멱등키 · 승인 실패 때 결제 조회
+{
+  const ck = makeCustomerKey();
+  assert.ok(ck.length >= 22 && ck.length <= 255 && /[-_=.@]/.test(ck) && /^[A-Za-z0-9\-_=.@]+$/.test(ck), 'customerKey 규칙(22~255자, 특수문자 1개 이상)');
+  assert.equal(validCustomerKey(ck), true); assert.equal(validCustomerKey('ANONYMOUS'), false); assert.equal(validCustomerKey(null), false);
+  assert.notEqual(makeCustomerKey(), makeCustomerKey());
+  assert.ok(CUSTOMER_KEY.startsWith('unmyeong2099.'), '백업에 함께 옮겨지는 저장 키');
+  const o = makeOrder('wish', { wish: 'x' }, 1794000000000);
+  assert.ok(confirmIdemKey(o.orderId).length <= 300 && confirmIdemKey(o.orderId) === confirmIdemKey(o.orderId), '같은 주문 = 같은 멱등키');
+
+  const calls = [];
+  const okFetch = async (url, init) => { calls.push({ url, init }); return { ok: true, status: 200, json: async () => ({ status: 'DONE', totalAmount: 990 }) }; };
+  await confirmPayment({ paymentKey: 'pk', orderId: o.orderId, amount: 990 }, 'sk', okFetch);
+  assert.equal(calls[0].init.headers['Idempotency-Key'], confirmIdemKey(o.orderId), '승인 요청에 멱등키');
+  assert.equal(calls.length, 1, '성공하면 조회하지 않음');
+
+  // 승인 응답이 끊겼지만 실제로는 승인됨 → 조회로 성공 처리(돈은 나갔는데 부적이 안 생기는 일 막기)
+  const seen = [];
+  const lostThenDone = async (url, init) => {
+    seen.push(url);
+    if (url.endsWith('/confirm')) throw new Error('timeout');
+    return { ok: true, status: 200, json: async () => ({ status: 'DONE', paymentKey: 'pk', totalAmount: 990, method: '카드', receipt: { url: 'https://r' } }) };
+  };
+  const r1 = await confirmPayment({ paymentKey: 'pk', orderId: o.orderId, amount: 990 }, 'sk', lostThenDone);
+  assert.equal(r1.body.ok, true); assert.equal(r1.body.receiptUrl, 'https://r');
+  assert.equal(seen[1], `https://api.tosspayments.com/v1/payments/orders/${o.orderId}`, '주문 번호로 조회');
+  // 이미 처리된 결제(새로고침 등)도 조회로 확인
+  const already = async (url) => (url.endsWith('/confirm')
+    ? { ok: false, status: 400, json: async () => ({ code: 'ALREADY_PROCESSED_PAYMENT', message: '이미 처리' }) }
+    : { ok: true, status: 200, json: async () => ({ status: 'DONE', paymentKey: 'pk', totalAmount: 990 }) });
+  assert.equal((await confirmPayment({ paymentKey: 'pk', orderId: o.orderId, amount: 990 }, 'sk', already)).body.ok, true);
+  // 조회 결과가 다른 결제거나 금액이 다르면 성공으로 보지 않음
+  const otherKey = async (url) => (url.endsWith('/confirm')
+    ? { ok: false, status: 400, json: async () => ({ code: 'REJECT_CARD_COMPANY', message: '거절' }) }
+    : { ok: true, status: 200, json: async () => ({ status: 'DONE', paymentKey: 'other', totalAmount: 990 }) });
+  assert.equal((await confirmPayment({ paymentKey: 'pk', orderId: o.orderId, amount: 990 }, 'sk', otherKey)).body.code, 'REJECT_CARD_COMPANY');
+  const cheap = async (url) => (url.endsWith('/confirm') ? (() => { throw new Error('x'); })() : { ok: true, status: 200, json: async () => ({ status: 'DONE', paymentKey: 'pk', totalAmount: 100 }) });
+  assert.equal((await confirmPayment({ paymentKey: 'pk', orderId: o.orderId, amount: 990 }, 'sk', cheap)).body.code, 'PG_UNREACHABLE');
+  // 토스 서버 오류·처리 중(409)이면 기다리는 주문을 지우지 않게 PG_UNREACHABLE
+  const busy = async (url) => (url.endsWith('/confirm')
+    ? { ok: false, status: 409, json: async () => ({ code: 'IDEMPOTENT_REQUEST_PROCESSING' }) }
+    : { ok: true, status: 200, json: async () => ({ status: 'IN_PROGRESS', paymentKey: 'pk', totalAmount: 990 }) });
+  assert.equal((await confirmPayment({ paymentKey: 'pk', orderId: o.orderId, amount: 990 }, 'sk', busy)).body.code, 'PG_UNREACHABLE');
+  // 화면 코드는 ANONYMOUS 대신 기기 번호를 씀
+  const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
+  assert.ok(app.includes('payment({ customerKey })') && !app.includes('Toss.ANONYMOUS'));
+}
+ok('v0.71 구매자 번호 규칙 · 멱등키 · 승인 끊김/이미 처리 = 조회로 확인 · 어긋난 조회는 거절');
 
 console.log(`pay.test: ${n}개 통과`);
 
