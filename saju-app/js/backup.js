@@ -87,3 +87,31 @@ export function backupSummary(b) {
   if (wishes) parts.push(`소원 부적 ${wishes}장`);
   return parts.join(' · ');
 }
+
+// ---------- v0.70.2 카카오톡으로 보내기: 파일 대신 짧은 「백업 코드」 글자 ----------
+// 사용자 확인: .txt 파일도 카카오톡이 「지원하지 않는 파일 형식」으로 거절(폰의 공유 창으로는 글자·사진·영상만 받는 것으로 보임).
+// → 백업 내용을 gzip으로 줄이고 base64로 바꾼 「12JISIN1:…」 코드를 메시지(글자)로 보냄. 가져오기는 메시지 전체를 붙여 넣어도 코드만 찾아 읽음.
+export const CODE_PREFIX = '12JISIN1:';
+const toB64 = (buf) => { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
+const fromB64 = (b64) => { const s = atob(b64); const u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; };
+export const canPack = () => typeof CompressionStream === 'function' && typeof DecompressionStream === 'function';
+
+/** 백업 → 「12JISIN1:…」 코드(줄일 수 없는 브라우저면 그냥 백업 글자) */
+export async function packBackup(b) {
+  const text = backupText(b);
+  if (!canPack()) return text;
+  const gz = await new Response(new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer();
+  return CODE_PREFIX + toB64(gz);
+}
+/** 붙여 넣은 글자 → 백업 글자. 코드가 있으면 풀고(앞뒤 안내 문장·줄바꿈은 무시), 없으면 그대로 */
+export async function unpackBackup(raw) {
+  const s = String(raw || ''); const at = s.indexOf(CODE_PREFIX);
+  if (at < 0) return s;
+  if (!canPack()) throw new Error('이 브라우저에서는 백업 코드를 풀 수 없어요. 크롬·사파리 최신 버전에서 열어 주세요.');
+  const code = s.slice(at + CODE_PREFIX.length).replace(/\s+/g, '').match(/^[A-Za-z0-9+/=]*/)[0];
+  try {
+    return await new Response(new Blob([fromB64(code)]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  } catch { throw new Error('백업 코드가 중간에 잘렸거나 바뀌었어요. 코드 전체를 다시 복사해 붙여 넣어 주세요.'); }
+}
+/** 카카오톡 등에 보낼 메시지(맨 앞 안내 한 줄 + 코드) */
+export const backupMessage = (code, savedAt) => `12지신 강림 기록 백업 (${String(savedAt || '').slice(0, 10)}) · 생년월일이 들어 있으니 다른 사람에게 보내지 마세요\n${code}`;
