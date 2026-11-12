@@ -451,6 +451,7 @@ function initForm() {
   fillBiz(document);
   setTimeout(resumePay, 0); // 모듈이 끝까지 준비된 뒤에(아래쪽 상수들을 쓰므로)
   setTimeout(handleMovedBackup, 0); // v0.70.4 카카오톡 안 브라우저에서 넘어온 기록
+  if (!showBackup()) document.querySelectorAll('.bk-signup').forEach((x) => { x.hidden = true; }); // v0.70.5 가입 화면 백업 가져오기도 숨김
 }
 
 // ---------- 탭 ----------
@@ -1595,7 +1596,7 @@ function renderRecords() {
         <div class="rec-memo-row"><input type="text" maxlength="${MEMO_MAX}" value="${esc(x.memo || '')}" placeholder="메모 남기기" data-rec-memo="${esc(x.id)}" aria-label="메모"><button type="button" class="ghost" data-rec-del="${esc(x.id)}">삭제</button></div>
       </details>`).join('') : `<p class="muted">${filter === 'all' ? '운세 보기의 질문 답이나 운세 풀이 아래 「📌 기록함에 저장」을 누르면 여기에 모여요.' : '이 종류로 저장한 결과가 아직 없어요.'}</p>`}
     </div>
-    ${backupCardHTML()}`;
+    ${showBackup() ? backupCardHTML() : ''}`;
 }
 
 // ---------- 백업 (v0.23 → v0.70): 로그인이 없으니 기록을 지키는 길 = 백업 ----------
@@ -3671,7 +3672,7 @@ function renderToday() {
     ${wishDueHTML()}
     ${wishMidHTML()}
     ${lanternHTML()}
-    ${backupNudgeHTML()}
+    ${showBackup() ? backupNudgeHTML() : ''}
     ${seedAskHTML()}
     ${cookieCardHTML()}
     ${habitsCardHTML()}
@@ -3867,6 +3868,9 @@ const sameRecord = (a, b) => a && b && a.type === b.type && a.theme === b.theme 
 
 // v0.64.6 사용자 「단순하게」: 부적 슬롯·계절 소품은 잠시 숨김(기록·도감은 그대로, 다시 켜려면 true)
 const SHOW_CHARM_SLOTS = false;
+// v0.70.5(2026-11-12 사용자 결정 「파일 백업은 보류, 앱 출시 뒤에 추가 — 지금은 숨기기」): 백업 접힘·안내 카드·의식 끝 한 줄·가입 화면 가져오기를 숨김.
+// 카카오톡 앱 안 브라우저가 내려받기를 막아서 웹에서는 쓰기 어려움. 코드(backup.js·saveBackupFile·openInAppBackup)는 그대로 두고 true로 바꾸면 다시 켜짐
+function showBackup() { return false; }
 const SHOW_SEASON_ITEMS = false;
 function heroOptions() {
   const eq = loadEquip();
@@ -3918,7 +3922,7 @@ function renderHero(animate) {
       <h3 class="hero-title" style="text-align:center">${info.title}</h3>
       <p style="margin:0 0 10px;text-align:center"><span class="rarity-badge" style="color:var(--gold)">${stageName(gs.stage, info.female)} · 진화 ${gs.stage}단계</span>${currentDex().title ? ` <span class="rarity-badge" style="color:#ff8fb3">📖 ${currentDex().title}</span>` : ''}${seasonTitle() ? ` <span class="rarity-badge season-title">🏮 ${esc(seasonTitle())}</span>` : ''}</p>
       ${jisinGrowHTML()}
-      ${backupNudgeHTML()}
+      ${showBackup() ? backupNudgeHTML() : ''}
       ${charmShowcaseHTML()}
       ${secondJisinHTML()}
       ${kiCardHTML({ inHero: true })}
@@ -3929,7 +3933,7 @@ function renderHero(animate) {
       ${foldHTML('coordi', '👗', '오늘의 코디', coordiSub(), coordiHTML())}
       ${foldHTML('wish', '🖼️', '이룬 소원 벽', wishSub(), wishWallHTML())}
       ${foldHTML('burn', '🔥', '걱정 태우기', '걱정 한 줄을 부적과 함께 태워 날려 보내요', burnHTML())}
-      ${foldHTML('backup', '📦', '기록 백업 · 새 폰으로 옮기기', backupSub(), backupCardHTML())}
+      ${showBackup() ? foldHTML('backup', '📦', '기록 백업 · 새 폰으로 옮기기', backupSub(), backupCardHTML()) : ''}
     </div>`;
 
   const panel = $('[data-panel="hero"]');
@@ -6329,7 +6333,7 @@ function openWishRitual(rec, onDone, opt = {}) {
     body.innerHTML = `<div class="rt-blow"><span class="rt-jisin">${renderCharacterSVG(info, { mood: 'love', stage: info.stage, width: 110 })}</span>
       <span class="rt-charm glow">${paidCharmSVG(d)}</span></div>
       <p class="rt-line" data-casual>💬 ${esc(line)}</p>
-      <p class="bk-after hj">📦 이 부적은 이 폰에만 저장돼요. 완성한 뒤 「지금 백업하기」를 눌러 두면 폰을 바꿔도 이어져요.</p>
+      <p class="bk-after hj"${showBackup() ? '' : ' hidden'}>📦 이 부적은 이 폰에만 저장돼요. 완성한 뒤 「지금 백업하기」를 눌러 두면 폰을 바꿔도 이어져요.</p>
       <div class="rt-done"><button type="button" class="ghost" data-rt-wall>📱 배경화면 저장</button><button type="button" class="primary" data-rt-end>완성!</button></div>`;
     tip.textContent = lantern ? '🏮 100일 소원 등불이 켜졌어요 · 내일부터 홈에서 매일 만나요' : '🌠 세상에 하나뿐인 소원 부적이 완성됐어요';
     body.querySelector('[data-rt-wall]').addEventListener('click', () => saveWallpaper(d, wallName(d)));
@@ -6482,7 +6486,7 @@ function openLanternRitual(rec, onDone, opt = {}) {
     body.innerHTML = `<div class="lt-fin"><span class="rt-jisin">${renderCharacterSVG(info, { mood: 'love', stage: info.stage, width: 90 })}</span>
         <p class="rt-line" data-casual>💬 ${esc(floatLine(rec, polite))}</p></div>
       <p class="lt-env-h">💌 봉투에 넣어 둔 편지 세 통</p>${ltEnvelopesHTML(envs)}
-      <p class="bk-after">📦 이 등불은 이 폰에만 저장돼요. 완성한 뒤 「지금 백업하기」를 눌러 두면 폰을 바꿔도 이어져요.</p>
+      <p class="bk-after"${showBackup() ? '' : ' hidden'}>📦 이 등불은 이 폰에만 저장돼요. 완성한 뒤 「지금 백업하기」를 눌러 두면 폰을 바꿔도 이어져요.</p>
       <button type="button" class="primary lt-rt-go" data-rt-end>완성! 홈에서 매일 만나요</button>`;
     tip.textContent = '🏮 100일 소원 등불이 켜졌어요 · 내일부터 홈 연못에서 매일 만나요';
     body.querySelector('[data-rt-end]').addEventListener('click', end);

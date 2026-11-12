@@ -39,7 +39,7 @@ test('화면 연결: 지신 탭 접힘·홈 안내·가입 첫 화면 가져오�
   const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.ok(app.includes("foldHTML('backup', '📦', '기록 백업 · 새 폰으로 옮기기'"));
-  assert.equal((app.match(/\$\{backupNudgeHTML\(\)\}/g) || []).length, 2, '홈과 지신 탭');
+  assert.equal((app.match(/\$\{showBackup\(\) \? backupNudgeHTML\(\) : ''\}/g) || []).length, 2, '홈과 지신 탭(스위치로 켜고 끔)');
   assert.ok(/data-bk-file/.test(html) && /data-bk="import"/.test(html), '가입 첫 화면에서 가져오기');
   const bk = app.slice(app.indexOf('// ---------- 백업 (v0.23 → v0.70)'), app.indexOf('// ---------- 12지신 신수 카드'));
   assert.ok(!/fetch\(|XMLHttpRequest|sendBeacon/.test(bk), '백업은 서버로 보내지 않음');
@@ -85,4 +85,14 @@ test('v0.70.4 카카오톡 안 브라우저: 내려받기 대신 크롬·사파�
   const save = app.slice(app.indexOf('function saveBackupFile('), app.indexOf('/** 가져오기(파일'));
   assert.ok(save.indexOf('inAppBrowser(') < save.indexOf('a.download'), '앱 안 브라우저면 내려받기 전에 옮기기 창');
   assert.ok(/history\.replaceState\(null, '', location\.pathname \+ location\.search\)/.test(app), '생년월일이 든 주소는 바로 지움');
+});
+
+test('v0.70.5 파일 백업은 앱 출시 뒤로 보류: 화면에서 모두 숨김(스위치 하나로 다시 켬)', () => {
+  const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.ok(app.includes('function showBackup() { return false; }'), '지금은 꺼 둠');
+  assert.ok(app.includes("${showBackup() ? foldHTML('backup'"), '지신 탭 접힘 숨김');
+  assert.ok(app.includes("${showBackup() ? backupCardHTML() : ''}"), '기록함 카드 숨김');
+  assert.equal((app.match(/class="bk-after[^"]*"\$\{showBackup\(\) \? '' : ' hidden'\}/g) || []).length, 2, '의식 끝 한 줄 숨김');
+  assert.ok(/<details class="bk-in bk-signup" hidden>/.test(html), '가입 화면 가져오기 숨김');
 });
