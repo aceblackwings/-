@@ -89,8 +89,35 @@ export function failLine(code) {
   return '결제가 끝나지 않았어요. 돈은 나가지 않았어요. 잠시 뒤 다시 해 보세요';
 }
 
+/** v0.71 구매자 번호(customerKey): 기기마다 한 번 만드는 무작위 값 — 이름·전화·생년월일과 무관.
+ *  토스 규칙: 22~255자, 영문·숫자와 특수문자(- _ = . @) 중 최소 1개. 저장 키 CUSTOMER_KEY */
+export const CUSTOMER_KEY = 'unmyeong2099.paycust';
+const CK_RE = /^z12-[a-z0-9]{24}$/;
+export function makeCustomerKey(rand = Math.random) {
+  let r = ''; while (r.length < 24) r += Math.floor(rand() * 36).toString(36);
+  return `z12-${r.slice(0, 24)}`;
+}
+export const validCustomerKey = (k) => CK_RE.test(String(k || ''));
+
+/** v0.71 같은 주문의 승인 요청은 몇 번을 보내도 한 번만 처리되게(멱등키, 토스: 300자 이하·15일 유효) */
+export const confirmIdemKey = (orderId) => `z12-confirm-${orderId}`;
+const TOSS_API = 'https://api.tosspayments.com/v1/payments';
+
+/** 승인이 실패하거나 끊겼을 때: 주문 번호로 결제를 다시 조회해 이미 승인(DONE)됐는지 확인 */
+async function lookupDone(orderId, paymentKey, amount, auth, fetchImpl) {
+  try {
+    const res = await fetchImpl(`${TOSS_API}/orders/${encodeURIComponent(orderId)}`, { method: 'GET', headers: { Authorization: auth } });
+    if (!res.ok) return null;
+    const d = await res.json();
+    if (d.status === 'DONE' && d.paymentKey === paymentKey && Number(d.totalAmount) === amount) return d;
+  } catch { /* 조회도 끊김 → 원래 결과로 */ }
+  return null;
+}
+const doneBody = (orderId, v, data) => ({ ok: true, orderId, kind: v.kind, amount: v.amount, method: data.method || '', approvedAt: data.approvedAt || '', receiptUrl: data.receipt?.url || '' });
+
 /**
  * 결제 승인(서버 함수 본체) — 호스팅과 상관없이 쓸 수 있게 fetch를 넘겨받는다.
+ * v0.71: 멱등키를 붙이고, 승인이 실패·끊기면 결제 조회로 이미 승인됐는지 다시 확인(토스 LLM Quick Reference §7.1·§8)
  * @returns {status, body} body = {ok:true, orderId, kind, amount, method, approvedAt, receiptUrl} | {ok:false, code, message}
  */
 export async function confirmPayment(input, secretKey, fetchImpl) {
@@ -99,21 +126,30 @@ export async function confirmPayment(input, secretKey, fetchImpl) {
   if (typeof paymentKey !== 'string' || !paymentKey || paymentKey.length > 200) return { status: 400, body: { ok: false, code: 'NO_KEY', message: '결제 정보를 받지 못했어요.' } };
   const v = verifyOrder(orderId, amount);
   if (!v.ok) return { status: 400, body: v };
+  const auth = `Basic ${btoa(`${secretKey}:`)}`;
   let res; let data = {};
   try {
-    res = await fetchImpl('https://api.tosspayments.com/v1/payments/confirm', {
+    res = await fetchImpl(`${TOSS_API}/confirm`, {
       method: 'POST',
-      headers: { Authorization: `Basic ${btoa(`${secretKey}:`)}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: auth, 'Content-Type': 'application/json', 'Idempotency-Key': confirmIdemKey(orderId) },
       body: JSON.stringify({ paymentKey, orderId, amount: v.amount }),
     });
     data = await res.json();
   } catch {
+    const done = await lookupDone(orderId, paymentKey, v.amount, auth, fetchImpl);
+    if (done) return { status: 200, body: doneBody(orderId, v, done) };
     return { status: 502, body: { ok: false, code: 'PG_UNREACHABLE', message: '결제 회사와 연결하지 못했어요. 잠시 뒤 다시 확인할게요.' } };
   }
-  if (!res.ok) return { status: res.status === 401 ? 500 : 400, body: { ok: false, code: data.code || 'PG_ERROR', message: data.message || '결제 승인이 되지 않았어요.' } };
+  if (!res.ok) {
+    const done = await lookupDone(orderId, paymentKey, v.amount, auth, fetchImpl);
+    if (done) return { status: 200, body: doneBody(orderId, v, done) };
+    const busy = res.status >= 500 || data.code === 'IDEMPOTENT_REQUEST_PROCESSING';
+    if (busy) return { status: 502, body: { ok: false, code: 'PG_UNREACHABLE', message: '결제 확인이 아직 끝나지 않았어요. 잠시 뒤 다시 확인할게요.' } };
+    return { status: res.status === 401 ? 500 : 400, body: { ok: false, code: data.code || 'PG_ERROR', message: data.message || '결제 승인이 되지 않았어요.' } };
+  }
   if (data.status && data.status !== 'DONE') return { status: 400, body: { ok: false, code: 'NOT_DONE', message: '결제가 아직 끝나지 않았어요.' } };
   if (Number(data.totalAmount) !== v.amount) return { status: 400, body: { ok: false, code: 'BAD_AMOUNT', message: '결제 금액이 상품 가격과 달라요.' } };
-  return { status: 200, body: { ok: true, orderId, kind: v.kind, amount: v.amount, method: data.method || '', approvedAt: data.approvedAt || '', receiptUrl: data.receipt?.url || '' } };
+  return { status: 200, body: doneBody(orderId, v, data) };
 }
 /** 이미 승인된 결제를 다시 확인한 경우(새로고침 등)는 성공으로 본다 */
 export const alreadyDone = (code) => code === 'ALREADY_PROCESSED_PAYMENT';

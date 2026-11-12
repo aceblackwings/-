@@ -105,7 +105,7 @@ const WISH_RECS = ['자격증 시험 합격', '가족 모두 건강하기', '좋
 const BURN_RECS = ['괜히 불안한 마음', '나를 지치게 한 말', '자꾸 미루는 버릇', '꽉 막힌 일의 답답함', '다툰 뒤 남은 서운함', '잠 못 들게 하는 걱정'];
 const CHARMPAY_KEY = 'unmyeong2099.charmpay';
 import { PAY, payMode, fillBiz } from './site.js';
-import { PENDING_KEY, makeOrder, tossRequest, parseReturn, cleanSearch, checkReturn, pendingAlive, payLogEntry, failLine, alreadyDone } from './pay.js';
+import { PENDING_KEY, CUSTOMER_KEY, makeCustomerKey, validCustomerKey, makeOrder, tossRequest, parseReturn, cleanSearch, checkReturn, pendingAlive, payLogEntry, failLine, alreadyDone } from './pay.js';
 const SEEDS_KEY = 'unmyeong2099.seeds'; // v0.60 걱정 씨앗 {list:[{at, el, answer}]} — 걱정 글은 없음
 
 const STORE_KEY = 'unmyeong2099.profile';
@@ -5920,7 +5920,10 @@ async function goTossPay(kind, rec) {
   save(PENDING_KEY, order);
   if (storeBlocked) { save(PENDING_KEY, null); throw new Error('store'); }
   const Toss = await loadToss();
-  const payment = Toss(PAY.tossClientKey).payment({ customerKey: Toss.ANONYMOUS });
+  // v0.71 구매자 번호 = 기기마다 한 번 만든 무작위 값(개인정보 없음, 토스 결제창(구버전) 규칙 22자 이상)
+  let customerKey = load(CUSTOMER_KEY, null);
+  if (!validCustomerKey(customerKey)) { customerKey = makeCustomerKey(); save(CUSTOMER_KEY, customerKey); }
+  const payment = Toss(PAY.tossClientKey).payment({ customerKey });
   await payment.requestPayment(tossRequest(order, location.origin, location.pathname + cleanSearch(location.search)));
 }
 /** 결제 승인 함수 호출 */
