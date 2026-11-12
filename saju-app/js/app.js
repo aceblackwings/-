@@ -93,7 +93,7 @@ import { BOWLS, STAGE_POINTS, DECOR, EMO_ORDER, EMO_KO, seedFood, feed, todayBow
   secondUnlocked, recommendSecond, adoptSecond, secondPoints, secondStage, duoScene, cleanName, SECOND_UNLOCK, SECOND_RATE, NAME_MAX } from './jisin.js';
 import { emptyTteok } from './tteok.js';
 import { WISH_MAX, WISH_DAYS_DEFAULT, WISH_LATER, cleanWish, dueFromInput, inputOf as wishInputOf, dueLabel as wishDueLabel, attachWish, dueWish, fulfill as wishFulfill, postpone as wishPostpone, wallOf as wishWall, waitingOf as wishWaiting, trimCollection, askLine as wishAskLine, doneLine as wishDoneLine, laterLine as wishLaterLine, madeLine as wishMadeLine, midWish, markMid as wishMarkMid } from './wish.js';
-import { LANTERN_PRICE, LANTERN_DAYS, isLantern, makeLantern, activeLanterns, lanternDay, lanternStage, lanternLine, letterDue, readLetter, lanternLetter, lanternAsk, keepLantern, keptLine, pray as lanternPray, prayedToday, FOR_MAX, forLabel, lanternDue, canBurnToday, markBurned } from './lantern.js';
+import { LANTERN_PRICE, LANTERN_DAYS, isLantern, makeLantern, activeLanterns, lanternDay, lanternStage, lanternLine, letterDue, readLetter, lanternLetter, lanternAsk, keepLantern, keptLine, pray as lanternPray, prayedToday, FOR_MAX, forLabel, lanternDue, canBurnToday, markBurned, LANTERN_STEPS, RIBBON_NEED, WICK_NEED, FLOAT_NEED, lanternPlan, letterStates, lotusOf, petalLine, floatLine, PETALS_PER_LOTUS } from './lantern.js';
 import { paidCharmSVG, drawWallpaper, sealChars as sealCharsOf, PAY_GETS, RITUAL_STEPS, INK_NEED, TRACE_NEED, SEAL_HOLD, STAMP_BUZZ, inkShare, traceText, ritualLine, plantSeed, seedToAsk, answerSeed, seedStage, BRUSH_FONT, paperImage } from './paidcharm.js';
 import { SLOTS as COORDI_SLOTS, WARDROBE as COORDI_WARDROBE, SEASON_HAND as COORDI_SEASON, STREAK_NEED as COORDI_NEED, itemOf as coordiItemOf, itemHearts as coordiItemHearts, coordiHearts, MOOD_BY_HEARTS as COORDI_MOOD, coordiLine, suggestOutfit as coordiSuggest, emptyCoordi, saveDay as coordiSaveDay, streakOf as coordiStreakOf, claimStreak as coordiClaim } from './coordi.js';
 import { WORRY_MAX, BURN_DONE, cleanWorry, burnable as burnableCharms, needsCare as burnNeedsCare, CARE_LINES as BURN_CARE, burnResult, takeLine as burnTakeLine, makeGrid, ignite, stepFire, burntShare, isBurning, rekindle } from './burn.js';
@@ -5846,7 +5846,7 @@ async function resumePay() {
   if (!state.fortune) return;
   if (ret?.status === 'fail') {
     toast(failLine(ret.code), 6000);
-    if (pendingAlive(p) && !p.paymentKey) { save(PENDING_KEY, null); selectTab('hero'); openWishRitual(p.rec, () => commitPaidCharm(p.rec), { startAt: 2 }); }
+    if (pendingAlive(p) && !p.paymentKey) { save(PENDING_KEY, null); selectTab('hero'); openRitualFor(p.rec, () => commitPaidCharm(p.rec), {}); }
     return;
   }
   if (ret?.status === 'success') {
@@ -5869,7 +5869,12 @@ async function resumePay() {
   save(PENDING_KEY, null);
   commitPaidCharm(p.rec);
   selectTab('hero');
-  openWishRitual(p.rec, () => {}, { paid: true, startAt: 2 });
+  openRitualFor(p.rec, () => {}, { paid: true });
+}
+/** 결제창에서 돌아온 뒤 이어서: 소원 부적 = 인장 찍는 장면, 등불 = 심지에 불 붙이는 장면 */
+function openRitualFor(rec, onDone, opt) {
+  if (isLantern(rec)) openLanternRitual(rec, onDone, { ...opt, startAt: 3 });
+  else openWishRitual(rec, onDone, { ...opt, startAt: 2 });
 }
 function openCharmPay(kind, onOk, onCancel = () => {}, preview = null, rec = null) {
   const mode = rec ? payMode() : 'trial'; const real = mode !== 'trial';
@@ -5877,20 +5882,21 @@ function openCharmPay(kind, onOk, onCancel = () => {}, preview = null, rec = nul
   const lantern = kind === 'lantern'; const price = lantern ? LANTERN_PRICE : CHARM_PRICE;
   const bal = loadTteok()?.balance || 0; const can = !lantern && bal >= CHARM_TTEOK;
   const nm = lantern ? '🏮 100일 소원 등불' : '🌠 소원 부적';
+  const payVerb = lantern ? '카드로 결제하고 불 붙이기' : '카드로 결제하고 인장 찍기';
   const box = document.createElement('div'); box.className = 'evo-modal pay-modal';
   box.innerHTML = `<div class="evo-box hanji hj-pay" role="dialog" aria-label="${nm}">
     <p class="hj-eyebrow">${nm}</p>
-    <h3>${lantern ? '인장을 찍으면 100일 등불이 켜져요' : '인장을 찍으면 소원 부적이 완성돼요'}</h3>
-    <div class="cp-top">${preview ? `<span class="cp-preview">${paidCharmSVG(preview)}</span>` : ''}
+    <h3>${lantern ? '심지에 불을 붙이면 100일 등불이 연못에 떠요' : '인장을 찍으면 소원 부적이 완성돼요'}</h3>
+    <div class="cp-top">${lantern ? `<span class="cp-preview lt-cp" style="--lt-bg:url('${LT_ART('bg')}')"><img src="${LT_ART('stage1')}" alt=""></span>` : preview ? `<span class="cp-preview">${paidCharmSVG(preview)}</span>` : ''}
       <ul class="cp-gets">${(PAY_GETS[lantern ? 'lantern' : 'wish'] || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
-    <p class="hj-desc">먹을 갈고 이름까지 정성껏 쓰셨어요. 결제하면 인장이 찍히고, 지신이 기운을 불어넣어요.</p>
+    <p class="hj-desc">${lantern ? '소원 리본을 묶고 100일 길까지 보셨어요. 결제하면 심지에 불이 붙고, 등불을 연못에 띄워요.' : '먹을 갈고 이름까지 정성껏 쓰셨어요. 결제하면 인장이 찍히고, 지신이 기운을 불어넣어요.'}</p>
     <p class="hj-price"><b>${won(price)}</b> <small>${lantern ? '한 번 결제로 100일' : '한 장'} · 운세 점수와는 상관없어요</small></p>
-    <button type="button" class="hj-buy" data-cp="pay">${real ? `카드로 결제하고 인장 찍기 · ${won(price)}` : '체험판으로 인장 찍기 (결제 없음)'}</button>
-    ${real ? `<p class="hj-note cp-legal">${mode === 'test' ? '<b>시험 결제 중이에요(실제 돈은 나가지 않아요).</b> ' : ''}결제하면 바로 만들어지는 디지털 상품이에요. 내 소원으로 한 장씩 만들기 때문에 <b>만든 뒤에는 단순 변심 환불이 어려워요</b>(오류·중복 결제는 전액 환불). 부적은 <b>이 기기의 이 브라우저에만</b> 저장돼요. 결제하면 <a href="legal/terms.html" target="_blank" rel="noopener">이용약관</a>·<a href="legal/refund.html" target="_blank" rel="noopener">환불 규정</a>에 동의한 것으로 봐요.</p>` : ''}
+    <button type="button" class="hj-buy" data-cp="pay">${real ? `${payVerb} · ${won(price)}` : `체험판으로 ${lantern ? '불 붙이기' : '인장 찍기'} (결제 없음)`}</button>
+    ${real ? `<p class="hj-note cp-legal">${mode === 'test' ? '<b>시험 결제 중이에요(실제 돈은 나가지 않아요).</b> ' : ''}결제하면 바로 만들어지는 디지털 상품이에요. 내 소원으로 한 장씩 만들기 때문에 <b>만든 뒤에는 단순 변심 환불이 어려워요</b>(오류·중복 결제는 전액 환불). ${lantern ? '등불은' : '부적은'} <b>이 기기의 이 브라우저에만</b> 저장돼요. 결제하면 <a href="legal/terms.html" target="_blank" rel="noopener">이용약관</a>·<a href="legal/refund.html" target="_blank" rel="noopener">환불 규정</a>에 동의한 것으로 봐요.</p>` : ''}
     ${lantern ? `<p class="hj-note">100일 등불은 복떡으로는 만들 수 없어요${real ? '' : ' · 지금은 체험판이라 실제 결제 없이 켜져요'}</p>`
       : `<button type="button" class="hj-buy navy" data-cp="tteok" ${can ? '' : 'disabled'}>${TTEOK} 복떡 ${CHARM_TTEOK}개로 무료 인장 찍기</button>
     <p class="hj-note">${can ? `가진 복떡 ${bal}개 · ${CHARM_TTEOK}개를 쓰면 한 번 무료예요` : `복떡 ${CHARM_TTEOK}개가 모이면 한 번 무료 · 지금 ${bal}개`}${real ? '' : ' · 지금은 체험판이라 실제 결제 없이 만들어져요'}</p>`}
-    <button type="button" class="ghost" data-cp="close" style="width:100%">아직 안 찍을래요</button>
+    <button type="button" class="ghost" data-cp="close" style="width:100%">${lantern ? '아직 안 붙일래요' : '아직 안 찍을래요'}</button>
   </div>`;
   document.body.appendChild(box);
   box.addEventListener('click', (e) => {
@@ -5906,7 +5912,7 @@ function openCharmPay(kind, onOk, onCancel = () => {}, preview = null, rec = nul
       b.disabled = true; b.textContent = '결제창을 여는 중…';
       goTossPay(kind, rec).catch((err) => {
         save(PENDING_KEY, null);
-        b.disabled = false; b.textContent = `카드로 결제하고 인장 찍기 · ${won(price)}`;
+        b.disabled = false; b.textContent = `${payVerb} · ${won(price)}`;
         toast(err?.message === 'store' ? '이 화면은 기록 저장이 꺼져 있어 결제할 수 없어요. 일반 창에서 열어 주세요' : failLine(err?.code), 6000);
       });
       return;
@@ -5985,7 +5991,7 @@ function charmNudgeHTML(where = 'today', topic = '') {
 }
 const MAKER_GETS = {
   wish: ['🖌️ 내 소원 붓글씨', '🔴 지신 인장 꾹', '📱 배경화면', '🌠 그날 지신이 물어봐요'],
-  lantern: ['🏮 홈에 100일 등불', '🙏 매일 다른 기도 한 줄', '💌 지신의 편지 3통', '👪 가족 소원도 OK'],
+  lantern: ['🏮 홈 연못에 100일 등불', '🪷 매일 연꽃잎 하나', '💌 편지 봉투 3통', '👪 가족 소원도 OK'],
   burn: ['🖌️ 걱정 붓글씨', '🔥 손끝으로 태우기', '🌱 재가 씨앗으로', '🔒 글은 저장 안 함'],
 };
 // v0.64: 소원 = 990원 소원 부적 / 2,900원 100일 등불(고르기), 결제는 의식 마지막 인장 찍을 때. 걱정 태우기 = 무료 하루 한 번
@@ -6002,7 +6008,6 @@ function openCharmMaker(kind, preset = '', tier = 'wish') {
     <button type="button" class="cm-x" data-cm="close" aria-label="닫기">✕</button>
     <p class="cm-eyebrow">✨ 세상에 하나뿐인 부적</p>
     <h3>${!wish ? '걱정을 붉은 부적에 적어 태워요' : t === 'lantern' ? '100일 소원 등불을 켜요' : '내 소원을 금박 부적에 담아요'}</h3>
-    ${wish ? ltGrowHTML(t !== 'lantern') : ''}
     <div class="cm-preview" id="cm-preview"></div>
     <p class="cm-live">✍️ 아래에 적는 대로 부적에 붓글씨로 쓰여요</p>
     <label class="cm-field"><span>${wish ? '🌠 소원 한 줄' : '🔥 걱정 한 줄'}</span>
@@ -6025,18 +6030,23 @@ function openCharmMaker(kind, preset = '', tier = 'wish') {
   const input = box.querySelector('#cm-text'); const date = box.querySelector('#cm-date'); const forIn = box.querySelector('#cm-for'); const pv = box.querySelector('#cm-preview');
   const textNow = () => (wish ? cleanWish(input.value) : cleanWorry(input.value));
   let raf = 0;
-  const redraw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { pv.innerHTML = paidCharmSVG(makerData(kind, textNow(), date?.value, { lantern: t === 'lantern', forWho: forIn ? forIn.value.trim().slice(0, FOR_MAX) : '' })); }); };
+  const forNow = () => (forIn ? forIn.value.trim().slice(0, FOR_MAX) : '');
+  const redraw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
+    pv.classList.toggle('lt-pv', t === 'lantern');
+    pv.innerHTML = t === 'lantern' ? ltSceneHTML({ wish: textNow() || MAKER_SAMPLE.wish, forWho: forNow(), tied: true, lit: true, small: true })
+      : paidCharmSVG(makerData(kind, textNow(), date?.value, { forWho: forNow() }));
+  }); };
   const setTier = (nt) => {
     t = nt;
     box.querySelectorAll('[data-cm-tier]').forEach((b) => { const on = b.dataset.cmTier === t; b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on)); });
-    if (wish) { box.querySelector('.cm-date').hidden = t === 'lantern'; box.querySelector('.cm-for').hidden = t !== 'lantern'; box.querySelector('.cm-lt-note').hidden = t !== 'lantern'; box.querySelector('.cm-lt-grow').hidden = t !== 'lantern'; }
+    if (wish) { box.querySelector('.cm-date').hidden = t === 'lantern'; box.querySelector('.cm-for').hidden = t !== 'lantern'; box.querySelector('.cm-lt-note').hidden = t !== 'lantern'; box.querySelector('.cm-live').textContent = t === 'lantern' ? '✍️ 아래에 적는 대로 등불에 묶을 리본에 쓰여요' : '✍️ 아래에 적는 대로 부적에 붓글씨로 쓰여요'; }
     box.querySelector('.cm-gets').innerHTML = MAKER_GETS[t].map((x) => `<li>${esc(x)}</li>`).join('');
     const go = box.querySelector('.cm-go');
-    go.innerHTML = t === 'lantern' ? `🏮 100일 등불 만들기 시작 <small>${won(LANTERN_PRICE)}</small>`
+    go.innerHTML = t === 'lantern' ? `🏮 연못에 등불 띄우러 가기 <small>${won(LANTERN_PRICE)}</small>`
       : t === 'wish' ? `✨ 소원 부적 만들기 시작 <small>${won(CHARM_PRICE)}</small>`
       : burnOk ? '🔥 태우러 가기 <small>무료</small>' : '🌙 오늘은 이미 태웠어요';
     go.disabled = !burnOk;
-    box.querySelector('.cm-note').textContent = t === 'lantern' ? '먹 갈기·이름 쓰기는 무료로 해 보고, 마지막에 인장을 찍을 때 결제해요 · 등불은 복떡으로는 만들 수 없어요'
+    box.querySelector('.cm-note').textContent = t === 'lantern' ? '리본 묶기·100일 미리 보기는 무료로 해 보고, 마지막에 심지에 불을 붙일 때 결제해요 · 등불은 복떡으로는 만들 수 없어요'
       : t === 'wish' ? `먹 갈기·이름 쓰기는 무료로 해 보고, 마지막에 인장을 찍을 때 결제해요 · ${TTEOK} 복떡 ${CHARM_TTEOK}개면 무료(지금 ${bal}개)`
       : burnOk ? '걱정 태우기는 무료예요 · 하루 한 번 · 적은 글은 어디에도 저장하지 않아요' : '걱정 태우기는 하루 한 번이에요. 내일 다시 와 주세요. 마음이 많이 무거우면 ☎ 109(24시간)에 이야기해 주세요.';
     redraw();
@@ -6059,7 +6069,6 @@ function openCharmMaker(kind, preset = '', tier = 'wish') {
       const by = (state.profile.name || '').slice(0, 8); const seal = zIdx();
       let r;
       if (t === 'lantern') r = makeLantern(base, { wish: text, forWho, by, seal, today });
-      if (t === 'lantern') jingle('lantern');
       else {
         const due = dueFromInput(date.value, today);
         if (!due) { toast('날짜는 오늘이나 그 뒤로 골라 주세요'); return; }
@@ -6075,7 +6084,8 @@ function openCharmMaker(kind, preset = '', tier = 'wish') {
         grow((g) => complete(g, state.fortune.dateKey, 'charm', qBonus('charm')), lead);
       };
       drop();
-      openWishRitual(r, commit, { onBack: () => openCharmMaker('wish', text, tierNow) });
+      if (tierNow === 'lantern') openLanternRitual(r, commit, { onBack: () => openCharmMaker('wish', text, tierNow) });
+      else openWishRitual(r, commit, { onBack: () => openCharmMaker('wish', text, tierNow) });
     } else {
       if (!burnOk) { toast('걱정 태우기는 하루 한 번이에요. 내일 다시 와 주세요'); return; }
       const worry = cleanWorry(input.value);
@@ -6239,9 +6249,160 @@ function openWishRitual(rec, onDone, opt = {}) {
 /** v0.64.9 100일 등불 그림(docs/prompts/lantern-100.md): 1~33일 stage1 · 34~66일 stage2 · 67~99일 stage3 · 100일 완주 kept */
 function LT_ART(k) { return `assets/lantern/${k}.webp`; }
 function ltStageArt(day) { return day >= LANTERN_DAYS ? 'kept' : day >= 67 ? 'stage3' : day >= 34 ? 'stage2' : 'stage1'; }
-function ltGrowHTML(hidden) {
-  const grow = [['stage1', '1일', '불씨'], ['stage2', '34일', '밝아짐'], ['stage3', '67일', '연꽃 활짝'], ['kept', '100일', '완주 등불']];
-  return `<div class="cm-lt-grow"${hidden ? ' hidden' : ''}><p>🏮 내 등불은 100일 동안 이렇게 자라요</p><ol>${grow.map(([k, d, t]) => `<li><img src="${LT_ART(k)}" alt="" loading="lazy"><b>${d}</b><small>${t}</small></li>`).join('')}</ol></div>`;
+/** v0.69 연못 장면: 달밤 바탕 + 등불(+ 소원 리본) — 만들기 창 미리보기와 연등 의식이 같이 씀 */
+function ltSceneHTML({ wish = '', forWho = '', tied = false, lit = false, small = false, art = 'stage1' } = {}) {
+  return `<div class="lt-scene${small ? ' small' : ''}${tied ? ' tied' : ''}${lit ? ' lit' : ''}" style="--lt-bg:url('${LT_ART('bg')}')">
+    <span class="lt-sc-ring" aria-hidden="true"></span>
+    <span class="lt-sc-lamp"><i class="lt-sc-glow" aria-hidden="true"></i><img src="${LT_ART(art)}" alt="${lit ? '불 켜진 등불' : '아직 불이 꺼진 등불'}">
+      <span class="lt-sc-ribbon"><b>${esc(wish)}</b>${forWho ? `<small>${esc(forLabel(forWho))}</small>` : ''}</span></span>
+  </div>`;
+}
+/** 편지 봉투 3통: sealed(🔒 n일째 열려요) · arrived(💌 열어 보기) · read(📭 다시 읽기) */
+function ltEnvelopesHTML(states, i = -1) {
+  const today = state.fortune.dateKey;
+  return `<ol class="lt-envs">${states.map((x) => {
+    const label = x.state === 'sealed' ? `🔒 ${x.day}일째` : x.state === 'arrived' ? '💌 열어 보기' : '📭 다시 읽기';
+    const inner = `<span class="lt-env-ic" aria-hidden="true">✉</span><b>${x.n}번째 편지</b><small>${esc(label)}</small>${x.state === 'sealed' ? `<small class="lt-env-d">${esc(wishDueLabel(x.dateKey, today))}</small>` : ''}`;
+    return `<li class="lt-env ${x.state}">${i >= 0 && x.state !== 'sealed' ? `<button type="button" data-lt-letter="${i}" data-n="${x.n}">${inner}</button>` : `<span>${inner}</span>`}</li>`;
+  }).join('')}</ol>`;
+}
+/** v0.69 100일 등불 = 「연등 띄우기」 의식(부적의 먹·붓·인장과 다른 길)
+ *  달밤 연못 → 소원 리본 묶기 → 100일 미리 보기 → 심지 쓸어 올려 불 붙이기(= 결제) → 연못에 띄우기 → 편지 봉투 3통
+ *  결제(불 붙이기) 전에는 아무것도 저장하지 않음. 지어낸 인원 숫자(가짜 사회적 증거)는 쓰지 않음 */
+function openLanternRitual(rec, onDone, opt = {}) {
+  document.querySelectorAll('.ritual-modal').forEach((x) => x.remove());
+  const polite = politeNow(); const reduce = reducedMotion(); const today = state.fortune.dateKey;
+  let paid = !!opt.paid;
+  const box = document.createElement('div'); box.className = 'evo-modal ritual-modal lt-ritual';
+  box.innerHTML = `<div class="evo-box lt-rt-box" role="dialog" aria-label="100일 소원 등불 띄우기">
+    <ol class="rt-steps lt-steps">${LANTERN_STEPS.map((x, i) => `<li data-rt-i="${i}"><span>${x.icon}</span><small>${x.title}</small></li>`).join('')}</ol>
+    <p class="rt-tip lt-tip" aria-live="polite"></p>
+    <div class="lt-rt-scene">${ltSceneHTML({ wish: rec.wish, forWho: rec.forWho })}</div>
+    <div class="lt-rt-body"></div>
+    <div class="rt-foot"><button type="button" class="ghost" data-rt-quit>그만두기</button><button type="button" class="ghost" data-rt-skip>바로 불 붙이러 가기</button></div>
+  </div>`;
+  document.body.appendChild(box);
+  const scene = box.querySelector('.lt-scene'); const lamp = box.querySelector('.lt-sc-lamp');
+  const body = box.querySelector('.lt-rt-body'); const tip = box.querySelector('.lt-tip');
+  let finished = false; const timers = []; let step = 0;
+  const later = (fn, ms) => { timers.push(setTimeout(() => { if (!finished) fn(); }, reduce ? Math.min(ms, 150) : ms)); };
+  const end = () => { if (finished) return; finished = true; timers.forEach(clearTimeout); box.remove(); if (paid) onDone(); };
+  const quit = () => { if (finished) return; finished = true; timers.forEach(clearTimeout); box.remove(); toast('불을 붙이기 전이라 아무것도 저장되지 않았어요'); opt.onBack?.(); };
+  /** 손가락으로 끌기: 위로(up) 또는 아무 방향(any) — 누르기만 해도 조금씩 차오름(접근성) */
+  const dragGauge = (el, need, dir, onProgress, onDone) => {
+    let start = null; let got = 0; let done = false;
+    const add = (n) => { if (done) return; got = Math.max(0, got + n); onProgress(Math.min(1, got / need)); if (got >= need) { done = true; onDone(); } };
+    el.addEventListener('pointerdown', (e) => { if (done) return; e.preventDefault(); start = [e.clientX, e.clientY]; el.setPointerCapture?.(e.pointerId); });
+    el.addEventListener('pointermove', (e) => {
+      if (!start) return; const dx = e.clientX - start[0]; const dy = e.clientY - start[1];
+      add(dir === 'up' ? -dy : Math.hypot(dx, dy)); start = [e.clientX, e.clientY];
+    });
+    const up = () => { start = null; };
+    el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+    el.addEventListener('click', () => add(need / 3));
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); add(need / 3); } });
+    return { reset: () => { got = 0; done = false; start = null; onProgress(0); } };
+  };
+  const show = (i) => {
+    box.querySelectorAll('.lt-steps li').forEach((li) => { const k = Number(li.dataset.rtI); li.classList.toggle('on', k === i); li.classList.toggle('done', k < i); });
+    tip.textContent = LANTERN_STEPS[i].tip; step = i;
+    const skip = box.querySelector('[data-rt-skip]'); if (skip) { skip.hidden = paid ? i < 4 : i >= 3; skip.textContent = paid ? '건너뛰고 완성하기' : '바로 불 붙이러 가기'; }
+    scene.classList.toggle('compact', i === 2);
+    [pond, ribbon, preview, light, float][i]();
+  };
+  function pond() {
+    body.innerHTML = '<button type="button" class="primary lt-rt-go" data-ltr="near">🏮 등불 앞으로 가기</button>';
+    const go = () => { if (step !== 0) return; scene.classList.add('near'); sfx('pop'); later(() => show(1), 650); };
+    body.querySelector('[data-ltr="near"]').addEventListener('click', go);
+    lamp.setAttribute('role', 'button'); lamp.tabIndex = 0; lamp.setAttribute('aria-label', '등불 앞으로 가기');
+    lamp.onclick = go; lamp.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
+  }
+  function ribbon() {
+    lamp.onclick = null; lamp.onkeydown = null; lamp.removeAttribute('role'); lamp.removeAttribute('tabindex'); lamp.removeAttribute('aria-label');
+    scene.classList.add('near');
+    body.innerHTML = `<div class="lt-rb-wrap"><div class="lt-rb" role="button" tabindex="0" aria-label="소원 리본을 위로 끌어 올려 등불에 묶기">
+        <b>${esc(rec.wish)}</b>${rec.forWho ? `<small>${esc(forLabel(rec.forWho))}</small>` : ''}<small>— ${esc(rec.by || myZodiac().name)}</small></div>
+      <small class="muted">↑ 위로 끌어 올리거나 리본을 세 번 눌러요</small></div>`;
+    const rb = body.querySelector('.lt-rb');
+    dragGauge(rb, RIBBON_NEED, 'up', (k) => { rb.style.transform = `translateY(${-k * 36}px)`; rb.style.opacity = String(1 - k * 0.35); }, () => {
+      scene.classList.add('tied'); sfx('sparkle'); rb.classList.add('gone');
+      tip.textContent = polite ? '리본이 등불에 꼭 묶였어요' : '리본이 등불에 꼭 묶였어'; later(() => show(2), 800);
+    });
+  }
+  function preview() {
+    scene.classList.add('tied'); scene.classList.remove('near');
+    const plan = lanternPlan(rec.madeKey || today);
+    body.innerHTML = `<ol class="lt-plan">${plan.map((x) => `<li class="${x.kind}">
+        <span class="lt-plan-ic">${x.kind === 'stage' ? `<img src="${LT_ART(x.art)}" alt="" loading="lazy">` : '<i aria-hidden="true">✉</i>'}</span>
+        <span class="lt-plan-t"><b>${x.day}일째 · ${esc(x.title)}</b><small>${esc(wishDueLabel(x.dateKey, today))} · ${esc(x.note)}</small></span></li>`).join('')}</ol>
+      <p class="lt-plan-note">🪷 매일 함께 빌면 연꽃잎이 하나씩 · 10장이면 연꽃 한 송이</p>
+      <button type="button" class="primary lt-rt-go" data-ltr="light">🔥 이제 불 붙이러 가기</button>`;
+    body.querySelector('[data-ltr="light"]').addEventListener('click', () => show(3));
+  }
+  function light() {
+    scene.classList.add('tied'); scene.classList.remove('near');
+    body.innerHTML = `<div class="lt-wick-wrap"><div class="lt-wick" role="button" tabindex="0" aria-label="심지를 쓸어 올려 불 붙이기"><i class="lt-wick-fill"></i><span class="lt-wick-tip" aria-hidden="true">🔥</span></div>
+      <small class="muted">↑ 아래에서 위로 쓸어 올리거나 세 번 눌러요</small></div>`;
+    const wick = body.querySelector('.lt-wick'); const fill = body.querySelector('.lt-wick-fill');
+    let asking = false; let lit = false; let gauge = null;
+    const ignite = () => {
+      if (lit) return; lit = true;
+      scene.classList.add('lit'); fill.style.height = '100%'; wick.classList.add('done');
+      sfx('fire'); jingle('lantern');
+      const q = box.querySelector('[data-rt-quit]'); if (q) q.hidden = true;
+      tip.textContent = polite ? '불이 붙었어요. 100일 동안 꺼지지 않게 지켜 드릴게요' : '불이 붙었어. 100일 동안 꺼지지 않게 지켜 줄게';
+      later(() => show(4), 1300);
+    };
+    const tryLight = () => {
+      if (paid) { ignite(); return; }
+      if (asking) return; asking = true; // 불 붙이는 순간 = 결제하는 순간
+      openCharmPay('lantern', () => { asking = false; paid = true; ignite(); }, () => {
+        asking = false; gauge?.reset();
+        tip.textContent = '불은 결제한 뒤에 붙어요. 마음이 정해지면 심지를 다시 쓸어 올려 주세요';
+      }, null, rec);
+    };
+    gauge = dragGauge(wick, WICK_NEED, 'up', (k) => { fill.style.height = `${Math.round(k * 100)}%`; }, tryLight);
+    if (paid) { tip.textContent = polite ? '결제가 끝났어요. 심지에 불을 붙일게요' : '결제가 끝났어. 심지에 불을 붙일게'; later(ignite, 700); } // 결제창에서 돌아온 경우
+  }
+  function float() {
+    scene.classList.add('tied', 'lit'); scene.classList.remove('near', 'compact');
+    body.innerHTML = '<button type="button" class="primary lt-rt-go" data-ltr="float">🪷 연못에 띄우기</button><small class="muted">등불을 손가락으로 밀어도 돼요</small>';
+    lamp.classList.add('pushable');
+    let floated = false;
+    const go = () => {
+      if (floated) return; floated = true; lamp.classList.remove('pushable');
+      scene.classList.add('floated'); sfx('sparkle');
+      tip.textContent = polite ? '등불이 연못에 살며시 떴어요' : '등불이 연못에 살며시 떴어';
+      later(finale, 1500);
+    };
+    body.querySelector('[data-ltr="float"]').addEventListener('click', go);
+    dragGauge(lamp, FLOAT_NEED, 'any', () => {}, go);
+  }
+  function finale() {
+    box.querySelector('.rt-foot').hidden = true;
+    const info = characterInfo(state.saju, state.profile); info.stage = heroOptions().stage;
+    const envs = letterStates({ ...rec, letters: [] }, rec.madeKey || today);
+    body.innerHTML = `<div class="lt-fin"><span class="rt-jisin">${renderCharacterSVG(info, { mood: 'love', stage: info.stage, width: 90 })}</span>
+        <p class="rt-line" data-casual>💬 ${esc(floatLine(rec, polite))}</p></div>
+      <p class="lt-env-h">💌 봉투에 넣어 둔 편지 세 통</p>${ltEnvelopesHTML(envs)}
+      <button type="button" class="primary lt-rt-go" data-rt-end>완성! 홈에서 매일 만나요</button>`;
+    tip.textContent = '🏮 100일 소원 등불이 켜졌어요 · 내일부터 홈 연못에서 매일 만나요';
+    body.querySelector('[data-rt-end]').addEventListener('click', end);
+  }
+  box.addEventListener('click', (e) => {
+    if (e.target.closest('[data-rt-quit]')) { quit(); return; }
+    if (e.target.closest('[data-rt-skip]')) { if (paid) { if (step >= 4) end(); else show(4); } else if (step < 3) { scene.classList.add('tied'); show(3); } }
+  });
+  if (paid) { const q = box.querySelector('[data-rt-quit]'); if (q) q.hidden = true; }
+  show(opt.startAt || 0);
+}
+/** 매일 함께 빌기 = 연꽃잎 하나 · 10장이면 연꽃 한 송이(지어낸 숫자 없이 내 기록만) */
+function ltLotusHTML(r, fresh = false) {
+  const { blooms, petals } = lotusOf(r.prayed);
+  const leaves = Array.from({ length: PETALS_PER_LOTUS }, (_, k) => `<i class="${k < petals ? 'on' : ''}${fresh && k === petals - 1 ? ' new' : ''}" style="--k:${k}"></i>`).join('');
+  return `<div class="lt-lotus" role="img" aria-label="연꽃잎 ${petals}장 · 핀 연꽃 ${blooms}송이">
+    <span class="lt-petals">${leaves}</span>
+    <small>🪷 함께 빌 때마다 꽃잎 하나 · ${petals}/${PETALS_PER_LOTUS}${blooms ? ` · 핀 연꽃 ${blooms}송이` : ''}</small></div>`;
 }
 function lanternHTML() {
   const today = state.fortune.dateKey; const polite = politeNow();
@@ -6254,10 +6415,12 @@ function lanternHTML() {
         <p class="lt-wish">「${esc(r.wish)}」${r.forWho ? ` <small>${esc(forLabel(r.forWho))}</small>` : ''}</p>
         <p class="lt-line">💬 ${esc(lanternLine(r, day, polite))}</p></div></div>
       <div class="lt-bar" role="img" aria-label="등불 밝기 10칸 중 ${st}칸">${Array.from({ length: 10 }, (_, k) => `<i class="${k < st ? 'on' : ''}"></i>`).join('')}</div>
-      <small class="muted lt-meta">10일마다 한 칸씩 밝아져요 · 함께 빈 날 ${r.prayed || 0}일</small>
+      <small class="muted lt-meta">10일마다 한 칸씩 밝아져요</small>
+      ${ltLotusHTML(r, state.ltPetalNew === i && prayed)}
+      ${ltEnvelopesHTML(letterStates(r, today), i)}
       <div class="lt-btns">
         ${letter ? `<button type="button" class="primary" data-lt-letter="${i}" data-n="${letter}">💌 지신의 편지가 왔어요 (${letter}/3)</button>` : ''}
-        <button type="button" class="${letter ? 'ghost' : 'primary'}" data-lt-pray="${i}" ${prayed ? 'disabled' : ''}>${prayed ? '🙏 오늘도 함께 빌었어요' : '🙏 오늘도 함께 빌기'}</button>
+        <button type="button" class="${letter ? 'ghost' : 'primary'}" data-lt-pray="${i}" ${prayed ? 'disabled' : ''}>${prayed ? '🪷 오늘 꽃잎을 띄웠어요' : '🙏 오늘도 함께 빌기 · 꽃잎 하나'}</button>
         <button type="button" class="linkish" data-wish-done="${i}">✨ 벌써 이루어졌어요</button>
       </div></div>`;
   }).join('');
@@ -6267,8 +6430,9 @@ document.addEventListener('click', (e) => {
   const today = state.fortune.dateKey;
   const pr = e.target.closest('[data-lt-pray]');
   if (pr) {
-    const i = Number(pr.dataset.ltPray); save(COLLECTION_KEY, lanternPray(load(COLLECTION_KEY, []), i, today)); sfx('bell');
-    toast(politeNow() ? '🙏 오늘도 함께 빌었어요. 등불이 조금 따뜻해졌어요' : '🙏 오늘도 함께 빌었어. 등불이 조금 따뜻해졌어'); renderToday(); return;
+    const i = Number(pr.dataset.ltPray); const col = lanternPray(load(COLLECTION_KEY, []), i, today); save(COLLECTION_KEY, col); sfx('bell');
+    state.ltPetalNew = i; // 방금 띄운 꽃잎만 살짝 떠오르게
+    toast(`🪷 ${petalLine(col[i]?.prayed || 0, politeNow())}`); renderToday(); return;
   }
   const lt = e.target.closest('[data-lt-letter]');
   if (lt) {

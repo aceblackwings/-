@@ -2307,3 +2307,111 @@ body:has(> .evo-modal, > .reveal-modal, > .hj-reader) { overflow: hidden; }
 .hj-free { margin: 0; font-size: 0.95rem; color: var(--hj-ink, #2b2420); line-height: 1.7; }
 .hj-free small { display: block; font-size: 0.8rem; color: var(--hj-ink2, #5a4e46); }
 .hj-free a { color: var(--hj-red, #b8382a); }
+
+/* ---------- v0.69 100일 등불 「연등 띄우기」 의식 · 연꽃잎 · 편지 봉투 ---------- */
+.evo-box.lt-rt-box { max-width: 390px; display: grid; gap: 10px; padding: 16px 14px; background: linear-gradient(170deg, #26244a 0%, #34284d 100%); color: #fbf2e2; border-color: rgba(243, 210, 122, .45); box-shadow: 0 16px 40px rgba(20, 16, 50, .45); }
+.lt-rt-box .muted { color: rgba(251, 242, 226, .72); }
+.lt-steps { grid-template-columns: repeat(5, 1fr); }
+.lt-steps li { color: #fbf2e2; }
+.lt-steps li small { font-size: .66rem; white-space: nowrap; }
+.lt-steps li.on { background: rgba(243, 210, 122, .16); box-shadow: inset 0 0 0 1px rgba(243, 210, 122, .55); }
+.lt-tip { color: #f3d27a; font-family: var(--hj-serif, serif); }
+.lt-rt-body { display: grid; justify-items: center; gap: 8px; min-height: 120px; align-content: start; }
+.lt-rt-go { width: 100%; min-height: 48px; }
+.lt-rt-box .rt-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.lt-rt-box .rt-foot .ghost { color: #fbf2e2; border-color: rgba(251, 242, 226, .35); background: transparent; }
+
+/* 연못 장면 */
+.lt-scene { position: relative; width: 100%; aspect-ratio: 3 / 2; border-radius: 14px; overflow: hidden; background: var(--lt-bg) center / cover no-repeat, #2b2a4a; transition: aspect-ratio .4s; }
+.lt-scene::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20, 16, 50, .05), rgba(20, 16, 50, .35)); pointer-events: none; }
+.lt-scene.compact { aspect-ratio: 3 / 1.3; }
+.lt-sc-lamp { position: absolute; left: 60%; top: 6%; width: 32%; z-index: 1; transition: transform .7s cubic-bezier(.3, .7, .3, 1), left 1.4s ease-in-out, top 1.4s ease-in-out, width 1.4s ease-in-out; transform-origin: 50% 0; }
+.lt-sc-lamp img { display: block; width: 100%; height: auto; filter: brightness(.5) saturate(.55); transition: filter 1s; animation: lt-sway 4.5s ease-in-out infinite; transform-origin: 50% 0; }
+.lt-sc-glow { position: absolute; left: 50%; top: 52%; width: 150%; aspect-ratio: 1; transform: translate(-50%, -50%) scale(.4); border-radius: 50%; background: radial-gradient(circle, rgba(255, 200, 100, .75) 0%, rgba(255, 150, 60, .3) 40%, transparent 70%); opacity: 0; transition: opacity 1s, transform 1s; pointer-events: none; }
+.lt-scene.near .lt-sc-lamp { transform: scale(1.12); }
+.lt-scene.compact .lt-sc-lamp { width: 20%; top: 4%; }
+.lt-scene.lit .lt-sc-lamp img { filter: brightness(1.08) saturate(1.05) drop-shadow(0 0 14px rgba(255, 190, 90, .85)); }
+.lt-scene.lit .lt-sc-glow { opacity: 1; transform: translate(-50%, -50%) scale(1); animation: lt-breathe 3.2s 1s ease-in-out infinite; }
+.lt-sc-ribbon { position: absolute; left: 50%; top: 92%; transform: translate(-50%, 14px) scale(.6); opacity: 0; min-width: 120%; max-width: 190%; padding: 3px 8px 4px; background: #b8382a; color: #fff3df; border-radius: 3px; text-align: center; line-height: 1.15; box-shadow: 0 2px 6px rgba(0, 0, 0, .35); transition: opacity .5s, transform .5s; pointer-events: none; }
+.lt-sc-ribbon::before, .lt-sc-ribbon::after { content: ''; position: absolute; top: 100%; width: 10px; height: 12px; background: #8f2a1f; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 70%, 0 100%); }
+.lt-sc-ribbon::before { left: 6px; } .lt-sc-ribbon::after { right: 6px; }
+.lt-sc-ribbon b { display: block; font-family: 'Nanum Brush Script', var(--serif); font-weight: 400; font-size: .95rem; word-break: keep-all; overflow-wrap: anywhere; }
+.lt-sc-ribbon small { display: block; font-size: .58rem; opacity: .9; }
+.lt-scene.tied .lt-sc-ribbon { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.lt-scene.compact .lt-sc-ribbon { display: none; }
+.lt-sc-ring { position: absolute; left: 76%; top: 86%; width: 30%; height: 7%; transform: translate(-50%, -50%) scale(.3); border-radius: 50%; border: 2px solid rgba(255, 220, 150, .7); opacity: 0; pointer-events: none; z-index: 0; }
+/* 연못에 띄우기: 등불이 물 위로 내려가 둥실 */
+.lt-scene.floated .lt-sc-lamp { left: 62%; top: 44%; width: 26%; transform: none; }
+.lt-scene.floated .lt-sc-lamp img { animation: lt-bob 3s 1.4s ease-in-out infinite; }
+.lt-scene.floated .lt-sc-ring { animation: lt-ripple 2.4s 1.2s ease-out infinite; }
+.lt-scene.floated .lt-sc-ribbon { top: 86%; }
+.lt-sc-lamp.pushable { cursor: grab; touch-action: none; }
+.lt-sc-lamp.pushable img { outline: 2px dashed rgba(243, 210, 122, .6); outline-offset: 4px; border-radius: 50%; }
+.lt-sc-lamp[role="button"] { cursor: pointer; }
+.lt-sc-lamp:focus-visible { outline: 3px solid #f3d27a; outline-offset: 3px; border-radius: 8px; }
+@keyframes lt-bob { 50% { transform: translateY(5px) rotate(-2deg); } }
+@keyframes lt-ripple { 0% { opacity: .9; transform: translate(-50%, -50%) scale(.3); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); } }
+
+/* 소원 리본 끌어 올리기 */
+.lt-rb-wrap { display: grid; justify-items: center; gap: 6px; width: 100%; }
+.lt-rb { position: relative; max-width: 92%; padding: 8px 18px 9px; background: #b8382a; color: #fff3df; border-radius: 4px; text-align: center; box-shadow: 0 4px 10px rgba(0, 0, 0, .35); cursor: grab; touch-action: none; user-select: none; transition: opacity .3s; animation: lt-rb-hint 1.8s ease-in-out infinite; }
+.lt-rb b { display: block; font-family: 'Nanum Brush Script', var(--serif); font-weight: 400; font-size: 1.5rem; line-height: 1.15; word-break: keep-all; }
+.lt-rb small { display: block; font-size: .72rem; opacity: .9; }
+.lt-rb.gone { opacity: 0; pointer-events: none; }
+.lt-rb:focus-visible { outline: 3px solid #f3d27a; outline-offset: 3px; }
+@keyframes lt-rb-hint { 50% { margin-top: -6px; } }
+
+/* 100일 미리 보기 */
+.lt-plan { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; gap: 4px; }
+.lt-plan li { display: flex; align-items: center; gap: 10px; padding: 4px 8px; border-radius: 10px; background: rgba(251, 242, 226, .06); text-align: left; }
+.lt-plan li.letter { background: rgba(243, 210, 122, .08); }
+.lt-plan-ic { flex: none; width: 40px; height: 40px; display: grid; place-items: center; }
+.lt-plan-ic img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 6px rgba(255, 190, 90, .6)); }
+.lt-plan-ic i { font-style: normal; font-size: 1.4rem; color: #f3d27a; }
+.lt-plan-t b { display: block; font-size: .84rem; }
+.lt-plan-t small { display: block; font-size: .72rem; color: rgba(251, 242, 226, .72); line-height: 1.4; }
+.lt-plan-note { margin: 2px 0 0; font-size: .8rem; color: #f6d9b0; }
+
+/* 심지 쓸어 올리기 */
+.lt-wick-wrap { display: grid; justify-items: center; gap: 6px; }
+.lt-wick { position: relative; width: 64px; height: 130px; border-radius: 32px; background: rgba(251, 242, 226, .1); box-shadow: inset 0 0 0 2px rgba(243, 210, 122, .45); overflow: hidden; cursor: grab; touch-action: none; user-select: none; }
+.lt-wick::before { content: ''; position: absolute; left: 50%; bottom: 12px; width: 4px; height: 70%; transform: translateX(-50%); border-radius: 2px; background: linear-gradient(#3a2f2a, #6b5a4c); z-index: 1; }
+.lt-wick-fill { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: linear-gradient(0deg, rgba(255, 140, 50, .85), rgba(255, 210, 120, .5)); transition: height .12s; }
+.lt-wick-tip { position: absolute; left: 50%; top: 6px; transform: translateX(-50%) scale(.6); opacity: .35; font-size: 1.4rem; z-index: 2; transition: transform .4s, opacity .4s; }
+.lt-wick.done .lt-wick-tip { transform: translateX(-50%) scale(1.15); opacity: 1; animation: lt-breathe 1.2s ease-in-out infinite; }
+.lt-wick:focus-visible { outline: 3px solid #f3d27a; outline-offset: 3px; }
+
+/* 의식 끝 · 편지 봉투 */
+.lt-fin { display: flex; align-items: center; gap: 8px; text-align: left; }
+.lt-fin .rt-jisin { flex: none; width: 90px; }
+.lt-fin .rt-line { font-size: .9rem; }
+.lt-env-h { margin: 4px 0 0; font-size: .82rem; color: #f3d27a; }
+.lt-envs { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 100%; }
+.lt-env > span, .lt-env > button { appearance: none; width: 100%; height: 100%; display: grid; justify-items: center; gap: 1px; padding: 8px 4px 7px; border-radius: 10px; border: 1px solid rgba(243, 210, 122, .35); background: rgba(251, 242, 226, .06); color: inherit; font: inherit; }
+.lt-env > button { cursor: pointer; }
+.lt-env-ic { font-size: 1.3rem; line-height: 1; color: #f3d27a; }
+.lt-env b { font-size: .74rem; }
+.lt-env small { font-size: .64rem; line-height: 1.35; color: rgba(251, 242, 226, .75); word-break: keep-all; }
+.lt-env.sealed .lt-env-ic { opacity: .55; }
+.lt-env small.lt-env-d { font-size: .62rem; opacity: .8; white-space: nowrap; }
+.lt-env.arrived > button { border-color: #f3d27a; background: rgba(243, 210, 122, .18); box-shadow: 0 0 10px rgba(255, 200, 100, .35); }
+.lt-env.arrived .lt-env-ic { animation: lt-breathe 1.6s ease-in-out infinite; }
+.lt-env.read .lt-env-ic { opacity: .8; }
+
+/* 홈 등불 카드: 연꽃잎 */
+.lt-lotus { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.lt-petals { position: relative; flex: none; width: 46px; height: 46px; }
+.lt-petals i { position: absolute; left: 50%; top: 50%; width: 9px; height: 20px; margin: -20px 0 0 -4.5px; border-radius: 50% 50% 50% 50% / 70% 70% 30% 30%; background: rgba(251, 242, 226, .12); box-shadow: inset 0 0 0 1px rgba(251, 242, 226, .3); transform-origin: 50% 100%; transform: rotate(calc(var(--k) * 36deg)); }
+.lt-petals i.on { background: linear-gradient(0deg, #f5a9c0, #ffe1ea); box-shadow: 0 0 6px rgba(255, 180, 210, .55); }
+.lt-petals i.new { animation: lt-petal-in 1s ease-out; }
+.lt-lotus small { font-size: .76rem; color: #f6d9b0; }
+@keyframes lt-petal-in { 0% { opacity: 0; filter: brightness(2); } 60% { opacity: 1; filter: brightness(1.6); } 100% { filter: none; } }
+.lantern-card .lt-envs { margin-top: 10px; }
+.cp-preview.lt-cp { display: grid; place-items: center; width: 96px; aspect-ratio: 5 / 8; border-radius: 10px; overflow: hidden; background: var(--lt-bg) 30% center / cover no-repeat, #2b2a4a; }
+.cp-preview.lt-cp img { width: 92%; filter: drop-shadow(0 0 10px rgba(255, 196, 92, .7)); }
+.cm-preview.lt-pv { width: 100%; filter: none; }
+.cm-preview.lt-pv .lt-scene { max-width: 340px; margin: 0 auto; }
+@media (prefers-reduced-motion: reduce) {
+  .lt-sc-lamp, .lt-sc-lamp img, .lt-sc-glow, .lt-sc-ribbon { transition: none; animation: none !important; }
+  .lt-rb, .lt-env.arrived .lt-env-ic, .lt-wick.done .lt-wick-tip, .lt-petals i.new, .lt-scene.floated .lt-sc-ring { animation: none; }
+}

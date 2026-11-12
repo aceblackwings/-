@@ -83,3 +83,42 @@ test('가격: 소원 990(복떡 가능) · 등불 2,900(복떡 불가) · 걱정
   const pay = app.slice(app.indexOf('function openCharmPay('), app.indexOf('/** 도감에 저장할 기록'));
   assert.ok(pay.includes('lantern ? `<p class="hj-note">100일 등불은 복떡으로는'), '등불 결제 창에는 복떡 버튼 대신 안내');
 });
+
+// v0.69 연등 띄우기 의식(부적과 다른 길)
+test('연등 의식: 5단계 · 100일 미리 보기 날짜 · 편지 봉투 상태 · 연꽃잎', () => {
+  assert.deepEqual(L.LANTERN_STEPS.map((x) => x.key), ['pond', 'ribbon', 'preview', 'light', 'float']);
+  const plan = L.lanternPlan('2026-11-12');
+  assert.deepEqual(plan.map((x) => x.day), [1, 25, 34, 50, 67, 75, 100]);
+  assert.equal(plan[0].dateKey, '2026-11-12'); assert.equal(plan.at(-1).dateKey, L.lanternDue('2026-11-12'));
+  assert.deepEqual(plan.filter((x) => x.kind === 'letter').map((x) => x.n), [1, 2, 3]);
+  let col = [mk()]; const at = (d) => shiftDay('2026-11-6', d - 1);
+  assert.deepEqual(L.letterStates(col[0], at(1)).map((x) => x.state), ['sealed', 'sealed', 'sealed']);
+  assert.deepEqual(L.letterStates(col[0], at(51)).map((x) => x.state), ['arrived', 'arrived', 'sealed']);
+  col = L.readLetter(col, 0, 1);
+  assert.deepEqual(L.letterStates(col[0], at(51)).map((x) => x.state), ['read', 'arrived', 'sealed']);
+  assert.deepEqual(L.lotusOf(0), { blooms: 0, petals: 0, total: 0 });
+  assert.deepEqual(L.lotusOf(23), { blooms: 2, petals: 3, total: 23 });
+  for (const p of [false, true]) {
+    for (const n of [1, 9, 10, 11, 30]) { const s = L.petalLine(n, p); assert.deepEqual(josaProblems(s), [], s); assert.deepEqual(toneProblems(s), [], s); }
+    for (const r of [mk(), mk({ forWho: '엄마' }), mk({ wish: '이직' })]) { const s = L.floatLine(r, p); assert.deepEqual(josaProblems(s), [], s); assert.deepEqual(toneProblems(s), [], s); assert.ok(s.includes(r.wish)); }
+  }
+  [...L.LANTERN_STEPS.map((x) => x.tip), ...plan.map((x) => x.note)].forEach((s) => { assert.deepEqual(josaProblems(s), [], s); assert.deepEqual(toneProblems(s), [], s); });
+});
+
+test('연등 의식 화면: 불 붙이기 = 결제, 결제 전 저장 없음, 지어낸 「n명」 숫자 없음', () => {
+  const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
+  const rt = app.slice(app.indexOf('function openLanternRitual('), app.indexOf('/** 매일 함께 빌기 = 연꽃잎'));
+  assert.ok(rt.length > 1000);
+  assert.ok(rt.includes("openCharmPay('lantern'"), '심지에 불을 붙일 때 결제');
+  assert.ok(!/save\(|COLLECTION_KEY/.test(rt), '의식 안에서는 저장하지 않음(결제 뒤 onDone이 저장)');
+  assert.ok(/if \(paid\) onDone\(\)/.test(rt), '결제한 경우에만 완성');
+  assert.ok(!/navigator\.vibrate/.test(rt), '진동은 소원 부적 도장 한 곳뿐');
+  // 사회적 증거를 지어내지 않음: 「n명이 켰어요」·「지금 n명」 같은 문구 금지(등불 관련 화면 전체)
+  const lt = app.slice(app.indexOf('/** v0.69 연못 장면'), app.indexOf("const kp = e.target.closest('[data-lt-keep]')"));
+  assert.ok(!/명이|명과 함께|명이 함께|\d+\s*명/.test(lt), '지어낸 인원 숫자 없음');
+  const src = readFileSync(new URL('../js/lantern.js', import.meta.url), 'utf8');
+  assert.ok(!/명이 (켰|띄웠|함께)/.test(src));
+  // 결제창에서 돌아오면 등불은 불 붙이는 장면부터
+  assert.ok(/if \(isLantern\(rec\)\) openLanternRitual\(rec, onDone, \{ \.\.\.opt, startAt: 3 \}\)/.test(app));
+  assert.ok(/tierNow === 'lantern'\) openLanternRitual\(/.test(app), '만들기 창의 등불은 연등 의식으로');
+});
