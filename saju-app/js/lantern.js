@@ -135,6 +135,64 @@ export const keptLine = (polite = false) => (polite
   ? '100일을 끝까지 함께 걸었어요. 이 등불은 금빛 액자에 걸어 둘게요. 소원은 지금도 자라고 있어요.'
   : '100일을 끝까지 함께 걸었어. 이 등불은 금빛 액자에 걸어 둘게. 소원은 지금도 자라고 있어.');
 
+// ---------- v0.69 연등 띄우기 의식(사용자 결정 2026-11-12: 부적과 다른 길) ----------
+// 달밤 연못 → 소원지 리본 묶기 → 100일 미리 보기 → 심지 쓸어 올려 불 붙이기(= 결제) → 연못에 띄우기 → 편지 봉투 3통
+// 원칙: 다른 사람이 몇이나 켰는지 같은 지어낸 인원 숫자는 쓰지 않음(사실이 아닌 사회적 증거 금지)
+export const LANTERN_STEPS = [
+  { key: 'pond', icon: '🌕', title: '달밤 연못', tip: '달이 뜬 연못가에 내 등불이 기다리고 있어요. 등불을 눌러 다가가 보세요.' },
+  { key: 'ribbon', icon: '🎗️', title: '소원 리본', tip: '소원을 적은 리본을 손가락으로 위로 끌어 올려 등불에 묶어 주세요.' },
+  { key: 'preview', icon: '📅', title: '100일 보기', tip: '이 등불이 100일 동안 어떻게 자라는지 먼저 보여 드릴게요.' },
+  { key: 'light', icon: '🔥', title: '불 붙이기', tip: '심지를 아래에서 위로 쓸어 올려 불을 붙여 주세요.' },
+  { key: 'float', icon: '🪷', title: '띄우기', tip: '불 붙은 등불을 연못 쪽으로 살며시 밀어 띄워 주세요.' },
+];
+export const RIBBON_NEED = 60;   // 리본 끌어 올리기: 위로 움직인 거리(px)
+export const WICK_NEED = 90;     // 심지 쓸어 올리기: 위로 움직인 거리(px)
+export const FLOAT_NEED = 50;    // 연못으로 밀기: 움직인 거리(px)
+
+/** 100일 미리 보기: 등불 그림 4단계 + 편지 3통, 날짜까지 */
+export function lanternPlan(madeKey) {
+  const at = (day) => shiftDay(madeKey, day - 1);
+  return [
+    { day: 1, kind: 'stage', art: 'stage1', title: '불씨', note: '오늘 붙인 작은 불씨' },
+    { day: LETTER_DAYS[0], kind: 'letter', n: 1, title: '첫 번째 편지', note: '처음 마음을 돌아보는 편지' },
+    { day: 34, kind: 'stage', art: 'stage2', title: '밝아짐', note: '불빛이 한층 환해져요' },
+    { day: LETTER_DAYS[1], kind: 'letter', n: 2, title: '두 번째 편지', note: '꼭 절반에 오는 편지' },
+    { day: 67, kind: 'stage', art: 'stage3', title: '연꽃 활짝', note: '등불 둘레에 연꽃이 피어요' },
+    { day: LETTER_DAYS[2], kind: 'letter', n: 3, title: '세 번째 편지', note: '마지막 25일을 여는 편지' },
+    { day: LANTERN_DAYS, kind: 'stage', art: 'kept', title: '100일 완주', note: '지신이 먼저 「이루어졌어?」 물어봐요' },
+  ].map((x) => ({ ...x, dateKey: at(x.day) }));
+}
+
+/** 편지 봉투 3통의 상태: sealed(아직) · arrived(왔는데 안 읽음) · read(읽음) */
+export function letterStates(r, today) {
+  const day = lanternDay(r, today); const read = r.letters || [];
+  return LETTER_DAYS.map((d, k) => ({ n: k + 1, day: d, dateKey: shiftDay(r.madeKey || r.dateKey, d - 1),
+    state: read.includes(k + 1) ? 'read' : day >= d ? 'arrived' : 'sealed' }));
+}
+
+/** 매일 함께 빌기 = 연꽃잎 하나, 꽃잎 10장이면 연꽃 한 송이 */
+export const PETALS_PER_LOTUS = 10;
+export function lotusOf(prayed) {
+  const n = Math.max(0, Number(prayed) || 0);
+  return { blooms: Math.floor(n / PETALS_PER_LOTUS), petals: n % PETALS_PER_LOTUS, total: n };
+}
+/** 빈 뒤 한 줄(방금 꽃잎 하나를 띄움) */
+export function petalLine(prayed, polite = false) {
+  const { blooms, petals } = lotusOf(prayed);
+  if (petals === 0 && blooms > 0) return polite ? `연꽃이 한 송이 활짝 피었어요. 지금까지 ${blooms}송이예요.` : `연꽃이 한 송이 활짝 피었어. 지금까지 ${blooms}송이야.`;
+  const left = PETALS_PER_LOTUS - petals;
+  return polite ? `연꽃잎 하나를 연못에 띄웠어요. ${left}장 더 모이면 연꽃 한 송이가 피어요.` : `연꽃잎 하나를 연못에 띄웠어. ${left}장 더 모이면 연꽃 한 송이가 피어.`;
+}
+
+const fixWish = (s) => s.replace(/「([^」]*)」를/g, (m, w) => `「${w}」${josa(w, '을/를').slice(w.length)}`);
+/** 의식 끝: 등불이 연못에 뜬 뒤 지신의 한마디 */
+export function floatLine(r, polite = false) {
+  const w = r.wish || ''; const f = r.forWho ? `${josa(r.forWho, '을/를')} 위한 ` : '';
+  return fixWish(polite
+    ? `등불이 연못에 떴어요. ${f}「${w}」를 오늘부터 100일 동안 매일 함께 빌어 드릴게요. 편지 세 통도 봉투에 넣어 두었어요.`
+    : `등불이 연못에 떴어. ${f}「${w}」를 오늘부터 100일 동안 매일 함께 빌어 줄게. 편지 세 통도 봉투에 넣어 두었어.`);
+}
+
 // ---------- 걱정 태우기: 무료, 하루 한 번(걱정 글은 저장하지 않음 — 날짜만) ----------
 export const canBurnToday = (store, today) => (store?.last || '') !== today;
 export const markBurned = (store, today) => ({ ...(store || {}), last: today, count: ((store || {}).count || 0) + 1 });
