@@ -46,3 +46,16 @@ test('화면 연결: 지신 탭 접힘·홈 안내·가입 첫 화면 가져오�
   assert.ok(bk.includes('navigator.share'), '폰은 공유 창');
   assert.ok(bk.includes('생년월일이 들어 있어요'), '다른 사람에게 보내지 말라는 안내');
 });
+
+test('v0.70.1 카카오톡으로 보낼 수 있게: 백업 파일은 .txt(text/plain), 가져오기는 .txt·.json 둘 다', () => {
+  const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.equal(B.BACKUP_MIME, 'text/plain');
+  assert.ok(B.backupFileName(B.makeBackup({})).endsWith('.txt'));
+  const save = app.slice(app.indexOf('async function saveBackupFile('), app.indexOf("document.addEventListener('click', async (e) => {", app.indexOf('async function saveBackupFile(')));
+  assert.ok(!save.includes('application/json'), '공유하는 파일 형식에 json을 쓰지 않음');
+  for (const src of [app, html]) assert.ok(src.includes('accept=".txt,.json,text/plain,application/json"'));
+  // 예전 .json 백업 내용도 그대로 읽힘
+  const old = B.backupText(B.makeBackup({ 'unmyeong2099.profile': '{"name":"a"}' }));
+  assert.equal(B.parseBackup(old).ok, true);
+});

@@ -70,7 +70,7 @@ import { emptyEasy, setEasy, dismissEasy, suggestEasy, easyTerms, hasEasyTerms, 
 import { expertTable, sinsalOf, calcBasis, STAGE_NOTE, twelveStage, makeChart, addChart, removeChart, emptyCharts, RELATIONS , sinsal12Of, SINSAL12_NOTE } from './expert.js';
 import { CARD_AREAS, SPREADS, drawReading } from './cards.js';
 import { weekWealth, SAFETY_LINES } from './wealthweek.js';
-import { makeBackup, parseBackup, backupText, backupFileName, PREFIX as BACKUP_PREFIX, BACKUP_INFO_KEY, backupNeed, markBackedUp, snoozeBackup, daysSinceBackup, backupNudgeLine, backupSummary, paidItems } from './backup.js';
+import { makeBackup, parseBackup, backupText, backupFileName, BACKUP_MIME, PREFIX as BACKUP_PREFIX, BACKUP_INFO_KEY, backupNeed, markBackedUp, snoozeBackup, daysSinceBackup, backupNudgeLine, backupSummary, paidItems } from './backup.js';
 import { emptyRecords, logDay, pendingFeedback, setFeedback, addItem, hasItem, setItemMemo, removeItem, dayList, stats as recordStats, streak as recordStreak, FEEDBACK, ITEM_KIND, MEMO_MAX } from './records.js';
 import { makeCode, normalizeCode, publicCard, cardToSaju, cleanCard, pendingCheers, joinTeamRoom, openMailbox, CHEER_MESSAGES, CHEER_DAILY_LIMIT, CHEER_CHARGE, cheerText, cheerId } from './realtime.js';
 import { dailySpots, distanceM, treasureRarity, bearingName, ARRIVE_RADIUS, DEMO_CENTER, PARTNER_SAMPLES } from './fengshui.js';
@@ -1613,7 +1613,7 @@ function backupCardHTML() {
     <p class="muted bk-why">로그인 없이 쓰는 앱이라 사주 정보·지신·부적·등불이 <b>이 기기에만</b> 저장돼요. 폰을 바꾸거나 앱·사이트 기록을 지우기 전에 백업 파일을 만들어 두면, 새 폰에서 그대로 이어서 쓸 수 있어요.</p>
     <p class="bk-state">${n === null ? '아직 백업한 적이 없어요' : n === 0 ? '✅ 오늘 백업했어요' : `마지막 백업: ${n}일 전`}${paid ? ` · 산 부적·등불 ${paid}개` : ''}</p>
     <div class="bk-row"><button type="button" class="primary" data-bk="save">📦 지금 백업하기</button><button type="button" class="ghost" data-bk="copy">📋 글자로 복사</button></div>
-    <p class="bk-tip">폰에서는 공유 창이 열려요. <b>카카오톡 「나와의 채팅」</b>이나 <b>구글 드라이브·iCloud</b>에 보내 두면 잃어버리지 않아요.</p>
+    <p class="bk-tip">폰에서는 공유 창이 열려요. <b>카카오톡 「나와의 채팅」</b>이나 <b>구글 드라이브·iCloud</b>에 보내 두면 잃어버리지 않아요. 파일 보내기가 안 되는 앱이면 「📋 글자로 복사」 → 「나와의 채팅」에 붙여 넣기도 돼요.</p>
     ${backupImportHTML()}
     <p class="bk-warn">⚠️ 백업에는 생년월일이 들어 있어요. 다른 사람에게 보내거나 공개된 곳에 올리지 마세요.</p>
   </div>`;
@@ -1621,7 +1621,7 @@ function backupCardHTML() {
 /** 가져오기 칸(지신 탭·기록함·가입 첫 화면이 같이 씀) */
 function backupImportHTML(summary = '📥 새 폰에서 백업 가져오기') {
   return `<details class="bk-in"><summary>${summary}</summary>
-      <label class="bk-file">백업 파일 고르기<input type="file" accept=".json,application/json,text/plain" data-bk-file></label>
+      <label class="bk-file">백업 파일 고르기<input type="file" accept=".txt,.json,text/plain,application/json" data-bk-file></label>
       <textarea rows="3" placeholder="또는 복사해 둔 백업 글자를 붙여 넣기" data-bk-text></textarea>
       <button type="button" class="ghost" data-bk="import" style="width:100%">가져오기</button>
     </details>`;
@@ -1669,8 +1669,8 @@ function restoreBackup(text) {
 /** 저장: 폰은 공유 창(카카오톡 나에게·드라이브), 그 밖은 내려받기 */
 async function saveBackupFile() {
   const bk = currentBackup(); const name = backupFileName(bk);
-  const blob = new Blob([backupText(bk)], { type: 'application/json' });
-  const file = typeof File === 'function' ? new File([blob], name, { type: 'application/json' }) : null;
+  const blob = new Blob([backupText(bk)], { type: BACKUP_MIME });
+  const file = typeof File === 'function' ? new File([blob], name, { type: BACKUP_MIME }) : null;
   if (file && matchMedia('(pointer: coarse)').matches && navigator.canShare?.({ files: [file] })) {
     try { await navigator.share({ files: [file], title: '12지신 강림 기록 백업' }); afterBackup(); toast('📦 백업 파일을 보냈어요. 다른 사람에게는 보내지 마세요'); return; } catch (e) { if (e?.name === 'AbortError') return; }
   }
