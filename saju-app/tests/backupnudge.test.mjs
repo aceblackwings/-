@@ -43,7 +43,7 @@ test('화면 연결: 지신 탭 접힘·홈 안내·가입 첫 화면 가져오�
   assert.ok(/data-bk-file/.test(html) && /data-bk="import"/.test(html), '가입 첫 화면에서 가져오기');
   const bk = app.slice(app.indexOf('// ---------- 백업 (v0.23 → v0.70)'), app.indexOf('// ---------- 12지신 신수 카드'));
   assert.ok(!/fetch\(|XMLHttpRequest|sendBeacon/.test(bk), '백업은 서버로 보내지 않음');
-  assert.ok(bk.includes('navigator.share'), '폰은 공유 창');
+  assert.ok(bk.includes('a.download'), '백업은 파일로 저장(v0.70.3 사용자 결정)');
   assert.ok(bk.includes('생년월일이 들어 있어요'), '다른 사람에게 보내지 말라는 안내');
 });
 
@@ -60,18 +60,12 @@ test('v0.70.1 카카오톡으로 보낼 수 있게: 백업 파일은 .txt(text/p
   assert.equal(B.parseBackup(old).ok, true);
 });
 
-test('v0.70.2 카카오톡엔 파일 대신 백업 코드(글자): 줄였다 풀면 그대로, 메시지 통째로 붙여도 됨, 잘리면 안내', async () => {
-  const col = Array.from({ length: 30 }, (_, i) => ({ paid: i % 2 ? 'gold' : 'lantern', wish: `소원 ${i}번 꼭 이루어지기`, madeKey: '2026-11-12' }));
-  const b = B.makeBackup({ 'unmyeong2099.profile': JSON.stringify({ name: '민지', year: 1992 }), 'unmyeong2099.collection': JSON.stringify(col) });
-  const code = await B.packBackup(b);
-  assert.ok(code.startsWith(B.CODE_PREFIX)); assert.ok(code.length < B.backupText(b).length, '원래 글자보다 짧음');
-  const msg = B.backupMessage(code, b.savedAt);
-  assert.ok(msg.includes('다른 사람에게 보내지 마세요'));
-  const back = await B.unpackBackup(`카카오톡에서 복사\n${msg}\n오후 3:12`);
-  assert.equal(B.parseBackup(back).ok, true); assert.equal(B.backupSummary(JSON.parse(back)), '100일 등불 15개 · 소원 부적 15장');
-  assert.equal(await B.unpackBackup(B.backupText(b)), B.backupText(b), '코드가 아니면 예전 백업 글자 그대로');
-  await assert.rejects(B.unpackBackup(code.slice(0, 40)), /잘렸거나/);
+test('v0.70.3 백업 버튼은 「지금 백업하기」 하나 = 파일로 저장(공유·복사 없음)', () => {
   const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
-  const save = app.slice(app.indexOf('async function saveBackupFile('), app.indexOf('/** 백업 코드 복사'));
-  assert.ok(save.includes('navigator.share({ text: msg })') && !save.includes('files:'), '폰 공유는 글자로');
+  const card = app.slice(app.indexOf('function backupCardHTML('), app.indexOf('/** 가져오기 칸'));
+  assert.equal((card.match(/data-bk="/g) || []).length, 1, '카드 안 버튼은 지금 백업하기 하나');
+  assert.ok(card.includes('data-bk="save"') && !card.includes('data-bk="copy"'), '글자로 복사 없음');
+  const save = app.slice(app.indexOf('function saveBackupFile('), app.indexOf("document.addEventListener('click', async (e) => {", app.indexOf('function saveBackupFile(')));
+  assert.ok(save.includes('a.download = name') && !save.includes('navigator.share') && !save.includes('clipboard'), '파일 내려받기만');
+  assert.ok(!/act === 'copy'/.test(app), '복사 처리도 없음');
 });

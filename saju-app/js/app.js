@@ -70,7 +70,7 @@ import { emptyEasy, setEasy, dismissEasy, suggestEasy, easyTerms, hasEasyTerms, 
 import { expertTable, sinsalOf, calcBasis, STAGE_NOTE, twelveStage, makeChart, addChart, removeChart, emptyCharts, RELATIONS , sinsal12Of, SINSAL12_NOTE } from './expert.js';
 import { CARD_AREAS, SPREADS, drawReading } from './cards.js';
 import { weekWealth, SAFETY_LINES } from './wealthweek.js';
-import { makeBackup, parseBackup, backupText, backupFileName, BACKUP_MIME, packBackup, unpackBackup, backupMessage, PREFIX as BACKUP_PREFIX, BACKUP_INFO_KEY, backupNeed, markBackedUp, snoozeBackup, daysSinceBackup, backupNudgeLine, backupSummary, paidItems } from './backup.js';
+import { makeBackup, parseBackup, backupText, backupFileName, BACKUP_MIME, PREFIX as BACKUP_PREFIX, BACKUP_INFO_KEY, backupNeed, markBackedUp, snoozeBackup, daysSinceBackup, backupNudgeLine, backupSummary, paidItems } from './backup.js';
 import { emptyRecords, logDay, pendingFeedback, setFeedback, addItem, hasItem, setItemMemo, removeItem, dayList, stats as recordStats, streak as recordStreak, FEEDBACK, ITEM_KIND, MEMO_MAX } from './records.js';
 import { makeCode, normalizeCode, publicCard, cardToSaju, cleanCard, pendingCheers, joinTeamRoom, openMailbox, CHEER_MESSAGES, CHEER_DAILY_LIMIT, CHEER_CHARGE, cheerText, cheerId } from './realtime.js';
 import { dailySpots, distanceM, treasureRarity, bearingName, ARRIVE_RADIUS, DEMO_CENTER, PARTNER_SAMPLES } from './fengshui.js';
@@ -1612,9 +1612,8 @@ function backupCardHTML() {
     <h3>📦 기록 백업 · 새 폰으로 옮기기</h3>
     <p class="muted bk-why">로그인 없이 쓰는 앱이라 사주 정보·지신·부적·등불이 <b>이 기기에만</b> 저장돼요. 폰을 바꾸거나 앱·사이트 기록을 지우기 전에 백업해 두면, 새 폰에서 그대로 이어서 쓸 수 있어요.</p>
     <p class="bk-state">${n === null ? '아직 백업한 적이 없어요' : n === 0 ? '✅ 오늘 백업했어요' : `마지막 백업: ${n}일 전`}${paid ? ` · 산 부적·등불 ${paid}개` : ''}</p>
-    <div class="bk-row"><button type="button" class="primary" data-bk="save">📦 지금 백업하기</button><button type="button" class="ghost" data-bk="copy">📋 백업 코드 복사</button></div>
-    <p class="bk-tip">폰에서는 공유 창이 열려요. <b>카카오톡 → 「나와의 채팅」</b>을 고르면 「12JISIN1:」로 시작하는 <b>백업 코드</b>가 메시지로 저장돼요. 새 폰에서는 그 메시지를 길게 눌러 복사한 뒤, 가입 화면 「📦 백업 가져오기」 칸에 붙여 넣으면 돼요.</p>
-    <p class="bk-tip"><button type="button" class="linkish" data-bk="file">📁 파일로 저장하기</button> · 컴퓨터나 구글 드라이브에 파일로 남겨 두고 싶을 때</p>
+    <button type="button" class="primary bk-one" data-bk="save">📦 지금 백업하기</button>
+    <p class="bk-tip">누르면 <b>백업 파일</b>(zodiac12-backup-날짜.txt)이 폰의 <b>「다운로드」 폴더(내 파일)</b>에 저장돼요. 아이폰은 「파일」 앱 → 다운로드에 있어요. 폰을 바꿀 땐 이 파일을 구글 드라이브·컴퓨터 등에 옮겨 두고, 새 폰 가입 화면 「📦 백업 가져오기」에서 고르면 돼요.</p>
     ${backupImportHTML()}
     <p class="bk-warn">⚠️ 백업에는 생년월일이 들어 있어요. 다른 사람에게 보내거나 공개된 곳에 올리지 마세요.</p>
   </div>`;
@@ -1623,7 +1622,7 @@ function backupCardHTML() {
 function backupImportHTML(summary = '📥 새 폰에서 백업 가져오기') {
   return `<details class="bk-in"><summary>${summary}</summary>
       <label class="bk-file">백업 파일 고르기<input type="file" accept=".txt,.json,text/plain,application/json" data-bk-file></label>
-      <textarea rows="3" placeholder="또는 「12JISIN1:」로 시작하는 백업 코드(카카오톡 메시지 통째로도 돼요)를 붙여 넣기" data-bk-text></textarea>
+      <textarea rows="3" placeholder="(파일이 없을 때) 예전에 복사해 둔 백업 글자를 붙여 넣기" data-bk-text></textarea>
       <button type="button" class="ghost" data-bk="import" style="width:100%">가져오기</button>
     </details>`;
 }
@@ -1648,9 +1647,7 @@ function currentBackup() {
   return makeBackup(entries);
 }
 
-async function restoreBackup(raw) {
-  let text;
-  try { text = await unpackBackup(raw); } catch (err) { toast(`⚠️ ${err.message}`, 6000); return; }
+function restoreBackup(text) {
   const r = parseBackup(text);
   if (!r.ok) { toast(`⚠️ ${r.error}`); return; }
   const when = r.savedAt ? r.savedAt.slice(0, 10) : '알 수 없는 날';
@@ -1669,51 +1666,21 @@ async function restoreBackup(raw) {
   toast('📦 백업을 가져왔어요. 다시 불러올게요');
   setTimeout(() => location.reload(), 700);
 }
-/** 파일로 내려받기(컴퓨터·드라이브용) */
-function downloadBackupFile() {
+/** v0.70.3 지금 백업하기 = 백업 파일 내려받기(폰은 「다운로드」 폴더, 아이폰은 「파일」 앱) — 사용자 결정: 버튼 하나, 파일로 보관 */
+function saveBackupFile() {
   const bk = currentBackup(); const name = backupFileName(bk);
   const url = URL.createObjectURL(new Blob([backupText(bk)], { type: BACKUP_MIME }));
   const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
   afterBackup();
-  toast(`📦 ${bk.count}가지 기록을 「${name}」 파일로 저장했어요`);
-}
-/** v0.70.2 지금 백업하기: 폰은 백업 코드를 「글자」로 공유(카카오톡은 파일을 안 받음), 그 밖은 파일 내려받기 */
-async function saveBackupFile() {
-  if (!(matchMedia('(pointer: coarse)').matches && typeof navigator.share === 'function')) { downloadBackupFile(); return; }
-  const bk = currentBackup();
-  const msg = backupMessage(await packBackup(bk), bk.savedAt);
-  try {
-    await navigator.share({ text: msg });
-    afterBackup(); toast('📦 백업 코드를 보냈어요. 「나와의 채팅」에만 두고 다른 사람에게는 보내지 마세요', 5000);
-  } catch (e) {
-    if (e?.name === 'AbortError') return;
-    copyBackup(null, msg); // 공유 창이 막힌 화면: 복사로 대신
-  }
-}
-/** 백업 코드 복사(아이폰은 누른 순간에 복사해야 해서 ClipboardItem에 약속을 넘김) */
-async function copyBackup(box, ready) {
-  const bk = currentBackup();
-  const make = async () => ready || backupMessage(await packBackup(bk), bk.savedAt);
-  try {
-    if (typeof ClipboardItem === 'function' && navigator.clipboard?.write) {
-      await navigator.clipboard.write([new ClipboardItem({ 'text/plain': make().then((t) => new Blob([t], { type: 'text/plain' })) })]);
-    } else await navigator.clipboard.writeText(await make());
-    afterBackup(); toast('📋 백업 코드를 복사했어요. 카카오톡 「나와의 채팅」이나 메모장에 붙여 두세요', 5000);
-  } catch {
-    const txt = await make(); const scope = box || document;
-    const ta = scope.querySelector('[data-bk-text]'); const d = scope.querySelector('.bk-in');
-    if (ta) { if (d) d.open = true; ta.value = txt; ta.select(); } toast('복사가 막혀 있어요. 아래 칸의 글자를 직접 복사해 주세요');
-  }
+  toast(`📦 백업 파일 「${name}」을 저장했어요. 폰의 「다운로드」 폴더(아이폰은 「파일」 앱)에서 찾을 수 있어요`, 6000);
 }
 
 document.addEventListener('click', async (e) => {
   const b = e.target.closest('[data-bk]'); if (!b) return;
   const act = b.dataset.bk; const box = b.closest('.backup, .bk-in, .bk-nudge, .step') || document;
-  if (act === 'save') { saveBackupFile(); return; }
-  if (act === 'file') { downloadBackupFile(); return; }
+  if (act === 'save' || act === 'file') { saveBackupFile(); return; }
   if (act === 'snooze') { if (state.fortune) save(BACKUP_INFO_KEY, snoozeBackup(backupInfo(), state.fortune.dateKey)); renderToday(); renderHero(false); toast('일주일 뒤에 다시 알려 드릴게요. 지신 탭 「📦 기록 백업」에서 언제든 할 수 있어요'); return; }
-  if (act === 'copy') { copyBackup(box); return; }
   if (act === 'import') restoreBackup(box.querySelector('[data-bk-text]')?.value || '');
 });
 document.addEventListener('change', (e) => {
