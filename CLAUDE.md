@@ -11,7 +11,7 @@
 > 6. **Claude 쪽에만 있는 것**: 미리보기 아티팩트 게시, `sample`·`room`·`db` 기능, 구글 드라이브 그림 받기 — 이 작업은 Claude Code가 맡음. Codex는 그림이 필요하면 프롬프트(`docs/prompts/`)와 넣는 도구 사용법만 남김.
 > 7. **역할 나누기(기본안, 사용자가 바꿀 수 있음)**: Codex = 출시 구조(Firebase 로그인·구매 기록 동기화·Capacitor 포장·웹 PG/인앱 결제·약관 페이지), Claude Code = 사주 엔진·운세 문장·화면 연출·그림 연결·미리보기.
 >
-> **진행 중**: (없음)
+> **진행 중**: [Claude Code · ccr-244a661f-8uy01w · 「광고 없음·운세 무료」 알리기 + 내 오행 부적 버튼 삭제 · saju-app/js/app.js·styles.css·index.html·tools/legal_pages.mjs·tools/unse_pages.mjs·tools/company_page.mjs]
 
 > **✅ v0.67(2026-11-11, 사용자 「ockstar.com에 유니유통 회사 홈페이지를 만들고, 등록된 콘텐츠 중 하나로 12지신을 넣어 줘」, Claude Code)**: **배포 현황** = 앱 `https://12jisin.ockstar.com` 공개됨(Cloudflare Workers 프로젝트 `zodiac12`, 저장소 루트 `wrangler.jsonc`, 도메인 ockstar.com은 가비아 구매·네임서버는 Cloudflare). **회사 홈페이지** 새 폴더 `company/`: `company/wrangler.jsonc`(프로젝트 이름 **`ockstar-home`**, 정적 파일만 `./site`) · `company/site/index.html`(머리줄 OCKSTAR·유니유통 → 소개 → 콘텐츠 목록(12지신 강림 카드 + 「다음 콘텐츠」 빈 칸) → 회사 정보(사업자 등록 정보) → 문의 → 바닥글 약관 링크) · `company.css`(한지 바탕·먹·인주, 밝은/어두운 화면) · `img/12jisin.webp`(= `saju-app/assets/fortune/dragon.webp` 복사). 글·콘텐츠 목록은 **생성기 `saju-app/tools/company_page.mjs`**(`CONTENTS` 배열에 한 칸 추가 → `node saju-app/tools/company_page.mjs`, 사업자 정보는 `site.js BIZ`에서 읽음, 테스트가 같은지 검사). 확인: `npm test` 통과(site 테스트 1 추가), `npx wrangler@4 deploy --config company/wrangler.jsonc --dry-run` 통과, Playwright 390·1280px·어두운 화면 가로 넘침 0. **사용자 할 일**: PR 병합 → Cloudflare에서 같은 저장소로 Workers 프로젝트 하나 더 만들기(프로젝트 명칭 `ockstar-home`, 빌드 명령 비움, **배치 명령 `npx wrangler deploy --config company/wrangler.jsonc`**) → 그 프로젝트 「도메인」 탭에서 하위 도메인 칸을 비운 채 Add domain(= ockstar.com), 원하면 `www`도. 이 작업 환경에서는 12jisin.ockstar.com 접속이 막혀 있어 공개 사이트를 직접 확인하지 못함(사용자가 브라우저로 확인).
 
