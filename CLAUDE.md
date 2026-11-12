@@ -11,7 +11,7 @@
 > 6. **Claude 쪽에만 있는 것**: 미리보기 아티팩트 게시, `sample`·`room`·`db` 기능, 구글 드라이브 그림 받기 — 이 작업은 Claude Code가 맡음. Codex는 그림이 필요하면 프롬프트(`docs/prompts/`)와 넣는 도구 사용법만 남김.
 > 7. **역할 나누기(기본안, 사용자가 바꿀 수 있음)**: Codex = 출시 구조(Firebase 로그인·구매 기록 동기화·Capacitor 포장·웹 PG/인앱 결제·약관 페이지), Claude Code = 사주 엔진·운세 문장·화면 연출·그림 연결·미리보기.
 >
-> **진행 중**: (없음)
+> **진행 중**: [Claude Code · claude/friendly-hamilton-ul6kap · 토스 시험 키 연결·결제 승인 보강 · saju-app/js/pay.js·site.js·app.js(goTossPay만)·tests/pay.test.mjs]
 
 > **✅ v0.70.5(2026-11-12, 사용자 「파일 백업은 보류, 앱 출시 뒤에 추가 — 지금은 숨겨 두기」, Claude Code)**: 배경 = 공유는 대부분 카카오톡 링크로 하는데, 카카오톡 앱 안 브라우저가 내려받기를 막아 웹에서는 파일 백업이 매끄럽지 않음(v0.70.1~v0.70.4 참고). app.js 스위치 **`showBackup()`**(함수 선언, 지금 `false`)로 화면에서 모두 숨김: 홈·지신 탭 안내 카드 `backupNudgeHTML`, 지신 탭 접힘 「📦 기록 백업 · 새 폰으로 옮기기」, 기록함 백업 카드, 결제 의식 끝 「이 폰에만 저장돼요…」 한 줄(`.bk-after` hidden), 가입 화면 「📦 예전 폰에서 쓰던 기록이 있나요?」(index.html `hidden` + init에서 한 번 더). **코드는 그대로**(backup.js `backupNeed`·`packBackup`·`inAppBrowser`·`externalOpenUrl`, app.js `saveBackupFile`·`openInAppBackup`·`handleMovedBackup`·`importBackup`) → **앱 출시 뒤 `showBackup()`을 `true`로 바꾸면 다시 켜짐**(앱에서는 앱 안 저장·공유 방식으로 다시 설계 검토). 「#bk=」 주소로 들어오는 옮기기 처리(`handleMovedBackup`)는 숨김과 상관없이 남김(밖으로 내보내는 버튼이 없어 쓰일 일은 없음). 테스트 backupnudge 1 추가(스위치 꺼짐·다섯 곳 숨김). 확인: `npm test` 통과, Playwright Galaxy S9+ 등불을 산 기기에서 안내 카드 0·백업 접힘 없음·보이는 「지금 백업하기」 0·가입 화면 가져오기 숨김·오류 0. **출시 결정 ④(기기 저장 + 백업 안내) 중 백업 안내는 앱 출시 뒤로 미룸.**
 
