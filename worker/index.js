@@ -16,11 +16,29 @@ export async function handlePay(request, env, fetchImpl = fetch) {
   return json(r.status, r.body);
 }
 
+// v0.73.1 결제창(특히 카카오페이)이 successUrl·failUrl로 돌아올 때 POST로 오면 정적 파일은 405를 낸다.
+// → 페이지 주소로 온 POST는 본문(폼 값)을 주소 뒤 ?값으로 옮겨 GET으로 다시 보낸다(303). 이미 주소에 있는 값이 우선.
+export async function postToGet(request) {
+  const url = new URL(request.url);
+  try {
+    const type = request.headers.get('Content-Type') || '';
+    if (/application\/x-www-form-urlencoded|multipart\/form-data/i.test(type)) {
+      const form = await request.formData();
+      for (const [k, v] of form) if (typeof v === 'string' && !url.searchParams.has(k)) url.searchParams.set(k, v.slice(0, 500));
+    } else if (/json/i.test(type)) {
+      const data = await request.json();
+      if (data && typeof data === 'object') for (const [k, v] of Object.entries(data)) if (['string', 'number'].includes(typeof v) && !url.searchParams.has(k)) url.searchParams.set(k, String(v).slice(0, 500));
+    }
+  } catch { /* 본문을 못 읽어도 주소만으로 돌려보냄 */ }
+  return new Response(null, { status: 303, headers: { Location: url.pathname + url.search, 'Cache-Control': 'no-store' } });
+}
+
 export default {
   async fetch(request, env) {
     const { pathname } = new URL(request.url);
     if (pathname === '/api/pay/confirm') return handlePay(request, env);
     if (pathname.startsWith('/api/')) return json(404, { ok: false, code: 'NOT_FOUND', message: '없는 주소예요.' });
+    if (request.method !== 'GET' && request.method !== 'HEAD') return postToGet(request);
     return env.ASSETS.fetch(request);
   },
 };
