@@ -195,6 +195,12 @@ console.log(`pay.test: ${n}개 통과`);
   let served = 0; const env = { ASSETS: { fetch: async () => { served += 1; return new Response('page'); } } };
   assert.equal(await (await worker.fetch(new Request('https://a.b/index.html'), env)).text(), 'page'); assert.equal(served, 1);
   assert.equal((await worker.fetch(new Request('https://a.b/api/other'), env)).status, 404);
+  // v0.73.1 결제창이 POST로 돌아와도 405가 아니라 같은 주소 GET으로(폼 값은 ?뒤로, 주소 값 우선)
+  const back = await worker.fetch(new Request('https://a.b/?pay=success', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'paymentKey=pk1&orderId=z12-wish-1-a&amount=990&pay=evil' }), env);
+  assert.equal(back.status, 303);
+  const loc = new URL(back.headers.get('Location'), 'https://a.b');
+  assert.equal(loc.pathname, '/'); assert.equal(loc.searchParams.get('pay'), 'success'); assert.equal(loc.searchParams.get('paymentKey'), 'pk1'); assert.equal(loc.searchParams.get('amount'), '990');
+  assert.equal(served, 1, 'POST는 정적 파일로 넘기지 않음');
   const cfg = readFileSync(new URL('../../wrangler.jsonc', import.meta.url), 'utf8');
   assert.ok(cfg.includes('"directory": "./saju-app"') && cfg.includes('"main": "worker/index.js"') && !/sk_/.test(cfg));
   const ignore = readFileSync(new URL('../.assetsignore', import.meta.url), 'utf8');

@@ -5972,7 +5972,7 @@ async function resumePay() {
   if (!body.ok && !alreadyDone(body.code)) {
     if (body.code === 'PG_UNREACHABLE' || body.code === 'NO_SECRET') { toast(`${body.message} 이 화면을 다시 열면 이어서 확인해요`, 7000); return; }
     save(PENDING_KEY, null);
-    toast(`결제가 승인되지 않았어요(${body.message || body.code || '확인 실패'}). 돈은 나가지 않았어요`, 8000);
+    toast(`결제가 승인되지 않았어요(${body.message || '확인 실패'}${body.code ? ` · 오류 코드 ${body.code}` : ''}). 돈은 나가지 않았어요`, 10000);
     return;
   }
   const log = load(CHARMPAY_KEY, []); log.unshift(payLogEntry(p, body)); save(CHARMPAY_KEY, log.slice(0, 50));
