@@ -80,3 +80,28 @@ console.log('  ✓ 회사 홈페이지: 생성기 결과와 같음 · 사업자 
   assert.ok(!/기운 부적 만들러 가기/.test(app), '내 오행: 눌러도 반응 없던 부적 버튼 삭제');
 }
 console.log('  ✓ 광고 없는 무료 운세 페이지 · 가입 배지 · 상세판 끝 문구 · 오행 부적 버튼 삭제');
+
+// v0.74 구글 플레이 앱(A안): 앱에서는 유료 부적·등불·결제·상품 안내를 숨김
+{
+  const { inApp } = await import('../js/site.js');
+  const { readFileSync } = await import('node:fs');
+  const assert = (await import('node:assert/strict')).default;
+  assert.equal(inApp(null), false);
+  assert.equal(inApp({}), false);
+  assert.equal(inApp({ Capacitor: { isNativePlatform: () => false } }), false);
+  assert.equal(inApp({ Capacitor: { isNativePlatform: () => true } }), true);
+  const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
+  assert.ok(/function charmShowcaseHTML\(\) \{\n  if \(IN_APP\) return '';/.test(app), '앱에서는 진열장 없음');
+  assert.ok(/function openCharmMaker\([^)]*\) \{\n  if \(IN_APP && kind !== 'burn'\) return;/.test(app), '앱에서는 소원·등불 만들기 창을 열지 않음');
+  assert.ok(app.includes("if (IN_APP && kind !== 'burn') return '';"), '앱에서는 소원 제안 없음(걱정 태우기만)');
+  assert.ok(app.includes('if (!IN_APP) setTimeout(resumePay, 0)'), '앱에서는 토스 결제 이어 하기 없음');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  for (const p of ['refund', 'shop', 'free']) assert.ok(new RegExp(`legal/${p}\\.html" data-web-only`).test(html), `바닥글 ${p} 링크는 웹에서만`);
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  assert.ok(css.includes('html.in-app [data-web-only] { display: none !important; }'));
+  const cfg = JSON.parse(readFileSync(new URL('../../app/capacitor.config.json', import.meta.url), 'utf8'));
+  assert.equal(cfg.appId, 'com.ockstar.zodiac12'); assert.equal(cfg.webDir, 'www');
+  const wf = readFileSync(new URL('../../.github/workflows/android.yml', import.meta.url), 'utf8');
+  assert.ok(wf.includes('secrets.ANDROID_KEYSTORE_BASE64') && !/BEGIN|MII[A-Za-z0-9+/]{40}/.test(wf), '서명 키는 비밀 값으로만');
+  console.log('site v0.74 앱 모드 통과');
+}

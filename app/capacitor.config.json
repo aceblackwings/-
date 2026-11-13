@@ -1,0 +1,12 @@
+{
+  "appId": "com.ockstar.zodiac12",
+  "appName": "12지신 강림",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true
+  },
+  "plugins": {
+    "SplashScreen": { "launchShowDuration": 0 }
+  }
+}

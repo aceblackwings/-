@@ -1,0 +1,17 @@
+{
+  "name": "zodiac12-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "web": "node tools/copy-web.mjs",
+    "sync": "node tools/copy-web.mjs && npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.6.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.6.2"
+  }
+}

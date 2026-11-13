@@ -1,0 +1,57 @@
+# v0.74 구글 플레이용 안드로이드 앱 빌드 (이 작업 환경에는 안드로이드 도구가 없어 GitHub 서버에서 빌드)
+# · 결과물(Actions 실행 화면 맨 아래 「Artifacts」):
+#     zodiac12-release-aab  → 구글 플레이 콘솔에 올리는 파일(.aab, 업로드 키로 서명)
+#     zodiac12-debug-apk    → 내 폰에 바로 깔아 보는 시험용(.apk)
+# · 서명 키는 저장소에 넣지 않음: Settings → Secrets and variables → Actions 에
+#     ANDROID_KEYSTORE_BASE64 (업로드 키 파일을 base64 글자로) · ANDROID_KEYSTORE_PASSWORD
+# · versionCode = 이 작업의 실행 번호(run_number) → 빌드할 때마다 자동으로 1씩 올라감
+name: 안드로이드 앱 빌드
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/**', 'codex/**']
+    paths: ['saju-app/**', 'app/**', '.github/workflows/android.yml']
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - name: 웹 테스트
+        working-directory: saju-app
+        run: npm test
+      - name: 앱에 웹 파일 넣기
+        working-directory: app
+        run: npm ci && node tools/copy-web.mjs && npx cap sync android
+      - name: 업로드 키 준비
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PW: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+            {
+              echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks"
+              echo "ANDROID_KEYSTORE_PASSWORD=$KS_PW"
+              echo "ANDROID_KEY_PASSWORD=$KS_PW"
+              echo "ANDROID_KEY_ALIAS=upload"
+            } >> "$GITHUB_ENV"
+            echo "서명 키 있음 → 구글 플레이에 올릴 수 있는 AAB를 만듭니다"
+          else
+            echo "::warning::서명 키 비밀 값이 없어 서명되지 않은 AAB가 나옵니다(구글 플레이에 올릴 수 없음). 시험용 APK는 그대로 쓸 수 있어요."
+          fi
+      - name: 빌드
+        working-directory: app/android
+        run: ./gradlew --no-daemon bundleRelease assembleDebug -PappVersionCode=${{ github.run_number }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zodiac12-release-aab
+          path: app/android/app/build/outputs/bundle/release/*.aab
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zodiac12-debug-apk
+          path: app/android/app/build/outputs/apk/debug/*.apk

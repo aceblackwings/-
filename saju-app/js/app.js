@@ -104,7 +104,8 @@ import {
 const WISH_RECS = ['자격증 시험 합격', '가족 모두 건강하기', '좋은 인연 만나기', '이직에 성공하기', '저축 100만 원 모으기', '꾸준히 운동하기'];
 const BURN_RECS = ['괜히 불안한 마음', '나를 지치게 한 말', '자꾸 미루는 버릇', '꽉 막힌 일의 답답함', '다툰 뒤 남은 서운함', '잠 못 들게 하는 걱정'];
 const CHARMPAY_KEY = 'unmyeong2099.charmpay';
-import { PAY, payMode, fillBiz } from './site.js';
+import { PAY, payMode, fillBiz, inApp } from './site.js';
+const IN_APP = inApp(); // v0.74 앱(A안)에서는 유료 부적·등불·결제를 숨김
 import { EASY_PAYS, easyPayOrder, ABANDON_LINE, PENDING_KEY, CUSTOMER_KEY, makeCustomerKey, validCustomerKey, makeOrder, tossRequest, parseReturn, cleanSearch, checkReturn, pendingAlive, payLogEntry, failLine, alreadyDone } from './pay.js';
 const SEEDS_KEY = 'unmyeong2099.seeds'; // v0.60 걱정 씨앗 {list:[{at, el, answer}]} — 걱정 글은 없음
 
@@ -449,9 +450,10 @@ function initForm() {
   if (qs.has('gallery') && state.saju) selectTab('gallery');
   handleEasyLink();
   fillBiz(document);
-  setTimeout(resumePay, 0); // 모듈이 끝까지 준비된 뒤에(아래쪽 상수들을 쓰므로)
+  if (IN_APP) { document.documentElement.classList.add('in-app'); setupAppShell(); }
+  if (!IN_APP) setTimeout(resumePay, 0); // 모듈이 끝까지 준비된 뒤에(아래쪽 상수들을 쓰므로)
   // v0.71.1 결제창에서 브라우저 뒤로 가기로 돌아오면 페이지가 저장된 채로 되살아나(bfcache) init이 다시 돌지 않음 → 열려 있던 결제 창을 닫고 이어서 처리
-  window.addEventListener('pageshow', (e) => { if (!e.persisted) return; document.querySelectorAll('.pay-modal').forEach((x) => x.remove()); resumePay(); });
+  window.addEventListener('pageshow', (e) => { if (!e.persisted || IN_APP) return; document.querySelectorAll('.pay-modal').forEach((x) => x.remove()); resumePay(); });
   setTimeout(handleMovedBackup, 0); // v0.70.4 카카오톡 안 브라우저에서 넘어온 기록
   if (!showBackup()) document.querySelectorAll('.bk-signup').forEach((x) => { x.hidden = true; }); // v0.70.5 가입 화면 백업 가져오기도 숨김
 }
@@ -2333,7 +2335,7 @@ function openReader(kind, jump = null) {
       <nav class="hj-index">${rep.sections.map((s, i) => s.appendix ? '' : `<a href="#hj-s${i}" data-hj-jump="hj-s${i}">${esc(s.h)}</a>`).join('')}${rep.sections.some((s) => s.appendix) ? `<a href="#hj-appendix" data-hj-jump="hj-appendix" class="hj-ap-link">📎 부록 · 풀이의 근거</a>` : ''}</nav>
       ${rep.sections.map((s, i) => s.appendix ? '' : secHTML(s, i)).join('')}
       ${rep.sections.some((s) => s.appendix) ? `<details class="hj-appendix" id="hj-appendix"><summary>📎 부록 · 풀이의 근거 <small>사주 용어로 된 계산 근거예요. 궁금한 분만 펼쳐 보세요</small></summary>${rep.sections.map((s, i) => s.appendix ? secHTML(s, i) : '').join('')}</details>` : ''}
-      <footer class="hj-end"><p>— 끝 —</p><p class="hj-free" data-raw>🍵 여기까지 ${kChars(rep.chars)}, 광고 없이 무료로 읽으셨어요.<small>12지신 강림의 운세는 모두 무료이고 광고가 없어요. <a href="legal/free.html" target="_blank" rel="noopener">어떻게 운영하나요?</a></small></p><button type="button" class="hj-buy" data-reader-close>닫기</button></footer>
+      <footer class="hj-end"><p>— 끝 —</p><p class="hj-free" data-raw>🍵 여기까지 ${kChars(rep.chars)}, 광고 없이 무료로 읽으셨어요.<small>12지신 강림의 운세는 모두 무료이고 광고가 없어요. <a href="legal/free.html" target="_blank" rel="noopener" data-web-only>어떻게 운영하나요?</a></small></p><button type="button" class="hj-buy" data-reader-close>닫기</button></footer>
     </article>`;
   document.body.appendChild(box); document.body.classList.add('hj-open');
   if (jump) requestAnimationFrame(() => { const t = box.querySelector(`#${jump}`); const d = t?.closest('details'); if (d) d.open = true; t?.scrollIntoView({ block: 'start' }); });
@@ -3512,7 +3514,7 @@ function openTteokShop(need = 0) {
     <h4>🎁 모으기 (모두 무료)</h4>
     <ul class="ts-free"><li>✅ 나만의 습관 체크 하나 +2 <small>(첫날은 바로 2개 = +4)</small></li><li>👗 지신 코디 별 ★3 +1 · ★4 +2 · ★5 +3 <small>(부위마다 하루 한 번)</small></li></ul>
     <h4>🍡 쓰기</h4>
-    <ul class="ts-free"><li>🃏 타로 한 장 ${TAROT_COST.one}개 · 세 장 ${TAROT_COST.three}개</li><li>💞 새 친구 궁합 ${COMPAT_COST}개 <small>(같은 친구는 다시 무료)</small></li><li>🌠 소원 부적: ${CHARM_TTEOK}개면 한 번 무료 <small>(아니면 ${won(CHARM_PRICE)} · 🏮 100일 등불은 복떡 불가 · 🔥 걱정 태우기는 늘 무료)</small></li></ul>
+    <ul class="ts-free"><li>🃏 타로 한 장 ${TAROT_COST.one}개 · 세 장 ${TAROT_COST.three}개</li><li>💞 새 친구 궁합 ${COMPAT_COST}개 <small>(같은 친구는 다시 무료)</small></li>${IN_APP ? '' : `<li>🌠 소원 부적: ${CHARM_TTEOK}개면 한 번 무료 <small>(아니면 ${won(CHARM_PRICE)} · 🏮 100일 등불은 복떡 불가 · 🔥 걱정 태우기는 늘 무료)</small></li>`}</ul>
     ${(st?.log || []).length ? `<h4>최근 기록</h4><ul class="ts-free">${st.log.slice(0, 6).map((l) => `<li>${esc(l.text)} <b>${l.n > 0 ? '+' : ''}${l.n}</b></li>`).join('')}</ul>` : ''}
     <div class="yday-btns"><button type="button" class="primary" data-go-habits>✅ 습관 체크하러 가기</button><button type="button" class="ghost" data-close-shop>닫기</button></div></div>`;
   document.body.appendChild(box);
@@ -3746,7 +3748,7 @@ function renderCharm(animate) {
           <p class="muted" style="margin-top:0">${t.type.reading} — ${t.type.meaning}</p>
           <ul>${t.effects.map((e) => `<li><b>${esc(e.stat)}</b> ${e.value > 0 ? '+' : ''}${e.value}%</li>`).join('')}</ul>
           <div class="formula">효과 = 등급 ${t.rarity.base}% × 부족 보정 ${t.calc.deficit.toFixed(2)} × 오늘 보정 ${t.calc.todayMul.toFixed(1)}<br>= ${t.calc.value}% (${ELEMENT_KO[t.element]} 기운 ${s.elements[t.element]}점 기준)</div>
-          <button type="button" class="cm-forge-link" data-cm-open="wish"><span class="cm-forge-thumb">${paidCharmSVG(makerData('wish', ''))}</span><span><b>🌠 소원은 금박 부적으로 따로 만들어요</b><small>내 이름·지신 인장·붓글씨가 들어간 세상에 하나뿐인 부적 →</small></span></button>
+          <button type="button" class="cm-forge-link" data-cm-open="wish" data-web-only><span class="cm-forge-thumb">${paidCharmSVG(makerData('wish', ''))}</span><span><b>🌠 소원은 금박 부적으로 따로 만들어요</b><small>내 이름·지신 인장·붓글씨가 들어간 세상에 하나뿐인 부적 →</small></span></button>
           <div class="actions" style="margin-top:12px">
             <button class="primary" type="button" id="btn-reroll">다시 뽑기 ✦</button>
             <button class="ghost" type="button" id="btn-save">도감에 저장</button>
@@ -6076,6 +6078,7 @@ function makerData(kind, text, dueInput, opt = {}) {
 }
 /** 지신 탭 진열장: 두 부적을 실제 모습 그대로 나란히 */
 function charmShowcaseHTML() {
+  if (IN_APP) return '';
   return `<section class="cm-show" aria-label="세상에 하나뿐인 부적">
     <p class="cm-show-h">✨ 세상에 하나뿐인 부적 <small>${esc(state.profile.name ? `${state.profile.name} 님 이름` : '내 이름')} · ${esc(myZodiac().name)} 지신 인장 · 붓글씨</small></p>
     <div class="cm-show-row">
@@ -6099,6 +6102,7 @@ function charmNudgeHTML(where = 'today', topic = '') {
     else if (!waiting) { kind = 'wish'; line = '흐름이 좋은 날이에요. 이번 달 소원 하나를 금박 부적에 담아 두면, 그날 지신이 먼저 물어봐요.'; }
     else return '';
   }
+  if (IN_APP && kind !== 'burn') return '';
   return `<div class="cm-nudge ${kind}">
     <button type="button" class="cm-nudge-thumb" data-cm-open="${kind}" data-cm-preset="${esc(preset)}" aria-label="부적 미리 보기">${paidCharmSVG(makerData(kind, preset))}</button>
     <div class="cm-nudge-t"><p>${esc(line)}</p><button type="button" class="linkish" data-cm-open="${kind}" data-cm-preset="${esc(preset)}">${kind === 'wish' ? '🌠 내 소원 부적 미리 보기' : '🔥 걱정 태우러 가기 (무료)'} →</button></div>
@@ -6112,6 +6116,7 @@ const MAKER_GETS = {
 };
 // v0.64: 소원 = 990원 소원 부적 / 2,900원 100일 등불(고르기), 결제는 의식 마지막 인장 찍을 때. 걱정 태우기 = 무료 하루 한 번
 function openCharmMaker(kind, preset = '', tier = 'wish') {
+  if (IN_APP && kind !== 'burn') return;
   document.querySelectorAll('.cm-modal').forEach((x) => x.remove());
   const today = state.fortune.dateKey; const wish = kind === 'wish';
   const bal = loadTteok()?.balance || 0;
@@ -6653,7 +6658,7 @@ function wishWallHTML() {
   return `${wall.length ? `<div class="wish-wall">${wall.map((r) => `<figure class="wish-frame">${wishCharmHTML(r, true)}${r.result === 'kept' ? `<img class="lt-kept-mini" src="${LT_ART('kept')}" alt="100일 완주 등불">` : ''}<figcaption><b>${esc(r.wish)}</b><small>${esc(wishDueLabel(r.doneKey, today))} ${r.result === 'kept' ? '🏮 100일 완주' : '이룸'}</small>${pngBtn(r)}</figcaption></figure>`).join('')}</div>`
     : '<p class="muted" style="margin:0 0 8px">아직 걸린 액자가 없어요. 소원을 적은 부적이 이루어지면 금빛 액자로 여기에 걸려요.</p>'}
     ${wait.length ? `<p class="wish-wait-h">⏳ 함께 기다리는 소원 ${wait.length}개</p><ul class="wish-wait">${wait.map((r) => `<li>${wishCharmHTML(r, false)}<span><b>${esc(r.wish)}</b><small>${esc(wishDueLabel(r.dueKey, today))}에 물어볼게요${r.mid ? ' · 빛이 진해졌어요' : ''}</small>${pngBtn(r)}</span></li>`).join('')}</ul>` : ''}
-    <button type="button" class="ghost ki-go" data-wish-make>🌠 소원 부적 만들러 가기</button>`;
+    <button type="button" class="ghost ki-go" data-wish-make data-web-only>🌠 소원 부적 만들러 가기</button>`;
 }
 document.addEventListener('click', (e) => {
   const mk = e.target.closest('[data-wish-make]');
@@ -6814,7 +6819,7 @@ function openBurn(worry, idx) {
     box.querySelector('.burn-seedline').textContent = '';
     box.querySelector('.burn-exp').textContent = res.exp ? `🧧 ${labelForRec(res.charm)}의 기운이 지신에게 갔어요 · 성장 +${res.exp}` : '걱정은 재가 되어 날아갔어요.';
     const btns = box.querySelector('.yday-btns'); btns.style.gridTemplateColumns = '1fr';
-    btns.innerHTML = '<button type="button" class="primary" data-burn-close>고마워요</button><button type="button" class="ghost" data-burn-wish>🌠 이 씨앗을 소원으로 키워 볼까?</button>';
+    btns.innerHTML = '<button type="button" class="primary" data-burn-close>고마워요</button>' + (IN_APP ? '' : '<button type="button" class="ghost" data-burn-wish>🌠 이 씨앗을 소원으로 키워 볼까?</button>');
     if (res.exp) grow((gr) => addExp(gr, res.exp), `🔥 ${line} (+${res.exp})`);
     state.burnPick = undefined; state.heroLine = line;
     renderHero(false);
@@ -6887,3 +6892,19 @@ function wishSub() {
   const col = load(COLLECTION_KEY, []); const a = wishWall(col).length; const b = wishWaiting(col).length;
   return a || b ? `이룬 소원 ${a}개 · 기다리는 소원 ${b}개` : '소원을 적은 부적이 이루어지면 금빛 액자로';
 }
+
+// ---------- v0.74 구글 플레이 앱(Capacitor) 껍데기 ----------
+// 안드로이드 뒤로 가기: 열린 창(팝업·읽기 화면)부터 닫고 → 하위 화면이면 오늘 탭으로 → 홈이면 두 번 눌러 앱 닫기
+function setupAppShell() {
+  const App = window.Capacitor?.Plugins?.App; if (!App) return;
+  let lastBack = 0;
+  App.addListener('backButton', () => {
+    const top = [...document.querySelectorAll('.evo-modal, .reveal-modal, .hj-reader, .cm-modal, .pay-modal, .tteok-modal')].pop();
+    if (top) { top.remove(); return; }
+    const cur = state.lastTab || 'today';
+    if (cur !== 'today') { selectTab(TAB_PARENT[cur] || 'today'); window.scrollTo(0, 0); return; }
+    if (Date.now() - lastBack < 1800) { App.exitApp(); return; }
+    lastBack = Date.now(); toast('한 번 더 누르면 앱이 닫혀요', 1800);
+  });
+}
+
