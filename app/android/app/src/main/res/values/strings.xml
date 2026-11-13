@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">12지신 강림</string>
+    <string name="title_activity_main">12지신 강림</string>
+    <string name="package_name">com.ockstar.zodiac12</string>
+    <string name="custom_url_scheme">com.ockstar.zodiac12</string>
+</resources>

@@ -28,6 +28,10 @@ export const PAY = {
   sdk: 'https://js.tosspayments.com/v2/standard',
 };
 
+/** v0.74 구글 플레이 앱(Capacitor) 안에서 열렸는지. 앱 1차(A안)는 유료 부적·등불·결제를 모두 숨긴다(스토어 정책: 앱 안 디지털 상품은 스토어 결제만). */
+export function inApp(w = typeof window !== 'undefined' ? window : null) {
+  try { return !!(w && w.Capacitor && typeof w.Capacitor.isNativePlatform === 'function' && w.Capacitor.isNativePlatform()); } catch { return false; }
+}
 export const payMode = (p = PAY) => (!p.tossClientKey ? 'trial' : p.tossClientKey.startsWith('test_') ? 'test' : 'live');
 
 const EMPTY = '(등록 예정)';

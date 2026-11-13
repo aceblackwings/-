@@ -2447,3 +2447,6 @@ body:has(> .evo-modal, > .reveal-modal, > .hj-reader) { overflow: hidden; }
 .hj-pay .cp-ez-b:active { transform: translateY(1px); }
 .hj-pay .cp-ez-b:disabled { opacity: 0.55; }
 .hj-pay .cp-card { font-size: 0.92rem; }
+
+/* ---------- v0.74 구글 플레이 앱(A안): 유료 부적·등불 입구와 상품·환불 안내를 숨김 ---------- */
+html.in-app [data-web-only] { display: none !important; }
