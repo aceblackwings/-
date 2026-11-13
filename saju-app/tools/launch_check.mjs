@@ -11,6 +11,7 @@ if (miss.length) todo.push(`js/site.js BIZ에 빈 값: ${miss.join(', ')}`);
 const mode = payMode(PAY);
 if (mode === 'trial') todo.push('js/site.js PAY.tossClientKey가 비어 있음 → 지금은 체험판(결제 없이 만들어짐)');
 if (mode === 'test') todo.push('시험 결제 키(test_ck_)가 들어 있음 → 정식 공개 전 live_ck_ 키로 바꾸고, 호스팅 환경 변수 TOSS_SECRET_KEY도 live_sk_로');
+if (mode === 'live') console.log('실제 결제 키(live_ck_) 사용 중 — 호스팅 환경 변수 TOSS_SECRET_KEY도 live_sk_인지 꼭 확인(짝이 다르면 결제 승인이 실패해요)');
 if (BIZ.domain) {
   const base = BIZ.domain.replace(/\/$/, '');
   const pages = ['', 'legal/shop.html', 'legal/terms.html', 'legal/privacy.html', 'legal/refund.html', 'legal/free.html', ...readdirSync(join(root, 'unse/2027')).filter((f) => f.endsWith('.html')).map((f) => `unse/2027/${f}`)];

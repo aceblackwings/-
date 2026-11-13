@@ -21,8 +21,9 @@ export const SERVICE = { name: '12지신 강림', effective: '2026-11-11' }; // 
 export const PAY = {
   // 토스페이먼츠 「API 개별 연동 키」의 클라이언트 키(test_ck_… 또는 live_ck_…). 공개되어도 되는 키.
   // 비어 있으면 체험판(결제 없이 만들어짐). test_ 키면 시험 결제, live_ 키면 실제 결제.
-  // 2026-11-12 시험 키(개발 연동 체험 상점, API 개별 연동 키). 내 상점 키가 나오면 시크릿 키(TOSS_SECRET_KEY)와 함께 바꿀 것
-  tossClientKey: 'test_ck_c19xYFfpjVOLeLnQni4XnWJs86ym6kml8g',
+  // 2026-11-13 실제 결제 키(내 상점 「라이브」 API 개별 연동 키). 시크릿 키는 Cloudflare TOSS_SECRET_KEY = live_sk_(짝이 맞아야 결제됨)
+  // 예전 시험 키(개발 연동 체험 상점): test_ck_c19xYFfpjVOLeLnQni4XnWJs86ym6kml8g
+  tossClientKey: 'live_ck_c19xYLanYqVhbcHhjpj0hO3F8rnOqjoGzV',
   confirmUrl: '/api/pay/confirm', // 결제 승인 함수 (functions/api/pay/confirm.js)
   sdk: 'https://js.tosspayments.com/v2/standard',
 };
