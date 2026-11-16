@@ -482,6 +482,7 @@ function selectTab(name) {
   }
   if (name === 'ask') renderAsk();
   if (name === 'tarot') renderTarot();
+  if (name === 'compat') renderCompat(); // 복떡 개수(습관 체크 등으로 바뀜)를 탭을 열 때마다 새로 읽음
   if (name === 'gallery') renderGallery();
   if (name === 'records') renderRecords();
   if (name === 'cards') renderCards();
