@@ -3793,7 +3793,7 @@ function renderCharm(animate) {
       if (!lead) toast('도감에 저장했습니다');
       grow((g) => complete(g, state.fortune.dateKey, 'charm', qBonus('charm')), lead);
     };
-    // v0.59: 소원 부적은 990원 또는 복떡 50개 · v0.60: 결제 뒤 직접 만드는 의식(먹 → 이름 → 도장 → 기운) 다음에 저장
+    // v0.59: 소원 부적은 4,900원(v0.75) 또는 복떡 50개 · v0.60: 결제 뒤 직접 만드는 의식(먹 → 이름 → 도장 → 기운) 다음에 저장
     // v0.64: 결제는 의식 마지막 인장 찍을 때
     if (w.wish) openWishRitual(w.rec, commit, { onBack: () => { state.wishDraft = draft; } }); else commit();
   });
@@ -5904,7 +5904,7 @@ function bindWishForm(panel) {
   t?.addEventListener('input', keep); d?.addEventListener('change', keep);
   $$('[data-wish-rec]', panel).forEach((b) => b.addEventListener('click', () => { t.value = b.dataset.wishRec; keep(); }));
 }
-/** v0.64 결제 창(인장 찍는 순간): 소원 부적 990원 또는 복떡 50개 · 100일 등불 2,900원(돈으로만) · 걱정 태우기는 무료라 결제 없음
+/** v0.64 결제 창(인장 찍는 순간): 소원 부적 4,900원 또는 복떡 50개 · 100일 등불 9,900원(돈으로만) · 걱정 태우기는 무료라 결제 없음
  *  v0.60: 받는 것 4줄 + 부적 미리보기(preview = paidCharmSVG 데이터) */
 /** v0.65 토스페이먼츠 결제창 SDK(처음 결제할 때만 불러옴) */
 let tossLoading = null;
@@ -6114,7 +6114,7 @@ const MAKER_GETS = {
   lantern: ['🏮 홈 연못에 100일 등불', '🪷 매일 연꽃잎 하나', '💌 편지 봉투 3통', '👪 가족 소원도 OK'],
   burn: ['🖌️ 걱정 붓글씨', '🔥 손끝으로 태우기', '🌱 재가 씨앗으로', '🔒 글은 저장 안 함'],
 };
-// v0.64: 소원 = 990원 소원 부적 / 2,900원 100일 등불(고르기), 결제는 의식 마지막 인장 찍을 때. 걱정 태우기 = 무료 하루 한 번
+// v0.64: 소원 = 4,900원 소원 부적 / 9,900원 100일 등불(v0.75)(고르기), 결제는 의식 마지막 인장 찍을 때. 걱정 태우기 = 무료 하루 한 번
 function openCharmMaker(kind, preset = '', tier = 'wish') {
   if (IN_APP && kind !== 'burn') return;
   document.querySelectorAll('.cm-modal').forEach((x) => x.remove());

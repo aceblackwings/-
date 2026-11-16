@@ -130,10 +130,10 @@ export function useTarot(store, dateKey, spread) {
 }
 
 // ---------- v0.59 궁합·소원 부적·나쁜 기운 태우기 ----------
-// 궁합: 새 친구 한 명당 복떡 2개(같은 친구는 다시 무료) · 소원 부적/태우기 부적: 990원 또는 복떡 50개로 한 번(모으면 또 한 번)
+// 궁합: 새 친구 한 명당 복떡 2개(같은 친구는 다시 무료) · 소원 부적: 4,900원 또는 복떡 50개로 한 번(모으면 또 한 번)
 export const COMPAT_COST = 2;
 export const CHARM_TTEOK = 50;
-export const CHARM_PRICE = 990;
+export const CHARM_PRICE = 4900; // v0.75(2026-11-16 사용자 결정): 990 → 4,900원
 export const friendKey = (fr) => `${fr.calendar || 'solar'}-${fr.year}-${fr.month}-${fr.day}`;
 export const compatOpen = (store, key) => !!norm(store).compat?.[key];
 /** 새 친구 궁합 열기: 이미 연 친구면 무료 */

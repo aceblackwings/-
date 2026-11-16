@@ -1,4 +1,4 @@
-// v0.64 100일 소원 등불(2,900원) · 소원 부적 990원 · 걱정 태우기 무료 하루 한 번
+// v0.64 100일 소원 등불(9,900원) · 소원 부적 4,900원 · 걱정 태우기 무료 하루 한 번
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -72,8 +72,8 @@ test('누구를 위한 소원: 정리·부적 글자', () => {
   assert.equal(PAY_GETS.lantern.length, 4); PAY_GETS.lantern.forEach((s) => assert.deepEqual(toneProblems(s), []));
 });
 
-test('가격: 소원 990(복떡 가능) · 등불 2,900(복떡 불가) · 걱정 태우기 무료 하루 한 번', () => {
-  assert.equal(L.WISH_PRICE, 990); assert.equal(L.LANTERN_PRICE, 2900);
+test('가격: 소원 4,900(복떡 가능) · 등불 9,900(복떡 불가) · 걱정 태우기 무료 하루 한 번', () => {
+  assert.equal(L.WISH_PRICE, 4900); assert.equal(L.LANTERN_PRICE, 9900);
   let st = {}; assert.ok(L.canBurnToday(st, '2026-11-6'));
   st = L.markBurned(st, '2026-11-6'); assert.ok(!L.canBurnToday(st, '2026-11-6')); assert.ok(L.canBurnToday(st, '2026-11-7'));
   assert.deepEqual(Object.keys(st).sort(), ['count', 'last'], '걱정 글은 저장하지 않음');

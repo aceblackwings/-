@@ -1,5 +1,5 @@
-// v0.64 100일 소원 등불(2,900원, 돈으로만) — 사용자 결정(2026-11-06):
-// 「걱정은 무료, 소원은 유료, 기간이 길면 더 비싸게」 · 소원 부적 990원(복떡 50개로도) · 등불 2,900원(복떡 불가)
+// v0.64 100일 소원 등불(9,900원, 돈으로만 · v0.75 가격) — 사용자 결정(2026-11-06):
+// 「걱정은 무료, 소원은 유료, 기간이 길면 더 비싸게」 · 소원 부적 4,900원(복떡 50개로도) · 등불 9,900원(복떡 불가)
 // 원칙: 점수와 무관(경험과 기록뿐). 돈을 낸 뒤 매일 느껴지게 = 홈의 등불 D-day + 지신이 매일 다른 한 줄로 빌어 줌
 // + 10일마다 한 단계 밝아짐 + 25·50·75일째 편지 + 100일째 금빛 액자(이루어졌어요 / 100일 완주).
 // 기록은 소원 부적과 같은 도감 칸(paid: 'lantern', forWho, letters, prayed, lastPray).
@@ -7,8 +7,8 @@ import { shiftDay } from './omen.js';
 import { josa } from './josa.js';
 
 export const LANTERN_DAYS = 100;
-export const LANTERN_PRICE = 2900;
-export const WISH_PRICE = 990;
+export const LANTERN_PRICE = 9900; // v0.75(2026-11-16 사용자 결정): 2,900 → 9,900원
+export const WISH_PRICE = 4900;
 export const LANTERN_STEP = 10;            // 10일마다 한 단계 밝아짐(0~10단계)
 export const LETTER_DAYS = [25, 50, 75];   // 지신의 편지가 오는 날
 export const FOR_MAX = 8;                  // 「누구를 위한 소원」 이름 글자 수

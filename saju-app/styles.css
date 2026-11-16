@@ -2191,7 +2191,7 @@ body.cm-open { overflow: hidden; }
 .dh-card.mini-fold > summary .mini-hint { order: 3; flex-basis: calc(100% - 24px); margin-left: 0; }
 .dh-card.mini-fold > summary::after { order: 2; }
 
-/* ---------- v0.64 소원 부적 990 / 100일 등불 2,900 · 걱정 태우기 무료 ---------- */
+/* ---------- v0.64 소원 부적 4,900 / 100일 등불 9,900(v0.75) · 걱정 태우기 무료 ---------- */
 .cm-price { display: inline-block; margin-top: 2px; padding: 2px 8px; border-radius: 999px; font-style: normal; font-size: .74rem; font-weight: 700; color: #8a5a12; background: #fff1cf; }
 .cm-price.free { color: #2f6b3a; background: #e3f4e4; }
 .cm-tiers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 12px; }
