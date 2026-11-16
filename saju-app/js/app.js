@@ -4744,7 +4744,7 @@ function doGift(idx) {
   el.className = 'evo-modal';
   el.innerHTML = `<div class="evo-box"><h3 style="margin-top:0">🎁 ${esc(fr.name)}에게 줄 부적 고르기</h3>
     <div class="equip-list">${list.map((r, i) => `<button type="button" data-pick="${i}">${renderTalismanSVG(charmFromRecord(r))}</button>`).join('')}</div>
-    <p class="muted" style="font-size:0.75rem">하루 1번 무료 선물 · 친구 고민에 맞춘 맞춤 부적 선물(990원)은 정식 버전에서 제공</p>
+    <p class="muted" style="font-size:0.75rem">하루 1번 무료 선물${IN_APP ? '' : ` · 친구 고민에 맞춘 맞춤 부적 선물(${won(CHARM_PRICE)})은 정식 버전에서 제공`}</p>
     <button class="ghost" type="button" data-pick="x" style="width:100%">닫기</button></div>`;
   document.body.appendChild(el);
   el.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => {
