@@ -28,3 +28,4 @@ a { color: var(--accent); }
 .lg-prod .price { font-size: 1.25rem; font-weight: 800; color: var(--accent); margin: 6px 0; font-variant-numeric: tabular-nums; }
 .lg-btn { display: inline-block; background: var(--accent); color: #fff; border-radius: 999px; padding: 12px 22px; text-decoration: none; font-weight: 700; min-height: 48px; }
 #pay-log:empty { display: none; }
+.lg-small { font-size: 0.82rem; color: var(--muted, #6b6259); margin-top: 6px; }

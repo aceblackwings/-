@@ -1,18 +1,23 @@
-// v0.65 웹 결제(토스페이먼츠) — 순수 로직만. 화면은 app.js `openCharmPay`·`resumePay`, 승인은 functions/api/pay/confirm.js
+// v0.65 웹 결제(토스페이먼츠) — 순수 로직만. 화면은 app.js `openLifePay`·`resumePay`, 승인은 functions/api/pay/confirm.js
 // 흐름: 인장을 꾹 → 결제 창 → 주문 만들기(makeOrder, 기기에 「기다리는 주문」 저장) → 토스 결제창(다른 주소로 다녀옴)
-//   → 돌아오면 parseReturn·checkReturn → 승인 함수가 금액을 다시 확인하고 토스에 승인 요청 → 성공하면 부적 저장 + 인장
+//   → 돌아오면 parseReturn·checkReturn → 승인 함수가 금액을 다시 확인하고 토스에 승인 요청 → 성공하면 구매 기록 저장 + 읽기 화면
 // 원칙: 금액은 주문 번호의 상품 종류로 서버가 다시 계산(verifyOrder). 승인하지 않은 결제는 토스가 자동 취소해 돈이 나가지 않음.
-// 소원 글·이름은 서버로 보내지 않는다(주문 이름은 상품 이름만). 테스트 tests/pay.test.mjs
-import { CHARM_PRICE } from './tteok.js';
-import { LANTERN_PRICE } from './lantern.js';
+// 이름·생년월일은 서버로 보내지 않는다(주문 이름은 상품 이름만). 테스트 tests/pay.test.mjs
+// v0.75(2026-11-18 토스 심사 「부적 상품 입점 불가 · 무형 서비스는 1년 미만」 → 사용자 결정 A안):
+//   돈으로 파는 것은 「평생 정통사주 자세히 보기」 하나(2,900원, 결제일부터 6개월 열람 — shop.js VIEW_DAYS).
+//   소원 부적·100일 등불은 복떡으로만 만든다(tteok.js CHARM_TTEOK·LANTERN_TTEOK). 예전 주문 종류 이름은 PAST_PRODUCTS(결제 내역 표시용)
+// 가격은 premium.js PRODUCTS.life.price와 같아야 함(tests/pay.test.mjs) — 승인 함수가 가볍도록 여기서는 숫자로 둠
+export const LIFE_PRICE = 2900;
 
 export const PAY_PRODUCTS = {
-  wish: { price: CHARM_PRICE, name: '소원 부적', desc: '내 이름과 띠 지신 인장이 찍힌 금박 소원 부적 한 장. 정한 날에 지신이 먼저 물어봐요.' },
-  lantern: { price: LANTERN_PRICE, name: '100일 소원 등불', desc: '100일 동안 날마다 밝아지는 소원 등불. 매일 한 줄 기도와 지신의 편지 3통.' },
+  life: { price: LIFE_PRICE, name: '평생 정통사주 종합 풀이', desc: '여덟 글자를 처음부터 끝까지 풀어 쓴 디지털 보고서. 결제일부터 6개월 동안 이 기기에서 볼 수 있어요.' },
 };
+/** 판매를 멈춘 예전 상품 이름(이 기기의 결제 내역에만 보임) */
+export const PAST_PRODUCTS = { wish: '소원 부적', lantern: '100일 소원 등불' };
+export const productName = (kind) => PAY_PRODUCTS[kind]?.name || PAST_PRODUCTS[kind] || kind;
 export const PENDING_KEY = 'unmyeong2099.payorder';
 export const PENDING_MAX_MS = 24 * 60 * 60 * 1000; // 하루 지난 주문은 버림
-const ID_RE = /^z12-(wish|lantern)-[a-z0-9]{6,12}-[a-z0-9]{6,16}$/;
+const ID_RE = /^z12-(life)-[a-z0-9]{6,12}-[a-z0-9]{6,16}$/;
 
 /** 주문 번호: z12-종류-시각-무작위 (토스 규칙: 영문·숫자·-·_ 6~64자) */
 export function makeOrderId(kind, now = Date.now(), rand = Math.random) {
@@ -30,7 +35,7 @@ export function verifyOrder(orderId, amount) {
   return { ok: true, kind, amount: PAY_PRODUCTS[kind].price, name: PAY_PRODUCTS[kind].name };
 }
 
-/** 기다리는 주문(기기에 저장): 결제창에 다녀와도 만들던 부적을 이어서 완성하려고 기록 rec를 함께 둔다 */
+/** 기다리는 주문(기기에 저장): 결제창에 다녀온 뒤 이어서 열려고 rec(예: { key: 'life' })를 함께 둔다 */
 export function makeOrder(kind, rec, now = Date.now(), rand = Math.random) {
   const orderId = makeOrderId(kind, now, rand); if (!orderId) return null;
   return { orderId, kind, amount: PAY_PRODUCTS[kind].price, name: PAY_PRODUCTS[kind].name, rec, at: now, paymentKey: null };
@@ -52,7 +57,7 @@ export function easyPayOrder(ua = '', touch = 0) {
   return ['NAVERPAY', 'KAKAOPAY', isAppleDevice(ua, touch) ? 'APPLEPAY' : 'SAMSUNGPAY', 'TOSSPAY'];
 }
 
-/** 토스 결제 요청 값 — 소원 글은 넣지 않는다. easyPay를 주면 그 간편결제 창을 바로 연다 */
+/** 토스 결제 요청 값 — 이름·생년월일은 넣지 않는다. easyPay를 주면 그 간편결제 창을 바로 연다 */
 export function tossRequest(order, origin, path = '/', easyPay = null) {
   const base = `${origin}${path}`; const sep = base.includes('?') ? '&' : '?';
   return {
@@ -83,7 +88,7 @@ export function cleanSearch(search) {
 /** 돌아온 값이 기다리는 주문과 맞는지(주소를 손으로 고친 경우를 막음) */
 export function checkReturn(ret, pending, now = Date.now()) {
   if (!ret || ret.status !== 'success') return { ok: false, code: 'NOT_SUCCESS' };
-  if (!pendingAlive(pending, now)) return { ok: false, code: 'NO_PENDING', message: '이어서 만들 부적 기록을 찾지 못했어요.' };
+  if (!pendingAlive(pending, now)) return { ok: false, code: 'NO_PENDING', message: '이어서 열 주문 기록을 찾지 못했어요.' };
   if (ret.orderId !== pending.orderId) return { ok: false, code: 'ORDER_MISMATCH', message: '주문 번호가 달라요.' };
   if (!ret.paymentKey) return { ok: false, code: 'NO_KEY', message: '결제 정보를 받지 못했어요.' };
   const v = verifyOrder(ret.orderId, ret.amount); if (!v.ok) return v;
@@ -91,7 +96,7 @@ export function checkReturn(ret, pending, now = Date.now()) {
   return { ok: true, kind: v.kind, amount: v.amount };
 }
 
-/** 결제 내역 한 줄(기기 저장, 소원 글 없음) */
+/** 결제 내역 한 줄(기기 저장, 이름·생년월일 없음) */
 export function payLogEntry(order, res = {}, now = Date.now()) {
   return { kind: order.kind, price: order.amount, at: now, via: 'toss', orderId: order.orderId, method: res.method || '', ez: res.easyPay || '', receipt: res.receiptUrl || '' };
 }

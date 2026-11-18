@@ -130,10 +130,12 @@ export function useTarot(store, dateKey, spread) {
 }
 
 // ---------- v0.59 궁합·소원 부적·나쁜 기운 태우기 ----------
-// 궁합: 새 친구 한 명당 복떡 2개(같은 친구는 다시 무료) · 소원 부적/태우기 부적: 990원 또는 복떡 50개로 한 번(모으면 또 한 번)
+// 궁합: 새 친구 한 명당 복떡 2개(같은 친구는 다시 무료) · 소원 부적: 복떡 50개 · 100일 등불: 복떡 150개(v0.75부터 돈으로는 팔지 않음)
 export const COMPAT_COST = 2;
 export const CHARM_TTEOK = 50;
-export const CHARM_PRICE = 990;
+export const CHARM_PRICE = 990; // v0.75부터 판매 안 함(토스 심사 「부적 입점 불가」) — 예전 기록·문서 비교용
+export const LANTERN_TTEOK = 150; // v0.75 100일 등불도 복떡으로만(사용자 결정 2026-11-18)
+export const charmTteokCost = (kind) => (kind === 'lantern' ? LANTERN_TTEOK : CHARM_TTEOK);
 export const friendKey = (fr) => `${fr.calendar || 'solar'}-${fr.year}-${fr.month}-${fr.day}`;
 export const compatOpen = (store, key) => !!norm(store).compat?.[key];
 /** 새 친구 궁합 열기: 이미 연 친구면 무료 */
@@ -149,9 +151,9 @@ export function grandfatherCompat(store, keys) {
   for (const k of keys) compat[k] = true;
   return { ...s, compat };
 }
-/** 소원 부적·태우기 부적을 복떡 50개로 */
+/** 소원 부적(복떡 50개)·100일 등불(복떡 150개)·태우기 부적을 복떡으로 */
 export function useCharmTteok(store, kind) {
-  const s = norm(store);
-  if (s.balance < CHARM_TTEOK) return { store: s, ok: false, need: CHARM_TTEOK - s.balance };
-  return { store: addLog(s, kind === 'wish' ? '소원 부적' : '나쁜 기운 태우기 부적', -CHARM_TTEOK), ok: true };
+  const s = norm(store); const cost = charmTteokCost(kind);
+  if (s.balance < cost) return { store: s, ok: false, need: cost - s.balance };
+  return { store: addLog(s, kind === 'wish' ? '소원 부적' : kind === 'lantern' ? '100일 등불' : '나쁜 기운 태우기 부적', -cost), ok: true, cost };
 }

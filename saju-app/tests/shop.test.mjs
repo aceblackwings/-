@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { emptyShop, owns, priceOf, grant, yearKey, compatKey, bundleKey, grantBundle, useCompatCredit, compatCredits } from '../js/shop.js';
+import { VIEW_DAYS, viewUntil, expired, markOpened, emptyShop, owns, priceOf, grant, yearKey, compatKey, bundleKey, grantBundle, useCompatCredit, compatCredits } from '../js/shop.js';
 import { PRODUCTS, bundleWorth } from '../js/premium.js';
 import { gift, emptyTteok } from '../js/tteok.js';
 
@@ -49,5 +49,20 @@ t('산 기록은 한 번만, 다시 사도 그대로', () => {
 t('궁합 키는 친구 생일로(이름 없이) 정해짐', () => {
   assert.equal(compatKey({ name: '가', calendar: 'lunar', year: 1990, month: 3, day: 4 }), compatKey({ name: '나', calendar: 'lunar', year: 1990, month: 3, day: 4 }));
   assert.notEqual(compatKey({ year: 1990, month: 3, day: 4 }), compatKey({ calendar: 'lunar', year: 1990, month: 3, day: 4 }));
+});
+t('v0.75 열람 기간: 토스로 산 정통사주는 결제일부터 180일(1년 미만) · 지나면 닫힘 · 다시 사면 새 기간 · 처음 연 시각', () => {
+  assert.equal(VIEW_DAYS, 180); assert.ok(VIEW_DAYS < 365);
+  const day = 24 * 60 * 60 * 1000; const t0 = Date.UTC(2026, 11, 22);
+  let s = grant(emptyShop(), 'life', { paid: 2900, via: 'toss', days: VIEW_DAYS, at: t0, orderId: 'z12-life-a' }).store;
+  assert.equal(viewUntil(s, 'life'), t0 + 180 * day);
+  assert.equal(owns(s, 'life', t0 + 179 * day), true); assert.equal(owns(s, 'life', t0 + 180 * day), false);
+  assert.equal(expired(s, 'life', t0 + 181 * day), true); assert.equal(expired(s, 'life', t0), false);
+  assert.equal(grant(s, 'life', { days: VIEW_DAYS, at: t0 + day }).already, true, '열람 중에는 다시 기록하지 않음');
+  const again = grant(s, 'life', { paid: 2900, via: 'toss', days: VIEW_DAYS, at: t0 + 200 * day }).store;
+  assert.equal(owns(again, 'life', t0 + 300 * day), true, '기간이 끝난 뒤 다시 사면 새 180일');
+  assert.equal(s.owned.life.openedAt, undefined);
+  s = markOpened(s, 'life', t0 + 5); assert.equal(s.owned.life.openedAt, t0 + 5);
+  assert.equal(markOpened(s, 'life', t0 + 99).owned.life.openedAt, t0 + 5, '처음 연 시각은 바뀌지 않음');
+  assert.equal(owns(grant(emptyShop(), 'year:2027').store, 'year:2027', t0 + 9999 * day), true, '기간 없는 예전 기록은 그대로');
 });
 console.log(`shop: ${pass} passed`);

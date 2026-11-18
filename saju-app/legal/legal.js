@@ -1,6 +1,6 @@
 // v0.65 약관 페이지 공통: 사업자 정보 채우기 + (환불 규정) 이 기기의 결제 내역 보여 주기
 import { fillBiz, BIZ } from '../js/site.js';
-import { PAY_PRODUCTS } from '../js/pay.js';
+import { PAY_PRODUCTS, productName } from '../js/pay.js';
 
 fillBiz(document, BIZ);
 const won = (n) => `${Number(n).toLocaleString('ko-KR')}원`;
@@ -20,7 +20,7 @@ if (box) {
     const tb = document.createElement('tbody');
     paid.forEach((x) => {
       const tr = document.createElement('tr');
-      const cells = [new Date(x.at).toLocaleDateString('ko-KR'), PAY_PRODUCTS[x.kind]?.name || x.kind, won(x.price), x.orderId];
+      const cells = [new Date(x.at).toLocaleDateString('ko-KR'), productName(x.kind), won(x.price), x.orderId];
       cells.forEach((c) => { const td = document.createElement('td'); td.textContent = c; tr.appendChild(td); });
       const td = document.createElement('td');
       if (/^https:\/\//.test(x.receipt || '')) { const a = document.createElement('a'); a.href = x.receipt; a.target = '_blank'; a.rel = 'noopener'; a.textContent = '보기'; td.appendChild(a); } else td.textContent = '-';
