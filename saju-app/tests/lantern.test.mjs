@@ -73,11 +73,11 @@ test('누구를 위한 소원: 정리·부적 글자', () => {
   assert.equal(PAY_GETS.lantern.length, 4); PAY_GETS.lantern.forEach((s) => assert.deepEqual(toneProblems(s), []));
 });
 
-test('v0.75 값: 소원 부적 복떡 50 · 등불 복떡 150 · 돈 결제 없음 · 걱정 태우기 무료 하루 한 번', () => {
-  assert.equal(CHARM_TTEOK, 50); assert.equal(LANTERN_TTEOK, 150);
-  assert.equal(charmTteokCost('wish'), 50); assert.equal(charmTteokCost('lantern'), 150);
-  assert.equal(useCharmTteok({ balance: 149 }, 'lantern').ok, false, '등불은 150개가 있어야');
-  const used = useCharmTteok({ balance: 150 }, 'lantern'); assert.equal(used.ok, true); assert.equal(used.store.balance, 0);
+test('v0.75 값: 소원 부적 복떡 50 · 등불 복떡 100 · 돈 결제 없음 · 걱정 태우기 무료 하루 한 번', () => {
+  assert.equal(CHARM_TTEOK, 50); assert.equal(LANTERN_TTEOK, 100);
+  assert.equal(charmTteokCost('wish'), 50); assert.equal(charmTteokCost('lantern'), 100);
+  assert.equal(useCharmTteok({ balance: 99 }, 'lantern').ok, false, '등불은 100개가 있어야');
+  const used = useCharmTteok({ balance: 100 }, 'lantern'); assert.equal(used.ok, true); assert.equal(used.store.balance, 0);
   let st = {}; assert.ok(L.canBurnToday(st, '2026-11-6'));
   st = L.markBurned(st, '2026-11-6'); assert.ok(!L.canBurnToday(st, '2026-11-6')); assert.ok(L.canBurnToday(st, '2026-11-7'));
   assert.deepEqual(Object.keys(st).sort(), ['count', 'last'], '걱정 글은 저장하지 않음');

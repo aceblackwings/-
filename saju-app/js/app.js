@@ -5929,7 +5929,7 @@ function bindWishForm(panel) {
   t?.addEventListener('input', keep); d?.addEventListener('change', keep);
   $$('[data-wish-rec]', panel).forEach((b) => b.addEventListener('click', () => { t.value = b.dataset.wishRec; keep(); }));
 }
-/** v0.64 결제 창(인장 찍는 순간): (v0.75부터 복떡만) 소원 부적 복떡 50개 · 100일 등불 복떡 150개 · 걱정 태우기는 무료라 결제 없음
+/** v0.64 결제 창(인장 찍는 순간): (v0.75부터 복떡만) 소원 부적 복떡 50개 · 100일 등불 복떡 100개 · 걱정 태우기는 무료라 결제 없음
  *  v0.60: 받는 것 4줄 + 부적 미리보기(preview = paidCharmSVG 데이터) */
 /** v0.65 토스페이먼츠 결제창 SDK(처음 결제할 때만 불러옴) */
 let tossLoading = null;
@@ -6049,7 +6049,7 @@ function openLifePay(notice = '') {
   });
 }
 /** v0.75 부적·등불 완성 창(토스 심사 「부적 상품 입점 불가」 → 돈 결제 없앰, 사용자 결정 2026-11-18):
- *  소원 부적 = 복떡 50개 · 100일 등불 = 복떡 150개. 복떡은 습관 체크·코디로 모으는 무료 재화(돈으로 팔지 않음) */
+ *  소원 부적 = 복떡 50개 · 100일 등불 = 복떡 100개. 복떡은 습관 체크·코디로 모으는 무료 재화(돈으로 팔지 않음) */
 function openCharmPay(kind, onOk, onCancel = () => {}, preview = null) {
   document.querySelectorAll('.pay-modal').forEach((x) => x.remove());
   const lantern = kind === 'lantern'; const cost = charmTteokCost(kind);
