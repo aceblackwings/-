@@ -173,6 +173,63 @@ function fieldBlock(y, key, label, ctx, focus) {
  * 그해 상세판
  * @param ctx { y yearOf(그해), thisYear, saju, gyeok, name, gender, concern, nextDaewoon, calib, booklet(무료 책자 buildBooklet 결과) }
  */
+// ---------- v0.76 1장 · 조심할 일과 넘는 법(2026-11-18 사용자 「결제의 만족을 느낄 수 있게, 이해하기 쉽고 상세하게」) ----------
+// 조심할 일마다: 왜 생길까 → 이런 장면에서 알아채요 → ① 미리 ② 그 순간 ③ 지나고 나서 → 좋은 운으로 바꾸기 → 언제
+const CRISIS = {
+  sanggwan: { signs: '회의에서 「그건 아니죠」가 먼저 나오거나, 윗사람의 지시가 유난히 거슬리고 답장을 바로 쓰고 싶어질 때예요.', moment: '말하기 전에 숨을 세 번 쉬고 「생각을 정리해서 다시 말씀드릴게요」 한마디로 자리를 넘기세요.', after: '하루 지나 할 말을 「사실 · 내 생각 · 바라는 것」 세 줄로 정리해 글로 전하세요.', turn: '같은 솔직함도 글과 제안으로 바꾸면 「일 잘하는 사람」이라는 평가로 돌아와요. 올해 쓴소리를 개선안으로 만들어 내면 오히려 자리가 넓어져요.' },
+  gunGeop: { signs: '「이번에만 빌려줄래?」 「같이 하면 확실해」 같은 말이 들리거나, 모임에서 내가 계산하는 일이 잦아질 때예요.', moment: '그 자리에서 답하지 말고 「집에 가서 생각해 볼게」라고 말하세요. 큰돈은 하루 뒤에 정해도 늦지 않아요.', after: '빌려준 돈과 함께 낸 돈은 금액과 날짜를 메모장에 적고, 한 달에 한 번 확인하세요.', turn: '돈 기회 자체는 들어오는 해예요. 나누는 대신 내 이름으로 작게 시작하면 들어온 기회가 고스란히 내 몫이 돼요.' },
+  bigeopMoney: { signs: '경조사·모임 연락이 한 달에 몇 번씩 겹치거나, 같은 자리를 노리는 사람이 눈에 띌 때예요.', moment: '지출은 「이번 달 상한」 안에서만 정하고, 경쟁 자리에서는 남보다 내 강점 한 가지에 집중하세요.', after: '달마다 마지막 날, 꼭 필요했던 지출 · 줄일 수 있었던 지출 · 다음 달 상한을 세 줄로 적어 보세요.', turn: '경쟁은 내 실력을 보여 줄 무대이기도 해요. 같은 기운의 사람과 손을 잡으면 혼자보다 큰 일을 해낼 수 있어요.' },
+  jaeGeukIn: { signs: '공부·자격 준비보다 돈 버는 일이 급해 보이거나, 서류를 대충 넘기고 싶어질 때예요. 어머니나 어른의 목소리가 지쳐 들리는 것도 신호예요.', moment: '서명하거나 돈을 보내기 전에 「한 번 더 읽기」를 습관으로 두고, 모르는 조항은 그 자리에서 물어보세요.', after: '중요한 서류는 사진으로 찍어 한 폴더에 모아 두고, 공부 계획은 하루 20분이라도 다시 이어 가세요.', turn: '돈과 배움을 함께 챙기면 올해 번 것이 오래 남아요. 수입의 일부를 자격이나 공부에 쓰는 것이 이 해를 좋은 운으로 바꾸는 가장 확실한 방법이에요.' },
+  doSik: { signs: '의욕이 아침과 저녁에 다르고, 시작한 일을 며칠 만에 내려놓고 싶어지거나 끼니를 자주 거를 때예요.', moment: '그만두고 싶을 때는 「오늘 10분만」으로 줄여서 이어 가세요. 끊기지 않는 것이 크기보다 중요해요.', after: '4주가 끝날 때마다 해낸 것 세 가지를 적고, 다음 4주 목표를 하나만 정하세요.', turn: '생각과 직감이 깊어지는 해라, 꾸준함만 붙이면 남들이 못 보는 아이디어가 결과로 이어져요.' },
+  gwansal: { signs: '할 일이 동시에 세 개 넘게 쌓이고, 누구 말을 먼저 들어야 할지 헷갈릴 때예요.', moment: '「꼭 · 나중 · 안 함」 세 칸에 나눠 적고, 오늘은 「꼭」 칸 하나만 끝내세요.', after: '주말에 맡은 일과 거절한 일을 한 번 돌아보고, 다음 주에 맡을 양을 미리 정하세요.', turn: '책임이 몰린다는 것은 그만큼 나를 찾는 사람이 많다는 뜻이에요. 우선순위를 분명히 하면 올해의 책임이 그대로 평가와 자리로 이어져요.' },
+  overwork: { signs: '아침에 일어나기가 유난히 힘들고, 주말에도 일 생각이 떠나지 않거나 작은 일에 짜증이 날 때예요.', moment: '그날 일정 하나를 과감히 미루고, 30분 일찍 잠자리에 드세요.', after: '일주일에 하루는 「아무 약속 없는 날」로 달력에 먼저 적어 두세요.', turn: '일이 잘 들어오는 해예요. 체력을 먼저 챙긴 사람이 들어온 기회를 끝까지 내 것으로 만들어요.' },
+  tooStrong: { signs: '「내가 제일 잘 알아」라는 생각이 들거나, 다른 사람의 의견이 귀찮게 느껴질 때예요.', moment: '결정하기 전에 「혹시 내가 놓친 게 있을까요?」 한마디만 물어보세요.', after: '한 달에 한 번, 믿는 사람에게 나에 대한 솔직한 한마디를 들어 보세요.', turn: '자신감이 큰 해라 밀고 나가는 힘이 뛰어나요. 남의 말 한 스푼만 더하면 그 힘이 실수 없이 성과로 이어져요.' },
+  dwClash: { signs: '직장·집·관계 가운데 한 곳에서 「이대로는 안 되겠다」는 마음이 강하게 들 때예요.', moment: '바로 그만두거나 옮기지 말고, 바꾸고 싶은 이유를 세 가지 적은 뒤 한 달을 기다려 보세요.', after: '바꾸기로 정했다면 좋은 달에 맞춰 석 달의 준비 기간을 두고 하나씩 옮기세요.', turn: '판이 크게 바뀌는 해는 준비한 사람에게 도약의 해예요. 미리 계획한 변화는 몇 년 치 성장을 한 번에 가져와요.' },
+  health: { signs: '평소보다 쉽게 피곤하거나, 그 부위가 뻐근하고 무거운 느낌이 며칠 이어질 때예요.', moment: '그날은 무리한 운동이나 야근을 줄이고, 물 한 잔과 가벼운 스트레칭으로 몸을 풀어 주세요.', after: '불편함이 일주일 넘게 이어지면 미루지 말고 병원에서 확인받으세요.', turn: '몸을 아끼는 습관 하나가 한 해 전체의 체력이 돼요. 몸이 가벼우면 들어오는 기회도 더 오래 붙잡을 수 있어요.' },
+  clash: { signs: '이사·이직·관계 이야기가 갑자기 나오거나, 지금 자리가 답답하게 느껴질 때예요.', moment: '바로 정하지 말고 「언제 · 어디로 · 왜」 세 가지를 적어 본 뒤 가족이나 믿는 사람과 이야기하세요.', after: '움직이기로 했다면 좋은 달에 날짜를 맞추고, 준비할 것을 목록으로 만들어 하나씩 지워 가세요.', turn: '움직임은 준비한 사람에게 더 좋은 자리로 옮길 기회가 돼요.' },
+  punish: { signs: '서류 마감·보험·신고 일이 겹치거나, 몸이 작은 신호를 보낼 때예요.', moment: '서류는 받은 날 바로 사진을 찍어 두고, 몸의 신호는 미루지 말고 메모해 두세요.', after: '마감 1주 전에 끝내는 습관을 한 해 동안 이어 가세요.', turn: '다듬는 기운은 허술한 곳을 미리 고치게 해 줘요. 올해 정리한 서류와 습관이 다음 해의 든든한 바탕이 돼요.' },
+  harm: { signs: '가까운 사람의 말이 서운하게 들리거나, 전해 들은 말에 마음이 상할 때예요.', moment: '서운한 마음은 그 자리에서 말하지 말고, 「내가 이렇게 들었는데 맞아?」 하고 확인부터 하세요.', after: '하루 지나 부드러운 말로 마음을 전하고, 고마웠던 일도 함께 이야기하세요.', turn: '오해를 잘 풀고 나면 관계는 오히려 더 단단해져요.' },
+  break: { signs: '세워 둔 계획이 남의 사정으로 바뀌거나, 일정이 자꾸 밀릴 때예요.', moment: '계획이 바뀌면 미리 적어 둔 두 번째 방법으로 바로 갈아타세요.', after: '바뀐 계획에서 배운 점 한 줄을 적어 두세요.', turn: '깨고 다시 맞추는 기운이라, 더 나은 방법을 찾게 되는 해이기도 해요.' },
+  base: { signs: '평소와 다른 일이 겹치거나 마음이 조급해질 때예요.', moment: '그 자리에서 정하지 말고 하룻밤 생각한 뒤 정하세요.', after: '한 달에 한 번 일정과 지출을 다시 정리하세요.', turn: '미리 알고 준비하면 작게 지나가고, 그 경험이 다음 기회의 밑거름이 돼요.' },
+};
+export const crisisOf = (key = '') => CRISIS[key] || CRISIS[(String(key).match(/^rel-(\w+)-/) || [])[1]] || CRISIS.base;
+const plainTitle = (t) => t.replace(/\s*\([^)]*\)$/, '');
+function crisisChapter(risk, checks, ctx, ranked, used) {
+  const { y, saju } = ctx; const L = ELEMENT_LUCK[saju.yongsin];
+  const watch = checks.filter((c) => c.kind === 'watch').slice(0, 4); watch.forEach((c) => used.add(c.key));
+  const good = checks.filter((c) => c.kind === 'good').slice(0, 2); good.forEach((c) => used.add(c.key));
+  const keep = (risk?.blocks || []).filter((b) => !b.cliff && /^(⚠️|🚫)/.test(b.h || ''));
+  const watchBlocks = watch.map((c, i) => { const C = crisisOf(c.key); return { h: `🔎 ${i + 1}. ${plainTitle(c.title)}`, paras: [
+    `왜 생길까: ${sentence(c.text)}`,
+    `이런 장면에서 알아채요: ${C.signs}`,
+    `① 미리 준비: ${sentence(c.act)}`,
+    `② 그 순간에는: ${C.moment}`,
+    `③ 지나고 나서: ${C.after}`,
+    `🌈 좋은 운으로 바꾸기: ${C.turn}`,
+    c.when ? `📅 특히 ${c.when}에 한 번 더 챙겨 보세요.` : '📅 한 해 내내 가볍게 기억해 두면 충분해요.',
+  ] }; });
+  const slowBlocks = ranked.slice(-2).map(({ m, i }) => {
+    const md = monthDays(saju, plusDays(m.start, 3), ctx.gender);
+    return { h: `🍵 ${m.solarMonth}월(${monthRange(y.months, i)})을 지나는 법`, paras: [
+      `이 달은 「${GOD_READING[m.god].keyword}」의 기운이 들어오는 한 해 가운데 가장 차분한 달이에요. ${sentence(GOD_READING[m.god].watch[0])}`,
+      `이렇게 지나요: ${WATCH_ACT[m.god]} 새 일·큰 결제·계약은 다음 달로 미루고, 하던 일을 마무리하는 데 힘을 쓰세요.`,
+      `날짜 고르기: 꼭 정해야 할 일이 있다면 이 달 안에서도 흐름이 좋은 ${md.best.map((d) => dayText(d.date)).join(', ')}에 맞추고, ${md.caution.map((d) => dayText(d.date)).join(', ')}에는 일정을 가볍게 두세요.`,
+      '좋은 운으로 바꾸기: 쉬어 가는 달에 정리해 둔 것이 다음 좋은 달에 바로 쓰여요. 이 달은 멈추는 달이 아니라 다음 걸음을 위해 숨을 고르는 달이에요.',
+    ] };
+  });
+  const guard = { h: '🧭 마음이 흔들릴 때 꺼내 보는 세 줄', paras: [
+    '① 큰 결정은 하룻밤 미뤄요. 하루 뒤에도 같은 마음이면 그때 정해도 늦지 않아요.',
+    '② 믿는 사람 한 명에게 소리 내어 말해요. 말로 꺼내는 순간 생각이 정리돼요.',
+    `③ 내게 필요한 기운을 곁에 둬요. ${L.color} 계열 물건 하나, ${L.direction} 자리, ${josa(L.food, '이/가')} 마음을 다시 가라앉혀 줘요.`,
+  ] };
+  const chance = good.map((c) => ({ h: `🌟 놓치지 말 기회 · ${plainTitle(c.title)}`, paras: [sentence(c.text), `👉 이렇게 잡아요: ${sentence(c.act)}${c.when ? ` 특히 ${c.when}이 좋아요.` : ''}`, '조심할 일을 차분히 넘긴 힘이 그대로 이 기회를 붙잡는 힘이 돼요.'] }));
+  return {
+    key: 'risk', h: `1장 · ${y.sajuYear}년 조심할 일, 이렇게 넘어요`,
+    intro: '조심할 일은 겁낼 일이 아니라 미리 보는 일기 예보예요. 조심할 일마다 왜 생기는지, 어떤 장면에서 알아채는지, 미리 · 그 순간 · 지나고 나서 무엇을 하면 되는지, 그리고 그 일을 어떻게 좋은 운으로 바꾸는지 차례로 적었어요.',
+    blocks: [...keep, ...watchBlocks, ...slowBlocks, guard, ...chance],
+  };
+}
+
 export function buildPremiumYear(ctx) {
   const { y, saju, name = '', concern = null, nextDaewoon = null, calib = null } = ctx;
   const who = name ? `${name} 님` : '당신';
@@ -191,12 +248,36 @@ export function buildPremiumYear(ctx) {
       ...(ctx.skip ? [] : [`🎬 ${y.sajuYear}년 12월의 어느 저녁, ${josa(who, '은/는')} 달력을 넘기다 ${best[0]}월 칸의 메모를 보고 웃게 될지도 몰라요. 「그때 시작하길 정말 잘했다.」 쉽게 말하면, ${best[0]}월은 올해 가장 좋은 달이니 미뤄 둔 일은 이 달에 시작하세요.`,
       `${who}, ${y.sajuYear}년은 ${PLAIN_GOD[god]}이 들어오는 해예요. 한 줄로 말하면 「${GOD_READING[god].keyword}」의 해예요. 이 책은 올해 무엇을 하고 무엇을 피하면 되는지, 그리고 그 이유를 차례로 알려 드려요.`]),
       `흐름이 가장 좋은 세 달은 ${best.join('·')}월, 속도를 늦추고 다지기 좋은 두 달은 ${slow.join('·')}월이에요.${yong.length ? ` 그리고 ${yong.join('·')}월은 ${who}에게 가장 필요한 ${EL_NAME[saju.yongsin]} 기운이 하늘에서 내려오는 달이라, 몸과 마음이 한결 편해요.` : ''}`,
-      '바로 다음 「한눈에 정리」에 올해 할 일·피할 일·좋은 달을 모아 두었어요. 1장부터 6장까지는 그 이유와 방법, 7장은 열두 달, 8장은 분야별 전략이에요. 어려운 계산 근거는 맨 뒤 부록에 있어요. 점수는 무료 화면과 같은 값이에요.',
+      '바로 다음 「한눈에 정리」에 올해 할 일·피할 일·좋은 달을 모아 두었어요. 1장은 올해 조심할 일이 왜 생기고 어떤 장면에서 알아채며 어떻게 넘는지, 2장은 위기를 좋은 운으로 바꾸는 실천법이에요. 3장부터 6장까지는 들어오는 기운·지난해의 이유·사람·돈과 일, 7장은 열두 달, 8장은 분야별 전략이에요. 어려운 계산 근거는 맨 뒤 부록에 있어요. 점수는 무료 화면과 같은 값이에요.',
     ] }],
   });
 
   const checks = yearChecks(y, saju, { gender: ctx.gender, calib });
-  sections.push(...yearStoryChapters({ ...ctx, checks }));
+  // v0.76(사용자 「조심할 부분을 상세하게, 어떻게 행동하면 위기를 넘고 좋은 운을 가져오는지부터」): 장 순서를 바꿔 1장 = 조심할 일과 넘는 법, 2장 = 실천법
+  const story = Object.fromEntries(yearStoryChapters({ ...ctx, checks }).map((x) => [x.key, x]));
+  const RENUM = { 1: 3, 2: 4, 3: 1, 4: 5, 5: 6, 6: 2 }; // 예전 장 번호 → 새 장 번호(본문 속 「6장」 같은 참조도 함께)
+  const renum = (t) => String(t).replace(/(?<![\d~])([1-6])장(?! · )/g, (m, n) => `${RENUM[n]}장`);
+  const body = (x, h) => ({ ...x, h, intro: x.intro ? renum(x.intro) : x.intro, blocks: x.blocks.filter((b) => !b.cliff).map((b) => ({ ...b, paras: b.paras.map(renum) })) });
+  const used = new Set();
+  const ordered = [
+    crisisChapter(story.risk, checks, ctx, ranked, used),
+    body(story.fix, '2장 · 위기를 좋은 운으로 바꾸는 실천법'),
+    body(story.wind, `3장 · ${y.sajuYear}년에 들어오는 기운`),
+    body(story.why, '4장 · 요즘 마음이 무거웠던 이유'),
+    body(story.people, '5장 · 올해 도움이 되는 사람과 인연'),
+    body(story.money, '6장 · 돈과 일: 나에게 맞는 분야'),
+  ];
+  const nextLine = [
+    '다음 장에서는 위기를 좋은 운으로 바꾸는 실천법과 한 달 실천표를 알려 드려요.',
+    `다음 장에서는 ${y.sajuYear}년에 들어오는 기운과 주변 사람이 보는 나를 알려 드려요.`,
+    `다음 장에서는 ${y.sajuYear - 1}년에 유난히 힘들었던 이유를 알려 드려요.`,
+    `다음 장에서는 올해 ${who}에게 도움이 되는 사람과 띠, 연애운이 좋은 달을 알려 드려요.`,
+    `다음 장에서는 ${who}에게 맞는 일·사업 분야와 돈 흐름이 좋은 달을 알려 드려요.`,
+    `다음 장에서는 ${y.months[0].solarMonth}월부터 열두 달을 한 달씩 풀어 드려요.`,
+  ];
+  ordered.forEach((x, i) => x.blocks.push({ cliff: true, paras: [nextLine[i]] }));
+  if (story.brief) sections.push(story.brief);
+  sections.push(...ordered);
 
   sections.push({
     key: 'months', h: '7장 · 열두 달 이야기', intro: '절기가 바뀌는 날(입춘·경칩…)을 달의 시작으로 봐요. 🌟는 흐름이 좋은 달, 🍵는 새 일을 미루고 쉬어 갈 달이에요.',
@@ -211,15 +292,9 @@ export function buildPremiumYear(ctx) {
   });
 
   // 부록: 조심할 점 전체(계산 근거와 함께) + 쉬어 갈 달의 쉬어 갈 날
-  const cautionBlocks = checks.map((c) => ({ h: `${{ watch: '⚠️ 조심', good: '🌟 기회', note: '📌 참고' }[c.kind]} · ${c.title}`, paras: [sentence(c.text), `👉 ${sentence(c.act)}${c.when ? ` 특히 ${c.when}에 한 번 더 챙겨 보세요.` : ''}`] }));
-  const slowBlocks = ranked.slice(-2).map(({ m, i }) => {
-    const md = monthDays(saju, plusDays(m.start, 3), ctx.gender);
-    return { h: `🍵 ${m.solarMonth}월(${monthRange(y.months, i)})을 지나는 법`, paras: [
-      `이 달은 ${m.god}, 「${GOD_READING[m.god].keyword}」의 기운이 들어오는 한 해 가운데 가장 차분한 달이에요. ${sentence(GOD_READING[m.god].watch[0])}`,
-      `대비: ${WATCH_ACT[m.god]} 큰 결정이 필요하다면 이 달 안에서도 흐름이 좋은 ${md.best.map((d) => dayText(d.date)).join(', ')}에 맞추고, ${md.caution.map((d) => dayText(d.date)).join(', ')}에는 일정을 가볍게 두세요.`,
-    ] };
-  });
-  const appendix = { key: 'basis', appendix: true, h: '부록 · 풀이의 근거(궁금한 분만)', intro: '본문에 쓴 이야기가 어떤 계산에서 나왔는지 사주 용어 그대로 적었어요.', blocks: [...slowBlocks, ...cautionBlocks] };
+  const cautionBlocks = checks.filter((c) => !used.has(c.key)).map((c) => ({ h: `${{ watch: '⚠️ 조심', good: '🌟 기회', note: '📌 참고' }[c.kind]} · ${c.title}`, paras: [sentence(c.text), `👉 ${sentence(c.act)}${c.when ? ` 특히 ${c.when}에 한 번 더 챙겨 보세요.` : ''}`] }));
+  // 쉬어 갈 두 달을 지나는 법은 v0.76부터 1장(crisisChapter)으로 옮김
+  const appendix = { key: 'basis', appendix: true, h: '부록 · 풀이의 근거(궁금한 분만)', intro: '본문에 쓴 이야기가 어떤 계산에서 나왔는지 사주 용어 그대로 적었어요.', blocks: [...cautionBlocks] };
 
   // 나만의 보정: 대운 교차·교운기, 지난 일 보정, 용신 쓰는 법(계절별)
   const own = [];

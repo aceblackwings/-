@@ -455,7 +455,7 @@ export function bookletStory(ctx) {
       { h: wind.h, paras: [...wind.blocks[0].paras, ...(wind.blocks.find((b) => b.h?.startsWith('👀'))?.paras || [])] },
       { h: why.h, paras: why.blocks[0].paras.slice(0, 1) },
     ],
-    cliff: `여기까지가 한눈에 보는 요약이에요. 조심할 일 ${trapN}가지가 생기는 이유와 대비법, 도움이 되는 사람과 띠, 나에게 맞는 일·사업 분야 6가지, 열두 달의 장면은 맨 아래 「자세히 보기」에서 이어서 볼 수 있어요.`,
+    cliff: `여기까지가 한눈에 보는 요약이에요. 조심할 일이 생기는 이유와 넘는 법, 도움이 되는 사람과 띠, 나에게 맞는 일·사업 분야 6가지, 열두 달의 장면은 바로 아래 「자세히 보기」에서 이어서 볼 수 있어요.`,
     yong: saju.yongsin,
   };
 }

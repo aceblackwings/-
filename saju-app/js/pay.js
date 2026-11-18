@@ -4,20 +4,22 @@
 // 원칙: 금액은 주문 번호의 상품 종류로 서버가 다시 계산(verifyOrder). 승인하지 않은 결제는 토스가 자동 취소해 돈이 나가지 않음.
 // 이름·생년월일은 서버로 보내지 않는다(주문 이름은 상품 이름만). 테스트 tests/pay.test.mjs
 // v0.75(2026-11-18 토스 심사 「부적 상품 입점 불가 · 무형 서비스는 1년 미만」 → 사용자 결정 A안):
-//   돈으로 파는 것은 「평생 정통사주 자세히 보기」 하나(2,900원, 결제일부터 6개월 열람 — shop.js VIEW_DAYS).
+//   돈으로 파는 것은 「평생 정통사주 자세히 보기」(2,900원)·v0.76 「신년운세 자세히 보기」(990원)( 결제일부터 6개월 열람 — shop.js VIEW_DAYS).
 //   소원 부적·100일 등불은 복떡으로만 만든다(tteok.js CHARM_TTEOK·LANTERN_TTEOK). 예전 주문 종류 이름은 PAST_PRODUCTS(결제 내역 표시용)
 // 가격은 premium.js PRODUCTS.life.price와 같아야 함(tests/pay.test.mjs) — 승인 함수가 가볍도록 여기서는 숫자로 둠
 export const LIFE_PRICE = 2900;
+export const YEAR_PRICE = 990; // v0.76(2026-11-18 사용자 「2027년 운세 자세히 보기를 990원으로」) — premium.js PRODUCTS.year.price와 같음
 
 export const PAY_PRODUCTS = {
   life: { price: LIFE_PRICE, name: '평생 정통사주 종합 풀이', desc: '여덟 글자를 처음부터 끝까지 풀어 쓴 디지털 보고서. 결제일부터 6개월 동안 이 기기에서 볼 수 있어요.' },
+  year: { price: YEAR_PRICE, name: '신년운세 자세히 보기', desc: '그해 열두 달과 분야별 흐름을 풀어 쓴 디지털 보고서. 결제일부터 6개월 동안 이 기기에서 볼 수 있어요.' },
 };
 /** 판매를 멈춘 예전 상품 이름(이 기기의 결제 내역에만 보임) */
 export const PAST_PRODUCTS = { wish: '소원 부적', lantern: '100일 소원 등불' };
 export const productName = (kind) => PAY_PRODUCTS[kind]?.name || PAST_PRODUCTS[kind] || kind;
 export const PENDING_KEY = 'unmyeong2099.payorder';
 export const PENDING_MAX_MS = 24 * 60 * 60 * 1000; // 하루 지난 주문은 버림
-const ID_RE = /^z12-(life)-[a-z0-9]{6,12}-[a-z0-9]{6,16}$/;
+const ID_RE = /^z12-(life|year)-[a-z0-9]{6,12}-[a-z0-9]{6,16}$/;
 
 /** 주문 번호: z12-종류-시각-무작위 (토스 규칙: 영문·숫자·-·_ 6~64자) */
 export function makeOrderId(kind, now = Date.now(), rand = Math.random) {

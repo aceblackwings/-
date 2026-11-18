@@ -452,10 +452,11 @@ function initForm() {
   fillBiz(document);
   if (IN_APP) { document.documentElement.classList.add('in-app'); setupAppShell(); }
   if (!IN_APP) setTimeout(resumePay, 0); // 모듈이 끝까지 준비된 뒤에(아래쪽 상수들을 쓰므로)
-  // v0.75 상품 안내 페이지의 「결제창 보기」(?buy=life): 생년월일을 넣지 않아도 결제 창까지 바로(토스 심사 「결제창 확인 경로」)
-  if (!IN_APP && qs.get('buy') === 'life' && !qs.has('pay')) {
+  // v0.75·v0.76 상품 안내 페이지의 「결제창 보기」(?buy=life · ?buy=year): 생년월일을 넣지 않아도 결제 창까지 바로(토스 심사 「결제창 확인 경로」)
+  const buy = qs.get('buy');
+  if (!IN_APP && ['life', 'year'].includes(buy) && !qs.has('pay')) {
     qs.delete('buy'); history.replaceState(null, '', `${location.pathname}${qs.toString() ? `?${qs}` : ''}${location.hash}`);
-    setTimeout(() => openLifePay(), 0);
+    setTimeout(() => openReportPay(buy), 0);
   }
   // v0.71.1 결제창에서 브라우저 뒤로 가기로 돌아오면 페이지가 저장된 채로 되살아나(bfcache) init이 다시 돌지 않음 → 열려 있던 결제 창을 닫고 이어서 처리
   window.addEventListener('pageshow', (e) => { if (!e.persisted || IN_APP) return; document.querySelectorAll('.pay-modal').forEach((x) => x.remove()); resumePay(); });
@@ -2184,13 +2185,13 @@ function bookletHTML(bd = bookletData()) {
       <p class="bk-hook"><b>쉽게 말하면,</b> ${esc(PT(st.hook))}</p>
       ${briefHTML(st.brief)}
       ${st.chapters.map((c) => `<h3>${esc(PT(c.h))}</h3>${c.paras.map(P).join('')}`).join('')}
-      <p class="bk-cliff">${esc(PT(st.cliff))}</p>
+      <p class="bk-cliff">${esc(PT(IN_APP ? st.cliff.replace(/[^.]*「자세히 보기」[^.]*\./, '').trim() || st.cliff : st.cliff))}</p>
     </section>
-    <p class="bk-lead">${esc(PT(sum.lead))}</p>
+    ${IN_APP ? `<p class="bk-lead">${esc(PT(sum.lead))}</p>
     ${kaiunBoxHTML('year', b.score)}
     ${sum.general.length ? `<section class="bk-part bk-general">${sum.general.map((x) => `<h4>${esc(PT(x.h))}</h4>${x.paras.map(P).join('')}`).join('')}</section>` : ''}
-    ${checksHTML(sum.checks, b.calibText)}
-    ${premiumYearOfferHTML(bd)}
+    ${checksHTML(sum.checks, b.calibText)}` : `${premiumYearOfferHTML(bd)}
+    ${kaiunBoxHTML('year', b.score)}`}
   </article>`;
 }
 
@@ -2226,7 +2227,7 @@ function premiumYearOf(bd) {
   if (state.pyear?.key === key) return state.pyear.rep;
   const d = bd.d; const prev = d.next ? d.year : null; const ageY = bd.y.sajuYear - state.saju.input.year;
   const nextDw = d.dw?.pillars.find((p) => (p.turnAge ?? p.startAge) >= ageY && (!bd.y.daewoon || p.startAge > bd.y.daewoon.startAge)) || null;
-  const rep = buildPremiumYear({ y: bd.y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, gender: state.profile.gender, concern: state.profile.concern, nextDaewoon: nextDw, calib: retroCalibNow(d.dw), nowYear: sajuYearOf(state.fortune.date), skip: textsOf(bd.sum) });
+  const rep = buildPremiumYear({ y: bd.y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, gender: state.profile.gender, concern: state.profile.concern, nextDaewoon: nextDw, calib: retroCalibNow(d.dw), nowYear: sajuYearOf(state.fortune.date), skip: textsOf({ story: bd.sum.story, fields: bd.sum.fields }) }); // v0.76 무료 화면에 실제로 남은 글만 빼기(조심할 점·한 해의 열쇠는 이제 상세판에서만)
   state.pyear = { key, rep }; return rep;
 }
 function lifeReportNow() {
@@ -2259,14 +2260,39 @@ function bundleOfferHTML() { return ''; }
 
 /** v0.59(2026-11-06 사용자 결정 「자세히 보기 결제는 모두 삭제」): 요약판 아래 「자세히 보기」를 누르면 상세판이 무료로 열림 */
 function premiumYearOfferHTML(bd) { return premiumYearOfferBox(bd); }
+/** v0.76(2026-11-18 사용자 「요약 끝 문장 바로 아래를 자세히 보기로, 990원」): 신년운세 자세히 보기 = 유료(990원, 결제일부터 6개월 열람)
+ *  상세판은 「조심할 일과 넘는 법」부터 시작(premium.js crisisChapter). 앱(1차 무료)에서는 보이지 않음 */
 function premiumYearOfferBox(bd) {
-  const rep = premiumYearOf(bd);
-  return `<section class="hanji hj-offer owned" id="hj-year-offer"><p class="hj-eyebrow">📜 ${bd.y.sajuYear}년 운세 · 자세히 보기</p><h3>달마다·분야마다 더 자세한 풀이 ${kChars(rep.chars)}</h3><p class="hj-note">위 요약에서 말한 것은 빼고, 이유와 달마다의 장면을 이어서 풀어 드려요 · 무료</p><button type="button" class="hj-buy" data-read="year">📖 자세히 보기</button></section>`;
+  if (IN_APP) return '';
+  const rep = premiumYearOf(bd); const Y = bd.y.sajuYear; const key = yearKey(Y);
+  if (shopOwns(loadShop(), key)) {
+    const until = viewUntil(loadShop(), key);
+    return `<section class="hanji hj-offer owned" id="hj-year-offer"><p class="hj-eyebrow">📜 ${Y}년 운세 · 내 서재</p><h3>조심할 일과 넘는 법부터 열두 달까지 ${kChars(rep.chars)}</h3><p class="hj-note">${until ? `${ymd(until)}까지 이 기기에서 볼 수 있어요` : '이 기기에서 볼 수 있어요'}</p><button type="button" class="hj-buy" data-read="year">📖 자세히 보기</button></section>`;
+  }
+  const was = shopExpired(loadShop(), key);
+  return `<section class="hanji hj-offer" id="hj-year-offer"><p class="hj-eyebrow">📜 ${Y}년 운세 · 자세히 보기</p>
+    <h3>조심할 일과 넘는 법부터 열두 달까지 ${kChars(rep.chars)}</h3>
+    <p class="hj-desc">${Y}년에 조심할 일이 왜 생기는지, 어떤 장면에서 알아채고 어떻게 넘으면 좋은 운으로 바뀌는지부터 차근차근 풀어 드려요. 이어서 도움이 되는 사람과 띠, 나에게 맞는 일·사업 분야, 열두 달의 장면까지 이어져요.</p>
+    ${lifeTocHTML(rep)}
+    <p class="hj-note">${was ? '열람 기간이 끝났어요 · ' : ''}${won(PAY_PRODUCTS.year.price)} · 결제일부터 ${VIEW_DAYS / 30}개월 동안 열람 · 자동 결제 아님 · 운세 점수는 결제와 상관없이 같아요</p>
+    <button type="button" class="hj-buy" data-report-buy="year">📖 ${was ? '다시 열기' : '자세히 보기'} · ${won(PAY_PRODUCTS.year.price)}</button></section>`;
 }
 function lifeOfferHTML() { return lifeOfferBox(); }
 /** v0.75 평생 정통사주 자세히 보기 = 유일한 유료 상품(2,900원, 결제일부터 6개월 열람) — 토스 심사 대응(사용자 결정 2026-11-18)
  *  앱(1차 무료, A안)에서는 보이지 않음. 요약판(위 sajuStoryHTML)은 계속 무료 */
 const lifeOwned = () => shopOwns(loadShop(), 'life');
+/** v0.76 돈으로 여는 보고서 두 가지: 평생 정통사주(life) · 신년운세 자세히 보기(year, 그해마다 따로) */
+const PAID_REPORT = {
+  life: { icon: '🀄', head: '여덟 글자를 처음부터 끝까지', toast: '평생 정통사주' },
+  year: { icon: '📜', head: '조심할 일과 넘는 법부터 열두 달까지', toast: '신년운세 자세히 보기' },
+};
+/** 신년운세가 보여 주는 해: 프로필이 있으면 책자와 같은 해, 없으면(결제창 바로 보기) 오늘 날짜로 정함 */
+function bookletYearNow() {
+  if (state.saju && state.fortune) { const d = timelineData(); return (d.next || d.year).sajuYear; }
+  const t = new Date(); const date = { year: t.getFullYear(), month: t.getMonth() + 1, day: t.getDate() };
+  const sy = sajuYearOf(date); return showNextYear(date, sy) ? sy + 1 : sy;
+}
+const reportKey = (kind) => (kind === 'year' ? yearKey(bookletYearNow()) : kind);
 const lifeTocHTML = (rep) => `<details class="lp-toc"><summary>📑 차례 미리 보기 · ${rep.toc.length}개 장</summary>${tocHTML(rep)}</details>`;
 const ymd = (t) => { const d = new Date(t); return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`; };
 function lifeOfferBox() {
@@ -2282,7 +2308,7 @@ function lifeOfferBox() {
     <p class="hj-desc">위 요약은 계속 무료예요. 자세히 보기는 요약에서 말한 것은 빼고, 차례대로 깊이 풀어 드려요.</p>
     ${lifeTocHTML(rep)}
     <p class="hj-note">${was ? '열람 기간이 끝났어요 · ' : ''}${won(PAY_PRODUCTS.life.price)} · 결제일부터 ${VIEW_DAYS / 30}개월 동안 열람 · 자동 결제 아님 · 운세 점수는 결제와 상관없이 같아요</p>
-    <button type="button" class="hj-buy" data-life-buy>📖 ${was ? '다시 열기' : '자세히 보기'} · ${won(PAY_PRODUCTS.life.price)}</button></section>`;
+    <button type="button" class="hj-buy" data-report-buy="life">📖 ${was ? '다시 열기' : '자세히 보기'} · ${won(PAY_PRODUCTS.life.price)}</button></section>`;
 }
 function compatOfferHTML(fr) { return compatOfferBox(fr); }
 function compatOfferBox(fr) {
@@ -2345,8 +2371,11 @@ function completePay(key) {
 
 /** 읽기 화면: 한지 책자(전체 화면) */
 function openReader(kind, jump = null) {
-  if (kind === 'life' && !lifeOwned()) { if (!IN_APP) openLifePay(); return; } // v0.75 유료: 열람 기간 안에서만
-  if (kind === 'life') save(SHOP_KEY, markOpened(loadShop(), 'life'));
+  if (PAID_REPORT[kind]) { // v0.75·v0.76 유료: 열람 기간 안에서만
+    const k = reportKey(kind);
+    if (!shopOwns(loadShop(), k)) { if (!IN_APP) openReportPay(kind); return; }
+    save(SHOP_KEY, markOpened(loadShop(), k));
+  }
   const rep = kind === 'year' ? premiumYearOf(bookletData()) : kind === 'life' ? lifeReportNow() : compatReportNow();
   if (!rep) return;
   document.querySelectorAll('.hj-reader').forEach((x) => x.remove());
@@ -2359,7 +2388,7 @@ function openReader(kind, jump = null) {
       <nav class="hj-index">${rep.sections.map((s, i) => s.appendix ? '' : `<a href="#hj-s${i}" data-hj-jump="hj-s${i}">${esc(s.h)}</a>`).join('')}${rep.sections.some((s) => s.appendix) ? `<a href="#hj-appendix" data-hj-jump="hj-appendix" class="hj-ap-link">📎 부록 · 풀이의 근거</a>` : ''}</nav>
       ${rep.sections.map((s, i) => s.appendix ? '' : secHTML(s, i)).join('')}
       ${rep.sections.some((s) => s.appendix) ? `<details class="hj-appendix" id="hj-appendix"><summary>📎 부록 · 풀이의 근거 <small>사주 용어로 된 계산 근거예요. 궁금한 분만 펼쳐 보세요</small></summary>${rep.sections.map((s, i) => s.appendix ? secHTML(s, i) : '').join('')}</details>` : ''}
-      <footer class="hj-end"><p>— 끝 —</p>${kind === 'life' ? `<p class="hj-free" data-raw>🍵 여기까지 ${kChars(rep.chars)}, 끝까지 읽어 주셔서 고마워요.<small>${viewUntil(loadShop(), 'life') ? `${ymd(viewUntil(loadShop(), 'life'))}까지 이 기기에서 다시 볼 수 있어요.` : ''}</small></p>` : `<p class="hj-free" data-raw>🍵 여기까지 ${kChars(rep.chars)}, 광고 없이 무료로 읽으셨어요.<small>12지신 강림의 운세는 광고가 없어요. <a href="legal/free.html" target="_blank" rel="noopener" data-web-only>어떻게 운영하나요?</a></small></p>`}<button type="button" class="hj-buy" data-reader-close>닫기</button></footer>
+      <footer class="hj-end"><p>— 끝 —</p>${PAID_REPORT[kind] ? `<p class="hj-free" data-raw>🍵 여기까지 ${kChars(rep.chars)}, 끝까지 읽어 주셔서 고마워요.<small>${viewUntil(loadShop(), reportKey(kind)) ? `${ymd(viewUntil(loadShop(), reportKey(kind)))}까지 이 기기에서 다시 볼 수 있어요.` : ''}</small></p>` : `<p class="hj-free" data-raw>🍵 여기까지 ${kChars(rep.chars)}, 광고 없이 무료로 읽으셨어요.<small>12지신 강림의 운세는 광고가 없어요. <a href="legal/free.html" target="_blank" rel="noopener" data-web-only>어떻게 운영하나요?</a></small></p>`}<button type="button" class="hj-buy" data-reader-close>닫기</button></footer>
     </article>`;
   document.body.appendChild(box); document.body.classList.add('hj-open');
   if (jump) requestAnimationFrame(() => { const t = box.querySelector(`#${jump}`); const d = t?.closest('details'); if (d) d.open = true; t?.scrollIntoView({ block: 'start' }); });
@@ -2372,7 +2401,7 @@ document.addEventListener('click', (e) => {
   const p = e.target.closest('[data-pay]'); if (p) { e.preventDefault(); const key = p.dataset.pay; state.readerJump = p.dataset.jump || null; if (shopOwns(loadShop(), key)) { openReader(key.startsWith('bundle') ? 'year' : key.split(':')[0], state.readerJump); state.readerJump = null; } else openPay(key); return; }
   const ok = e.target.closest('[data-pay-ok]'); if (ok) { completePay(ok.dataset.payOk); return; }
   const r = e.target.closest('[data-read]'); if (r) { openReader(r.dataset.read, r.dataset.jump || null); return; }
-  if (e.target.closest('[data-life-buy]')) openLifePay();
+  const rb = e.target.closest('[data-report-buy]'); if (rb) openReportPay(rb.dataset.reportBuy);
 });
 
 // ---------- 쉬운 모드 (v0.31, easymode.js): 큰 글씨 · 쉬운 말 · 카드 3장 홈 ----------
@@ -5970,14 +5999,16 @@ function commitPaidCharm(r) {
     : `🌠 ${wishMadeLine(r.wish, wishDueLabel(r.dueKey, today), politeNow())}`;
   grow((g) => complete(g, today, 'charm', qBonus('charm')), lead);
 }
-/** v0.75 정통사주 결제가 승인된 뒤: 구매 기록(열람 6개월) → 읽기 화면 */
-function commitPaidLife(p) {
-  save(SHOP_KEY, shopGrant(loadShop(), 'life', { paid: p.amount, via: p.paymentKey ? 'toss' : 'trial', days: VIEW_DAYS, orderId: p.orderId || '' }).store);
+/** v0.75·v0.76 보고서 결제가 승인된 뒤: 구매 기록(열람 6개월) → 읽기 화면. p.rec.key = 'life' 또는 'year:2027' */
+function commitPaidReport(p) {
+  const kind = p.kind || 'life'; const key = p.rec?.key || reportKey(kind); const R = PAID_REPORT[kind] || PAID_REPORT.life;
+  save(SHOP_KEY, shopGrant(loadShop(), key, { paid: p.amount, via: p.paymentKey ? 'toss' : 'trial', days: VIEW_DAYS, orderId: p.orderId || '' }).store);
   document.querySelectorAll('.pay-modal').forEach((x) => x.remove());
-  if (!state.saju) { toast(`결제가 끝났어요. 생년월일을 넣으면 평생 정통사주를 바로 볼 수 있어요(${ymd(viewUntil(loadShop(), 'life'))}까지)`, 9000); return; }
-  if (state.fortune) { renderSaju(); selectTab('saju'); }
-  toast(`📖 평생 정통사주가 열렸어요. ${ymd(viewUntil(loadShop(), 'life'))}까지 볼 수 있어요`, 6000);
-  openReader('life');
+  const until = ymd(viewUntil(loadShop(), key));
+  if (!state.saju) { toast(`결제가 끝났어요. 생년월일을 넣으면 ${R.toast}를 바로 볼 수 있어요(${until}까지)`, 9000); return; }
+  if (state.fortune) { if (kind === 'life') { renderSaju(); selectTab('saju'); } else { renderToday(); selectTab('today'); } }
+  toast(`📖 ${R.toast}가 열렸어요. ${until}까지 볼 수 있어요`, 6000);
+  openReader(kind);
 }
 /** 결제창에서 돌아왔을 때(또는 승인 확인이 끊겼다가 다시 열었을 때): 승인 → 구매 기록 → 읽기 화면 */
 async function resumePay() {
@@ -5986,7 +6017,7 @@ async function resumePay() {
   let p = load(PENDING_KEY, null);
   if (p && !PAY_PRODUCTS[p.kind]) { save(PENDING_KEY, null); p = null; } // v0.75 판매를 멈춘 예전 주문(부적·등불)
   // 결제를 마치지 않았을 때(취소·실패·뒤로 가기): 결제 창을 다시 열고 그 안에 안내
-  const backToPay = (line) => { save(PENDING_KEY, null); openLifePay(line); toast(line, 6000); };
+  const backToPay = (line) => { save(PENDING_KEY, null); openReportPay(p.kind, line); toast(line, 6000); };
   if (ret?.status === 'fail') {
     if (pendingAlive(p) && !p.paymentKey) backToPay(failLine(ret.code)); else toast(failLine(ret.code), 6000);
     return;
@@ -6009,22 +6040,24 @@ async function resumePay() {
   }
   const log = load(CHARMPAY_KEY, []); log.unshift(payLogEntry(p, body)); save(CHARMPAY_KEY, log.slice(0, 50));
   save(PENDING_KEY, null);
-  commitPaidLife(p);
+  commitPaidReport(p);
 }
-/** v0.75 정통사주 결제 창 — 상품 안내 페이지의 「결제창 보기」(?buy=life)로도 바로 열림(생년월일 없이도 결제창까지 확인 가능) */
-function openLifePay(notice = '') {
-  if (IN_APP) return;
+/** v0.75·v0.76 보고서 결제 창(정통사주 life · 신년운세 year) — 상품 안내 페이지의 「결제창 보기」(?buy=life|year)로도 바로 열림(생년월일 없이도 결제창까지 확인 가능) */
+function openReportPay(kind = 'life', notice = '') {
+  if (IN_APP || !PAID_REPORT[kind]) return;
   document.querySelectorAll('.pay-modal').forEach((x) => x.remove());
-  const P = PAY_PRODUCTS.life; const mode = payMode(); const real = mode !== 'trial';
-  const rep = state.saju ? lifeReportNow() : null;
+  const P = PAY_PRODUCTS[kind]; const R = PAID_REPORT[kind]; const mode = payMode(); const real = mode !== 'trial';
+  const Y = kind === 'year' ? bookletYearNow() : null; const key = reportKey(kind);
+  const rep = state.saju && state.fortune ? (kind === 'year' ? premiumYearOf(bookletData()) : lifeReportNow()) : null;
+  const title = kind === 'year' ? `${Y}년 운세 자세히 보기` : P.name;
   const ezHTML = real ? `<p class="cp-ez-h">간편하게 결제하기 · ${won(P.price)}</p>
     <div class="cp-ez">${easyPayOrder(navigator.userAgent, navigator.maxTouchPoints || 0).map((c) => `<button type="button" class="cp-ez-b" data-lp="pay" data-ez="${c}">${EASY_PAYS[c].label}</button>`).join('')}</div>` : '';
   const box = document.createElement('div'); box.className = 'evo-modal pay-modal';
-  box.innerHTML = `<div class="evo-box hanji hj-pay" role="dialog" aria-label="${esc(P.name)} 결제">
-    <p class="hj-eyebrow">🀄 ${esc(P.name)}</p>
-    <h3>여덟 글자를 처음부터 끝까지${rep ? ` ${kChars(rep.chars)}` : ''}</h3>
+  box.innerHTML = `<div class="evo-box hanji hj-pay" role="dialog" aria-label="${esc(title)} 결제">
+    <p class="hj-eyebrow">${R.icon} ${esc(title)}</p>
+    <h3>${R.head}${rep ? ` ${kChars(rep.chars)}` : ''}</h3>
     ${notice ? `<p class="lp-notice">${esc(notice)}</p>` : ''}
-    <p class="hj-desc">${esc(PRODUCTS.life.desc)}</p>
+    <p class="hj-desc">${kind === 'year' ? `조심할 일이 생기는 이유와 알아채는 신호, 넘는 법과 좋은 운으로 바꾸는 행동 · 도움이 되는 사람과 띠 · 나에게 맞는 일과 사업 분야 · 열두 달 이야기 · 분야별 전략` : esc(PRODUCTS.life.desc)}</p>
     ${rep ? lifeTocHTML(rep) : '<p class="hj-note">결제한 뒤 생년월일을 넣으면 내 사주로 만든 보고서가 열려요.</p>'}
     <p class="hj-price"><b>${won(P.price)}</b> <small>결제일부터 ${VIEW_DAYS / 30}개월(${VIEW_DAYS}일) 열람 · 한 번 결제(자동 결제 아님)</small></p>
     <ul class="hj-promise"><li>요약 풀이와 오늘의 운세·신년운세·타로·궁합은 결제와 상관없이 무료예요</li><li>운세 점수는 결제해도 바뀌지 않아요</li><li>풀이는 오락용 읽을거리예요. 의료·법률·투자 판단의 근거가 아니에요</li></ul>
@@ -6037,11 +6070,11 @@ function openLifePay(notice = '') {
     const b = e.target.closest('[data-lp]');
     if (e.target === box || b?.dataset.lp === 'close') { box.remove(); return; }
     if (!b || b.disabled) return;
-    if (!real) { const log = load(CHARMPAY_KEY, []); log.unshift({ kind: 'life', price: P.price, at: Date.now(), via: 'trial' }); save(CHARMPAY_KEY, log.slice(0, 50)); commitPaidLife({ amount: P.price }); return; }
+    if (!real) { const log = load(CHARMPAY_KEY, []); log.unshift({ kind, price: P.price, at: Date.now(), via: 'trial' }); save(CHARMPAY_KEY, log.slice(0, 50)); commitPaidReport({ kind, amount: P.price, rec: { key } }); return; }
     const ez = b.dataset.ez || null; const label = b.textContent;
     box.querySelectorAll('[data-lp="pay"]').forEach((x) => { x.disabled = true; });
     b.textContent = ez ? `${EASY_PAYS[ez].label} 여는 중…` : '결제창을 여는 중…';
-    goTossPay('life', { key: 'life' }, ez).catch((err) => {
+    goTossPay(kind, { key }, ez).catch((err) => {
       save(PENDING_KEY, null);
       box.querySelectorAll('[data-lp="pay"]').forEach((x) => { x.disabled = false; }); b.textContent = label;
       toast(err?.message === 'store' ? '이 화면은 기록 저장이 꺼져 있어 결제할 수 없어요. 일반 창에서 열어 주세요' : failLine(err?.code), 6000);
