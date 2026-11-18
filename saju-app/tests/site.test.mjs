@@ -36,7 +36,7 @@ ok('약관 4쪽: 생성기 결과와 같음 · 사업자 정보 칸 · 조사');
   assert.ok(refund.includes('전액 환불') && refund.includes('제17조') && refund.includes('3영업일') && refund.includes('id="pay-log"') === false);
   assert.ok(read('legal/refund.html').includes('id="pay-log"'));
   assert.ok(shop.includes('data-price="life"') && !shop.includes('data-price="wish"') && !shop.includes('data-price="lantern"'), 'v0.75 상품 = 정통사주 하나');
-  assert.ok(shop.includes('../index.html?buy=life') && shop.includes('결제일부터 6개월'), '결제창 바로 보기 · 이용 기간 1년 미만(토스 심사)');
+  assert.ok(shop.includes('../index.html?buy=life') && shop.includes('../index.html?buy=year') && shop.includes('data-price="year"') && shop.includes('결제일부터 6개월'), '결제창 바로 보기 2개 · 이용 기간 1년 미만(토스 심사)');
   assert.ok(!/이용 기간: 제한 없음/.test(shop), '무제한 이용 기간 없음');
 }
 ok('약관·처리방침·환불 규정에 꼭 들어갈 내용');

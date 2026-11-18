@@ -8,9 +8,10 @@ import { toneProblems } from '../js/habit.js';
 let n = 0; const ok = (name) => { n += 1; console.log(`  ✓ ${name}`); };
 
 // 1. 가격표·주문 번호 (v0.75: 파는 것은 평생 정통사주 하나 — 부적·등불은 토스 심사 「부적 입점 불가」로 판매 중단)
-assert.deepEqual(Object.keys(PAY_PRODUCTS), ['life']);
+assert.deepEqual(Object.keys(PAY_PRODUCTS), ['life', 'year'], 'v0.76 정통사주 + 신년운세 자세히 보기');
 assert.equal(PAY_PRODUCTS.life.price, PRODUCTS.life.price, 'premium.js 가격과 같음');
-for (const kind of ['life']) {
+assert.equal(PAY_PRODUCTS.year.price, 990); assert.equal(PAY_PRODUCTS.year.price, PRODUCTS.year.price);
+for (const kind of ['life', 'year']) {
   const id = makeOrderId(kind, 1794000000000);
   assert.match(id, /^[A-Za-z0-9_-]{6,64}$/, '토스 주문 번호 규칙');
   assert.equal(kindOfOrder(id), kind);
@@ -93,7 +94,7 @@ ok('승인 함수: 가격표로 금액 재확인 · 비밀 키 전달 · 거절�
   for (const src of [fn, site, app, readFileSync(new URL('../js/pay.js', import.meta.url), 'utf8')]) assert.ok(!/(test|live)_g?sk_[A-Za-z0-9]{8,}/.test(src), '시크릿 키가 코드에 있으면 안 됨');
   assert.ok(fn.includes('env.TOSS_SECRET_KEY'));
   assert.ok(!/localStorage|KV|D1|\.put\(/.test(fn), '승인 함수는 아무것도 저장하지 않음');
-  assert.ok(app.includes('resumePay()') && app.includes('commitPaidLife(p)'));
+  assert.ok(app.includes('resumePay()') && app.includes('commitPaidReport(p)'));
 }
 ok('시크릿 키는 환경 변수에만 · 승인 함수는 저장 없음');
 
@@ -176,7 +177,7 @@ ok('v0.71.1 결제 취소·뒤로 가기 안내가 창 위·의식 창 안에 �
   assert.equal(tossRequest(o, 'https://e.kr', '/', 'HACK').card, undefined, '모르는 코드는 무시');
   assert.ok(!JSON.stringify(ez).includes('비밀'));
   const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
-  assert.ok(app.includes('data-ez="${c}"') && app.includes("goTossPay('life', { key: 'life' }, ez)"), '결제 창 버튼 → 바로 열기');
+  assert.ok(app.includes('data-ez="${c}"') && app.includes('goTossPay(kind, { key }, ez)'), '결제 창 버튼 → 바로 열기');
 }
 ok('v0.72 간편결제 순서(네이버·카카오·삼성/애플·토스) · 자체창 요청 · 카드는 통합결제창');
 

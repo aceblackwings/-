@@ -5,7 +5,7 @@ import { yearOf } from '../js/period.js';
 import { analyzeGyeok } from '../js/gyeokguk.js';
 import { computeDaewoon } from '../js/luck.js';
 import { computeCompat } from '../js/compat.js';
-import { buildPremiumYear, buildLifeReport, buildCompatReport, premiumTeaser, compatTeaser, tarotBridge, charCount, PRODUCTS } from '../js/premium.js';
+import { crisisOf, buildPremiumYear, buildLifeReport, buildCompatReport, premiumTeaser, compatTeaser, tarotBridge, charCount, PRODUCTS } from '../js/premium.js';
 import { josaProblems } from '../js/josa.js';
 import { toneProblems } from '../js/habit.js';
 
@@ -75,5 +75,18 @@ t('타로 다리: 주제마다 상세판의 맞는 분야로 잇고, 질문 2개
       for (const x of b.q) { assert.deepEqual(josaProblems(x.q + ' ' + x.a), []); assert.deepEqual(toneProblems(x.a), []); }
     }
   }
+});
+t('v0.76 신년운세 자세히 보기: 1장 = 조심할 일과 넘는 법(이유·신호·미리·그 순간·지나고 나서·좋은 운), 2장 = 실천법', () => {
+  for (const p of PEOPLE) {
+    const r = yearRep(p); const ch = r.sections.filter((x) => /^\d+장 · /.test(x.h));
+    assert.match(ch[0].h, /^1장 · 2027년 조심할 일, 이렇게 넘어요/); assert.match(ch[1].h, /^2장 · 위기를 좋은 운으로/);
+    assert.deepEqual(ch.map((x) => Number(x.h.match(/^(\d+)장/)[1])), ch.map((x, i) => i + 1), '장 번호가 1부터 차례대로');
+    const w = ch[0].blocks.filter((b) => b.h?.startsWith('🔎'));
+    for (const b of w) for (const head of ['왜 생길까:', '이런 장면에서 알아채요:', '① 미리 준비:', '② 그 순간에는:', '③ 지나고 나서:', '🌈 좋은 운으로 바꾸기:']) assert.ok(b.paras.some((x) => x.startsWith(head)), `${b.h} ${head}`);
+    assert.ok(ch[0].blocks.some((b) => b.h?.startsWith('🍵')), '쉬어 갈 달 지나는 법');
+    assert.ok(ch[0].blocks.some((b) => b.h?.startsWith('🧭')), '흔들릴 때 세 줄');
+    const text = flat(r); assert.ok(!/\(6장\)/.test(text.split('6장 ·')[0] || ''), '옛 장 번호 참조가 남지 않음');
+  }
+  assert.equal(crisisOf('rel-clash-day').signs, crisisOf('clash').signs); assert.ok(crisisOf('없는키').turn);
 });
 console.log(`premium: ${pass} passed`);
