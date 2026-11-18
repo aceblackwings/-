@@ -8,6 +8,7 @@ import { toneProblems } from '../js/habit.js';
 import { PAY_GETS, charmLayout } from '../js/paidcharm.js';
 import { wallOf, midWish, dueWish } from '../js/wish.js';
 import { shiftDay } from '../js/omen.js';
+import { CHARM_TTEOK, LANTERN_TTEOK, charmTteokCost, useCharmTteok } from '../js/tteok.js';
 
 const base = { type: 'luck', theme: 'classic', element: 1, rarity: 'legend', dateKey: '2026-11-6', label: '소원 부적' };
 const mk = (o = {}) => L.makeLantern(base, { wish: '자격증 시험 합격', forWho: '', by: '민지', seal: 8, today: '2026-11-6', ...o });
@@ -72,16 +73,20 @@ test('누구를 위한 소원: 정리·부적 글자', () => {
   assert.equal(PAY_GETS.lantern.length, 4); PAY_GETS.lantern.forEach((s) => assert.deepEqual(toneProblems(s), []));
 });
 
-test('가격: 소원 990(복떡 가능) · 등불 2,900(복떡 불가) · 걱정 태우기 무료 하루 한 번', () => {
-  assert.equal(L.WISH_PRICE, 990); assert.equal(L.LANTERN_PRICE, 2900);
+test('v0.75 값: 소원 부적 복떡 50 · 등불 복떡 100 · 돈 결제 없음 · 걱정 태우기 무료 하루 한 번', () => {
+  assert.equal(CHARM_TTEOK, 50); assert.equal(LANTERN_TTEOK, 100);
+  assert.equal(charmTteokCost('wish'), 50); assert.equal(charmTteokCost('lantern'), 100);
+  assert.equal(useCharmTteok({ balance: 99 }, 'lantern').ok, false, '등불은 100개가 있어야');
+  const used = useCharmTteok({ balance: 100 }, 'lantern'); assert.equal(used.ok, true); assert.equal(used.store.balance, 0);
   let st = {}; assert.ok(L.canBurnToday(st, '2026-11-6'));
   st = L.markBurned(st, '2026-11-6'); assert.ok(!L.canBurnToday(st, '2026-11-6')); assert.ok(L.canBurnToday(st, '2026-11-7'));
   assert.deepEqual(Object.keys(st).sort(), ['count', 'last'], '걱정 글은 저장하지 않음');
   const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
-  assert.ok(!/openCharmPay\('burn'/.test(app), '걱정 태우기에는 결제 창이 없음');
-  assert.ok(/if \(lantern\) return;/.test(app), '등불은 복떡 버튼이 눌려도 무료가 되지 않음');
+  assert.ok(!/openCharmPay\('burn'/.test(app), '걱정 태우기에는 완성 창이 없음');
   const pay = app.slice(app.indexOf('function openCharmPay('), app.indexOf('/** 도감에 저장할 기록'));
-  assert.ok(pay.includes('lantern ? `<p class="hj-note">100일 등불은 복떡으로는'), '등불 결제 창에는 복떡 버튼 대신 안내');
+  assert.ok(pay.length > 500 && !/goTossPay|won\(|payMode/.test(pay), '부적·등불 완성 창에는 돈 결제가 없음(토스 심사 「부적 입점 불가」)');
+  assert.ok(pay.includes('useCharmTteok(loadTteok(), kind)'));
+  assert.ok(!/won\((CHARM|LANTERN)_PRICE\)/.test(app), '화면에 부적·등불 가격 없음');
 });
 
 // v0.69 연등 띄우기 의식(부적과 다른 길)
@@ -118,7 +123,5 @@ test('연등 의식 화면: 불 붙이기 = 결제, 결제 전 저장 없음, �
   assert.ok(!/명이|명과 함께|명이 함께|\d+\s*명/.test(lt), '지어낸 인원 숫자 없음');
   const src = readFileSync(new URL('../js/lantern.js', import.meta.url), 'utf8');
   assert.ok(!/명이 (켰|띄웠|함께)/.test(src));
-  // 결제창에서 돌아오면 등불은 불 붙이는 장면부터
-  assert.ok(/if \(isLantern\(rec\)\) openLanternRitual\(rec, onDone, \{ \.\.\.opt, startAt: 3 \}\)/.test(app));
-  assert.ok(/tierNow === 'lantern'\) openLanternRitual\(/.test(app), '만들기 창의 등불은 연등 의식으로');
+    assert.ok(/tierNow === 'lantern'\) openLanternRitual\(/.test(app), '만들기 창의 등불은 연등 의식으로');
 });

@@ -16,7 +16,7 @@ export const BIZ = {
   hours: '평일 10:00~17:00 (이메일은 24시간 접수)',
 };
 
-export const SERVICE = { name: '12지신 강림', effective: '2026-11-11' }; // 약관·처리방침 시행일
+export const SERVICE = { name: '12지신 강림', effective: '2026-11-18' }; // 약관·처리방침 시행일
 
 export const PAY = {
   // 토스페이먼츠 「API 개별 연동 키」의 클라이언트 키(test_ck_… 또는 live_ck_…). 공개되어도 되는 키.

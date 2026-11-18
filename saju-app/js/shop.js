@@ -2,6 +2,8 @@
 // - 상품 키: 'year:2027'(그해 상세판) · 'life'(평생 정통사주) · 'compat:<친구 키>'(궁합 상세) · 'bundle:2027'(올인원, v0.48)
 // - 정식 결제는 아직 없음: 체험판은 결제 창에서 「체험판으로 열기」를 누르면 기록만 남김(PG·스토어 결제는 `pay` 자리에 붙임)
 // - 원칙 3: 산 것은 「읽기」만 열림. 점수·부적·지신에는 영향 없음
+// - v0.75(토스 심사 「무형 서비스는 제공 기간 1년 미만」): 토스로 산 것은 결제일부터 VIEW_DAYS(6개월 = 180일) 동안만 열림(until)
+//   기간이 지나면 owns = false → 다시 결제하면 새 기간. until이 없는 예전 기록(체험판)은 그대로 둠
 // 순수 로직만(테스트: tests/shop.test.mjs)
 import { PRODUCTS, BUNDLE_COMPAT } from './premium.js';
 
@@ -13,7 +15,15 @@ export const bundleKey = (y) => `bundle:${y}`;
 export const compatKey = (fr) => `compat:${fr.calendar || 'solar'}-${fr.year}-${fr.month}-${fr.day}`;
 export const kindOf = (key) => String(key).split(':')[0];
 
-export const owns = (store, key) => !!norm(store).owned[key];
+export const VIEW_DAYS = 180;
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** 열람 기간이 남았는지(until이 없으면 기간 없음) */
+const alive = (o, now) => !!o && (!o.until || now < o.until);
+export const owns = (store, key, now = Date.now()) => alive(norm(store).owned[key], now);
+/** 열람 끝나는 시각(없으면 null) */
+export const viewUntil = (store, key) => norm(store).owned[key]?.until || null;
+/** 기간이 지난 기록인지(다시 결제 안내용) */
+export const expired = (store, key, now = Date.now()) => { const o = norm(store).owned[key]; return !!o && !alive(o, now); };
 export const compatCredits = (store) => norm(store).compatCredits;
 
 /** 지금 이 사람에게 매길 값. 궁합 상세는 올인원 이용권이 남아 있으면 0원(이용권 1장) */
@@ -23,11 +33,11 @@ export function priceOf(store, key) {
   return { price: P.price, was: null, note: '' };
 }
 
-/** 산 기록 남기기(이미 있으면 그대로) */
-export function grant(store, key, { paid = 0, at = Date.now(), via = 'trial' } = {}) {
+/** 산 기록 남기기(열람 중이면 그대로). days를 주면 그날 수만큼만 열림(기간이 지난 기록은 새로 덮음) */
+export function grant(store, key, { paid = 0, at = Date.now(), via = 'trial', days = 0, orderId = '' } = {}) {
   const s = norm(store);
-  if (s.owned[key]) return { store: s, already: true };
-  s.owned[key] = { at, paid, via };
+  if (alive(s.owned[key], at)) return { store: s, already: true };
+  s.owned[key] = { at, paid, via, ...(days ? { until: at + days * DAY_MS } : {}), ...(orderId ? { orderId } : {}) };
   s.log = [{ key, at, paid, via }, ...s.log].slice(0, 50);
   return { store: s, already: false };
 }
@@ -53,4 +63,12 @@ export function useCompatCredit(store, key, { at = Date.now() } = {}) {
   const r = grant(s, key, { paid: 0, at, via: 'credit' }).store;
   r.compatCredits = s.compatCredits - 1;
   return { store: r, used: true };
+}
+
+/** v0.75 처음 연 시각(환불 규정 「열어 보기 전이면 7일 안 전액 환불」 확인용) — 이미 있으면 그대로 */
+export function markOpened(store, key, at = Date.now()) {
+  const s = norm(store); const o = s.owned[key];
+  if (!o || o.openedAt) return s;
+  s.owned[key] = { ...o, openedAt: at };
+  return s;
 }

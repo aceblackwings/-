@@ -16,7 +16,7 @@ assert.ok(!/sk_/.test(PAY.tossClientKey), '클라이언트 키 자리에 시크�
 assert.equal(bizValue('name', { name: '' }), '(등록 예정)');
 assert.equal(bizValue('mailOrderNo', { mailOrderNo: '' }), '신고 진행 중');
 assert.equal(bizValue('privacyOfficer', { owner: '홍길동' }), '홍길동');
-assert.equal(bizValue('effective'), '2026년 11월 11일');
+assert.equal(bizValue('effective'), '2026년 11월 18일');
 assert.deepEqual(missingBiz({ name: 'a', owner: 'b', regNo: 'c', mailOrderNo: 'd', address: 'e', phone: 'f', email: 'g', domain: 'h' }), []);
 assert.ok(Array.isArray(missingBiz(BIZ)));
 ok('결제 모드(체험·시험·실제) · 빈 사업자 정보 표시');
@@ -35,7 +35,9 @@ ok('약관 4쪽: 생성기 결과와 같음 · 사업자 정보 칸 · 조사');
   assert.ok(privacy.includes('서버로 보내지 않습니다') && privacy.includes('토스페이먼츠') && privacy.includes('5년') && privacy.includes('보호책임자') && privacy.includes('국외'));
   assert.ok(refund.includes('전액 환불') && refund.includes('제17조') && refund.includes('3영업일') && refund.includes('id="pay-log"') === false);
   assert.ok(read('legal/refund.html').includes('id="pay-log"'));
-  assert.ok(shop.includes('data-price="wish"') && shop.includes('data-price="lantern"'));
+  assert.ok(shop.includes('data-price="life"') && !shop.includes('data-price="wish"') && !shop.includes('data-price="lantern"'), 'v0.75 상품 = 정통사주 하나');
+  assert.ok(shop.includes('../index.html?buy=life') && shop.includes('결제일부터 6개월'), '결제창 바로 보기 · 이용 기간 1년 미만(토스 심사)');
+  assert.ok(!/이용 기간: 제한 없음/.test(shop), '무제한 이용 기간 없음');
 }
 ok('약관·처리방침·환불 규정에 꼭 들어갈 내용');
 
@@ -45,7 +47,7 @@ ok('약관·처리방침·환불 규정에 꼭 들어갈 내용');
   for (const f of ['name', 'owner', 'regNo', 'mailOrderNo', 'address', 'phone', 'email']) assert.ok(index.includes(`data-biz="${f}"`), `바닥글 ${f}`);
   assert.ok(index.includes('agree-note') && index.includes('만 14세 이상'));
   const app = read('js/app.js');
-  assert.ok(app.includes('legal/refund.html') && app.includes('단순 변심 환불이 어려워요') && app.includes('이 기기의 이 브라우저에만'), '결제 창 고지');
+  assert.ok(app.includes('legal/refund.html') && app.includes('단순 변심 환불이 어려워요') && app.includes('이 기기의 이 브라우저에서') && app.includes('결제일부터 ${VIEW_DAYS}일'), '결제 창 고지');
   assert.ok(read('robots.txt').includes('Disallow: /api/'));
   JSON.parse(read('manifest.webmanifest'));
 }

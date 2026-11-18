@@ -54,9 +54,9 @@ import { claimItem, PIECES_PER_ITEM } from './tteok.js';
 import { TTEOK, visit as tteokVisit, doTask as tteokDoTask, todayTasks, doneCount, isOpen as scrollOpen, spend as tteokSpend, buy as tteokBuy, SCROLLS, PACKS, TASKS as TTEOK_TASKS, ALL_BONUS } from './tteok.js';
 import { emoImage, charImage } from './assets.js';
 import { PRODUCTS, buildPremiumYear, buildLifeReport, buildCompatReport, premiumTeaser, compatTeaser, tarotBridge, bundleWorth, BUNDLE_COMPAT, BUNDLE_TTEOK } from './premium.js';
-import { tarotPrice, useTarot, TAROT_COST, TAROT_FREE_PER_DAY, gift as tteokGift, COMPAT_COST, CHARM_TTEOK, CHARM_PRICE, friendKey, useCompat, compatOpen, grandfatherCompat, useCharmTteok } from './tteok.js';
+import { tarotPrice, useTarot, TAROT_COST, TAROT_FREE_PER_DAY, gift as tteokGift, COMPAT_COST, CHARM_TTEOK, CHARM_PRICE, friendKey, useCompat, compatOpen, grandfatherCompat, useCharmTteok, LANTERN_TTEOK, charmTteokCost } from './tteok.js';
 import { pickSlot as coordiPick, claimStars as coordiStars, lockedOn as coordiLocked, STAR_REWARD } from './coordi.js';
-import { emptyShop, owns as shopOwns, priceOf, grant as shopGrant, yearKey, compatKey, bundleKey, grantBundle, useCompatCredit, compatCredits, kindOf } from './shop.js';
+import { VIEW_DAYS, viewUntil, markOpened, expired as shopExpired, emptyShop, owns as shopOwns, priceOf, grant as shopGrant, yearKey, compatKey, bundleKey, grantBundle, useCompatCredit, compatCredits, kindOf } from './shop.js';
 import { preloadCharImages, itemImage, tarotImage, coordiImage } from './assets.js';
 /** 계절 한정 소품 그림 (없으면 빈칸) */
 const itemThumb = (key, cls = 'item-thumb') => { const u = itemImage(key); return u ? `<img class="${cls}" src="${u}" alt="" loading="lazy">` : ''; };
@@ -106,7 +106,7 @@ const BURN_RECS = ['괜히 불안한 마음', '나를 지치게 한 말', '자�
 const CHARMPAY_KEY = 'unmyeong2099.charmpay';
 import { PAY, payMode, fillBiz, inApp } from './site.js';
 const IN_APP = inApp(); // v0.74 앱(A안)에서는 유료 부적·등불·결제를 숨김
-import { EASY_PAYS, easyPayOrder, ABANDON_LINE, PENDING_KEY, CUSTOMER_KEY, makeCustomerKey, validCustomerKey, makeOrder, tossRequest, parseReturn, cleanSearch, checkReturn, pendingAlive, payLogEntry, failLine, alreadyDone } from './pay.js';
+import { PAY_PRODUCTS, EASY_PAYS, easyPayOrder, ABANDON_LINE, PENDING_KEY, CUSTOMER_KEY, makeCustomerKey, validCustomerKey, makeOrder, tossRequest, parseReturn, cleanSearch, checkReturn, pendingAlive, payLogEntry, failLine, alreadyDone } from './pay.js';
 const SEEDS_KEY = 'unmyeong2099.seeds'; // v0.60 걱정 씨앗 {list:[{at, el, answer}]} — 걱정 글은 없음
 
 const STORE_KEY = 'unmyeong2099.profile';
@@ -452,6 +452,11 @@ function initForm() {
   fillBiz(document);
   if (IN_APP) { document.documentElement.classList.add('in-app'); setupAppShell(); }
   if (!IN_APP) setTimeout(resumePay, 0); // 모듈이 끝까지 준비된 뒤에(아래쪽 상수들을 쓰므로)
+  // v0.75 상품 안내 페이지의 「결제창 보기」(?buy=life): 생년월일을 넣지 않아도 결제 창까지 바로(토스 심사 「결제창 확인 경로」)
+  if (!IN_APP && qs.get('buy') === 'life' && !qs.has('pay')) {
+    qs.delete('buy'); history.replaceState(null, '', `${location.pathname}${qs.toString() ? `?${qs}` : ''}${location.hash}`);
+    setTimeout(() => openLifePay(), 0);
+  }
   // v0.71.1 결제창에서 브라우저 뒤로 가기로 돌아오면 페이지가 저장된 채로 되살아나(bfcache) init이 다시 돌지 않음 → 열려 있던 결제 창을 닫고 이어서 처리
   window.addEventListener('pageshow', (e) => { if (!e.persisted || IN_APP) return; document.querySelectorAll('.pay-modal').forEach((x) => x.remove()); resumePay(); });
   setTimeout(handleMovedBackup, 0); // v0.70.4 카카오톡 안 브라우저에서 넘어온 기록
@@ -2259,9 +2264,25 @@ function premiumYearOfferBox(bd) {
   return `<section class="hanji hj-offer owned" id="hj-year-offer"><p class="hj-eyebrow">📜 ${bd.y.sajuYear}년 운세 · 자세히 보기</p><h3>달마다·분야마다 더 자세한 풀이 ${kChars(rep.chars)}</h3><p class="hj-note">위 요약에서 말한 것은 빼고, 이유와 달마다의 장면을 이어서 풀어 드려요 · 무료</p><button type="button" class="hj-buy" data-read="year">📖 자세히 보기</button></section>`;
 }
 function lifeOfferHTML() { return lifeOfferBox(); }
+/** v0.75 평생 정통사주 자세히 보기 = 유일한 유료 상품(2,900원, 결제일부터 6개월 열람) — 토스 심사 대응(사용자 결정 2026-11-18)
+ *  앱(1차 무료, A안)에서는 보이지 않음. 요약판(위 sajuStoryHTML)은 계속 무료 */
+const lifeOwned = () => shopOwns(loadShop(), 'life');
+const lifeTocHTML = (rep) => `<details class="lp-toc"><summary>📑 차례 미리 보기 · ${rep.toc.length}개 장</summary>${tocHTML(rep)}</details>`;
+const ymd = (t) => { const d = new Date(t); return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`; };
 function lifeOfferBox() {
+  if (IN_APP) return '';
   const rep = lifeReportNow();
-  return `<section class="card hanji hj-offer owned"><p class="hj-eyebrow">🀄 정통사주 · 자세히 보기</p><h3>여덟 글자를 처음부터 끝까지 ${kChars(rep.chars)}</h3><p class="hj-note">위 요약에서 말한 것은 빼고 자세히 풀어 드려요 · 무료</p><button type="button" class="hj-buy" data-read="life">📖 자세히 보기</button></section>`;
+  if (lifeOwned()) {
+    const until = viewUntil(loadShop(), 'life');
+    return `<section class="card hanji hj-offer owned"><p class="hj-eyebrow">🀄 평생 정통사주 · 내 서재</p><h3>여덟 글자를 처음부터 끝까지 ${kChars(rep.chars)}</h3><p class="hj-note">${until ? `${ymd(until)}까지 이 기기에서 볼 수 있어요` : '이 기기에서 볼 수 있어요'}</p><button type="button" class="hj-buy" data-read="life">📖 자세히 보기</button></section>`;
+  }
+  const was = shopExpired(loadShop(), 'life');
+  return `<section class="card hanji hj-offer" id="hj-life-offer"><p class="hj-eyebrow">🀄 평생 정통사주 · 자세히 보기</p>
+    <h3>여덟 글자를 처음부터 끝까지 ${kChars(rep.chars)}</h3>
+    <p class="hj-desc">위 요약은 계속 무료예요. 자세히 보기는 요약에서 말한 것은 빼고, 차례대로 깊이 풀어 드려요.</p>
+    ${lifeTocHTML(rep)}
+    <p class="hj-note">${was ? '열람 기간이 끝났어요 · ' : ''}${won(PAY_PRODUCTS.life.price)} · 결제일부터 ${VIEW_DAYS / 30}개월 동안 열람 · 자동 결제 아님 · 운세 점수는 결제와 상관없이 같아요</p>
+    <button type="button" class="hj-buy" data-life-buy>📖 ${was ? '다시 열기' : '자세히 보기'} · ${won(PAY_PRODUCTS.life.price)}</button></section>`;
 }
 function compatOfferHTML(fr) { return compatOfferBox(fr); }
 function compatOfferBox(fr) {
@@ -2324,6 +2345,8 @@ function completePay(key) {
 
 /** 읽기 화면: 한지 책자(전체 화면) */
 function openReader(kind, jump = null) {
+  if (kind === 'life' && !lifeOwned()) { if (!IN_APP) openLifePay(); return; } // v0.75 유료: 열람 기간 안에서만
+  if (kind === 'life') save(SHOP_KEY, markOpened(loadShop(), 'life'));
   const rep = kind === 'year' ? premiumYearOf(bookletData()) : kind === 'life' ? lifeReportNow() : compatReportNow();
   if (!rep) return;
   document.querySelectorAll('.hj-reader').forEach((x) => x.remove());
@@ -2336,7 +2359,7 @@ function openReader(kind, jump = null) {
       <nav class="hj-index">${rep.sections.map((s, i) => s.appendix ? '' : `<a href="#hj-s${i}" data-hj-jump="hj-s${i}">${esc(s.h)}</a>`).join('')}${rep.sections.some((s) => s.appendix) ? `<a href="#hj-appendix" data-hj-jump="hj-appendix" class="hj-ap-link">📎 부록 · 풀이의 근거</a>` : ''}</nav>
       ${rep.sections.map((s, i) => s.appendix ? '' : secHTML(s, i)).join('')}
       ${rep.sections.some((s) => s.appendix) ? `<details class="hj-appendix" id="hj-appendix"><summary>📎 부록 · 풀이의 근거 <small>사주 용어로 된 계산 근거예요. 궁금한 분만 펼쳐 보세요</small></summary>${rep.sections.map((s, i) => s.appendix ? secHTML(s, i) : '').join('')}</details>` : ''}
-      <footer class="hj-end"><p>— 끝 —</p><p class="hj-free" data-raw>🍵 여기까지 ${kChars(rep.chars)}, 광고 없이 무료로 읽으셨어요.<small>12지신 강림의 운세는 모두 무료이고 광고가 없어요. <a href="legal/free.html" target="_blank" rel="noopener" data-web-only>어떻게 운영하나요?</a></small></p><button type="button" class="hj-buy" data-reader-close>닫기</button></footer>
+      <footer class="hj-end"><p>— 끝 —</p>${kind === 'life' ? `<p class="hj-free" data-raw>🍵 여기까지 ${kChars(rep.chars)}, 끝까지 읽어 주셔서 고마워요.<small>${viewUntil(loadShop(), 'life') ? `${ymd(viewUntil(loadShop(), 'life'))}까지 이 기기에서 다시 볼 수 있어요.` : ''}</small></p>` : `<p class="hj-free" data-raw>🍵 여기까지 ${kChars(rep.chars)}, 광고 없이 무료로 읽으셨어요.<small>12지신 강림의 운세는 광고가 없어요. <a href="legal/free.html" target="_blank" rel="noopener" data-web-only>어떻게 운영하나요?</a></small></p>`}<button type="button" class="hj-buy" data-reader-close>닫기</button></footer>
     </article>`;
   document.body.appendChild(box); document.body.classList.add('hj-open');
   if (jump) requestAnimationFrame(() => { const t = box.querySelector(`#${jump}`); const d = t?.closest('details'); if (d) d.open = true; t?.scrollIntoView({ block: 'start' }); });
@@ -2348,7 +2371,8 @@ function openReader(kind, jump = null) {
 document.addEventListener('click', (e) => {
   const p = e.target.closest('[data-pay]'); if (p) { e.preventDefault(); const key = p.dataset.pay; state.readerJump = p.dataset.jump || null; if (shopOwns(loadShop(), key)) { openReader(key.startsWith('bundle') ? 'year' : key.split(':')[0], state.readerJump); state.readerJump = null; } else openPay(key); return; }
   const ok = e.target.closest('[data-pay-ok]'); if (ok) { completePay(ok.dataset.payOk); return; }
-  const r = e.target.closest('[data-read]'); if (r) { openReader(r.dataset.read, r.dataset.jump || null); }
+  const r = e.target.closest('[data-read]'); if (r) { openReader(r.dataset.read, r.dataset.jump || null); return; }
+  if (e.target.closest('[data-life-buy]')) openLifePay();
 });
 
 // ---------- 쉬운 모드 (v0.31, easymode.js): 큰 글씨 · 쉬운 말 · 카드 3장 홈 ----------
@@ -3515,7 +3539,7 @@ function openTteokShop(need = 0) {
     <h4>🎁 모으기 (모두 무료)</h4>
     <ul class="ts-free"><li>✅ 나만의 습관 체크 하나 +2 <small>(첫날은 바로 2개 = +4)</small></li><li>👗 지신 코디 별 ★3 +1 · ★4 +2 · ★5 +3 <small>(부위마다 하루 한 번)</small></li></ul>
     <h4>🍡 쓰기</h4>
-    <ul class="ts-free"><li>🃏 타로 한 장 ${TAROT_COST.one}개 · 세 장 ${TAROT_COST.three}개</li><li>💞 새 친구 궁합 ${COMPAT_COST}개 <small>(같은 친구는 다시 무료)</small></li>${IN_APP ? '' : `<li>🌠 소원 부적: ${CHARM_TTEOK}개면 한 번 무료 <small>(아니면 ${won(CHARM_PRICE)} · 🏮 100일 등불은 복떡 불가 · 🔥 걱정 태우기는 늘 무료)</small></li>`}</ul>
+    <ul class="ts-free"><li>🃏 타로 한 장 ${TAROT_COST.one}개 · 세 장 ${TAROT_COST.three}개</li><li>💞 새 친구 궁합 ${COMPAT_COST}개 <small>(같은 친구는 다시 무료)</small></li>${IN_APP ? '' : `<li>🌠 소원 부적 ${CHARM_TTEOK}개 · 🏮 100일 등불 ${LANTERN_TTEOK}개 <small>(🔥 걱정 태우기는 늘 무료)</small></li>`}</ul>
     ${(st?.log || []).length ? `<h4>최근 기록</h4><ul class="ts-free">${st.log.slice(0, 6).map((l) => `<li>${esc(l.text)} <b>${l.n > 0 ? '+' : ''}${l.n}</b></li>`).join('')}</ul>` : ''}
     <div class="yday-btns"><button type="button" class="primary" data-go-habits>✅ 습관 체크하러 가기</button><button type="button" class="ghost" data-close-shop>닫기</button></div></div>`;
   document.body.appendChild(box);
@@ -4745,7 +4769,7 @@ function doGift(idx) {
   el.className = 'evo-modal';
   el.innerHTML = `<div class="evo-box"><h3 style="margin-top:0">🎁 ${esc(fr.name)}에게 줄 부적 고르기</h3>
     <div class="equip-list">${list.map((r, i) => `<button type="button" data-pick="${i}">${renderTalismanSVG(charmFromRecord(r))}</button>`).join('')}</div>
-    <p class="muted" style="font-size:0.75rem">하루 1번 무료 선물 · 친구 고민에 맞춘 맞춤 부적 선물(990원)은 정식 버전에서 제공</p>
+    <p class="muted" style="font-size:0.75rem">하루 1번 무료 선물 · 친구 고민에 맞춘 부적 선물은 준비 중</p>
     <button class="ghost" type="button" data-pick="x" style="width:100%">닫기</button></div>`;
   document.body.appendChild(el);
   el.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => {
@@ -5896,7 +5920,7 @@ function wishFormHTML() {
     <input type="text" id="wish-text" maxlength="${WISH_MAX}" autocomplete="off" placeholder="예: 자격증 합격" value="${esc(d.text || '')}">
     <div class="chips wish-recs"><small class="muted">추천 문구</small>${WISH_RECS.map((x) => `<button type="button" class="chip" data-wish-rec="${esc(x)}">${esc(x)}</button>`).join('')}</div>
     <label class="wish-date">이루고 싶은 날 <input type="date" id="wish-date" min="${wishInputOf(today)}" value="${esc(d.date || wishInputOf(shiftDay(today, WISH_DAYS_DEFAULT)))}"></label>
-    <small class="muted">그날이 오면 지신이 먼저 「소원, 이루어졌나요?」 하고 물어봐요. 소원 부적은 바치거나 태우지 않고 지켜 둬요. 소원 부적은 한 장에 ${won(CHARM_PRICE)} · 복떡 ${CHARM_TTEOK}개가 모이면 한 번 무료예요. 100일 동안 매일 빌어 주는 🏮 100일 등불(${won(LANTERN_PRICE)})도 있어요.</small>
+    <small class="muted">그날이 오면 지신이 먼저 「소원, 이루어졌나요?」 하고 물어봐요. 소원 부적은 바치거나 태우지 않고 지켜 둬요. 소원 부적은 ${TTEOK} 복떡 ${CHARM_TTEOK}개로 한 장 만들어요. 100일 동안 매일 빌어 주는 🏮 100일 등불(복떡 ${LANTERN_TTEOK}개)도 있어요.</small>
   </div>`;
 }
 function bindWishForm(panel) {
@@ -5905,7 +5929,7 @@ function bindWishForm(panel) {
   t?.addEventListener('input', keep); d?.addEventListener('change', keep);
   $$('[data-wish-rec]', panel).forEach((b) => b.addEventListener('click', () => { t.value = b.dataset.wishRec; keep(); }));
 }
-/** v0.64 결제 창(인장 찍는 순간): 소원 부적 990원 또는 복떡 50개 · 100일 등불 2,900원(돈으로만) · 걱정 태우기는 무료라 결제 없음
+/** v0.64 결제 창(인장 찍는 순간): (v0.75부터 복떡만) 소원 부적 복떡 50개 · 100일 등불 복떡 100개 · 걱정 태우기는 무료라 결제 없음
  *  v0.60: 받는 것 4줄 + 부적 미리보기(preview = paidCharmSVG 데이터) */
 /** v0.65 토스페이먼츠 결제창 SDK(처음 결제할 때만 불러옴) */
 let tossLoading = null;
@@ -5919,7 +5943,7 @@ function loadToss() {
   });
   return tossLoading;
 }
-/** 결제창으로 이동 — 만들던 부적 기록을 기기에 「기다리는 주문」으로 두고 다녀온다(소원 글은 결제 회사로 보내지 않음) */
+/** 결제창으로 이동 — 이어서 열 것(rec)을 기기에 「기다리는 주문」으로 두고 다녀온다(이름·생년월일은 결제 회사로 보내지 않음) */
 async function goTossPay(kind, rec, easyPay = null) {
   const order = makeOrder(kind, rec); if (!order) throw new Error('order');
   save(PENDING_KEY, order);
@@ -5937,7 +5961,7 @@ async function confirmOnServer(p) {
   let body = {}; try { body = await res.json(); } catch { /* 빈 응답 */ }
   return body;
 }
-/** 결제가 끝난 부적을 도감에 저장(결제창에 다녀온 뒤라 의식 연출보다 저장이 먼저) */
+/** 결제가 끝난 부적을 도감에 저장 — v0.75부터 복떡으로 만든 부적·등불만(의식 끝에서 부름) */
 function commitPaidCharm(r) {
   const today = state.fortune.dateKey;
   const listNow = load(COLLECTION_KEY, []); listNow.unshift(r); save(COLLECTION_KEY, trimCollection(listNow, 60));
@@ -5946,20 +5970,25 @@ function commitPaidCharm(r) {
     : `🌠 ${wishMadeLine(r.wish, wishDueLabel(r.dueKey, today), politeNow())}`;
   grow((g) => complete(g, today, 'charm', qBonus('charm')), lead);
 }
-/** 결제창에서 돌아왔을 때(또는 승인 확인이 끊겼다가 다시 열었을 때): 승인 → 저장 → 인장 찍는 장면부터 이어서 */
+/** v0.75 정통사주 결제가 승인된 뒤: 구매 기록(열람 6개월) → 읽기 화면 */
+function commitPaidLife(p) {
+  save(SHOP_KEY, shopGrant(loadShop(), 'life', { paid: p.amount, via: p.paymentKey ? 'toss' : 'trial', days: VIEW_DAYS, orderId: p.orderId || '' }).store);
+  document.querySelectorAll('.pay-modal').forEach((x) => x.remove());
+  if (!state.saju) { toast(`결제가 끝났어요. 생년월일을 넣으면 평생 정통사주를 바로 볼 수 있어요(${ymd(viewUntil(loadShop(), 'life'))}까지)`, 9000); return; }
+  if (state.fortune) { renderSaju(); selectTab('saju'); }
+  toast(`📖 평생 정통사주가 열렸어요. ${ymd(viewUntil(loadShop(), 'life'))}까지 볼 수 있어요`, 6000);
+  openReader('life');
+}
+/** 결제창에서 돌아왔을 때(또는 승인 확인이 끊겼다가 다시 열었을 때): 승인 → 구매 기록 → 읽기 화면 */
 async function resumePay() {
   const ret = parseReturn(location.search);
   if (ret) history.replaceState(null, '', location.pathname + cleanSearch(location.search) + location.hash);
   let p = load(PENDING_KEY, null);
-  if (!state.fortune) return;
-  // v0.71.1 결제를 마치지 않았을 때(취소·실패·뒤로 가기): 안내를 인장/심지 화면 안에도 띄움(토스트만 쓰면 창 뒤에 가려졌음)
-  const backToRitual = (line) => {
-    save(PENDING_KEY, null); selectTab('hero');
-    openRitualFor(p.rec, () => commitPaidCharm(p.rec), { notice: line });
-    toast(line, 6000);
-  };
+  if (p && !PAY_PRODUCTS[p.kind]) { save(PENDING_KEY, null); p = null; } // v0.75 판매를 멈춘 예전 주문(부적·등불)
+  // 결제를 마치지 않았을 때(취소·실패·뒤로 가기): 결제 창을 다시 열고 그 안에 안내
+  const backToPay = (line) => { save(PENDING_KEY, null); openLifePay(line); toast(line, 6000); };
   if (ret?.status === 'fail') {
-    if (pendingAlive(p) && !p.paymentKey) backToRitual(failLine(ret.code)); else toast(failLine(ret.code), 6000);
+    if (pendingAlive(p) && !p.paymentKey) backToPay(failLine(ret.code)); else toast(failLine(ret.code), 6000);
     return;
   }
   if (ret?.status === 'success') {
@@ -5968,7 +5997,7 @@ async function resumePay() {
     p = { ...p, paymentKey: ret.paymentKey }; save(PENDING_KEY, p);
   }
   if (!pendingAlive(p)) { if (p) save(PENDING_KEY, null); return; }
-  if (!p.paymentKey) { backToRitual(ABANDON_LINE); return; } // 결제창에서 뒤로 가기로 돌아온 경우(토스가 failUrl로 보내지 않음)
+  if (!p.paymentKey) { backToPay(ABANDON_LINE); return; } // 결제창에서 뒤로 가기로 돌아온 경우(토스가 failUrl로 보내지 않음)
   toast('결제를 확인하고 있어요…', 4000);
   let body;
   try { body = await confirmOnServer(p); } catch { toast('결제 확인이 잠시 끊겼어요. 이 화면을 다시 열면 이어서 확인해요', 7000); return; }
@@ -5980,64 +6009,71 @@ async function resumePay() {
   }
   const log = load(CHARMPAY_KEY, []); log.unshift(payLogEntry(p, body)); save(CHARMPAY_KEY, log.slice(0, 50));
   save(PENDING_KEY, null);
-  commitPaidCharm(p.rec);
-  selectTab('hero');
-  openRitualFor(p.rec, () => {}, { paid: true });
+  commitPaidLife(p);
 }
-/** 결제창에서 돌아온 뒤 이어서: 소원 부적 = 인장 찍는 장면, 등불 = 심지에 불 붙이는 장면 */
-function openRitualFor(rec, onDone, opt) {
-  if (isLantern(rec)) openLanternRitual(rec, onDone, { ...opt, startAt: 3 });
-  else openWishRitual(rec, onDone, { ...opt, startAt: 2 });
-}
-function openCharmPay(kind, onOk, onCancel = () => {}, preview = null, rec = null) {
-  const mode = rec ? payMode() : 'trial'; const real = mode !== 'trial';
+/** v0.75 정통사주 결제 창 — 상품 안내 페이지의 「결제창 보기」(?buy=life)로도 바로 열림(생년월일 없이도 결제창까지 확인 가능) */
+function openLifePay(notice = '') {
+  if (IN_APP) return;
   document.querySelectorAll('.pay-modal').forEach((x) => x.remove());
-  const lantern = kind === 'lantern'; const price = lantern ? LANTERN_PRICE : CHARM_PRICE;
-  const bal = loadTteok()?.balance || 0; const can = !lantern && bal >= CHARM_TTEOK;
+  const P = PAY_PRODUCTS.life; const mode = payMode(); const real = mode !== 'trial';
+  const rep = state.saju ? lifeReportNow() : null;
+  const ezHTML = real ? `<p class="cp-ez-h">간편하게 결제하기 · ${won(P.price)}</p>
+    <div class="cp-ez">${easyPayOrder(navigator.userAgent, navigator.maxTouchPoints || 0).map((c) => `<button type="button" class="cp-ez-b" data-lp="pay" data-ez="${c}">${EASY_PAYS[c].label}</button>`).join('')}</div>` : '';
+  const box = document.createElement('div'); box.className = 'evo-modal pay-modal';
+  box.innerHTML = `<div class="evo-box hanji hj-pay" role="dialog" aria-label="${esc(P.name)} 결제">
+    <p class="hj-eyebrow">🀄 ${esc(P.name)}</p>
+    <h3>여덟 글자를 처음부터 끝까지${rep ? ` ${kChars(rep.chars)}` : ''}</h3>
+    ${notice ? `<p class="lp-notice">${esc(notice)}</p>` : ''}
+    <p class="hj-desc">${esc(PRODUCTS.life.desc)}</p>
+    ${rep ? lifeTocHTML(rep) : '<p class="hj-note">결제한 뒤 생년월일을 넣으면 내 사주로 만든 보고서가 열려요.</p>'}
+    <p class="hj-price"><b>${won(P.price)}</b> <small>결제일부터 ${VIEW_DAYS / 30}개월(${VIEW_DAYS}일) 열람 · 한 번 결제(자동 결제 아님)</small></p>
+    <ul class="hj-promise"><li>요약 풀이와 오늘의 운세·신년운세·타로·궁합은 결제와 상관없이 무료예요</li><li>운세 점수는 결제해도 바뀌지 않아요</li><li>풀이는 오락용 읽을거리예요. 의료·법률·투자 판단의 근거가 아니에요</li></ul>
+    ${ezHTML}<button type="button" class="hj-buy${real ? ' cp-card' : ''}" data-lp="pay">${real ? `💳 카드로 결제하고 열기 · ${won(P.price)}` : '체험판으로 열기 (결제 없음)'}</button>
+    ${real ? `<p class="hj-note cp-legal">${mode === 'test' ? '<b>시험 결제 중이에요(실제 돈은 나가지 않아요).</b> ' : ''}결제하면 바로 열리는 디지털 보고서예요. <b>열어 본 뒤에는 단순 변심 환불이 어려워요</b>(오류·중복 결제는 전액 환불). 보고서는 <b>이 기기의 이 브라우저에서</b> 결제일부터 ${VIEW_DAYS}일 동안 볼 수 있어요. 결제하면 <a href="legal/terms.html" target="_blank" rel="noopener">이용약관</a>·<a href="legal/refund.html" target="_blank" rel="noopener">환불 규정</a>에 동의한 것으로 봐요.</p>` : '<p class="hj-note">지금은 체험판이라 실제 결제 없이 열려요.</p>'}
+    <button type="button" class="ghost" data-lp="close" style="width:100%">닫기</button>
+  </div>`;
+  document.body.appendChild(box);
+  box.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-lp]');
+    if (e.target === box || b?.dataset.lp === 'close') { box.remove(); return; }
+    if (!b || b.disabled) return;
+    if (!real) { const log = load(CHARMPAY_KEY, []); log.unshift({ kind: 'life', price: P.price, at: Date.now(), via: 'trial' }); save(CHARMPAY_KEY, log.slice(0, 50)); commitPaidLife({ amount: P.price }); return; }
+    const ez = b.dataset.ez || null; const label = b.textContent;
+    box.querySelectorAll('[data-lp="pay"]').forEach((x) => { x.disabled = true; });
+    b.textContent = ez ? `${EASY_PAYS[ez].label} 여는 중…` : '결제창을 여는 중…';
+    goTossPay('life', { key: 'life' }, ez).catch((err) => {
+      save(PENDING_KEY, null);
+      box.querySelectorAll('[data-lp="pay"]').forEach((x) => { x.disabled = false; }); b.textContent = label;
+      toast(err?.message === 'store' ? '이 화면은 기록 저장이 꺼져 있어 결제할 수 없어요. 일반 창에서 열어 주세요' : failLine(err?.code), 6000);
+    });
+  });
+}
+/** v0.75 부적·등불 완성 창(토스 심사 「부적 상품 입점 불가」 → 돈 결제 없앰, 사용자 결정 2026-11-18):
+ *  소원 부적 = 복떡 50개 · 100일 등불 = 복떡 100개. 복떡은 습관 체크·코디로 모으는 무료 재화(돈으로 팔지 않음) */
+function openCharmPay(kind, onOk, onCancel = () => {}, preview = null) {
+  document.querySelectorAll('.pay-modal').forEach((x) => x.remove());
+  const lantern = kind === 'lantern'; const cost = charmTteokCost(kind);
+  const bal = loadTteok()?.balance || 0; const can = bal >= cost;
   const nm = lantern ? '🏮 100일 소원 등불' : '🌠 소원 부적';
-  // v0.72 간편결제 바로가기 4개(누르면 그 앱이 바로 열림) + 그 밖의 카드는 통합결제창
-  const ezOrder = easyPayOrder(navigator.userAgent, navigator.maxTouchPoints || 0);
-  const ezHTML = real ? `<p class="cp-ez-h">간편하게 결제하기 · ${won(price)}</p>
-    <div class="cp-ez">${ezOrder.map((c) => `<button type="button" class="cp-ez-b" data-cp="pay" data-ez="${c}">${EASY_PAYS[c].label}</button>`).join('')}</div>` : '';
-  const cardVerb = lantern ? '💳 다른 카드로 결제하고 불 붙이기' : '💳 다른 카드로 결제하고 인장 찍기';
   const box = document.createElement('div'); box.className = 'evo-modal pay-modal';
   box.innerHTML = `<div class="evo-box hanji hj-pay" role="dialog" aria-label="${nm}">
     <p class="hj-eyebrow">${nm}</p>
     <h3>${lantern ? '심지에 불을 붙이면 100일 등불이 연못에 떠요' : '인장을 찍으면 소원 부적이 완성돼요'}</h3>
     <div class="cp-top">${lantern ? `<span class="cp-preview lt-cp" style="--lt-bg:url('${LT_ART('bg')}')"><img src="${LT_ART('stage1')}" alt=""></span>` : preview ? `<span class="cp-preview">${paidCharmSVG(preview)}</span>` : ''}
       <ul class="cp-gets">${(PAY_GETS[lantern ? 'lantern' : 'wish'] || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
-    <p class="hj-desc">${lantern ? '소원 리본을 묶고 100일 길까지 보셨어요. 결제하면 심지에 불이 붙고, 등불을 연못에 띄워요.' : '먹을 갈고 이름까지 정성껏 쓰셨어요. 결제하면 인장이 찍히고, 지신이 기운을 불어넣어요.'}</p>
-    <p class="hj-price"><b>${won(price)}</b> <small>${lantern ? '한 번 결제로 100일' : '한 장'} · 운세 점수와는 상관없어요</small></p>
-    ${ezHTML}<button type="button" class="hj-buy${real ? ' cp-card' : ''}" data-cp="pay">${real ? `${cardVerb} · ${won(price)}` : `체험판으로 ${lantern ? '불 붙이기' : '인장 찍기'} (결제 없음)`}</button>
-    ${real ? `<p class="hj-note cp-legal">${mode === 'test' ? '<b>시험 결제 중이에요(실제 돈은 나가지 않아요).</b> ' : ''}결제하면 바로 만들어지는 디지털 상품이에요. 내 소원으로 한 장씩 만들기 때문에 <b>만든 뒤에는 단순 변심 환불이 어려워요</b>(오류·중복 결제는 전액 환불). ${lantern ? '등불은' : '부적은'} <b>이 기기의 이 브라우저에만</b> 저장돼요. 결제하면 <a href="legal/terms.html" target="_blank" rel="noopener">이용약관</a>·<a href="legal/refund.html" target="_blank" rel="noopener">환불 규정</a>에 동의한 것으로 봐요.</p>` : ''}
-    ${lantern ? `<p class="hj-note">100일 등불은 복떡으로는 만들 수 없어요${real ? '' : ' · 지금은 체험판이라 실제 결제 없이 켜져요'}</p>`
-      : `<button type="button" class="hj-buy navy" data-cp="tteok" ${can ? '' : 'disabled'}>${TTEOK} 복떡 ${CHARM_TTEOK}개로 무료 인장 찍기</button>
-    <p class="hj-note">${can ? `가진 복떡 ${bal}개 · ${CHARM_TTEOK}개를 쓰면 한 번 무료예요` : `복떡 ${CHARM_TTEOK}개가 모이면 한 번 무료 · 지금 ${bal}개`}${real ? '' : ' · 지금은 체험판이라 실제 결제 없이 만들어져요'}</p>`}
+    <p class="hj-desc">${lantern ? '소원 리본을 묶고 100일 길까지 보셨어요. 복떡을 올리면 심지에 불이 붙고, 등불을 연못에 띄워요.' : '먹을 갈고 이름까지 정성껏 쓰셨어요. 복떡을 올리면 인장이 찍히고, 지신이 기운을 불어넣어요.'}</p>
+    <p class="hj-price"><b>${TTEOK} 복떡 ${cost}개</b> <small>${lantern ? '100일 동안' : '한 장'} · 돈은 들지 않아요</small></p>
+    <button type="button" class="hj-buy navy" data-cp="tteok" ${can ? '' : 'disabled'}>${TTEOK} 복떡 ${cost}개로 ${lantern ? '불 붙이기' : '인장 찍기'}</button>
+    <p class="hj-note">${can ? `가진 복떡 ${bal}개 · ${cost}개를 쓰면 바로 만들어져요` : `복떡 ${cost}개가 모이면 만들 수 있어요 · 지금 ${bal}개 · 습관 체크와 코디로 모아요`}</p>
     <button type="button" class="ghost" data-cp="close" style="width:100%">${lantern ? '아직 안 붙일래요' : '아직 안 찍을래요'}</button>
   </div>`;
   document.body.appendChild(box);
   box.addEventListener('click', (e) => {
     const b = e.target.closest('[data-cp]');
     if (e.target === box || b?.dataset.cp === 'close') { box.remove(); onCancel(); return; }
-    if (!b) return;
-    if (b.dataset.cp === 'tteok') {
-      if (lantern) return;
-      const r = useCharmTteok(loadTteok(), 'wish'); if (!r.ok) return;
-      save(TTEOK_KEY, r.store); toast(`${TTEOK} 복떡 ${CHARM_TTEOK}개로 만들었어요`);
-    } else if (real) { // v0.65 실제 결제: 토스 결제창에 다녀온 뒤 resumePay가 승인·저장·인장을 이어서 함
-      if (b.disabled) return;
-      const ez = b.dataset.ez || null; const label = b.textContent;
-      box.querySelectorAll('[data-cp="pay"]').forEach((x) => { x.disabled = true; });
-      b.textContent = ez ? `${EASY_PAYS[ez].label} 여는 중…` : '결제창을 여는 중…';
-      goTossPay(kind, rec, ez).catch((err) => {
-        save(PENDING_KEY, null);
-        box.querySelectorAll('[data-cp="pay"]').forEach((x) => { x.disabled = false; }); b.textContent = label;
-        toast(err?.message === 'store' ? '이 화면은 기록 저장이 꺼져 있어 결제할 수 없어요. 일반 창에서 열어 주세요' : failLine(err?.code), 6000);
-      });
-      return;
-    } else {
-      const log = load(CHARMPAY_KEY, []); log.unshift({ kind, price, at: Date.now(), via: 'trial' }); save(CHARMPAY_KEY, log.slice(0, 50));
-    }
+    if (b?.dataset.cp !== 'tteok' || b.disabled) return;
+    const r = useCharmTteok(loadTteok(), kind); if (!r.ok) return;
+    save(TTEOK_KEY, r.store); toast(`${TTEOK} 복떡 ${cost}개로 만들었어요`);
     box.remove(); onOk();
   });
 }
@@ -6083,8 +6119,8 @@ function charmShowcaseHTML() {
   return `<section class="cm-show" aria-label="세상에 하나뿐인 부적">
     <p class="cm-show-h">✨ 세상에 하나뿐인 부적 <small>${esc(state.profile.name ? `${state.profile.name} 님 이름` : '내 이름')} · ${esc(myZodiac().name)} 지신 인장 · 붓글씨</small></p>
     <div class="cm-show-row">
-      <button type="button" class="cm-card wish" data-cm-open="wish"><span class="cm-thumb">${paidCharmSVG(makerData('wish', ''))}</span><b>🌠 소원 부적</b><small>금박 부적에 담아 두면 그날 지신이 먼저 물어봐요</small><i class="cm-price">${won(CHARM_PRICE)}</i></button>
-      <button type="button" class="cm-card lantern" data-cm-open="wish" data-cm-tier="lantern"><span class="cm-thumb lt-thumb" style="--lt-bg:url('${LT_ART('bg')}')"><img src="${LT_ART('stage3')}" alt=""><i class="cm-lt-badge">🏮 100일</i></span><b>🏮 100일 등불</b><small>날마다 밝아지고 연꽃이 피는 등불, 100일 동안 지신과 함께 빌어요</small><i class="cm-price">${won(LANTERN_PRICE)}</i></button>
+      <button type="button" class="cm-card wish" data-cm-open="wish"><span class="cm-thumb">${paidCharmSVG(makerData('wish', ''))}</span><b>🌠 소원 부적</b><small>금박 부적에 담아 두면 그날 지신이 먼저 물어봐요</small><i class="cm-price">${TTEOK} ${CHARM_TTEOK}개</i></button>
+      <button type="button" class="cm-card lantern" data-cm-open="wish" data-cm-tier="lantern"><span class="cm-thumb lt-thumb" style="--lt-bg:url('${LT_ART('bg')}')"><img src="${LT_ART('stage3')}" alt=""><i class="cm-lt-badge">🏮 100일</i></span><b>🏮 100일 등불</b><small>날마다 밝아지고 연꽃이 피는 등불, 100일 동안 지신과 함께 빌어요</small><i class="cm-price">${TTEOK} ${LANTERN_TTEOK}개</i></button>
     </div>
   </section>`;
 }
@@ -6164,12 +6200,12 @@ function openCharmMaker(kind, preset = '', tier = 'wish') {
     if (wish) { box.querySelector('.cm-date').hidden = t === 'lantern'; box.querySelector('.cm-for').hidden = t !== 'lantern'; box.querySelector('.cm-lt-note').hidden = t !== 'lantern'; box.querySelector('.cm-live').textContent = t === 'lantern' ? '✍️ 아래에 적는 대로 등불에 묶을 리본에 쓰여요' : '✍️ 아래에 적는 대로 부적에 붓글씨로 쓰여요'; }
     box.querySelector('.cm-gets').innerHTML = MAKER_GETS[t].map((x) => `<li>${esc(x)}</li>`).join('');
     const go = box.querySelector('.cm-go');
-    go.innerHTML = t === 'lantern' ? `🏮 연못에 등불 띄우러 가기 <small>${won(LANTERN_PRICE)}</small>`
-      : t === 'wish' ? `✨ 소원 부적 만들기 시작 <small>${won(CHARM_PRICE)}</small>`
+    go.innerHTML = t === 'lantern' ? `🏮 연못에 등불 띄우러 가기 <small>${TTEOK} ${LANTERN_TTEOK}개</small>`
+      : t === 'wish' ? `✨ 소원 부적 만들기 시작 <small>${TTEOK} ${CHARM_TTEOK}개</small>`
       : burnOk ? '🔥 태우러 가기 <small>무료</small>' : '🌙 오늘은 이미 태웠어요';
     go.disabled = !burnOk;
-    box.querySelector('.cm-note').textContent = t === 'lantern' ? '리본 묶기·100일 미리 보기는 무료로 해 보고, 마지막에 심지에 불을 붙일 때 결제해요 · 등불은 복떡으로는 만들 수 없어요'
-      : t === 'wish' ? `먹 갈기·이름 쓰기는 무료로 해 보고, 마지막에 인장을 찍을 때 결제해요 · ${TTEOK} 복떡 ${CHARM_TTEOK}개면 무료(지금 ${bal}개)`
+    box.querySelector('.cm-note').textContent = t === 'lantern' ? `리본 묶기·100일 미리 보기를 해 보고, 마지막에 심지에 불을 붙일 때 ${TTEOK} 복떡 ${LANTERN_TTEOK}개를 올려요(지금 ${bal}개) · 돈은 들지 않아요`
+      : t === 'wish' ? `먹 갈기·이름 쓰기를 해 보고, 마지막에 인장을 찍을 때 ${TTEOK} 복떡 ${CHARM_TTEOK}개를 올려요(지금 ${bal}개) · 돈은 들지 않아요`
       : burnOk ? '걱정 태우기는 무료예요 · 하루 한 번 · 적은 글은 어디에도 저장하지 않아요' : '걱정 태우기는 하루 한 번이에요. 내일 다시 와 주세요. 마음이 많이 무거우면 ☎ 109(24시간)에 이야기해 주세요.';
     redraw();
   };
@@ -6325,10 +6361,10 @@ function openWishRitual(rec, onDone, opt = {}) {
     const btn = body.querySelector('.rt-sealbtn'); let t0 = 0; let done = false; let asking = false;
     const stamp = () => {
       if (done || asking) return;
-      if (!paid) { // 결제하는 순간 = 인장 찍는 순간
+      if (!paid) { // 복떡을 올리는 순간 = 인장 찍는 순간(v0.75 돈 결제 없음)
         asking = true; btn.classList.remove('holding');
         openCharmPay(lantern ? 'lantern' : 'wish', () => { asking = false; paid = true; stamp(); },
-          () => { asking = false; tip.textContent = '인장은 결제한 뒤에 찍혀요. 마음이 정해지면 다시 꾹 눌러 주세요'; }, d, rec);
+          () => { asking = false; tip.textContent = '인장은 복떡을 올린 뒤에 찍혀요. 마음이 정해지면 다시 꾹 눌러 주세요'; }, d);
         return;
       }
       done = true;
@@ -6479,11 +6515,11 @@ function openLanternRitual(rec, onDone, opt = {}) {
     };
     const tryLight = () => {
       if (paid) { ignite(); return; }
-      if (asking) return; asking = true; // 불 붙이는 순간 = 결제하는 순간
+      if (asking) return; asking = true; // 불 붙이는 순간 = 복떡 올리는 순간(v0.75 돈 결제 없음)
       openCharmPay('lantern', () => { asking = false; paid = true; ignite(); }, () => {
         asking = false; gauge?.reset();
-        tip.textContent = '불은 결제한 뒤에 붙어요. 마음이 정해지면 심지를 다시 쓸어 올려 주세요';
-      }, null, rec);
+        tip.textContent = '불은 복떡을 올린 뒤에 붙어요. 마음이 정해지면 심지를 다시 쓸어 올려 주세요';
+      });
     };
     gauge = dragGauge(wick, WICK_NEED, 'up', (k) => { fill.style.height = `${Math.round(k * 100)}%`; }, tryLight);
     if (paid) { tip.textContent = polite ? '결제가 끝났어요. 심지에 불을 붙일게요' : '결제가 끝났어. 심지에 불을 붙일게'; later(ignite, 700); } // 결제창에서 돌아온 경우
