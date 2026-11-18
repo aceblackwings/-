@@ -11,7 +11,7 @@
 > 6. **Claude 쪽에만 있는 것**: 미리보기 아티팩트 게시, `sample`·`room`·`db` 기능, 구글 드라이브 그림 받기 — 이 작업은 Claude Code가 맡음. Codex는 그림이 필요하면 프롬프트(`docs/prompts/`)와 넣는 도구 사용법만 남김.
 > 7. **역할 나누기(기본안, 사용자가 바꿀 수 있음)**: Codex = 출시 구조(Firebase 로그인·구매 기록 동기화·Capacitor 포장·웹 PG/인앱 결제·약관 페이지), Claude Code = 사주 엔진·운세 문장·화면 연출·그림 연결·미리보기.
 >
-> **진행 중**: (없음)
+> **진행 중**: [Claude Code · ccr-d18eb0a6-vxpzjm · v0.75 토스 재심사(부적·등불 판매 중단, 평생 정통사주 2,900원·열람 6개월) · saju-app/js/app.js·pay.js·shop.js·tteok.js·lantern.js·paidcharm.js·legal·tools/legal_pages.mjs·tests]
 
 ## 최근 버전 (최근 5개 · 그 전 기록은 `docs/changelog.md`)
 
