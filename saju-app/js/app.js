@@ -447,7 +447,7 @@ function initForm() {
 
   applyEasyClass();
   setupSound();
-  hit('land');
+  if (!saved) hit('land');
   const qs = new URLSearchParams(location.search);
   if (saved && saved.gender && saved.concern && !solarDateOf(saved).error && qs.get('auto') !== '0') start(saved);
   else if (qs.has('gallery')) start({ name: '미리보기', calendar: 'solar', year: 1998, month: 5, day: 20, time: '09:30', timeUnknown: false, lonCorr: true, zasi: 'early', gender: 'female', concern: 'job' }); // 저장하지 않는 견본 프로필
