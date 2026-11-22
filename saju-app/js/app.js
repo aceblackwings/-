@@ -41,15 +41,15 @@ import { formal, hasPoliteYo } from './formal.js';
 import { kaiunPower, kaiunFor, kaiunLine, fieldKaiunSentence, withKaiun, logKaiun, kaiunTrend, capState } from './kaiun.js';
 import { tenGodProfile, pillarReadings, personSummary, natalWatch } from './natal.js';
 import { growEquipped, fillOf, replaceCharm, pairType, fiveDone, elementsOwned, setUnlocked, boostRarity, offerUnlocked, offerValue, offerable, removeOffered, equipLine, charmKey, GROW_FULL, RARITY_KO as CC_RARITY_KO, TYPE_KO, OFFER_UNLOCK } from './charmcare.js';
-import { buildNote, markNote, weekStamps, stampRarity, AREA_CHARM, RARITY_KO, MONTH_KEY_NEED, monthStamps, STORY_STEPS, newStoryIndex, storiesOpen, buildStories, weeklyLetter } from './note.js';
+import { buildNote, markNote, weekStamps, stampRarity, AREA_CHARM, RARITY_KO, MONTH_KEY_NEED, monthStamps, STORY_STEPS, newStoryIndex, storiesOpen, buildStories } from './note.js';
 import { ELEMENT_LUCK } from './fortune.js';
 import { TAROT_TOPICS, TAROT_SPREADS, TAROT_SITU, TONE_KO, shuffleDeck, readTarot, cardOf, ROMAN, markSeen, repeatLine } from './tarot.js';
 import { fiveScores } from './todayfive.js';
 import { todayStory, setEmpathy, empathyReply } from './todaystory.js';
 import { plainText, yearize, EL_NAME } from './storybook.js';
 import { bookletStory, sajuStory, yearSummary, textsOf } from './storyreport.js';
-import { weekStory, yearStory, decadeStory } from './flowstory.js'; // v0.59 4단계 나의 흐름 요약판
-import { kiStory, kiQuote, tarotTale } from './funstory.js';
+import { weekStory, yearStory, decadeStory, weekGuide } from './flowstory.js'; // v0.59 4단계 나의 흐름 요약판
+import { kiStory, kiQuote } from './funstory.js';
 import { claimItem, PIECES_PER_ITEM, tarotUsed } from './tteok.js';
 import { dailyPath, nextLabel as pathNextLabel } from './coach.js';
 import { TTEOK, visit as tteokVisit, doTask as tteokDoTask, todayTasks, doneCount, isOpen as scrollOpen, spend as tteokSpend, buy as tteokBuy, SCROLLS, PACKS, TASKS as TTEOK_TASKS, ALL_BONUS } from './tteok.js';
@@ -2657,16 +2657,42 @@ function storiesCardHTML() {
 }
 
 /** ① 일요일 주간 편지 */
-function weeklyLetterHTML() {
-  const f = state.fortune;
-  if (new Date(Date.UTC(f.date.year, f.date.month - 1, f.date.day)).getUTCDay() !== 0) return '';
-  const z = characterInfo(state.saju, state.profile).zodiac; const d = timelineData();
-  const nx = new Date(Date.UTC(f.date.year, f.date.month - 1, f.date.day + 1));
-  const nw = weekOf(state.saju, { year: nx.getUTCFullYear(), month: nx.getUTCMonth() + 1, day: nx.getUTCDate() }, state.profile.gender);
-  const days = loadRecords().days || {}; const keys = new Set(d.week.days.map((x) => `${x.date.year}-${x.date.month}-${x.date.day}`));
-  const fbs = Object.entries(days).filter(([k, v]) => keys.has(k) && v.feedback && v.feedback !== 'skip');
-  const w = weeklyLetter({ week: d.week, store: load(NOTE_KEY, {}), name: state.profile.name, animal: z.name, polite: z.key === 'rooster', nextBest: { date: nw.best.date, keyword: GOD_READING[nw.best.god].keyword }, fb: { total: fbs.length, yes: fbs.filter(([, v]) => v.feedback === 'yes').length } });
-  return `<article class="card weekly-letter"><h3>${w.title}</h3>${w.lines.map((l) => `<p>${esc(l)}</p>`).join('')}<p class="td-sign">${esc(w.sign)}</p></article>`;
+/** v0.78 이번 주 운세(매일 보임, 토·일요일엔 다음 주 미리 보기) — 예전 일요일 「이번 주 편지」 자리 */
+function weekGuideNow() {
+  const f = state.fortune; const dow = new Date(Date.UTC(f.date.year, f.date.month - 1, f.date.day)).getUTCDay();
+  let next = null;
+  if (dow === 0 || dow === 6) {
+    const nx = new Date(Date.UTC(f.date.year, f.date.month - 1, f.date.day + (dow === 0 ? 1 : 2)));
+    next = weekOf(state.saju, { year: nx.getUTCFullYear(), month: nx.getUTCMonth() + 1, day: nx.getUTCDate() }, state.profile.gender);
+  }
+  return weekGuide(timelineData().week, next);
+}
+function weekFortuneFold() {
+  const G = weekGuideNow();
+  const sub = G.next ? `🔭 다음 주 미리 보기 · 가장 좋은 날 ${G.next.best.text.split(' ').pop()}` : `⭐ ${G.best.dow}요일이 가장 좋아요 · ☂️ ${G.low.dow}요일은 조심`;
+  return foldHTML('weekly', '📅', '이번 주 운세', sub, weekFortuneHTML(G));
+}
+function weekFortuneHTML(G) {
+  const today = G.days.find((x) => x.isToday);
+  const mark = (x) => (x.best ? '⭐ 최고' : x.low ? '☂️ 조심' : x.isToday ? '오늘' : '');
+  const box = (cls, icon, title, o, missLead) => `<div class="wf-box ${cls}${o.past ? ' past' : ''}"><b>${icon} ${title} · ${o.text} (${o.score}점)${o.past ? ' <small>지났어요</small>' : ''}</b>
+    <p>${esc(o.line)}</p><p class="wf-miss">${missLead} ${esc(o.miss)}</p></div>`;
+  return `<div class="wf">
+    ${G.next ? `<div class="wf-next"><b>🔭 다음 주 미리 보기</b>
+      <p>다음 주는 평균 <b>${G.next.avg}점</b>이에요.</p>
+      <p>⭐ 가장 좋은 날은 <b>${G.next.best.text}</b>. ${esc(G.next.best.line)}</p>
+      <p>☂️ 조심할 날은 <b>${G.next.low.text}</b>. ${esc(G.next.low.line)}</p>
+      <p class="muted">그날 할 일 하나를 지금 달력에 적어 두면, 좋은 날을 놓치지 않아요.</p></div>` : ''}
+    <p class="wf-head"><b>${esc(G.head)}</b> ${esc(G.shape)}</p>
+    <div class="wf-days">${G.days.map((x) => `<div class="wf-day${x.isToday ? ' now' : ''}${x.best ? ' best' : ''}${x.low ? ' low' : ''}${x.past ? ' past' : ''}"><span>${x.dow}</span><b style="color:${scoreColor(x.score)}">${x.score}</b><small>${mark(x)}</small></div>`).join('')}</div>
+    ${today ? `<p class="wf-today">오늘(${today.dow}요일)은 <b>「${today.tag}」</b>이에요.</p>` : ''}
+    ${box('good', '⭐', '가장 좋은 날', G.best, '👉 놓치면:')}
+    ${box('care', '☂️', '조심할 날', G.low, '👉 그냥 지나가면:')}
+    <p class="wf-sub">🎯 일정 잡기 좋은 요일</p>
+    <div class="wf-fields">${G.fields.map((x) => `<span>${x.icon} ${x.label} <b>${x.dow}요일</b></span>`).join('')}</div>
+    <div class="wf-box plan"><b>✅ 이번 주 이렇게 하면 좋은 쪽으로 흘러가요</b><ol>${G.todo.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>
+      <b>⛔ 이건 피하세요</b><p>${esc(G.avoid)}. 이런 일이 겹치면 한 주가 생각보다 무겁게 느껴질 수 있어요.</p></div>
+  </div>`;
 }
 
 /** 쪽지 완료 → 부적 보상(이번 주 도장이 많을수록 등급 상승) + 우산 미션 완료(성장 점수·용신 충전) */
@@ -3661,15 +3687,20 @@ function renderTarot() {
       <div class="tr-nav"><button type="button" class="ghost tr-back" data-tarot-step="spread">← 장수 다시 고르기</button><button type="button" class="ghost tr-back" data-tarot-shuffle>🔀 다시 섞기</button></div>`;
   } else if (T.step === 'result') {
     // v0.47 이야기 풀이: 카드의 대답(한 줄 결론) → 카드마다 그림 속 이야기·뜻·주제로 읽기·내 상황으로 읽기 → 세 장 이야기 → 오늘 할 한 가지
-    const r = T.result; const one = r.cards.length === 1;
+    const r = T.result; const one = r.cards.length === 1; const w = r.whole;
     const cardName = (c) => `${c.card.kind === 'major' ? `${ROMAN[c.card.num]}. ` : ''}${c.card.name} · ${c.card.title}`;
     body = `<p class="tr-guide">${r.topic.icon} 「${r.topic.ask}」${r.situ ? `<br><small>내 상황: ${r.situ.label}</small>` : ''}</p>
       <div class="tr-cards n${r.cards.length}">${r.cards.map((c) => `<div class="tr-card"><small class="tr-pos">${c.pos}</small>${tarotFace(c.card.key, c.reversed ? 'sleepy' : (c.card.mood || 'smile'), c.reversed)}<b>${cardName(c)}</b><small class="tr-kw">${c.keyword}</small></div>`).join('')}</div>
-      <div class="tr-tale"><small>🎬 카드가 들려주는 이야기</small><p>${esc(tarotTale(r))}</p></div>
-      <div class="tr-answer"><small>🔮 카드의 대답</small><p>${esc(r.answer)}</p></div>
+      <div class="tr-answer"><small>🔮 한마디로</small><p>${esc(r.answer)}</p></div>
+      <div class="tr-whole">
+        <p class="tw-h">📖 ${one ? '카드가 말해 주는 지금 흐름' : '세 장을 이어서 읽으면'}</p><p>${esc(w.flow)}</p>
+        <div class="tw-do"><b>✅ 이렇게 하면 좋은 쪽으로 흘러가요</b><ul>${w.good.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
+        <div class="tw-dont"><b>⚠️ 이렇게 하면 힘들어질 수 있어요</b><p>${esc(w.bad)}.</p></div>
+        <p class="tw-verdict">🎯 ${esc(w.verdict)}</p>
+      </div>
       ${(r.repeats || []).map((x) => `<p class="tr-repeat">${esc(x.line)}</p>`).join('')}
-      ${r.storyParts.length ? `<div class="tr-story"><b>📖 세 장이 이어 주는 이야기</b>${r.storyParts.map((x) => `<p>${esc(x)}</p>`).join('')}</div>` : ''}
-      <p class="muted tr-fold-guide">🃏 카드를 누르면 그림 속 이야기·카드의 뜻·내 상황 풀이가 펼쳐져요</p>
+      <div class="tr-sum"><p class="tr-act">☂️ 오늘 할 한 가지: <b>${esc(r.act)}</b></p></div>
+      <p class="muted tr-fold-guide">🃏 카드 한 장씩 자세히 보고 싶으면 눌러 보세요 (그림 속 이야기 · 카드의 뜻 · 내 상황 풀이)</p>
       ${r.cards.map((c) => { const rp = (r.repeats || []).find((x) => x.key === c.card.key); return `<details class="tr-read">
         <summary>${one ? '' : `<small class="tr-pos tr-pos-line">${c.pos}</small>`}<span class="tr-read-h">${cardName(c)}${c.reversed ? ' <span class="tr-rev">누운 카드</span>' : ''}${rp ? ` <span class="tr-again-badge">✨ 오늘 ${rp.count}번째</span>` : ''}</span><small class="tr-kw">${c.keyword}</small></summary>
         <p class="tr-scene"><b>🖼️ 그림 속 이야기</b>${esc(c.scene)}</p>
@@ -3677,7 +3708,6 @@ function renderTarot() {
         <p><b>${r.topic.icon} ${josa(r.topic.label, "으로/로")} 읽으면</b>${esc(c.reading)}</p>
         ${c.situLine ? `<p class="tr-situ-line"><b>💬 내 상황에 비추면</b>${esc(c.situLine)}</p>` : ''}
       </details>`; }).join('')}
-      <div class="tr-sum"><p>${esc(r.summary)}</p><p class="tr-act">☂️ 오늘 할 한 가지: <b>${esc(r.act)}</b></p></div>
       <div class="yday-btns"><button type="button" class="primary" data-tarot-again>🔀 같은 질문 다시 뽑기 <small>(${(() => { const pr = tarotPrice(loadTteok(), state.fortune.dateKey, T.spread); return `${TTEOK} ${pr.cost}개`; })()})</small></button><button type="button" class="ghost" data-tarot-reset>다른 질문 보기</button></div>
       ${charmNudgeHTML('tarot', r.topic.key)}
       ${tarotPriceNoteHTML()}
@@ -3737,7 +3767,7 @@ document.addEventListener('click', (e) => {
     T.step = 'result';
     const dk = state.fortune.dateKey; const r = T.result;
     { const m = markSeen(load(TAROT_SEEN_KEY, null), dk, r.topic.key, r.cards.map((c) => c.card.key)); save(TAROT_SEEN_KEY, m.store); r.repeats = m.repeats.map((x) => ({ ...x, line: repeatLine(x, r.topic.key) })); }
-    save(RECORDS_KEY, addItem(loadRecords(), { kind: 'tarot', dateKey: dk, key: `${r.topic.key}-${Date.now() % 100000}`, title: `12지신 타로 · ${r.topic.label}`, summary: r.cards.map((c) => `${c.card.name}${c.reversed ? '(쉬어 가기)' : ''}`).join(' · '), lines: [tarotTale(r), `카드의 대답: ${r.answer}`, ...r.repeats.map((x) => x.line), ...r.cards.map((c) => `${c.pos} · ${c.card.name}: ${c.reading}${c.situLine ? ` ${c.situLine}` : ''}`), ...(r.story ? [r.story] : []), `오늘 할 한 가지: ${r.act}`] }).rec);
+    save(RECORDS_KEY, addItem(loadRecords(), { kind: 'tarot', dateKey: dk, key: `${r.topic.key}-${Date.now() % 100000}`, title: `12지신 타로 · ${r.topic.label}`, summary: r.cards.map((c) => `${c.card.name}${c.reversed ? '(쉬어 가기)' : ''}`).join(' · '), lines: [`한마디로: ${r.answer}`, r.whole.flow, `이렇게 하면 좋아요: ${r.whole.good.join(' · ')}`, `조심할 점: ${r.whole.bad}.`, r.whole.verdict, ...r.repeats.map((x) => x.line), ...r.cards.map((c) => `${c.pos} · ${c.card.name}: ${c.reading}${c.situLine ? ` ${c.situLine}` : ''}`), `오늘 할 한 가지: ${r.act}`] }).rec);
     renderTarot(); window.scrollTo({ top: 0, behavior: 'smooth' });
     tteokTask('tarot'); feedJisin('snack');
     return;
@@ -3752,7 +3782,6 @@ function renderToday() {
   recordKaiun();
   // v0.43 단순화: 펼친 것은 오늘 운세 점수 + 오늘의 기운 카드 두 개뿐, 나머지는 한 줄 제목으로 접힘
   const bd = bookletData(); const sj = state.saju;
-  const weekly = weeklyLetterHTML();
   $('[data-panel="today"]').innerHTML = `
     <div class="fold-list">
       ${foldHTML('next', '📜', `${bd.y.sajuYear}년 운세`, `「${bd.b.title}」의 해 · 총운·분야별`, `${santongHTML(bd.y.sajuYear)}${bookletHTML(bd)}${bookletFieldsHTML(bd)}`)}
@@ -3767,8 +3796,8 @@ function renderToday() {
     ${cookieCardHTML()}
     ${habitsCardHTML()}
     <div class="fold-list">
+      ${weekFortuneFold()}
       ${foldHTML('saju', '🀄', '내 사주', `일간 ${STEMS[sj.dayMaster]}(${STEMS_KO[sj.dayMaster]}) · 필요한 기운 ${ELEMENT_KO[sj.yongsin]}`, sajuOpenHTML())}
-      ${weekly ? foldHTML('weekly', '💌', '이번 주 편지', '한 주 돌아보기', weekly) : ''}
       ${foldHTML('more', '🔮', '운세 더 보기', '이번 주·이달·올해·10년 · 궁금한 질문', `<div class="fold-go"><button type="button" class="primary" data-go-tab="ask">🔮 궁금한 것 물어보기</button></div>`)}
     </div>`;
 

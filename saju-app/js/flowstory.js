@@ -232,3 +232,55 @@ export function decadeStory({ dw, cur, age, godOf, name = '' }) {
   ];
   return { head: paras[0], paras };
 }
+
+// ---------- v0.78 이번 주 운세 창(매일 보이는 「📅 이번 주 운세」, 주말엔 다음 주 미리 보기) ----------
+// 2026-11-22 사용자 「이번 주 편지가 다시 나왔는데 뭔지 모르겠다 → 운세 보는 사람이 관심 가질 창으로」
+// 「이렇게 하면 좋은 쪽으로, 안 하면 힘들어진다」 말투: 좋은 날 = 할 일 + 놓치면, 조심할 날 = 할 일 + 그냥 지나가면
+const DAY_TAG = ['내 힘으로 밀고 나가는 날', '말과 재주가 빛나는 날', '돈 일이 잘 풀리는 날', '나를 보여 주는 날', '배우고 챙기는 날'];
+const BEST_MISS = [
+  '이날을 그냥 흘려보내면 미뤄 둔 일이 다음 주까지 짐으로 남아요.',
+  '생각을 속에만 두면 좋은 아이디어가 그대로 묻힐 수 있어요.',
+  '이날 정리를 미루면 새는 돈을 알아채기 어려워져요.',
+  '이날 뒤로 물러서 있으면 나를 보여 줄 기회가 다른 사람에게 갈 수 있어요.',
+  '이날 배움을 미루면 다음 기회 때 준비가 모자랄 수 있어요.',
+];
+const LOW_MISS = [
+  '고집대로 밀어붙이면 가까운 사람과 부딪혀 하루가 무거워질 수 있어요.',
+  '생각나는 대로 말하면 작은 말실수가 오해로 커질 수 있어요.',
+  '기분 따라 지갑을 열면 주말에 후회가 남을 수 있어요.',
+  '일을 더 떠안으면 몸과 마음이 함께 지칠 수 있어요.',
+  '고민만 하다 보면 할 일이 쌓여 마음이 더 무거워질 수 있어요.',
+];
+const FIELD_ICON = { wealth: '💰', love: '💗', career: '💼', social: '🤝', health: '🌿' };
+/**
+ * 이번 주 운세 창 내용
+ * @param w weekOf 결과(이번 주) · next weekOf 결과(다음 주, 주말에만 넘김)
+ * @returns { head, shape, days:[{dow, date, score, tag, best, low, isToday}], best:{text, line, miss}, low:{...}, fields:[{icon,label,dow}], todo[3], avoid, next? }
+ */
+export function weekGuide(w, next = null) {
+  const g = (d) => GROUP_OF[d.god] ?? 0;
+  const st = weekStory(w);
+  const top = (k) => w.days.reduce((a, b) => (b.scores[k] > a.scores[k] ? b : a));
+  const cnt = [0, 0, 0, 0, 0]; w.days.forEach((d) => { cnt[g(d)] += d.score; });
+  const main = cnt.indexOf(Math.max(...cnt));
+  const ti = w.days.findIndex((d) => d.isToday);
+  const past = (d) => ti >= 0 && w.days.indexOf(d) < ti;
+  const out = {
+    head: st.head,
+    shape: st.paras[0].replace(st.head, '').trim(),
+    days: w.days.map((d) => ({ dow: dowOf(d.date), date: d.date, score: d.score, tag: DAY_TAG[g(d)], best: d === w.best, low: d === w.worst, isToday: d.isToday, past: past(d) })),
+    best: { text: dayText(w.best.date), score: w.best.score, line: WEEK_BEST[g(w.best)], miss: BEST_MISS[g(w.best)], past: past(w.best), dow: dowOf(w.best.date) },
+    low: { text: dayText(w.worst.date), score: w.worst.score, line: WEEK_LOW[g(w.worst)], miss: LOW_MISS[g(w.worst)], past: past(w.worst), dow: dowOf(w.worst.date) },
+    fields: ['wealth', 'love', 'career', 'social'].map((k) => ({ icon: FIELD_ICON[k], label: FIELD[k], dow: dowOf(top(k).date) })),
+    todo: WEEK_DO[main],
+    avoid: WEEK_AVOID[main],
+  };
+  if (next) {
+    out.next = {
+      avg: next.avg,
+      best: { text: dayText(next.best.date), line: WEEK_BEST[g(next.best)] },
+      low: { text: dayText(next.worst.date), line: WEEK_LOW[g(next.worst)] },
+    };
+  }
+  return out;
+}
