@@ -105,6 +105,7 @@ import {
 const WISH_RECS = ['자격증 시험 합격', '가족 모두 건강하기', '좋은 인연 만나기', '이직에 성공하기', '저축 100만 원 모으기', '꾸준히 운동하기'];
 const BURN_RECS = ['괜히 불안한 마음', '나를 지치게 한 말', '자꾸 미루는 버릇', '꽉 막힌 일의 답답함', '다툰 뒤 남은 서운함', '잠 못 들게 하는 걱정'];
 const CHARMPAY_KEY = 'unmyeong2099.charmpay';
+import { hit } from './hit.js';
 import { PAY, payMode, fillBiz, inApp } from './site.js';
 const IN_APP = inApp(); // v0.74 앱(A안)에서는 유료 부적·등불·결제를 숨김
 import { PAY_PRODUCTS, EASY_PAYS, easyPayOrder, ABANDON_LINE, PENDING_KEY, CUSTOMER_KEY, makeCustomerKey, validCustomerKey, makeOrder, tossRequest, parseReturn, cleanSearch, checkReturn, pendingAlive, payLogEntry, failLine, alreadyDone } from './pay.js';
@@ -446,6 +447,7 @@ function initForm() {
 
   applyEasyClass();
   setupSound();
+  hit('land');
   const qs = new URLSearchParams(location.search);
   if (saved && saved.gender && saved.concern && !solarDateOf(saved).error && qs.get('auto') !== '0') start(saved);
   else if (qs.has('gallery')) start({ name: '미리보기', calendar: 'solar', year: 1998, month: 5, day: 20, time: '09:30', timeUnknown: false, lonCorr: true, zasi: 'early', gender: 'female', concern: 'job' }); // 저장하지 않는 견본 프로필
@@ -4975,6 +4977,7 @@ function showSajuCard() {
     <button class="primary" type="button" style="width:100%">🐉 이 사주를 지키는 수호신 만나기</button>
     <p class="muted" style="font-size:0.72rem;margin:8px 0 0">생년월일과 사주 원본은 이 기기에만 저장돼요.</p></div>`;
   document.body.appendChild(el);
+  hit('saju');
   el.querySelector('button').addEventListener('click', () => { el.remove(); showSummon(); });
 }
 
@@ -4994,6 +4997,7 @@ function showSummon() {
     <p class="muted" style="font-size:0.82rem">매일 할 일은 딱 3가지: <b>뽑기</b> · <b>여정 한 걸음</b> · <b>친구에게 스티커</b></p>
     <button class="primary" type="button" style="width:100%">시작하기 ✦</button></div>`;
   document.body.appendChild(el);
+  hit('summon');
   el.querySelector('button').addEventListener('click', () => { el.remove(); selectTab('today'); });
 }
 
