@@ -73,7 +73,7 @@ t('소리는 sound.js에서만(v0.66) · 진동은 도장에만', () => {
   assert.ok(!/vibrate|Audio|AudioContext|speechSynthesis/.test(src));
   const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
   assert.equal((app.match(/navigator\.vibrate\?\.\(|navigator\.vibrate\(/g) || []).length, 1);
-  const fc = app.slice(app.indexOf('function cookieInfo'), app.indexOf("document.addEventListener('click', (e) => {\n  if (e.target.closest('[data-fc-turn]'))"));
+  const fc = app.slice(app.indexOf('function cookieInfo'), app.indexOf("document.addEventListener('click', (e) => {\n  const stage = e.target.closest('#fc-stage');"));
   assert.ok(fc.length > 100 && !/vibrate|Audio|play\(/.test(fc));
 });
 
