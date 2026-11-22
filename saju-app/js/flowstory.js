@@ -267,20 +267,53 @@ export function weekGuide(w, next = null) {
   const past = (d) => ti >= 0 && w.days.indexOf(d) < ti;
   const out = {
     head: st.head,
+    avg: w.avg,
     shape: st.paras[0].replace(st.head, '').trim(),
     days: w.days.map((d) => ({ dow: dowOf(d.date), date: d.date, score: d.score, tag: DAY_TAG[g(d)], best: d === w.best, low: d === w.worst, isToday: d.isToday, past: past(d) })),
     best: { text: dayText(w.best.date), score: w.best.score, line: WEEK_BEST[g(w.best)], miss: BEST_MISS[g(w.best)], past: past(w.best), dow: dowOf(w.best.date) },
     low: { text: dayText(w.worst.date), score: w.worst.score, line: WEEK_LOW[g(w.worst)], miss: LOW_MISS[g(w.worst)], past: past(w.worst), dow: dowOf(w.worst.date) },
-    fields: ['wealth', 'love', 'career', 'social'].map((k) => ({ icon: FIELD_ICON[k], label: FIELD[k], dow: dowOf(top(k).date) })),
+    fields: ['wealth', 'love', 'career', 'social'].map((k) => ({ key: k, icon: FIELD_ICON[k], label: FIELD[k], dow: dowOf(top(k).date) })),
     todo: WEEK_DO[main],
     avoid: WEEK_AVOID[main],
   };
   if (next) {
+    const ncnt = [0, 0, 0, 0, 0]; next.days.forEach((d) => { ncnt[g(d)] += d.score; });
+    const nmain = ncnt.indexOf(Math.max(...ncnt));
     out.next = {
-      avg: next.avg,
-      best: { text: dayText(next.best.date), line: WEEK_BEST[g(next.best)] },
-      low: { text: dayText(next.worst.date), line: WEEK_LOW[g(next.worst)] },
+      avg: next.avg, todo: WEEK_DO[nmain], avoid: WEEK_AVOID[nmain],
+      best: { text: dayText(next.best.date), score: next.best.score, line: WEEK_BEST[g(next.best)], miss: BEST_MISS[g(next.best)] },
+      low: { text: dayText(next.worst.date), score: next.worst.score, line: WEEK_LOW[g(next.worst)], miss: LOW_MISS[g(next.worst)] },
     };
   }
   return out;
+}
+
+// v0.79(2026-11-22 사용자 「칸으로 나눈 정리식 대신 포춘 쿠키처럼 「쉽게 말하면」 한 문단 + 조심할 점만」)
+const FIELD_LEAD = { wealth: '돈 일', love: '데이트나 고백', career: '일·공부', social: '사람 만나는 일' };
+const iRo = (w) => josa(w, '이었어요/였어요');
+/** 이번 주 운세 「쉽게 말하면」 한 문단 · 「조심할 점」 한 문단(주말엔 다음 주 기준) */
+export function weekPlain(G) {
+  const byDay = [];
+  for (const x of G.fields) { const g0 = byDay.find((y) => y.dow === x.dow); if (g0) g0.names.push(FIELD_LEAD[x.key]); else byDay.push({ dow: x.dow, names: [FIELD_LEAD[x.key]] }); }
+  const fields = byDay.map((y) => (y.names.length > 1 ? `${y.names.slice(0, -1).join(', ')}, ${josa(y.names.at(-1), '은/는')} 모두 ${y.dow}요일` : `${josa(y.names[0], '은/는')} ${y.dow}요일`)).join(', ');
+  const todoOf = (t) => `${t[0]}, ${t[1]}, ${josa(t[2], '을/를')} 해 보세요`;
+  const todo = todoOf(G.todo);
+  let plain; let watch;
+  if (G.next) {
+    plain = [
+      `이번 주는 평균 ${G.avg}점이었고, 가장 힘이 실렸던 날은 ${iRo(G.best.text)}.`,
+      `다음 주는 평균 ${G.next.avg}점이에요. 가장 좋은 날은 ${G.next.best.text}(${G.next.best.score}점)이에요. ${G.next.best.line} ${G.next.best.miss}`,
+      `다음 주에는 ${todoOf(G.next.todo.map((x) => x.replace('이번 주 ', '그 주에 ')))}. 좋은 날에 할 일 하나를 지금 달력에 적어 두면 그날을 놓치지 않아요.`,
+    ].join(' ');
+    watch = `다음 주 ${G.next.low.text}(${G.next.low.score}점)은 조금 조심할 날이에요. ${G.next.low.line} ${G.next.low.miss} 또 ${josa(G.next.avoid, '은/는')} 피하는 게 좋아요.`;
+  } else {
+    plain = [
+      `${G.head} ${G.shape}`,
+      `${G.best.past ? `가장 힘이 실렸던 날은 ${iRo(G.best.text)}.` : `가장 힘이 실리는 날은 ${G.best.text}(${G.best.score}점)이에요. ${G.best.line} ${G.best.miss}`}`,
+      `${fields}에 맞추면 같은 노력으로 더 크게 돌아와요.`,
+      `이번 주에는 ${todo}. 이렇게 보내면 한 주가 좋은 쪽으로 흘러가요.`,
+    ].join(' ');
+    watch = `${G.low.past ? `조심할 날이었던 ${G.low.text}은 지나갔어요. 남은 날에도` : `${G.low.text}(${G.low.score}점)은 조금 조심할 날이에요. ${G.low.line} ${G.low.miss} 또 이번 주에는`} ${josa(G.avoid, '은/는')} 피하는 게 좋아요. 이런 일이 겹치면 한 주가 생각보다 무겁게 느껴질 수 있어요.`;
+  }
+  return { plain, watch };
 }

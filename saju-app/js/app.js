@@ -43,12 +43,12 @@ import { tenGodProfile, pillarReadings, personSummary, natalWatch } from './nata
 import { growEquipped, fillOf, replaceCharm, pairType, fiveDone, elementsOwned, setUnlocked, boostRarity, offerUnlocked, offerValue, offerable, removeOffered, equipLine, charmKey, GROW_FULL, RARITY_KO as CC_RARITY_KO, TYPE_KO, OFFER_UNLOCK } from './charmcare.js';
 import { buildNote, markNote, weekStamps, stampRarity, AREA_CHARM, RARITY_KO, MONTH_KEY_NEED, monthStamps, STORY_STEPS, newStoryIndex, storiesOpen, buildStories } from './note.js';
 import { ELEMENT_LUCK } from './fortune.js';
-import { TAROT_TOPICS, TAROT_SPREADS, TAROT_SITU, TONE_KO, shuffleDeck, readTarot, cardOf, ROMAN, markSeen, repeatLine } from './tarot.js';
+import { TAROT_TOPICS, TAROT_SPREADS, TAROT_SITU, shuffleDeck, readTarot, cardOf, ROMAN, markSeen, repeatLine, KID, KID_REV, plainTarot } from './tarot.js';
 import { fiveScores } from './todayfive.js';
 import { todayStory, setEmpathy, empathyReply } from './todaystory.js';
 import { plainText, yearize, EL_NAME } from './storybook.js';
 import { bookletStory, sajuStory, yearSummary, textsOf } from './storyreport.js';
-import { weekStory, yearStory, decadeStory, weekGuide } from './flowstory.js'; // v0.59 4단계 나의 흐름 요약판
+import { weekStory, yearStory, decadeStory, weekGuide, weekPlain } from './flowstory.js'; // v0.59 4단계 나의 흐름 요약판
 import { kiStory, kiQuote } from './funstory.js';
 import { claimItem, PIECES_PER_ITEM, tarotUsed } from './tteok.js';
 import { dailyPath, nextLabel as pathNextLabel } from './coach.js';
@@ -2672,26 +2672,14 @@ function weekFortuneFold() {
   const sub = G.next ? `🔭 다음 주 미리 보기 · 가장 좋은 날 ${G.next.best.text.split(' ').pop()}` : `⭐ ${G.best.dow}요일이 가장 좋아요 · ☂️ ${G.low.dow}요일은 조심`;
   return foldHTML('weekly', '📅', '이번 주 운세', sub, weekFortuneHTML(G));
 }
+/** v0.79 포춘 쿠키처럼: 7일 점수 한 줄 → 쉽게 말하면(한 문단) → 조심할 점 */
 function weekFortuneHTML(G) {
-  const today = G.days.find((x) => x.isToday);
   const mark = (x) => (x.best ? '⭐ 최고' : x.low ? '☂️ 조심' : x.isToday ? '오늘' : '');
-  const box = (cls, icon, title, o, missLead) => `<div class="wf-box ${cls}${o.past ? ' past' : ''}"><b>${icon} ${title} · ${o.text} (${o.score}점)${o.past ? ' <small>지났어요</small>' : ''}</b>
-    <p>${esc(o.line)}</p><p class="wf-miss">${missLead} ${esc(o.miss)}</p></div>`;
+  const t = weekPlain(G);
   return `<div class="wf">
-    ${G.next ? `<div class="wf-next"><b>🔭 다음 주 미리 보기</b>
-      <p>다음 주는 평균 <b>${G.next.avg}점</b>이에요.</p>
-      <p>⭐ 가장 좋은 날은 <b>${G.next.best.text}</b>. ${esc(G.next.best.line)}</p>
-      <p>☂️ 조심할 날은 <b>${G.next.low.text}</b>. ${esc(G.next.low.line)}</p>
-      <p class="muted">그날 할 일 하나를 지금 달력에 적어 두면, 좋은 날을 놓치지 않아요.</p></div>` : ''}
-    <p class="wf-head"><b>${esc(G.head)}</b> ${esc(G.shape)}</p>
     <div class="wf-days">${G.days.map((x) => `<div class="wf-day${x.isToday ? ' now' : ''}${x.best ? ' best' : ''}${x.low ? ' low' : ''}${x.past ? ' past' : ''}"><span>${x.dow}</span><b style="color:${scoreColor(x.score)}">${x.score}</b><small>${mark(x)}</small></div>`).join('')}</div>
-    ${today ? `<p class="wf-today">오늘(${today.dow}요일)은 <b>「${today.tag}」</b>이에요.</p>` : ''}
-    ${box('good', '⭐', '가장 좋은 날', G.best, '👉 놓치면:')}
-    ${box('care', '☂️', '조심할 날', G.low, '👉 그냥 지나가면:')}
-    <p class="wf-sub">🎯 일정 잡기 좋은 요일</p>
-    <div class="wf-fields">${G.fields.map((x) => `<span>${x.icon} ${x.label} <b>${x.dow}요일</b></span>`).join('')}</div>
-    <div class="wf-box plan"><b>✅ 이번 주 이렇게 하면 좋은 쪽으로 흘러가요</b><ol>${G.todo.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>
-      <b>⛔ 이건 피하세요</b><p>${esc(G.avoid)}. 이런 일이 겹치면 한 주가 생각보다 무겁게 느껴질 수 있어요.</p></div>
+    <p class="ts-why"><span><b class="ts-plain">쉽게 말하면,</b> ${esc(t.plain)}</span></p>
+    <section class="ts-tile watch ts-one"><h4>⚠️ ${G.next ? '다음 주 조심할 점' : '이번 주 조심할 점'}</h4><p>${esc(t.watch)}</p></section>
   </div>`;
 }
 
@@ -3687,26 +3675,19 @@ function renderTarot() {
       <div class="tr-nav"><button type="button" class="ghost tr-back" data-tarot-step="spread">← 장수 다시 고르기</button><button type="button" class="ghost tr-back" data-tarot-shuffle>🔀 다시 섞기</button></div>`;
   } else if (T.step === 'result') {
     // v0.47 이야기 풀이: 카드의 대답(한 줄 결론) → 카드마다 그림 속 이야기·뜻·주제로 읽기·내 상황으로 읽기 → 세 장 이야기 → 오늘 할 한 가지
-    const r = T.result; const one = r.cards.length === 1; const w = r.whole;
+    const r = T.result; const one = r.cards.length === 1; const w = r.whole; // v0.79 포춘 쿠키처럼: 쉽게 말하면 한 문단 + 조심할 점 + 카드 설명(접힘, 초등학생도 알게)
     const cardName = (c) => `${c.card.kind === 'major' ? `${ROMAN[c.card.num]}. ` : ''}${c.card.name} · ${c.card.title}`;
     body = `<p class="tr-guide">${r.topic.icon} 「${r.topic.ask}」${r.situ ? `<br><small>내 상황: ${r.situ.label}</small>` : ''}</p>
       <div class="tr-cards n${r.cards.length}">${r.cards.map((c) => `<div class="tr-card"><small class="tr-pos">${c.pos}</small>${tarotFace(c.card.key, c.reversed ? 'sleepy' : (c.card.mood || 'smile'), c.reversed)}<b>${cardName(c)}</b><small class="tr-kw">${c.keyword}</small></div>`).join('')}</div>
-      <div class="tr-answer"><small>🔮 한마디로</small><p>${esc(r.answer)}</p></div>
-      <div class="tr-whole">
-        <p class="tw-h">📖 ${one ? '카드가 말해 주는 지금 흐름' : '세 장을 이어서 읽으면'}</p><p>${esc(w.flow)}</p>
-        <div class="tw-do"><b>✅ 이렇게 하면 좋은 쪽으로 흘러가요</b><ul>${w.good.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
-        <div class="tw-dont"><b>⚠️ 이렇게 하면 힘들어질 수 있어요</b><p>${esc(w.bad)}.</p></div>
-        <p class="tw-verdict">🎯 ${esc(w.verdict)}</p>
-      </div>
+      <p class="ts-why tr-plain"><span><b class="ts-plain">쉽게 말하면,</b> ${esc(plainTarot(r))}</span></p>
+      <section class="ts-tile watch ts-one"><h4>⚠️ 조심할 점</h4><p>${esc(w.bad)}.</p></section>
       ${(r.repeats || []).map((x) => `<p class="tr-repeat">${esc(x.line)}</p>`).join('')}
-      <div class="tr-sum"><p class="tr-act">☂️ 오늘 할 한 가지: <b>${esc(r.act)}</b></p></div>
-      <p class="muted tr-fold-guide">🃏 카드 한 장씩 자세히 보고 싶으면 눌러 보세요 (그림 속 이야기 · 카드의 뜻 · 내 상황 풀이)</p>
-      ${r.cards.map((c) => { const rp = (r.repeats || []).find((x) => x.key === c.card.key); return `<details class="tr-read">
-        <summary>${one ? '' : `<small class="tr-pos tr-pos-line">${c.pos}</small>`}<span class="tr-read-h">${cardName(c)}${c.reversed ? ' <span class="tr-rev">누운 카드</span>' : ''}${rp ? ` <span class="tr-again-badge">✨ 오늘 ${rp.count}번째</span>` : ''}</span><small class="tr-kw">${c.keyword}</small></summary>
-        <p class="tr-scene"><b>🖼️ 그림 속 이야기</b>${esc(c.scene)}</p>
-        <p><b>🔑 이 카드의 뜻</b>${esc(c.meaning)} <span class="tr-tone">${TONE_KO[c.card.tone]}</span></p>
-        <p><b>${r.topic.icon} ${josa(r.topic.label, "으로/로")} 읽으면</b>${esc(c.reading)}</p>
-        ${c.situLine ? `<p class="tr-situ-line"><b>💬 내 상황에 비추면</b>${esc(c.situLine)}</p>` : ''}
+      <p class="muted tr-fold-guide">🃏 카드 설명이 궁금하면 눌러서 열어 보세요</p>
+      ${r.cards.map((c) => { const rp = (r.repeats || []).find((x) => x.key === c.card.key); const k = KID[c.card.key] || ['', '']; return `<details class="tr-read">
+        <summary>${one ? '' : `<small class="tr-pos tr-pos-line">${c.pos}</small>`}<span class="tr-read-h">${cardName(c)}${c.reversed ? ' <span class="tr-rev">누운 카드</span>' : ''}${rp ? ` <span class="tr-again-badge">✨ 오늘 ${rp.count}번째</span>` : ''}</span></summary>
+        <p class="tr-kid">${esc(k[0])}${c.reversed ? ` ${esc(KID_REV)}` : ''}</p>
+        <p class="tr-kid-when">📌 ${esc(k[1])}</p>
+        <p class="tr-kid-q"><b>${r.topic.icon} 이번 질문에서는</b> ${esc(c.reading)}${c.situLine ? ` ${esc(c.situLine)}` : ''}</p>
       </details>`; }).join('')}
       <div class="yday-btns"><button type="button" class="primary" data-tarot-again>🔀 같은 질문 다시 뽑기 <small>(${(() => { const pr = tarotPrice(loadTteok(), state.fortune.dateKey, T.spread); return `${TTEOK} ${pr.cost}개`; })()})</small></button><button type="button" class="ghost" data-tarot-reset>다른 질문 보기</button></div>
       ${charmNudgeHTML('tarot', r.topic.key)}
@@ -3767,7 +3748,7 @@ document.addEventListener('click', (e) => {
     T.step = 'result';
     const dk = state.fortune.dateKey; const r = T.result;
     { const m = markSeen(load(TAROT_SEEN_KEY, null), dk, r.topic.key, r.cards.map((c) => c.card.key)); save(TAROT_SEEN_KEY, m.store); r.repeats = m.repeats.map((x) => ({ ...x, line: repeatLine(x, r.topic.key) })); }
-    save(RECORDS_KEY, addItem(loadRecords(), { kind: 'tarot', dateKey: dk, key: `${r.topic.key}-${Date.now() % 100000}`, title: `12지신 타로 · ${r.topic.label}`, summary: r.cards.map((c) => `${c.card.name}${c.reversed ? '(쉬어 가기)' : ''}`).join(' · '), lines: [`한마디로: ${r.answer}`, r.whole.flow, `이렇게 하면 좋아요: ${r.whole.good.join(' · ')}`, `조심할 점: ${r.whole.bad}.`, r.whole.verdict, ...r.repeats.map((x) => x.line), ...r.cards.map((c) => `${c.pos} · ${c.card.name}: ${c.reading}${c.situLine ? ` ${c.situLine}` : ''}`), `오늘 할 한 가지: ${r.act}`] }).rec);
+    save(RECORDS_KEY, addItem(loadRecords(), { kind: 'tarot', dateKey: dk, key: `${r.topic.key}-${Date.now() % 100000}`, title: `12지신 타로 · ${r.topic.label}`, summary: r.cards.map((c) => `${c.card.name}${c.reversed ? '(쉬어 가기)' : ''}`).join(' · '), lines: [`쉽게 말하면, ${plainTarot(r)}`, `조심할 점: ${r.whole.bad}.`, ...r.repeats.map((x) => x.line), ...r.cards.map((c) => `${c.pos} · ${c.card.name}: ${c.reading}${c.situLine ? ` ${c.situLine}` : ''}`)] }).rec);
     renderTarot(); window.scrollTo({ top: 0, behavior: 'smooth' });
     tteokTask('tarot'); feedJisin('snack');
     return;
