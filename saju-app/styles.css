@@ -2537,3 +2537,6 @@ body:has(#path-pill:not([hidden])) .toast { bottom: calc(84px + env(safe-area-in
 .tr-read .tr-kid-when { margin: 0 0 6px; padding: 10px 12px; border-radius: 14px; background: #fff8f0; line-height: 1.7; }
 .tr-read .tr-kid-q { margin: 0; line-height: 1.7; }
 .tr-read .tr-kid-q b { display: block; margin-bottom: 2px; }
+/* v0.80 궁합 쉬운 설명: 한 문단 + 조심할 점 */
+.ts-why.cp-story { margin: 8px 0 12px; }
+.cp-watch { margin: 0 0 12px; }

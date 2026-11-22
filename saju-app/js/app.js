@@ -12,7 +12,7 @@ import { renderEmoticonSVG, EMOTES, todayEmote, MOOD_PROP } from './emoticon.js'
 import {
   CONCERNS, characterInfo, renderCharacterSVG, characterStats, STAGE_UNLOCKS, characterMarkup, ZODIAC,
 } from './character.js';
-import { computeCompat, renderCompatSVG } from './compat.js';
+import { compatStory, computeCompat, renderCompatSVG } from './compat.js';
 import { personalityOf, speak } from './personality.js';
 import { pairDialogue, pairLine } from './pairtalk.js';
 import { computeDex, emptyDex, recordDiscoveries, claimMilestone } from './dex.js';
@@ -5789,21 +5789,14 @@ function compatResultHTML(fr, idx) {
   const svg = renderCompatSVG(myInfo, friendInfo, c, { myName, friendName: fr.name, myStage: stage, myCharms: charms });
   const dialogue = pairDialogue(state.saju.pillars.year.branch, fs.pillars.year.branch, { stageA: stage, stageB: 2 });
   state.compat = { myInfo, friendInfo, compat: c, svg, myName, friendName: fr.name, friendSaju: fs, myStage: stage, myCharms: charms, dialogue, fr };
-  const bar = (label, v) => `<div class="bar"><span>${label}</span><div class="track"><div class="fill" style="width:${v}%;background:${scoreColor(v)};color:${scoreColor(v)}"></div></div><span class="num">${v}</span></div>`;
+  // v0.80 쉬운 설명: 등급·점수 막대·근거 목록 대신 한 문단 + 조심할 점(근거는 문단 안에 쉬운 말로)
+  const story = compatStory(c, { me: state.profile.name || '', friend: fr.name, meAnimal: myInfo.zodiac.name, friendAnimal: friendInfo.zodiac.name });
   return `<div class="card">
     <div class="compat-stage">${svg}</div>
     <h3 style="margin:12px 0 4px;color:${c.grade.color}">${c.grade.label} · ${c.score}점</h3>
-    <p style="margin-top:0">${c.grade.desc}</p>
-    <div class="bars">${bar('💕 연애', c.sub.love)}${bar('🤝 우정', c.sub.friend)}${bar('💼 일', c.sub.work)}</div>
-    <ul class="reasons">
-      <li><b>타고난 기운(일간)</b> ${STEMS[state.saju.dayMaster]} × ${STEMS[fs.dayMaster]} — ${c.stem.label}: ${c.stem.text} <em>${c.parts.stem >= 0 ? '+' : ''}${c.parts.stem}</em></li>
-      <li><b>생활 자리(일지)</b> ${c.day.unknown ? '' : `${BRANCHES[state.saju.pillars.day.branch]} × ${BRANCHES[fs.pillars.day.branch]} — ${c.day.label}: `}${c.day.text} <em>${c.parts.day >= 0 ? '+' : ''}${c.parts.day}</em></li>
-      <li><b>필요한 기운 채워 주기</b> 상대가 내 용신 ${ELEMENT_KO[state.saju.yongsin]}${'을를를을를'[state.saju.yongsin]} ${c.yongMe}칸, 내가 상대 용신 ${ELEMENT_KO[fs.yongsin]}${'을를를을를'[fs.yongsin]} ${c.yongFriend}칸 채워 줘요 <em>+${c.parts.yong}</em></li>
-      <li><b>띠</b> ${myInfo.zodiac.name}띠 × ${friendInfo.zodiac.name}띠 — ${c.branch.label}: ${c.branch.text} <em>${c.parts.ddi >= 0 ? '+' : ''}${c.parts.ddi}</em></li>
-    </ul>
-    <p class="concern-card" style="margin:8px 0 0">🌤️ 오늘의 둘: ${c.todayLine} <small class="muted">(궁합 점수와 별개로 날마다 바뀌어요)</small></p>
+    <p class="ts-why cp-story"><span>${esc(story.para)}</span></p>
+    <section class="ts-tile watch ts-one cp-watch"><h4>⚠️ 조심할 점</h4><p>${esc(story.watch)}</p></section>
     ${dialogueHTML(myInfo, friendInfo, state.compat.dialogue, stage)}
-    <p class="concern-card" style="margin:10px 0 0">💡 오늘의 팁: ${c.tip}</p>
     <div class="actions" style="margin-top:12px">
       <button class="primary" type="button" data-story="compat">📸 궁합 카드 스토리 공유</button>
       <button class="ghost" type="button" id="btn-compat-charm">💞 인연 부적 받기</button>

@@ -5,6 +5,7 @@ import { weekGuide, weekPlain } from '../js/flowstory.js';
 import { weekOf } from '../js/period.js';
 import { computeSaju } from '../js/saju.js';
 import { toneProblems } from '../js/habit.js';
+import { computeCompat, compatStory } from '../js/compat.js';
 import { josaProblems } from '../js/josa.js';
 let pass = 0; const t = (n, f) => { f(); pass++; console.log('ok -', n); };
 const clean = (txt, why) => { assert.deepEqual(toneProblems(txt), [], `${why}: ${txt}`); assert.deepEqual(josaProblems(txt), [], `${why}: ${txt}`); };
@@ -69,5 +70,19 @@ t('v0.79 이번 주 운세: 쉽게 말하면 한 문단 + 조심할 점(주말�
     assert.ok(!/그리고 .*, 그리고 /.test(t2.watch), '그리고 겹침 없음');
     if (weekend) assert.ok(t2.plain.includes('다음 주'));
   }
+});
+t('v0.80 궁합: 한 문단(점수·등급·성격·생활·채워 주기·띠·가장 맞는 사이·오늘) + 조심할 점', () => {
+  const me = computeSaju({ year: 1992, month: 5, day: 14, hour: 9, minute: 30, timeKnown: true });
+  const grades = new Set(); const watches = new Set();
+  for (let i = 0; i < 160; i++) {
+    const f = computeSaju({ year: 1960 + (i % 50), month: 1 + (i % 12), day: 1 + ((i * 7) % 28), hour: i % 24, minute: 0, timeKnown: i % 3 > 0 });
+    const c = computeCompat(me, f, { year: 2026, month: 11, day: 22 });
+    const r = compatStory(c, { me: i % 2 ? '은하' : '', friend: i % 2 ? '지수' : '준', meAnimal: '원숭이', friendAnimal: '돼지' });
+    grades.add(c.grade.key); watches.add(r.watch);
+    assert.ok(r.para.includes(`${c.score}점`) && r.para.includes(c.grade.label));
+    assert.ok(!r.para.includes('쉽게 말하면'), '궁합은 「쉽게 말하면」 문구 없이');
+    clean(`${r.para} ${r.watch}`, `compat ${i}`);
+  }
+  assert.ok(grades.size >= 4, '여러 등급'); assert.ok(watches.size >= 5, '조심할 점이 사이마다 다름');
 });
 console.log(`readable: ${pass} 통과`);
