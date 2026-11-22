@@ -2,6 +2,7 @@
 import { STEM_ELEMENT, ELEMENT_KO, ELEMENT_HANJA, ANIMALS, dayPillarIndex, pillarFromIndex } from './saju.js';
 import { branchPair } from './relations.js';
 import { characterMarkup } from './character.js';
+import { josa, iyeyo } from './josa.js';
 
 const mod = (n, m) => ((n % m) + m) % m;
 
@@ -149,3 +150,91 @@ export function renderCompatSVG(meInfo, friendInfo, compat, opts = {}) {
 }
 
 export { ANIMALS };
+
+// ======================================================================
+// v0.80(2026-11-22 사용자 「궁합도 쉬운 설명으로, 요약식이 아니라 한 문단 + 조심할 점」)
+// 점수 근거(일간·일지·용신·띠)를 쉬운 말로 한 문단에 잇고, 가장 신경 쓸 한 가지를 「조심할 점」으로
+// ======================================================================
+const STEM_PLAIN = {
+  hap: '두 사람은 타고난 성격의 뿌리가 서로 짝을 이루는 사이예요. 처음 만나도 오래 알던 사람처럼 마음이 잘 맞는 편이에요.',
+  same: '두 사람은 타고난 기운이 같아서 생각하는 방식이 많이 닮았어요. 말하지 않아도 통하는 게 많아요.',
+  give: '내가 상대를 북돋아 주는 사이예요. 내가 챙겨 줄수록 상대가 힘을 얻고, 그 모습에 나도 보람을 느껴요.',
+  take: '상대가 나를 북돋아 주는 사이예요. 상대 곁에 있으면 내가 힘을 얻고 마음이 편안해져요.',
+  clash: '두 사람은 타고난 기운이 서로 다른 방향을 보고 있어요. 그래서 가끔 밀고 당기는 느낌이 들지만, 서로에게 없는 점을 배울 수 있는 사이예요.',
+};
+const dayPlain = (d) => {
+  if (d.unknown) return '';
+  const k = d.kinds || [];
+  if (k.includes('sixCombine') || k.includes('triple') || k.includes('half')) return '생활하는 리듬도 잘 맞아서 함께 지낼수록 편해져요.';
+  if (k.includes('same')) return '생활 방식도 비슷해서 같이 있으면 편안해요.';
+  if (k.includes('clash')) return '다만 생활하는 방식은 정반대에 가까워서, 서로의 다른 점이 눈에 잘 띄어요.';
+  if (k.length) return '생활 속 작은 습관에서는 서로 다른 점이 조금씩 보일 수 있어요.';
+  return '생활 방식은 크게 부딪히지도 묶이지도 않는 담백한 사이예요.';
+};
+const yongPlain = (n) => (n >= 6 ? '게다가 서로에게 부족한 기운을 채워 주는 힘이 커서, 함께 있으면 둘 다 운이 살아나요.'
+  : n >= 3 ? '서로에게 부족한 기운을 조금씩 채워 주는 사이이기도 해요.'
+    : '서로의 부족한 기운을 채워 주는 힘은 크지 않으니, 각자의 장점을 먼저 알아봐 주면 더 가까워져요.');
+const ddiPlain = (br, a, b) => ({
+  samhap: `띠로 봐도 ${a}띠와 ${b}띠는 함께하면 힘이 커지는 좋은 조합이에요.`,
+  yukhap: `띠로 봐도 ${a}띠와 ${b}띠는 서로 끌어당기는 좋은 조합이에요.`,
+  same: `둘 다 ${b}띠라 통하는 게 많아요.`,
+  chung: `띠로 보면 ${a}띠와 ${b}띠는 정반대 자리에 있어서, 부딪히는 만큼 서로 자극을 주는 사이예요.`,
+  wonjin: `띠로 보면 ${a}띠와 ${b}띠는 가끔 서운함이 쌓이기 쉬운 조합이에요.`,
+  normal: `띠로 보면 ${a}띠와 ${b}띠는 무난하고 편안한 조합이에요.`,
+}[br.type]);
+const GRADE_PLAIN = {
+  destiny: '하늘이 맺어 준 것처럼 잘 맞는 인연이라, 함께 있으면 서로의 운이 커져요.',
+  perfect: '손발이 척척 맞아서 같이 하는 일마다 잘 풀리는 사이예요.',
+  buddy: '편하고 믿음직해서 오래 함께할수록 더 빛나는 사이예요.',
+  spark: '가끔 투닥거려도 결국 서로를 찾게 되는 사이예요. 다툼도 둘이 함께 자라는 재료가 돼요.',
+  push: '아직 서로를 알아 가는 중인 사이예요. 먼저 다가가는 쪽이 거리를 좁혀요.',
+};
+const SUB_KO = { love: '연인', friend: '친구', work: '함께 일하는 사이' };
+const WATCH = {
+  dayClash: '생활 방식이 정반대라, 서로의 방식을 고치려 들면 다툼이 잦아질 수 있어요. 각자의 시간과 방식을 인정해 주면 오히려 더 단단해져요.',
+  stemClash: '서로 자기 생각이 옳다고 고집하면 밀고 당기기가 다툼으로 번질 수 있어요. 의견이 다를 땐 결론보다 상대의 이유를 먼저 들어 주세요.',
+  ddiChung: '부딪혔을 때 바로 맞서면 감정이 크게 상할 수 있어요. 화가 날 땐 바로 말하기보다 하루 지나서 이야기해 보세요.',
+  wonjin: '작은 서운함을 말하지 않고 쌓아 두면 어느 날 크게 터질 수 있어요. 서운한 일은 하루 지나 부드럽게 말해 주세요.',
+  harm: '짧은 메시지 한 줄이 오해로 번지기 쉬워요. 중요한 이야기는 얼굴을 보고 하거나 한 번 더 풀어서 말해 주세요.',
+  punish: '잘되라고 한 말이 잔소리로 들리면 마음이 멀어질 수 있어요. 고칠 점보다 잘한 점을 먼저 말해 주세요.',
+  break: '약속이 자주 바뀌면 서로 믿음이 흔들릴 수 있어요. 중요한 약속은 글로 남겨 두세요.',
+  give: '내가 챙겨 주기만 하다 지치면 서운함이 생길 수 있어요. 나도 필요한 것을 솔직하게 말해 주세요.',
+  take: '상대의 배려를 당연하게 여기면 상대가 지칠 수 있어요. 고맙다는 말을 자주 전해 주세요.',
+  same: '너무 닮아서 같은 부분에서 고집이 부딪힐 수 있어요. 그럴 땐 한 사람이 먼저 한 발 물러서 주세요.',
+  close: '너무 잘 맞는다고 서로에게만 기대면 다른 관계가 소홀해질 수 있어요. 각자의 친구와 시간도 챙겨 주세요.',
+  calm: '편한 사이라 표현을 줄이면 마음이 식은 것처럼 느껴질 수 있어요. 가끔은 고마운 마음을 말로 전해 주세요.',
+};
+/** 가장 신경 쓸 한 가지 */
+function compatWatch(c) {
+  const k = c.day.kinds || [];
+  if (k.includes('clash')) return WATCH.dayClash;
+  if (c.stem.type === 'clash') return WATCH.stemClash;
+  if (c.branch.type === 'chung') return WATCH.ddiChung;
+  if (k.includes('wonjin') || c.branch.type === 'wonjin') return WATCH.wonjin;
+  if (k.includes('harm')) return WATCH.harm;
+  if (k.includes('punish')) return WATCH.punish;
+  if (k.includes('break')) return WATCH.break;
+  if (c.stem.type === 'give') return WATCH.give;
+  if (c.stem.type === 'take') return WATCH.take;
+  if (c.stem.type === 'same') return WATCH.same;
+  return c.grade.key === 'destiny' || c.grade.key === 'perfect' ? WATCH.close : WATCH.calm;
+}
+/**
+ * 궁합 한 문단 + 조심할 점
+ * @param c computeCompat 결과 · names {me, friend, meAnimal, friendAnimal}
+ */
+export function compatStory(c, { me = '', friend = '', meAnimal = '', friendAnimal = '' } = {}) {
+  const who = `${me ? josa(me, '과/와') : '나와'} ${friend || '상대'}`;
+  const best = Object.entries(c.sub).reduce((a, b) => (b[1] > a[1] ? b : a));
+  const para = [
+    `${who}의 궁합은 ${c.score}점, ${iyeyo(`「${c.grade.label}」`)}. ${GRADE_PLAIN[c.grade.key]}`,
+    STEM_PLAIN[c.stem.type],
+    dayPlain(c.day),
+    yongPlain(c.complement),
+    ddiPlain(c.branch, meAnimal, friendAnimal),
+    `연인·친구·함께 일하는 사이 가운데에서는 ${josa(SUB_KO[best[0]], '으로/로')} 지낼 때 가장 잘 맞아요(${best[1]}점).`,
+    c.todayLine,
+    `${c.tip}`,
+  ].filter(Boolean).join(' ');
+  return { para, watch: compatWatch(c) };
+}

@@ -107,23 +107,50 @@ export function claimStreak(store, todayKey) {
   return { store: { ...s, claimed: todayKey }, piece: true, streak: n };
 }
 
-// ---------- v0.59(2026-11-06 사용자 결정): 부위마다 하루 한 번만 고르기 · 추천 없음 · 별 3개 = 떡 1 · 4개 = 2 · 5개 = 3 ----------
+// ---------- v0.59(2026-11-06 사용자 결정): 추천 없음 · 별 3개 = 떡 1 · 4개 = 2 · 5개 = 3 ----------
+// v0.77(2026-11-22 사용자 「아이템 선택을 3번까지 하게 해서 복떡 받을 확률을 높여 줘」): 부위마다 하루 3번까지 바꿔 입기,
+// 「이 코디로 완성하기」를 누르거나 세 부위 기회를 다 쓰면 완성 → 그때 별 수만큼 떡
 export const STAR_REWARD = { 3: 1, 4: 2, 5: 3 };
-export const lockedOn = (store, dateKey) => ({ ...((store?.days || {})[dateKey]?.locked || {}) });
-/** 한 부위 고르기(그날 그 부위는 잠김) → {store, locked:true}면 이미 고른 부위 */
+export const PICKS_PER_SLOT = 3;
+export const lockedOn = (store, dateKey) => {
+  const day = (store?.days || {})[dateKey] || {};
+  const lk = { ...(day.locked || {}) };
+  if (day.done) SLOTS.forEach((x) => { lk[x.key] = true; });
+  return lk;
+};
+/** 부위마다 오늘 남은 기회(예전 기록은 잠긴 부위 = 0) */
+export function triesLeft(store, dateKey) {
+  const day = (store?.days || {})[dateKey] || {}; const lk = lockedOn(store, dateKey);
+  return Object.fromEntries(SLOTS.map((x) => [x.key, lk[x.key] ? 0 : Math.max(0, PICKS_PER_SLOT - (day.tries?.[x.key] || 0))]));
+}
+/** 오늘 코디를 마쳤는지(완성 버튼 또는 기회 모두 사용) */
+export const isDone = (store, dateKey) => { const lk = lockedOn(store, dateKey); return SLOTS.every((x) => lk[x.key]); };
+/** 세 부위 모두 입었는지(완성 버튼을 누를 수 있는지) */
+export const canFinish = (store, dateKey) => { const day = (store?.days || {})[dateKey]; return !!day && !isDone(store, dateKey) && SLOTS.every((x) => day.outfit?.[x.key]); };
+/** 한 부위 고르기 → {store, locked:true}면 그 부위는 오늘 더 못 바꿈, same:true면 이미 입은 소품(기회 안 씀) */
 export function pickSlot(store, dateKey, slot, id, luckyEl, todayEl, opts = {}) {
   const s = { ...emptyCoordi(), ...(store || {}) }; const day = s.days[dateKey] || {};
-  if (day.locked?.[slot]) return { store: s, locked: true };
+  if (lockedOn(s, dateKey)[slot]) return { store: s, locked: true };
+  if (id && day.outfit?.[slot] === id) return { store: s, locked: false, same: true, res: coordiHearts(day.outfit, luckyEl, todayEl, opts), left: triesLeft(s, dateKey)[slot], done: false };
   const outfit = { ...(day.outfit || {}), [slot]: id || null };
   const res = coordiHearts(outfit, luckyEl, todayEl, opts);
   const next = saveDay(s, dateKey, outfit, res.hearts);
-  next.days[dateKey] = { ...next.days[dateKey], locked: { ...(day.locked || {}), [slot]: true } };
-  return { store: next, locked: false, res, done: SLOTS.every((x) => next.days[dateKey].locked[x.key]) };
+  const tries = { ...(day.tries || {}), [slot]: (day.tries?.[slot] || 0) + 1 };
+  const locked = { ...(day.locked || {}) }; if (tries[slot] >= PICKS_PER_SLOT) locked[slot] = true;
+  const done = SLOTS.every((x) => locked[x.key]);
+  next.days[dateKey] = { ...next.days[dateKey], tries, locked, ...(done ? { done: true } : {}) };
+  return { store: next, locked: false, res, left: PICKS_PER_SLOT - tries[slot], done };
 }
-/** 세 부위를 다 고른 날 한 번: 별 수만큼 떡 */
+/** 「이 코디로 완성하기」: 세 부위를 다 입었을 때만 */
+export function finishDay(store, dateKey) {
+  const s = { ...emptyCoordi(), ...(store || {}) };
+  if (!canFinish(s, dateKey)) return { store: s, ok: false };
+  return { store: { ...s, days: { ...s.days, [dateKey]: { ...s.days[dateKey], done: true } } }, ok: true };
+}
+/** 완성한 날 한 번: 별 수만큼 떡 */
 export function claimStars(store, dateKey) {
   const s = { ...emptyCoordi(), ...(store || {}) }; const day = s.days[dateKey];
-  if (!day || day.paid || !SLOTS.every((x) => day.locked?.[x.key])) return { store: s, gained: 0, done: false };
+  if (!day || day.paid || !isDone(s, dateKey)) return { store: s, gained: 0, done: false };
   const gained = STAR_REWARD[day.hearts] || 0;
   return { store: { ...s, days: { ...s.days, [dateKey]: { ...day, paid: true } } }, gained, done: true, stars: day.hearts };
 }

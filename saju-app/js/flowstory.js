@@ -232,3 +232,88 @@ export function decadeStory({ dw, cur, age, godOf, name = '' }) {
   ];
   return { head: paras[0], paras };
 }
+
+// ---------- v0.78 이번 주 운세 창(매일 보이는 「📅 이번 주 운세」, 주말엔 다음 주 미리 보기) ----------
+// 2026-11-22 사용자 「이번 주 편지가 다시 나왔는데 뭔지 모르겠다 → 운세 보는 사람이 관심 가질 창으로」
+// 「이렇게 하면 좋은 쪽으로, 안 하면 힘들어진다」 말투: 좋은 날 = 할 일 + 놓치면, 조심할 날 = 할 일 + 그냥 지나가면
+const DAY_TAG = ['내 힘으로 밀고 나가는 날', '말과 재주가 빛나는 날', '돈 일이 잘 풀리는 날', '나를 보여 주는 날', '배우고 챙기는 날'];
+const BEST_MISS = [
+  '이날을 그냥 흘려보내면 미뤄 둔 일이 다음 주까지 짐으로 남아요.',
+  '생각을 속에만 두면 좋은 아이디어가 그대로 묻힐 수 있어요.',
+  '이날 정리를 미루면 새는 돈을 알아채기 어려워져요.',
+  '이날 뒤로 물러서 있으면 나를 보여 줄 기회가 다른 사람에게 갈 수 있어요.',
+  '이날 배움을 미루면 다음 기회 때 준비가 모자랄 수 있어요.',
+];
+const LOW_MISS = [
+  '고집대로 밀어붙이면 가까운 사람과 부딪혀 하루가 무거워질 수 있어요.',
+  '생각나는 대로 말하면 작은 말실수가 오해로 커질 수 있어요.',
+  '기분 따라 지갑을 열면 주말에 후회가 남을 수 있어요.',
+  '일을 더 떠안으면 몸과 마음이 함께 지칠 수 있어요.',
+  '고민만 하다 보면 할 일이 쌓여 마음이 더 무거워질 수 있어요.',
+];
+const FIELD_ICON = { wealth: '💰', love: '💗', career: '💼', social: '🤝', health: '🌿' };
+/**
+ * 이번 주 운세 창 내용
+ * @param w weekOf 결과(이번 주) · next weekOf 결과(다음 주, 주말에만 넘김)
+ * @returns { head, shape, days:[{dow, date, score, tag, best, low, isToday}], best:{text, line, miss}, low:{...}, fields:[{icon,label,dow}], todo[3], avoid, next? }
+ */
+export function weekGuide(w, next = null) {
+  const g = (d) => GROUP_OF[d.god] ?? 0;
+  const st = weekStory(w);
+  const top = (k) => w.days.reduce((a, b) => (b.scores[k] > a.scores[k] ? b : a));
+  const cnt = [0, 0, 0, 0, 0]; w.days.forEach((d) => { cnt[g(d)] += d.score; });
+  const main = cnt.indexOf(Math.max(...cnt));
+  const ti = w.days.findIndex((d) => d.isToday);
+  const past = (d) => ti >= 0 && w.days.indexOf(d) < ti;
+  const out = {
+    head: st.head,
+    avg: w.avg,
+    shape: st.paras[0].replace(st.head, '').trim(),
+    days: w.days.map((d) => ({ dow: dowOf(d.date), date: d.date, score: d.score, tag: DAY_TAG[g(d)], best: d === w.best, low: d === w.worst, isToday: d.isToday, past: past(d) })),
+    best: { text: dayText(w.best.date), score: w.best.score, line: WEEK_BEST[g(w.best)], miss: BEST_MISS[g(w.best)], past: past(w.best), dow: dowOf(w.best.date) },
+    low: { text: dayText(w.worst.date), score: w.worst.score, line: WEEK_LOW[g(w.worst)], miss: LOW_MISS[g(w.worst)], past: past(w.worst), dow: dowOf(w.worst.date) },
+    fields: ['wealth', 'love', 'career', 'social'].map((k) => ({ key: k, icon: FIELD_ICON[k], label: FIELD[k], dow: dowOf(top(k).date) })),
+    todo: WEEK_DO[main],
+    avoid: WEEK_AVOID[main],
+  };
+  if (next) {
+    const ncnt = [0, 0, 0, 0, 0]; next.days.forEach((d) => { ncnt[g(d)] += d.score; });
+    const nmain = ncnt.indexOf(Math.max(...ncnt));
+    out.next = {
+      avg: next.avg, todo: WEEK_DO[nmain], avoid: WEEK_AVOID[nmain],
+      best: { text: dayText(next.best.date), score: next.best.score, line: WEEK_BEST[g(next.best)], miss: BEST_MISS[g(next.best)] },
+      low: { text: dayText(next.worst.date), score: next.worst.score, line: WEEK_LOW[g(next.worst)], miss: LOW_MISS[g(next.worst)] },
+    };
+  }
+  return out;
+}
+
+// v0.79(2026-11-22 사용자 「칸으로 나눈 정리식 대신 포춘 쿠키처럼 「쉽게 말하면」 한 문단 + 조심할 점만」)
+const FIELD_LEAD = { wealth: '돈 일', love: '데이트나 고백', career: '일·공부', social: '사람 만나는 일' };
+const iRo = (w) => josa(w, '이었어요/였어요');
+/** 이번 주 운세 「쉽게 말하면」 한 문단 · 「조심할 점」 한 문단(주말엔 다음 주 기준) */
+export function weekPlain(G) {
+  const byDay = [];
+  for (const x of G.fields) { const g0 = byDay.find((y) => y.dow === x.dow); if (g0) g0.names.push(FIELD_LEAD[x.key]); else byDay.push({ dow: x.dow, names: [FIELD_LEAD[x.key]] }); }
+  const fields = byDay.map((y) => (y.names.length > 1 ? `${y.names.slice(0, -1).join(', ')}, ${josa(y.names.at(-1), '은/는')} 모두 ${y.dow}요일` : `${josa(y.names[0], '은/는')} ${y.dow}요일`)).join(', ');
+  const todoOf = (t) => `${t[0]}, ${t[1]}, ${josa(t[2], '을/를')} 해 보세요`;
+  const todo = todoOf(G.todo);
+  let plain; let watch;
+  if (G.next) {
+    plain = [
+      `이번 주는 평균 ${G.avg}점이었고, 가장 힘이 실렸던 날은 ${iRo(G.best.text)}.`,
+      `다음 주는 평균 ${G.next.avg}점이에요. 가장 좋은 날은 ${G.next.best.text}(${G.next.best.score}점)이에요. ${G.next.best.line} ${G.next.best.miss}`,
+      `다음 주에는 ${todoOf(G.next.todo.map((x) => x.replace('이번 주 ', '그 주에 ')))}. 좋은 날에 할 일 하나를 지금 달력에 적어 두면 그날을 놓치지 않아요.`,
+    ].join(' ');
+    watch = `다음 주 ${G.next.low.text}(${G.next.low.score}점)은 조금 조심할 날이에요. ${G.next.low.line} ${G.next.low.miss} 또 ${josa(G.next.avoid, '은/는')} 피하는 게 좋아요.`;
+  } else {
+    plain = [
+      `${G.head} ${G.shape}`,
+      `${G.best.past ? `가장 힘이 실렸던 날은 ${iRo(G.best.text)}.` : `가장 힘이 실리는 날은 ${G.best.text}(${G.best.score}점)이에요. ${G.best.line} ${G.best.miss}`}`,
+      `${fields}에 맞추면 같은 노력으로 더 크게 돌아와요.`,
+      `이번 주에는 ${todo}. 이렇게 보내면 한 주가 좋은 쪽으로 흘러가요.`,
+    ].join(' ');
+    watch = `${G.low.past ? `조심할 날이었던 ${G.low.text}은 지나갔어요. 남은 날에도` : `${G.low.text}(${G.low.score}점)은 조금 조심할 날이에요. ${G.low.line} ${G.low.miss} 또 이번 주에는`} ${josa(G.avoid, '은/는')} 피하는 게 좋아요. 이런 일이 겹치면 한 주가 생각보다 무겁게 느껴질 수 있어요.`;
+  }
+  return { plain, watch };
+}

@@ -92,18 +92,31 @@ t('데일리 코디: 연속 7일마다 조각 1개(같은 날 두 번 안 줌), 
   assert.equal(got, 2);
 });
 
-t('코디(v0.59): 부위마다 하루 한 번 · 세 부위 다 고르면 별 3=1·4=2·5=3 떡(하루 한 번)', () => {
+t('코디(v0.77): 부위마다 하루 3번까지 · 완성하기(또는 기회 다 씀) 뒤 별 3=1·4=2·5=3 떡(하루 한 번)', () => {
   const lucky = 1; const today = 3; const D = '2026-11-6';
-  const pick = (el) => C.WARDROBE.head.find((x) => x.el === el).id;
-  let r = C.pickSlot(null, D, 'head', pick(lucky), lucky, today); assert.equal(r.locked, false); assert.equal(r.done, false);
-  assert.equal(C.pickSlot(r.store, D, 'head', pick(0), lucky, today).locked, true, '같은 부위 두 번 안 됨');
+  const pick = (slot, el) => C.WARDROBE[slot].find((x) => x.el === el).id;
+  let r = C.pickSlot(null, D, 'head', pick('head', 0), lucky, today); assert.equal(r.locked, false); assert.equal(r.left, 2);
+  const same = C.pickSlot(r.store, D, 'head', pick('head', 0), lucky, today); assert.ok(same.same, '같은 소품은 기회를 안 씀'); assert.equal(same.left, 2);
+  r = C.pickSlot(r.store, D, 'head', pick('head', lucky), lucky, today); assert.equal(r.left, 1, '같은 부위 다시 고르기 가능');
+  assert.equal(C.canFinish(r.store, D), false, '세 부위를 다 입어야 완성');
   assert.equal(C.claimStars(r.store, D).gained, 0);
-  r = C.pickSlot(r.store, D, 'neck', C.WARDROBE.neck.find((x) => x.el === lucky).id, lucky, today);
-  r = C.pickSlot(r.store, D, 'hand', C.WARDROBE.hand.find((x) => x.el === lucky).id, lucky, today); assert.ok(r.done);
-  const c = C.claimStars(r.store, D); assert.equal(c.stars, 5); assert.equal(c.gained, 3);
+  r = C.pickSlot(r.store, D, 'neck', pick('neck', lucky), lucky, today);
+  r = C.pickSlot(r.store, D, 'hand', pick('hand', lucky), lucky, today); assert.equal(r.done, false);
+  assert.ok(C.canFinish(r.store, D)); assert.equal(C.claimStars(r.store, D).gained, 0, '완성 전에는 떡 없음');
+  const f = C.finishDay(r.store, D); assert.ok(f.ok); assert.ok(C.isDone(f.store, D));
+  assert.equal(C.pickSlot(f.store, D, 'neck', pick('neck', 0), lucky, today).locked, true, '완성 뒤에는 못 바꿈');
+  const c = C.claimStars(f.store, D); assert.equal(c.stars, 5); assert.equal(c.gained, 3);
   assert.equal(C.claimStars(c.store, D).gained, 0, '하루 한 번');
   assert.deepEqual([1, 2, 3, 4, 5].map((n) => C.STAR_REWARD[n] || 0), [0, 0, 1, 2, 3]);
   assert.ok(C.lockedOn(c.store, '2026-11-7').head === undefined, '다음 날은 다시');
+  // 세 부위 기회를 모두 쓰면 저절로 완성
+  let s = null; let last;
+  for (const slot of ['head', 'neck', 'hand']) for (const el of [0, 2, lucky]) { last = C.pickSlot(s, D, slot, pick(slot, el), lucky, today); s = last.store; }
+  assert.ok(last.done); assert.deepEqual(C.triesLeft(s, D), { head: 0, neck: 0, hand: 0 });
+  assert.equal(C.claimStars(s, D).gained, 3);
+  // 예전 기록(부위마다 한 번 잠금)도 완성으로 읽음
+  const old = { days: { [D]: { outfit: { head: 'h1', neck: 'n1', hand: 'a1' }, hearts: 5, locked: { head: true, neck: true, hand: true }, paid: true } } };
+  assert.ok(C.isDone(old, D)); assert.equal(C.claimStars(old, D).gained, 0);
 });
 t('걱정 태우기: 걱정은 결과에 없음 · 부적 기운 = 바치기 값 · 소원·장착 부적 제외 · 109', () => {
   const col = [rec({ rarity: 'common' }), rec({ rarity: 'epic', dateKey: '2026-11-4' }), { ...rec({ dateKey: '2026-11-3' }), wish: '합격', dueKey: '2026-12-1' }];
