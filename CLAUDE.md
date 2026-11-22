@@ -11,6 +11,8 @@
 > 6. **Claude 쪽에만 있는 것**: 미리보기 아티팩트 게시, `sample`·`room`·`db` 기능, 구글 드라이브 그림 받기 — 이 작업은 Claude Code가 맡음. Codex는 그림이 필요하면 프롬프트(`docs/prompts/`)와 넣는 도구 사용법만 남김.
 > 7. **역할 나누기(기본안, 사용자가 바꿀 수 있음)**: Codex = 출시 구조(Firebase 로그인·구매 기록 동기화·Capacitor 포장·웹 PG/인앱 결제·약관 페이지), Claude Code = 사주 엔진·운세 문장·화면 연출·그림 연결·미리보기.
 >
+> 8. **사용자 없이 주고받기(2026-11-22 사용자 결정)**: Claude Code가 **3시간마다** 열린 `codex/…` PR을 찾아 검토 → 고칠 점은 PR 댓글(「Claude 검토」)로 남기고, Codex는 같은 PR에 푸시로 답함. **테스트 전부 통과 + Claude 검토 통과면 Claude Code가 바로 병합**(사용자 승인 불필요). 단 결제 금액·결제 흐름(`pay.js`·`worker/`의 결제 경로)·환불·약관·개인정보처리방침(`legal/`·`tools/legal_pages.mjs`)이 바뀌는 PR은 사용자에게 한 줄 요약 후 확인받고 병합(토스 재심사). Codex에 넘길 일은 Claude Code가 `docs/codex/작업이름.md` 지시서로 올림. 사용자에게 묻는 것은 계정 화면 작업(Cloudflare·토스·구글 플레이)·비밀 키·위 민감 변경뿐.
+>
 > **진행 중**: (없음)
 
 ## 최근 버전 (최근 5개 · 그 전 기록은 `docs/changelog.md`)
