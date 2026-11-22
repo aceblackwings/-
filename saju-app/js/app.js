@@ -51,7 +51,7 @@ import { bookletStory, sajuStory, yearSummary, textsOf } from './storyreport.js'
 import { weekStory, yearStory, decadeStory, weekGuide, weekPlain } from './flowstory.js'; // v0.59 4단계 나의 흐름 요약판
 import { kiStory, kiQuote } from './funstory.js';
 import { claimItem, PIECES_PER_ITEM, tarotUsed } from './tteok.js';
-import { dailyPath, nextLabel as pathNextLabel } from './coach.js';
+import { PATH, dailyPath, nextLabel as pathNextLabel } from './coach.js';
 import { TTEOK, visit as tteokVisit, doTask as tteokDoTask, todayTasks, doneCount, isOpen as scrollOpen, spend as tteokSpend, buy as tteokBuy, SCROLLS, PACKS, TASKS as TTEOK_TASKS, ALL_BONUS } from './tteok.js';
 import { emoImage, charImage } from './assets.js';
 import { PRODUCTS, buildPremiumYear, buildLifeReport, buildCompatReport, premiumTeaser, compatTeaser, tarotBridge, bundleWorth, BUNDLE_COMPAT, BUNDLE_TTEOK } from './premium.js';
@@ -4994,7 +4994,7 @@ function showSummon() {
     <h3 style="margin:6px 0">${info.zodiac.name}띠 수호신 <span style="color:var(--gold)">${info.name}</span> 강림!</h3>
     ${speechBubble([speak(zIdx(), 'greet', { index: 0, stage: 1 }), `${state.profile.name || '주인'}의 ${c.label} 고민, 오늘부터 30일 동안 매일 한 걸음씩 같이 풀어 가자!`])}
     <div class="summon-plan">${JOURNEYS[c.key].chapters.map((ch, i) => `<div><b>${i + 1}장</b><span>${ch}</span><small>${i * 10 + 1}~${i * 10 + 10}일</small></div>`).join('')}</div>
-    <p class="muted" style="font-size:0.82rem">매일 할 일은 딱 3가지: <b>뽑기</b> · <b>여정 한 걸음</b> · <b>친구에게 스티커</b></p>
+    <p class="muted" style="font-size:0.82rem">매일 할 일은 ${PATH.length}가지예요<br>${PATH.map((s) => `<b>${s.icon} ${s.short}</b>`).join(' → ')}<br>손가락이 다음에 누를 곳을 알려 줘요.</p>
     <button class="primary" type="button" style="width:100%">시작하기 ✦</button></div>`;
   document.body.appendChild(el);
   hit('summon');
