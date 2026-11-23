@@ -57,16 +57,18 @@ console.log(`site.test: ${n}개 통과`);
 
 // 회사 홈페이지(ockstar.com): 생성기 결과와 같음 · 사업자 정보 · 12지신 강림 링크
 {
-  const { companyPage, CONTENTS, COMPANY_URL } = await import('../tools/company_page.mjs');
+  const { companyPage, CONTENTS, COMPANY_URL, homeAddress } = await import('../tools/company_page.mjs');
   const html = readFileSync(new URL('../../company/site/index.html', import.meta.url), 'utf8');
   assert.equal(html, companyPage(), 'company/site/index.html — 글을 고쳤으면 node saju-app/tools/company_page.mjs 다시 실행');
-  for (const x of [BIZ.name, BIZ.owner, BIZ.regNo, BIZ.address, BIZ.phone, BIZ.email]) assert.ok(html.includes(x), `회사 홈페이지에 ${x}`);
+  for (const x of [BIZ.name, BIZ.owner, BIZ.regNo, homeAddress(), BIZ.phone, BIZ.email]) assert.ok(html.includes(x), `회사 홈페이지에 ${x}`);
+  assert.ok(!/\d+동\s*\d+호/.test(html) && homeAddress().startsWith('부산광역시'), '회사 홈페이지 주소에는 동·호수를 넣지 않음');
+  for (const x of ['포피', '젠', '뀨', 'youtube.com/@해외첫반응', 'youtube.com/@라디오우체국-w4s', 'instagram.com/ockstar77', 'tiktok.com/@haeoe_first']) assert.ok(html.includes(x), `회사 홈페이지에 ${x}`);
   assert.ok(html.includes(`href="${BIZ.domain}/"`) && html.includes('12지신 강림'), '콘텐츠 목록에 12지신 강림');
   assert.ok(CONTENTS.length >= 1 && COMPANY_URL === 'https://ockstar.com');
   assert.deepEqual(josaProblems(textOf(html)), [], '회사 홈페이지 조사');
   const cfg = readFileSync(new URL('../../company/wrangler.jsonc', import.meta.url), 'utf8');
   assert.ok(cfg.includes('"name": "ockstar-home"') && cfg.includes('"directory": "./site"'));
-  for (const f of ['company.css', 'img/12jisin.webp', 'robots.txt']) readFileSync(new URL(`../../company/site/${f}`, import.meta.url));
+  for (const f of ['studio.css', 'studio.js', 'img/12jisin.webp', 'img/trio.webp', 'img/poppy.webp', 'img/zen.webp', 'img/kyu.webp', 'img/poppy-book.webp', 'img/poppy-popcorn.webp', 'robots.txt']) readFileSync(new URL(`../../company/site/${f}`, import.meta.url));
 }
 console.log('  ✓ 회사 홈페이지: 생성기 결과와 같음 · 사업자 정보 · 12지신 강림 링크 · 배포 설정');
 

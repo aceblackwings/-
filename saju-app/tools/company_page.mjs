@@ -1,5 +1,7 @@
 // 유니유통 회사 홈페이지(ockstar.com) 생성기: `node saju-app/tools/company_page.mjs` → company/site/index.html
 // 사업자 정보는 saju-app/js/site.js 의 BIZ 한 곳에서 읽는다. 글을 고치면 다시 실행(tests/site.test.mjs가 같은지 검사).
+// v0.83부터 「디지털 크리에이티브 스튜디오」 화면: 첫 화면(포피·젠·뀨) → ABOUT → LAB(개발 프로그램) → STUDIO(영상 플랫폼) → MISSION(캐릭터) → CONTACT.
+// 모양은 company/site/studio.css, 첫 화면 펼침·스크롤 등장은 company/site/studio.js.
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -9,90 +11,210 @@ export const COMPANY_URL = 'https://ockstar.com';
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const tel = (p) => p.replace(/[^0-9+]/g, '');
 
-/** 회사가 서비스하는 콘텐츠 목록 — 새 콘텐츠가 생기면 여기에 한 칸 추가 */
+/** 회사 홈페이지에 보이는 주소 — 동·호수는 뺀다(2026-11-23 사용자 요청). 12지신 강림 약관·결제 화면은 BIZ.address 그대로. */
+export const homeAddress = (biz = BIZ) => bizValue('address', biz).replace(/,\s*\d+동\s*\d+호/, '');
+
+/** 개발 프로그램(LAB) 맨 위에 올리는 서비스 — 지금은 12지신 강림 하나 */
 export const CONTENTS = [
-  {
-    name: '12지신 강림', tag: '웹 서비스 · 무료로 시작', img: 'img/12jisin.webp', imgAlt: '포춘 쿠키 기계 옆에 선 용 지신 캐릭터',
-    desc: '생년월일로 보는 사주와 2027년 신년운세, 12지신 타로와 궁합을 광고 없이 모두 무료로 볼 수 있습니다. 내 띠의 수호신을 키우며 매일 습관 두 가지를 챙기는 운세·습관 서비스입니다.',
-    points: ['오늘의 포춘 쿠키와 운세', '2027년 신년운세 · 사주 풀이', '12지신 타로 · 궁합', '소원 부적 · 100일 소원 등불'],
-    url: BIZ.domain, cta: '12지신 강림 열기',
-  },
+  { name: '12지신 강림', url: BIZ.domain },
 ];
 
 export function companyPage(biz = BIZ) {
   const v = (k) => esc(bizValue(k, biz));
-  const items = CONTENTS.map((c) => `
-        <article class="item">
-          <div class="pic"><img src="${c.img}" alt="${esc(c.imgAlt)}" width="768" height="700" loading="lazy"></div>
-          <div class="body">
-            <span class="tag">${esc(c.tag)}</span>
-            <h3>${esc(c.name)}</h3>
-            <p>${esc(c.desc)}</p>
-            <ul>${c.points.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>
-            <a class="btn" href="${esc(c.url)}/">${esc(c.cta)} →</a>
-          </div>
-        </article>`).join('');
   return `<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OCKSTAR · ${v('name')} – 디지털 콘텐츠와 앱</title>
-  <meta name="description" content="${v('name')}은 디지털 콘텐츠와 앱을 만들고 직접 서비스합니다. 무료 사주·2027 신년운세·타로·습관 서비스 「12지신 강림」을 운영합니다.">
+  <title>OCKSTAR · 디지털 크리에이티브 스튜디오</title>
+  <meta name="description" content="OCKSTAR(${v('name')})는 웹 서비스와 영상을 직접 기획하고 만드는 디지털 크리에이티브 스튜디오입니다.">
   <link rel="canonical" href="${COMPANY_URL}/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="OCKSTAR · ${v('name')}">
-  <meta property="og:title" content="OCKSTAR · ${v('name')}">
+  <meta property="og:title" content="OCKSTAR · 디지털 크리에이티브 스튜디오">
+  <meta property="og:description" content="웹 서비스와 영상을 직접 기획하고 만듭니다. 포피, 젠, 뀨의 이야기도 준비하고 있습니다.">
+  <meta property="og:image" content="${COMPANY_URL}/img/trio.webp">
   <meta property="og:url" content="${COMPANY_URL}/">
-  <meta name="theme-color" content="#faf7f1">
-  <link rel="stylesheet" href="company.css">
+  <meta name="theme-color" content="#07080a">
+  <link rel="stylesheet" href="studio.css">
+  <script>document.documentElement.classList.add('js');</script>
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <a class="mark" href="./"><b>OCKSTAR</b><small>${v('name')}</small></a>
-    <nav aria-label="바로 가기"><a href="#contents">콘텐츠</a><a href="#about">회사 정보</a><a href="#contact">문의</a></nav>
-  </header>
-  <main>
-    <div class="hero">
-      <p class="eyebrow">${v('name')}</p>
-      <h1>매일 한 번 열어 보고 싶은 디지털 콘텐츠를 만듭니다</h1>
-      <p>${v('name')}은 앱과 디지털 콘텐츠를 만들고 직접 서비스합니다. 지금 운영하는 콘텐츠를 아래에서 만나 보세요.</p>
+
+<header class="top" id="top">
+  <a class="mark" href="#top" aria-label="OCKSTAR 처음으로">
+    <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="#e5352b"/><circle cx="20" cy="20" r="14.5" fill="none" stroke="#fff" stroke-width="1.6"/><path fill="#fff" d="M20 8.6l2.7 7.4 7.9.3-6.2 4.9 2.2 7.6L20 24.4l-6.6 4.4 2.2-7.6-6.2-4.9 7.9-.3z"/></svg>
+    <b>OCKSTAR</b>
+  </a>
+  <nav aria-label="바로 가기">
+    <a href="#about">ABOUT</a><a href="#lab">LAB</a><a href="#studio">STUDIO</a><a href="#mission">MISSION</a><a href="#contact">CONTACT</a>
+  </nav>
+</header>
+
+<main>
+
+<!-- 첫 화면: 스크롤하면 비스듬한 창이 화면 가득 펼쳐진다 -->
+<section class="hero" id="hero" aria-label="소개">
+  <div class="stage">
+    <div class="media" id="heroMedia">
+      <img class="blur" src="img/trio.webp" alt="" aria-hidden="true">
+      <img class="fg" id="heroFg" src="img/trio.webp" alt="손을 잡고 걸어오는 포피, 젠, 뀨" width="1125" height="2000">
+      <div class="shade"></div>
     </div>
-    <section id="contents" aria-labelledby="h-contents">
-      <h2 id="h-contents">콘텐츠</h2>
-      <p class="lead">${v('name')}이 운영하는 서비스입니다.</p>
-      <div class="grid">${items}
-        <article class="item soon"><div class="body"><h3>다음 콘텐츠</h3><p>새 콘텐츠를 준비하고 있습니다. 공개되면 이곳에 추가됩니다.</p></div></article>
+    <div class="copy" id="heroCopy">
+      <p class="eyebrow">DIGITAL CREATIVE STUDIO</p>
+      <h1>Small Friends,<br>Big Stories.</h1>
+      <p class="sub">아이디어를 서비스와 영상으로 만듭니다.</p>
+    </div>
+    <div class="names" id="heroNames" aria-hidden="true">
+      <span>POPPY</span><span>ZEN</span><span>KYU</span>
+    </div>
+    <div class="scrollhint" aria-hidden="true"><i></i>SCROLL</div>
+  </div>
+</section>
+
+<section class="block" id="about">
+  <p class="eyebrow rv">ABOUT</p>
+  <h2 class="big rv">기획부터 개발, 영상, 마케팅까지.<br><em>한 곳에서 끝까지</em> 만듭니다.</h2>
+  <ol class="services">
+    <li class="rv"><span>01</span><h3>웹개발</h3><p>아이디어를 바로 써 볼 수 있는 웹 서비스와 앱으로 만듭니다.</p></li>
+    <li class="rv"><span>02</span><h3>플랫폼 영상 제작</h3><p>유튜브, 릴스, 틱톡에 맞는 길이와 형식으로 영상을 만듭니다.</p></li>
+    <li class="rv"><span>03</span><h3>아이디어 기획</h3><p>주제를 찾고, 잘된 사례를 분석해 시리즈로 설계합니다.</p></li>
+    <li class="rv"><span>04</span><h3>마케팅</h3><p>제목과 썸네일을 시험하고, 숫자를 보며 고쳐 나갑니다.</p></li>
+  </ol>
+</section>
+
+<section class="block split" id="lab">
+  <div class="guide rv">
+    <img src="img/poppy-book.webp" alt="도서관에서 책을 들고 거꾸로 매달린 포피" width="1125" height="2000" loading="lazy">
+    <p class="bubble"><b>포피</b> 여기는 만드는 방이야!</p>
+  </div>
+  <div class="col">
+    <p class="eyebrow rv">LAB</p>
+    <h2 class="rv">개발 프로그램</h2>
+    <p class="lead rv">직접 만들고 직접 운영하는 서비스와 도구입니다.</p>
+
+    <article class="feature rv">
+      <div class="pic"><img src="img/12jisin.webp" alt="포춘 쿠키 기계 옆에 선 용 지신 캐릭터" width="768" height="699" loading="lazy"></div>
+      <div class="body">
+        <span class="tag">웹 서비스 · 운영 중</span>
+        <h3>12지신 강림</h3>
+        <p>생년월일로 보는 사주와 2027년 신년운세, 12지신 타로와 궁합을 광고 없이 무료로 봅니다. 내 띠의 수호신을 키우며 매일 습관을 챙기는 운세·습관 서비스입니다.</p>
+        <a class="btn" href="${esc(biz.domain)}/">12지신 강림 열기 <span aria-hidden="true">→</span></a>
       </div>
-    </section>
-    <section id="about" aria-labelledby="h-about">
-      <h2 id="h-about">회사 정보</h2>
-      <p class="lead">사업자 등록 정보입니다.</p>
-      <dl class="info">
-        <dt>상호</dt><dd>${v('name')}</dd>
-        <dt>대표</dt><dd>${v('owner')}</dd>
-        <dt>사업자등록번호</dt><dd>${v('regNo')}</dd>
-        <dt>통신판매업 신고</dt><dd>${v('mailOrderNo')}</dd>
-        <dt>주소</dt><dd>${v('address')}</dd>
-        <dt>하는 일</dt><dd>응용 소프트웨어 개발 및 공급 · 전자상거래 · 미디어 콘텐츠 창작</dd>
-      </dl>
-    </section>
-    <section id="contact" aria-labelledby="h-contact">
-      <h2 id="h-contact">문의</h2>
-      <p class="lead">서비스 이용, 환불, 제휴 문의를 받습니다.</p>
-      <div class="contact">
-        <a href="mailto:${v('email')}">✉ ${v('email')}</a>
-        <a href="tel:${esc(tel(bizValue('phone', biz)))}">☎ ${v('phone')}</a>
-      </div>
-      <p class="hours">${v('hours')}</p>
-    </section>
-  </main>
-  <footer>
+    </article>
+
+    <h3 class="subhead rv">자체 제작 도구</h3>
+    <ul class="tools">
+      <li class="rv"><h4>해외반응 메이커</h4><p>주제 하나로 20분 영상을 만드는 제작 도구</p></li>
+      <li class="rv"><h4>라디오 우체국 메이커</h4><p>사연 하나를 대화형 영상으로 만드는 도구</p></li>
+      <li class="rv"><h4>수노 메이커</h4><p>가사를 쓰고 노래를 만드는 음악 작업 도구</p></li>
+      <li class="rv"><h4>유튜브 벤치마크 분석기</h4><p>잘된 영상과 내 영상을 비교하는 분석 도구</p></li>
+    </ul>
+  </div>
+</section>
+
+<section class="block split flip" id="studio">
+  <div class="guide rv">
+    <img src="img/poppy-popcorn.webp" alt="3D 안경을 쓰고 팝콘을 안은 채 화면을 보며 놀란 포피" width="1125" height="2000" loading="lazy">
+    <p class="bubble"><b>포피</b> 다음 편 언제 나와?!</p>
+  </div>
+  <div class="col">
+    <p class="eyebrow rv">STUDIO</p>
+    <h2 class="rv">영상 제작 플랫폼</h2>
+    <p class="lead rv">같은 이야기도 플랫폼마다 다르게 만듭니다.</p>
+
+    <div class="platforms">
+      <article class="plat rv">
+        <span class="pname">YouTube</span>
+        <ul>
+          <li><a href="https://www.youtube.com/@해외첫반응" rel="noopener"><b>해외첫반응 <span aria-hidden="true">→</span></b><small>해외 반응을 모아 풀어내는 롱폼</small></a></li>
+          <li><a href="https://www.youtube.com/@라디오우체국-w4s" rel="noopener"><b>라디오 우체국 <span aria-hidden="true">→</span></b><small>사연을 대화로 들려주는 영상</small></a></li>
+        </ul>
+      </article>
+      <article class="plat rv">
+        <span class="pname">Reels</span>
+        <ul>
+          <li><b>@ockstar77</b><small>숙소를 소개하는 인스타그램 릴스</small></li>
+        </ul>
+        <a class="more" href="https://www.instagram.com/ockstar77/" rel="noopener">인스타그램 보기 <span aria-hidden="true">→</span></a>
+      </article>
+      <article class="plat rv">
+        <span class="pname">TikTok</span>
+        <ul>
+          <li><b>@haeoe_first</b><small>해외첫반응 쇼츠</small></li>
+        </ul>
+        <a class="more" href="https://www.tiktok.com/@haeoe_first" rel="noopener">틱톡 보기 <span aria-hidden="true">→</span></a>
+      </article>
+    </div>
+
+    <div class="cheer rv">
+      <img src="img/zen.webp" alt="Sub &amp; Like 라고 적힌 종이를 든 젠" width="1125" height="2000" loading="lazy">
+      <p><b>젠</b>이 제일 좋아하는 간식은<br>구독과 좋아요예요.</p>
+    </div>
+  </div>
+</section>
+
+<section class="mission" id="mission">
+  <div class="mbg" aria-hidden="true"></div>
+  <div class="inner">
+    <p class="eyebrow rv">NEXT MISSION</p>
+    <h2 class="big rv">포피, 젠, 뀨의<br><em>좌충우돌 현실 생활기</em></h2>
+    <p class="lead rv">어느 날 우리 집에 눌러앉은 세 친구. 편의점도, 지하철도, 월요일 아침도 전부 처음입니다. 포피가 사고를 치면 뀨가 작전을 짜고, 젠이 용기를 내어 수습합니다. 작지만 시끄러운 세 친구의 현실 적응기를 영상으로 준비하고 있습니다.</p>
+
+    <div class="cast">
+      <article class="who rv">
+        <img src="img/poppy.webp" alt="국방색 가방을 메고 빨간 별 완장을 찬 아기 용 포피" width="1125" height="2000" loading="lazy">
+        <div><span>아기 용</span><h3>포피</h3><p>좌충우돌 사고뭉치 장난꾸러기. 일단 저지르고 봅니다.</p></div>
+      </article>
+      <article class="who rv">
+        <img src="img/zen.webp" alt="빨간 양갈래 머리 강아지 젠" width="1125" height="2000" loading="lazy">
+        <div><span>강아지</span><h3>젠</h3><p>소심하지만 용감해지고 싶은 강아지. 오늘도 한 걸음 내디딥니다.</p></div>
+      </article>
+      <article class="who rv">
+        <img src="img/kyu.webp" alt="초록 가방을 멘 흰 고양이 뀨" width="1125" height="2000" loading="lazy">
+        <div><span>고양이</span><h3>뀨</h3><p>신중한 작전 사령관. 계획은 늘 뀨가 세웁니다.</p></div>
+      </article>
+    </div>
+
+    <ol class="road">
+      <li class="on rv"><span>01</span><b>캐릭터 완성</b><small>진행 중</small></li>
+      <li class="rv"><span>02</span><b>세계관·설정</b><small>준비</small></li>
+      <li class="rv"><span>03</span><b>시험 영상</b><small>준비</small></li>
+      <li class="rv"><span>04</span><b>정식 연재</b><small>준비</small></li>
+    </ol>
+  </div>
+</section>
+
+<section class="block contact" id="contact">
+  <p class="eyebrow rv">CONTACT</p>
+  <h2 class="big rv">함께 만들 이야기가<br>있나요?</h2>
+  <p class="lead rv">서비스 이용, 환불, 제휴 문의를 받습니다.</p>
+  <div class="ways rv">
+    <a class="btn solid" href="mailto:${v('email')}">${v('email')}</a>
+    <a class="btn" href="tel:${esc(tel(bizValue('phone', biz)))}">${v('phone')}</a>
+  </div>
+  <p class="hours rv">${v('hours')}</p>
+</section>
+
+</main>
+
+<footer class="foot">
+  <dl>
+    <div><dt>상호</dt><dd>${v('name')}</dd></div>
+    <div><dt>대표</dt><dd>${v('owner')}</dd></div>
+    <div><dt>사업자등록번호</dt><dd>${v('regNo')}</dd></div>
+    <div><dt>통신판매업 신고</dt><dd>${v('mailOrderNo')}</dd></div>
+    <div class="wide"><dt>주소</dt><dd>${esc(homeAddress(biz))}</dd></div>
+    <div class="wide"><dt>하는 일</dt><dd>응용 소프트웨어 개발 및 공급 · 전자상거래 · 미디어 콘텐츠 창작</dd></div>
+  </dl>
+  <p class="legal">
     <span>© 2026 ${v('name')}</span>
     <span><a href="${esc(biz.domain)}/legal/terms.html">12지신 강림 이용약관</a> · <a href="${esc(biz.domain)}/legal/privacy.html">개인정보 처리방침</a> · <a href="${esc(biz.domain)}/legal/refund.html">환불 규정</a></span>
-  </footer>
-</div>
+  </p>
+</footer>
+
+<script src="studio.js"></script>
 </body>
 </html>
 `;
