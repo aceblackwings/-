@@ -31,12 +31,12 @@ class ReuseCheckTest(unittest.TestCase):
         make(cls.bad, ["-i", cls.src, "-vf", "hflip,eq=saturation=1.3", "-c:v", "libx264",
                        "-preset", "veryfast", "-c:a", "aac"])
         # 변형본: 내 배경 위 화면 속 화면 + 내 목소리(다른 높이·리듬의 끊기는 소리)
-        make(cls.pip, ["-i", cls.src, "-f", "lavfi", "-i", "mandelbrot=s=640x360:r=30",
+        make(cls.pip, ["-i", cls.src, "-f", "lavfi", "-i", "cellauto=s=640x360:r=30:rule=110",
                        "-f", "lavfi", "-i", "sine=f=220:d=20,volume='if(lt(mod(t,0.3),0.15),1,0.02)':eval=frame",
                        "-filter_complex", "[0:v]scale=360:202[p];[1:v][p]overlay=30:40,trim=0:20[v];[0:a]volume=0.05[s];[s][2:a]amix=2:normalize=0[a]",
                        "-map", "[v]", "-map", "[a]", "-t", "20", "-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac"])
         # 원본을 전혀 안 쓴 영상
-        make(cls.own, ["-f", "lavfi", "-i", "mandelbrot=s=640x360:r=30:end_pts=10", "-t", "10",
+        make(cls.own, ["-f", "lavfi", "-i", "life=s=640x360:r=30:mold=10:ratio=0.2", "-t", "10",
                        "-c:v", "libx264", "-preset", "veryfast"])
 
     def check(self, video, **kw):
@@ -46,7 +46,8 @@ class ReuseCheckTest(unittest.TestCase):
             args += ["--history", h]
         sc = rc.main(args)
         self.assertTrue(os.path.exists(os.path.join(out, "report.html")))
-        data = json.load(open(os.path.join(out, "result.json"), encoding="utf-8"))
+        with open(os.path.join(out, "result.json"), encoding="utf-8") as f:
+            data = json.load(f)
         self.assertEqual(data["reuse_risk"], sc["reuse_risk"])
         return sc
 
