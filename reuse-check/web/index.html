@@ -1,0 +1,575 @@
+<meta charset="utf-8">
+<title>재사용 검수실</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* 편집 프로그램의 검수 데스크: 위는 파일 넣기, 아래는 V/A 트랙 타임라인과 판정 */
+:root {
+  --bg: #eef1f4; --panel: #ffffff; --ink: #17202b; --muted: #5b6776; --line: #d5dbe3;
+  --accent: #155e75; --accent-ink: #ffffff; --accent-soft: #dcecf1;
+  --ok: #1f8a5b; --warn: #c27c0e; --risk: #c2413b;
+  --t-own: #2f9e74; --t-pip: #d8a028; --t-full: #cf4a42; --t-mirror: #7e46c9; --t-silent: #a4adb8;
+  --font: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "Consolas", monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #10161d; --panel: #18212b; --ink: #e6ebf1; --muted: #9aa6b4; --line: #2c3845;
+  --accent: #5cb8d1; --accent-ink: #0c1a20; --accent-soft: #19323b;
+  --ok: #4cc28d; --warn: #e6a740; --risk: #ef6a62;
+  --t-own: #3fb889; --t-pip: #e2b043; --t-full: #e0605a; --t-mirror: #9b6be0; --t-silent: #65717f;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #10161d; --panel: #18212b; --ink: #e6ebf1; --muted: #9aa6b4; --line: #2c3845;
+  --accent: #5cb8d1; --accent-ink: #0c1a20; --accent-soft: #19323b;
+  --ok: #4cc28d; --warn: #e6a740; --risk: #ef6a62;
+  --t-own: #3fb889; --t-pip: #e2b043; --t-full: #e0605a; --t-mirror: #9b6be0; --t-silent: #65717f;
+  color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.6;
+  padding-block: 20px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width: 880px; margin: 0 auto; display: grid; gap: 16px; }
+header h1 { font-size: 24px; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+header p { margin: 4px 0 0; color: var(--muted); max-width: 62ch; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+.panel h2 { font-size: 16px; margin: 0 0 12px; }
+.eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.drops { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 640px) { .drops { grid-template-columns: 1fr; } }
+.drop { border: 1.5px dashed var(--line); border-radius: 8px; padding: 12px; display: grid; gap: 6px; align-content: start; min-width: 0; cursor: pointer; transition: border-color .15s, background .15s; }
+.drop:hover, .drop.over, .drop:focus-within { border-color: var(--accent); background: var(--accent-soft); }
+.drop b { font-size: 15px; }
+.drop small { color: var(--muted); font-size: 13px; }
+.drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.files { font-family: var(--mono); font-size: 12px; color: var(--ink); overflow-wrap: anywhere; }
+.files div::before { content: "▸ "; color: var(--accent); }
+.req { color: var(--risk); font-size: 12px; }
+details { margin-top: 12px; }
+summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+.scripts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+@media (max-width: 640px) { .scripts { grid-template-columns: 1fr; } }
+textarea { width: 100%; min-height: 90px; font: inherit; font-size: 14px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); resize: vertical; }
+label.small { font-size: 13px; color: var(--muted); }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
+button { font: inherit; font-weight: 700; border-radius: 8px; padding: 10px 18px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+button.ghost { background: transparent; color: var(--accent); font-weight: 500; padding: 8px 14px; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button:focus-visible, .drop:focus-within, .tc:focus-visible, .track:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.note { font-size: 13px; color: var(--muted); }
+.progress { display: grid; gap: 6px; }
+.bar { height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+#step { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+.err { color: var(--risk); font-size: 14px; }
+
+.result-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: baseline; }
+.result-head .name { font-family: var(--mono); font-size: 13px; color: var(--muted); overflow-wrap: anywhere; min-width: 0; }
+.tag { font-size: 12px; border-radius: 99px; padding: 2px 10px; background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.gauges { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 480px) { .gauges { grid-template-columns: 1fr; } }
+.gauge { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; border-left: 6px solid var(--g, var(--line)); }
+.gauge .num { font-family: var(--mono); font-size: 40px; font-weight: 700; line-height: 1.1; color: var(--g); font-variant-numeric: tabular-nums; }
+.gauge .lv { font-weight: 700; color: var(--g); margin-left: 6px; }
+.gauge small { display: block; color: var(--muted); font-size: 13px; }
+
+.viewer { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: 14px; }
+video { width: 100%; max-height: 360px; background: #000; border-radius: 8px; }
+.novideo { border: 1px dashed var(--line); border-radius: 8px; padding: 18px; color: var(--muted); font-size: 14px; text-align: center; }
+.tl { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 6px 8px; align-items: center; }
+.tl .lab { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--muted); }
+.track { position: relative; height: 26px; border-radius: 4px; overflow: hidden; display: flex; background: var(--line); cursor: pointer; }
+.track i { display: block; height: 100%; }
+.head { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink); left: 0; pointer-events: none; }
+.ticks { position: relative; height: 16px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.ticks span:first-child { transform: none; } .ticks span:last-child { transform: translateX(-100%); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+.advice { margin: 0; padding-left: 22px; display: grid; gap: 8px; }
+.tc { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--accent); background: var(--accent-soft); border: 0; border-radius: 4px; padding: 1px 6px; cursor: pointer; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+td { padding: 7px 0; border-bottom: 1px solid var(--line); }
+td:last-child { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.foot { font-size: 12px; color: var(--muted); }
+.foot a { color: var(--accent); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<main>
+  <header>
+    <div class="eyebrow">재사용 · 반복 콘텐츠 자가 점검</div>
+    <h1>재사용 검수실</h1>
+    <p>올리기 전에 내 영상을 넣으면, 원본을 얼마나 그대로 썼는지와 내 해설이 충분한지 초 단위로 알려 드립니다. 영상은 이 기기 안에서만 분석하고 어디로도 보내지 않습니다.</p>
+  </header>
+
+  <section class="panel" aria-labelledby="up-h">
+    <h2 id="up-h">1. 영상 넣기</h2>
+    <div class="drops">
+      <label class="drop" id="drop-mine" for="f-mine">
+        <b>내 영상 <span class="req">필수</span></b>
+        <small>점검할 영상 1개 (mp4·webm·mov)</small>
+        <input id="f-mine" type="file" accept="video/*">
+        <div class="files" id="l-mine"></div>
+      </label>
+      <label class="drop" id="drop-src" for="f-src">
+        <b>가져다 쓴 원본</b>
+        <small>해외 영상 등 원본 파일, 여러 개 가능</small>
+        <input id="f-src" type="file" accept="video/*" multiple>
+        <div class="files" id="l-src"></div>
+      </label>
+      <label class="drop" id="drop-hist" for="f-hist">
+        <b>내 지난 영상</b>
+        <small>같은 틀·인트로 반복 점검용, 여러 개 가능</small>
+        <input id="f-hist" type="file" accept="video/*" multiple>
+        <div class="files" id="l-hist"></div>
+      </label>
+    </div>
+    <details>
+      <summary>대본도 비교하기 (선택)</summary>
+      <div class="scripts">
+        <div><label class="small" for="s-mine">이번 영상 대본·자막</label><textarea id="s-mine" placeholder="유튜브 「스크립트 표시」에서 복사해 붙여 넣으세요"></textarea></div>
+        <div><label class="small" for="s-hist">지난 영상 대본 (영상마다 빈 줄 3개로 구분)</label><textarea id="s-hist"></textarea></div>
+      </div>
+    </details>
+    <div class="actions">
+      <button id="go" disabled>분석 시작</button>
+      <button class="ghost" id="reset">처음부터</button>
+      <span class="note" id="hint">내 영상을 넣으면 시작할 수 있어요. 원본을 넣지 않으면 반복 점검만 합니다.</span>
+    </div>
+    <div class="progress" id="prog" hidden>
+      <div class="bar"><i id="bar"></i></div>
+      <div id="step">준비 중</div>
+    </div>
+    <div class="err" id="err" hidden></div>
+  </section>
+
+  <section class="panel" id="result" aria-labelledby="res-h">
+    <div class="result-head">
+      <h2 id="res-h" style="margin:0">2. 판정</h2>
+      <span class="tag" id="sample-tag">예시 결과</span>
+    </div>
+    <div class="name" id="r-name"></div>
+    <div class="gauges" style="margin-top:10px">
+      <div class="gauge" id="g-reuse"><small>재사용 위험</small><span class="num"></span><span class="lv"></span></div>
+      <div class="gauge" id="g-rep"><small>반복·대량 생산 위험</small><span class="num"></span><span class="lv"></span></div>
+    </div>
+    <div class="viewer">
+      <div id="player"></div>
+      <div class="tl">
+        <span class="lab">V1</span><div class="track" id="t-v" tabindex="0" aria-label="화면 트랙, 누르면 그 시각으로 이동"></div>
+        <span class="lab">A1</span><div class="track" id="t-a" tabindex="0" aria-label="소리 트랙, 누르면 그 시각으로 이동"></div>
+        <span></span><div class="ticks" id="ticks"></div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="fix-h">
+    <h2 id="fix-h">3. 이렇게 고쳐 보세요</h2>
+    <ol class="advice" id="advice"></ol>
+  </section>
+
+  <section class="panel" aria-labelledby="num-h">
+    <h2 id="num-h">세부 수치</h2>
+    <table id="metrics"></table>
+    <div class="actions"><button class="ghost" id="copy">결과를 글로 복사</button><span class="note" id="copied"></span></div>
+    <label class="small" for="copy-out" id="copy-lab" hidden>아래 글을 길게 눌러 복사해 주세요</label>
+    <textarea id="copy-out" readonly hidden></textarea>
+  </section>
+
+  <p class="foot">올리기 전 스스로 점검하는 참고용입니다. 유튜브의 실제 심사 결과를 보장하지 않습니다.
+    기준: <a href="https://support.google.com/youtube/answer/1311392" target="_blank" rel="noopener">YouTube 채널 수익 창출 정책</a>(재사용 콘텐츠·진정성 없는 콘텐츠).
+    지금은 영상 앞 20분까지 분석합니다.</p>
+</main>
+
+<script id="sample" type="application/json">{"video":"예시_좌우반전_재사용본.mp4","duration_sec":38.1,"reuse_risk":90,"reuse_level":"높음","repeat_risk":0,"repeat_level":"낮음","metrics":{"source_fullscreen_ratio":0.897,"source_pip_ratio":0.0,"mirrored_ratio":0.897,"source_audio_ratio":0.59,"my_voice_ratio":0.0,"longest_source_only_sec":27.0},"advice":["0:05~0:32: 원본만 27초 이어집니다. 중간에 내 해설이나 설명 자막을 넣어 10초 안으로 끊어 주세요.","좌우 반전으로 원본을 바꾼 장면이 많습니다. 반전·색 보정·속도 변경은 「최소한의 변경」으로 보여 의미 있는 차이가 되지 않습니다.","내 목소리(해설)가 전체의 0%입니다. 35% 이상이 되도록 내 의견·비교·배경 설명을 더해 주세요.","원본 소리가 전체의 59%입니다. 원본 소리는 줄이고 내 내레이션을 위에 올려 주세요.","원본이 화면 전체를 차지하는 시간이 깁니다. 화면 속 화면, 내 얼굴·반응 화면, 설명 그래픽을 섞어 주세요."],"timeline":{"video":["mirror","mirror","mirror","mirror","own","mirror","mirror","mirror","mirror","mirror","mirror","mirror","mirror","mirror","mirror","mirror","mirror","mirror","mirror","mirror","mirror","mirror","mirror","mirror","mirror","mirror","mirror","mirror","mirror","mirror","mirror","mirror","own","mirror","mirror","mirror","own","mirror","own"],"audio":["silent","source","source","silent","source","source","source","source","source","silent","source","source","source","silent","source","source","source","source","source","source","source","source","silent","source","source","source","source","source","silent","silent","silent","silent","silent","silent","silent","silent","silent","silent","silent"],"voice":[false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false]},"history":[]}</script>
+
+<script>
+"use strict";
+// ───────────── 설정 (Python 판 reuse_check.py와 같은 값) ─────────────
+const FPS = 2, W = 320, H = 180;
+const SR = 8000, HOP = 400, NFFT = 512, HOPS_PER_SEC = 20;
+const FULL_MAX = 12, SUB_MAX = 9, AUDIO_MAX_BER = 0.33, HIST_MAX = 6;
+const SUB_SCALES = [0.94, 0.85, 0.76, 0.68, 0.6, 0.54, 0.48, 0.42, 0.36];
+const MAX_SEC = 20 * 60;
+
+const $ = (id) => document.getElementById(id);
+const COLORS = { own: "var(--t-own)", pip: "var(--t-pip)", full: "var(--t-full)", mirror: "var(--t-mirror)",
+  new: "var(--t-own)", source: "var(--t-full)", silent: "var(--t-silent)" };
+const NAMES = { own: "내 화면", pip: "원본(화면 속 화면)", full: "원본(전체 화면)", mirror: "원본(반전)",
+  new: "새 소리", source: "원본 소리", silent: "무음" };
+
+// ───────────── 지각 해시 ─────────────
+const C8 = (() => { const n = 32, m = new Float64Array(8 * n);
+  for (let k = 0; k < 8; k++) for (let i = 0; i < n; i++)
+    m[k * n + i] = Math.cos(Math.PI * (2 * i + 1) * k / (2 * n)) * Math.sqrt(2 / n) / (k === 0 ? Math.SQRT2 : 1);
+  return m; })();
+
+function integral(gray) { // (W+1)*(H+1)
+  const ii = new Float64Array((W + 1) * (H + 1));
+  for (let y = 0; y < H; y++) { let row = 0;
+    for (let x = 0; x < W; x++) { row += gray[y * W + x]; ii[(y + 1) * (W + 1) + x + 1] = ii[y * (W + 1) + x + 1] + row; } }
+  return ii;
+}
+const X32 = new Float64Array(1024), TMP = new Float64Array(256), LOW = new Float64Array(64), SORT = new Float64Array(63);
+function hashRegion(ii, x, y, w, h) {
+  const W1 = W + 1;
+  for (let r = 0; r < 32; r++) {
+    const y0 = Math.round(y + h * r / 32), y1 = Math.max(y0 + 1, Math.round(y + h * (r + 1) / 32));
+    for (let c = 0; c < 32; c++) {
+      const x0 = Math.round(x + w * c / 32), x1 = Math.max(x0 + 1, Math.round(x + w * (c + 1) / 32));
+      const s = ii[y1 * W1 + x1] - ii[y0 * W1 + x1] - ii[y1 * W1 + x0] + ii[y0 * W1 + x0];
+      X32[r * 32 + c] = s / ((x1 - x0) * (y1 - y0));
+    } }
+  for (let r = 0; r < 32; r++) for (let k = 0; k < 8; k++) { let s = 0;
+    for (let c = 0; c < 32; c++) s += X32[r * 32 + c] * C8[k * 32 + c]; TMP[r * 8 + k] = s; }
+  for (let j = 0; j < 8; j++) for (let k = 0; k < 8; k++) { let s = 0;
+    for (let r = 0; r < 32; r++) s += C8[j * 32 + r] * TMP[r * 8 + k]; LOW[j * 8 + k] = s; }
+  SORT.set(LOW.subarray(1)); SORT.sort();
+  const med = (SORT[31]);
+  let lo = 0, hi = 0;
+  for (let i = 0; i < 32; i++) if (LOW[i] > med) lo |= (1 << i);
+  for (let i = 0; i < 32; i++) if (LOW[32 + i] > med) hi |= (1 << i);
+  return [lo >>> 0, hi >>> 0];
+}
+function pop(v) { v = v - ((v >>> 1) & 0x55555555); v = (v & 0x33333333) + ((v >>> 2) & 0x33333333); return (((v + (v >>> 4)) & 0x0f0f0f0f) * 0x01010101) >>> 24; }
+function minDist(lo, hi, arr) { // arr: Uint32Array pairs
+  let best = 99;
+  for (let i = 0; i < arr.length; i += 2) { const d = pop(lo ^ arr[i]) + pop(hi ^ arr[i + 1]); if (d < best) { best = d; if (d === 0) break; } }
+  return best;
+}
+function mirrorGray(g) { const m = new Float32Array(W * H);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) m[y * W + x] = g[y * W + (W - 1 - x)]; return m; }
+
+// ───────────── 영상 읽기 ─────────────
+const tick = () => new Promise((r) => setTimeout(r, 0));
+function loadVideo(file) {
+  return new Promise((res, rej) => {
+    const v = document.createElement("video");
+    v.muted = true; v.playsInline = true; v.preload = "auto"; v.src = URL.createObjectURL(file);
+    v.onloadedmetadata = () => res(v);
+    v.onerror = () => rej(new Error(`「${file.name}」을 열 수 없습니다. 이 브라우저가 지원하는 형식(mp4 H.264·webm)인지 확인해 주세요.`));
+  });
+}
+function seek(v, t) {
+  return new Promise((res) => {
+    const done = () => { clearTimeout(to); v.removeEventListener("seeked", done); res(); };
+    const to = setTimeout(done, 4000);
+    v.addEventListener("seeked", done); v.currentTime = t;
+  });
+}
+async function readFrames(file, report) {
+  const v = await loadVideo(file);
+  const dur = Math.min(v.duration || 0, MAX_SEC);
+  const n = Math.max(1, Math.floor(dur * FPS));
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const ctx = cv.getContext("2d", { willReadFrequently: true });
+  const frames = [];
+  const sc = Math.min(W / v.videoWidth, H / v.videoHeight), dw = v.videoWidth * sc, dh = v.videoHeight * sc;
+  for (let i = 0; i < n; i++) {
+    await seek(v, Math.min(i / FPS + 0.02, Math.max(0, (v.duration || 0) - 0.05)));
+    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
+    ctx.drawImage(v, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    const d = ctx.getImageData(0, 0, W, H).data, g = new Float32Array(W * H);
+    for (let p = 0, q = 0; p < g.length; p++, q += 4) g[p] = 0.299 * d[q] + 0.587 * d[q + 1] + 0.114 * d[q + 2];
+    frames.push(g);
+    if (i % 4 === 0) report(i / n);
+  }
+  URL.revokeObjectURL(v.src);
+  return { frames, duration: dur };
+}
+function hashFrames(frames, mirrored) {
+  const out = new Uint32Array(frames.length * 2);
+  frames.forEach((g, i) => { const h = hashRegion(integral(mirrored ? mirrorGray(g) : g), 0, 0, W, H); out[2 * i] = h[0]; out[2 * i + 1] = h[1]; });
+  return out;
+}
+
+// ───────────── 소리 ─────────────
+async function readAudio(file) {
+  try {
+    const buf = await file.arrayBuffer();
+    const ctx = new OfflineAudioContext(1, 1, 44100);
+    const decoded = await ctx.decodeAudioData(buf);
+    const len = Math.ceil(Math.min(decoded.duration, MAX_SEC) * SR);
+    if (len < NFFT) return new Float32Array(0);
+    const off = new OfflineAudioContext(1, len, SR);
+    const s = off.createBufferSource(); s.buffer = decoded; s.connect(off.destination); s.start();
+    return (await off.startRendering()).getChannelData(0);
+  } catch (e) { return new Float32Array(0); } // 소리 없는 영상
+}
+function fft(re, im) { const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) { let b = n >> 1; for (; j & b; b >>= 1) j ^= b; j ^= b;
+    if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; } }
+  for (let len = 2; len <= n; len <<= 1) { const a = -2 * Math.PI / len, wr = Math.cos(a), wi = Math.sin(a);
+    for (let i = 0; i < n; i += len) { let cr = 1, ci = 0;
+      for (let k = 0; k < len / 2; k++) { const ur = re[i + k], ui = im[i + k];
+        const vr = re[i + k + len / 2] * cr - im[i + k + len / 2] * ci, vi = re[i + k + len / 2] * ci + im[i + k + len / 2] * cr;
+        re[i + k] = ur + vr; im[i + k] = ui + vi; re[i + k + len / 2] = ur - vr; im[i + k + len / 2] = ui - vi;
+        const t = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = t; } } } }
+const HANN = Float64Array.from({ length: NFFT }, (_, i) => 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (NFFT - 1)));
+const EDGES = Array.from({ length: 34 }, (_, i) => 250 * Math.pow(3800 / 250, i / 33));
+function audioFeatures(x) {
+  const n = x.length < NFFT ? 0 : Math.floor((x.length - NFFT - 1) / HOP) + 1;
+  const bits = new Uint32Array(n), rms = new Float64Array(n);
+  const re = new Float64Array(NFFT), im = new Float64Array(NFFT);
+  let prev = null;
+  for (let h = 0; h < n; h++) {
+    const o = h * HOP; let e2 = 0;
+    for (let i = 0; i < NFFT; i++) { const s = x[o + i] * HANN[i]; re[i] = s; im[i] = 0; e2 += s * s; }
+    rms[h] = Math.sqrt(e2 / NFFT);
+    fft(re, im);
+    const band = new Float64Array(33);
+    for (let k = 0; k <= NFFT / 2; k++) { const f = k * SR / NFFT, p = re[k] * re[k] + im[k] * im[k];
+      for (let b = 0; b < 33; b++) if (f >= EDGES[b] && f < EDGES[b + 1]) { band[b] += p; break; } }
+    const de = new Float64Array(32);
+    for (let b = 0; b < 32; b++) de[b] = Math.log(band[b + 1] + 1e-9) - Math.log(band[b] + 1e-9);
+    let v = 0;
+    if (prev) for (let b = 0; b < 32; b++) if (de[b] - prev[b] > 0) v |= (1 << b);
+    bits[h] = v >>> 0; prev = de;
+  }
+  return { bits, rms };
+}
+function hopBER(my, src) { // 1초 창을 2칸씩 옮기며 원본 전체와 비교 → 칸마다 가장 낮은 비트 오차율
+  const k = HOPS_PER_SEC, out = new Float64Array(my.length).fill(1);
+  if (src.length < k || my.length < k) return out;
+  for (let i = 0; i + k <= my.length; i += 2) {
+    let best = 1e9;
+    for (let o = 0; o + k <= src.length; o++) { let d = 0;
+      for (let j = 0; j < k && d < best; j++) d += pop(my[i + j] ^ src[o + j]);
+      if (d < best) best = d; }
+    const ber = best / (k * 32);
+    for (let j = i; j < i + k; j++) if (ber < out[j]) out[j] = ber;
+  }
+  return out;
+}
+
+// ───────────── 분석 ─────────────
+function runs(mask, fps) { const out = []; let s = null;
+  [...mask, false].forEach((m, i) => { if (m && s === null) s = i; if (!m && s !== null) { out.push([+(s / fps).toFixed(1), +(i / fps).toFixed(1)]); s = null; } });
+  return out; }
+function majority(xs) { if (!xs.length) return "own"; const c = {}; xs.forEach((x) => c[x] = (c[x] || 0) + 1);
+  return Object.keys(c).sort((a, b) => c[b] - c[a] || (a < b ? -1 : 1))[0]; }
+const tc = (s) => { s = Math.round(s); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+
+async function analyze(files, texts, progress) {
+  const stages = 1 + files.src.length + files.hist.length;
+  let done = 0;
+  const part = (label) => (f) => progress((done + f) / (stages + 1.2), label);
+
+  // 원본
+  const src = [], srcM = [], srcAudio = [];
+  for (const f of files.src) {
+    const p = part(`원본 읽는 중: ${f.name}`);
+    const { frames } = await readFrames(f, p);
+    src.push(hashFrames(frames, false)); srcM.push(hashFrames(frames, true));
+    p(0.95); srcAudio.push(audioFeatures(await readAudio(f)).bits); done++; await tick();
+  }
+  const S = concat(src), SM = concat(srcM), BOTH = concat([S, SM]);
+
+  // 내 영상
+  const pm = part(`내 영상 읽는 중: ${files.mine.name}`);
+  const { frames, duration } = await readFrames(files.mine, pm); done++;
+  const secs = Math.max(1, Math.ceil(duration));
+  const labels = new Array(frames.length).fill("own");
+  const myHash = hashFrames(frames, false);
+  if (S.length) {
+    const myM = hashFrames(frames, true); // 반전 영상 대비: 내 장면을 뒤집어 원본과 비교하는 것과 같음
+    for (let i = 0; i < frames.length; i++) {
+      if (minDist(myHash[2 * i], myHash[2 * i + 1], S) <= FULL_MAX) labels[i] = "full";
+      else if (minDist(myM[2 * i], myM[2 * i + 1], S) <= FULL_MAX) labels[i] = "mirror";
+    }
+    for (let i = 0; i < frames.length; i++) {
+      if (labels[i] !== "own") continue;
+      const ii = integral(frames[i]);
+      let best = { d: 99 };
+      for (const s of SUB_SCALES) { const w = Math.floor(W * s), h = Math.floor(H * s);
+        for (let y = 0; y + h <= H; y += 8) for (let x = 0; x + w <= W; x += 8) {
+          const hv = hashRegion(ii, x, y, w, h); const d = minDist(hv[0], hv[1], BOTH);
+          if (d < best.d) best = { d, x, y, w, h }; } }
+      if (best.d > SUB_MAX && best.d <= 20) { // 근처를 2px 간격·비슷한 크기로 다시 찾기
+        const b0 = best;
+        for (const f of [0.96, 1, 1.04]) { const w = Math.round(b0.w * f), h = Math.round(b0.h * f);
+          for (let y = Math.max(0, b0.y - 6); y <= Math.min(H - h, b0.y + 6); y += 2)
+            for (let x = Math.max(0, b0.x - 6); x <= Math.min(W - w, b0.x + 6); x += 2) {
+              const hv = hashRegion(ii, x, y, w, h); const d = minDist(hv[0], hv[1], BOTH);
+              if (d < best.d) best = { d, x, y, w, h }; } } }
+      if (best.d <= SUB_MAX) labels[i] = best.w >= W * 0.84 ? "full" : "pip";
+      if (i % 3 === 0) { progress((done + i / frames.length * 0.6) / (stages + 1.2), "원본이 작은 화면으로 들어간 곳 찾는 중"); await tick(); }
+    }
+    for (let i = 1; i < labels.length - 1; i++) {
+      if (labels[i] === "pip" && labels[i - 1] === "own" && labels[i + 1] === "own") labels[i] = "own";
+      else if (labels[i] === "own" && labels[i - 1] !== "own" && labels[i - 1] === labels[i + 1]) labels[i] = labels[i - 1];
+    }
+  }
+  const video = Array.from({ length: secs }, (_, s) => majority(labels.slice(s * FPS, (s + 1) * FPS)));
+
+  // 소리
+  progress((done + 0.65) / (stages + 1.2), "소리 비교 중");
+  const { bits, rms } = audioFeatures(await readAudio(files.mine));
+  const sorted = Float64Array.from(rms).sort();
+  const p20 = sorted.length ? sorted[Math.floor(sorted.length * 0.2)] : 0;
+  const thr = Math.max(0.01, p20 * 1.5);
+  let ber = new Float64Array(bits.length).fill(1);
+  for (const sb of srcAudio) { const b2 = hopBER(bits, sb); for (let i = 0; i < ber.length; i++) if (b2[i] < ber[i]) ber[i] = b2[i]; await tick(); }
+  const audio = [], voice = [];
+  for (let s = 0; s < secs; s++) {
+    const a = s * HOPS_PER_SEC, b = Math.min(rms.length, a + HOPS_PER_SEC);
+    if (b - a <= 0) { audio.push("silent"); voice.push(false); continue; }
+    let loud = 0, m = 0; for (let i = a; i < b; i++) { if (rms[i] > thr) loud++; m += rms[i]; }
+    if (loud / (b - a) < 0.3) { audio.push("silent"); voice.push(false); continue; }
+    let bm = 0; for (let i = a; i < b; i++) bm += ber[i];
+    const isSrc = bm / (b - a) <= AUDIO_MAX_BER;
+    m /= (b - a); let v = 0; for (let i = a; i < b; i++) v += (rms[i] - m) ** 2;
+    const cv = Math.sqrt(v / (b - a)) / (m + 1e-9);
+    audio.push(isSrc ? "source" : "new"); voice.push(!isSrc && cv > 0.45);
+    if (s % 10 === 0) { progress((done + 0.65 + 0.3 * s / secs) / (stages + 1.2), "소리 비교 중"); await tick(); }
+  }
+
+  // 지난 영상
+  const hist = [];
+  for (const f of files.hist) {
+    const p = part(`지난 영상 비교 중: ${f.name}`);
+    const hh = hashFrames((await readFrames(f, p)).frames, false);
+    const same = []; for (let i = 0; i < frames.length; i++) same.push(minDist(myHash[2 * i], myHash[2 * i + 1], hh) <= HIST_MAX);
+    hist.push({ video: f.name, same_ratio: +(same.filter(Boolean).length / Math.max(1, same.length)).toFixed(3),
+      segments: runs(same, FPS).filter(([a, b]) => b - a >= 2).map(([start, end]) => ({ start, end })) });
+    done++;
+  }
+  const sims = texts.mine.trim() && texts.hist.length ? texts.hist.map((t) => textSim(texts.mine, t)) : [];
+  progress(1, "판정 정리 중");
+  const sc = score(video, audio, voice, hist, sims);
+  return { video: files.mine.name, duration_sec: +duration.toFixed(1), ...sc, timeline: { video, audio, voice }, history: hist };
+}
+function concat(arrs) { const n = arrs.reduce((s, a) => s + a.length, 0), out = new Uint32Array(n); let o = 0; arrs.forEach((a) => { out.set(a, o); o += a.length; }); return out; }
+function textSim(a, b) {
+  const grams = (t) => { t = t.replace(/\s+/g, ""); const g = new Map(); for (let i = 0; i < t.length - 2; i++) { const k = t.slice(i, i + 3); g.set(k, (g.get(k) || 0) + 1); } return g; };
+  const ga = grams(a), gb = grams(b); if (!ga.size || !gb.size) return 0;
+  let dot = 0, na = 0, nb = 0; ga.forEach((v, k) => { dot += v * (gb.get(k) || 0); na += v * v; }); gb.forEach((v) => nb += v * v);
+  return dot / Math.sqrt(na * nb);
+}
+
+function score(v, a, voiceArr, hist, sims) {
+  const n = Math.max(v.length, 1);
+  const cnt = (arr, f) => arr.filter(f).length;
+  const full = cnt(v, (x) => x === "full" || x === "mirror") / n, pip = cnt(v, (x) => x === "pip") / n;
+  const mirror = cnt(v, (x) => x === "mirror") / n, aSrc = cnt(a, (x) => x === "source") / n, voice = cnt(voiceArr, Boolean) / n;
+  const pure = v.map((x, i) => (x === "full" || x === "mirror") && (a[i] === "source" || a[i] === "silent"));
+  const rs = runs(pure, 1); const longest = rs.reduce((m, [s, e]) => Math.max(m, e - s), 0);
+  let risk = 45 * full + 15 * pip + 20 * aSrc + 15 * Math.max(0, 1 - voice / 0.35) + Math.min(15, Math.max(0, longest - 10) * 0.75);
+  if (mirror > 0.2) risk += 10;
+  if (full + pip < 0.05) risk = Math.min(risk, 5);
+  risk = Math.round(Math.min(100, risk));
+  let rep = 0; hist.forEach((h) => rep = Math.max(rep, h.same_ratio * 100)); sims.forEach((s) => rep = Math.max(rep, s > 0.5 ? (s - 0.5) * 200 : 0));
+  rep = Math.round(Math.min(100, rep));
+  const adv = [];
+  if (longest > 10) { const [s, e] = rs.reduce((m, r) => (r[1] - r[0] > m[1] - m[0] ? r : m)); adv.push(`${tc(s)}~${tc(e)}: 원본만 ${Math.floor(e - s)}초 이어집니다. 중간에 내 해설이나 설명 자막을 넣어 10초 안으로 끊어 주세요.`); }
+  if (mirror > 0.2) adv.push("좌우 반전으로 원본을 바꾼 장면이 많습니다. 반전·색 보정·속도 변경은 「최소한의 변경」으로 보여 의미 있는 차이가 되지 않습니다.");
+  if (voice < 0.35) adv.push(`내 목소리(해설)가 전체의 ${Math.round(voice * 100)}%입니다. 35% 이상이 되도록 내 의견·비교·배경 설명을 더해 주세요.`);
+  if (aSrc > 0.4) adv.push(`원본 소리가 전체의 ${Math.round(aSrc * 100)}%입니다. 원본 소리는 줄이고 내 내레이션을 위에 올려 주세요.`);
+  if (full > 0.5 && pip < 0.1) adv.push("원본이 화면 전체를 차지하는 시간이 깁니다. 화면 속 화면, 내 얼굴·반응 화면, 설명 그래픽을 섞어 주세요.");
+  hist.forEach((h) => h.segments.forEach((s) => adv.push(`${tc(s.start)}~${tc(s.end)}: 지난 영상 「${h.video}」와 화면이 같습니다. 같은 인트로를 매번 쓰면 반복 콘텐츠로 보일 수 있으니 짧게 줄이거나 영상마다 바꿔 주세요.`)));
+  sims.forEach((s, i) => { if (s > 0.6) adv.push(`대본이 지난 대본 ${i + 1}과 ${Math.round(s * 100)}% 비슷합니다. 틀만 같고 내용이 다르게 보이도록 문장을 새로 써 주세요.`); });
+  if (!adv.length) adv.push("큰 위험 신호가 없습니다. 원본 출처 표기와 내 의견을 계속 유지해 주세요.");
+  const lv = (x, hi, mid) => (x >= hi ? "높음" : x >= mid ? "주의" : "낮음");
+  return { reuse_risk: risk, reuse_level: lv(risk, 60, 35), repeat_risk: rep, repeat_level: lv(rep, 60, 30),
+    metrics: { source_fullscreen_ratio: +full.toFixed(3), source_pip_ratio: +pip.toFixed(3), mirrored_ratio: +mirror.toFixed(3),
+      source_audio_ratio: +aSrc.toFixed(3), my_voice_ratio: +voice.toFixed(3), longest_source_only_sec: longest }, advice: adv };
+}
+
+// ───────────── 화면 ─────────────
+const state = { mine: null, src: [], hist: [], result: null, url: null };
+const LV_COLOR = { "높음": "var(--risk)", "주의": "var(--warn)", "낮음": "var(--ok)" };
+
+function setFiles(kind, list) {
+  const arr = [...list].filter((f) => f.type.startsWith("video/") || /\.(mp4|webm|mov|m4v|mkv)$/i.test(f.name));
+  if (kind === "mine") state.mine = arr[0] || state.mine; else state[kind] = arr.length ? arr : state[kind];
+  const names = kind === "mine" ? (state.mine ? [state.mine] : []) : state[kind];
+  $("l-" + kind).innerHTML = names.map((f) => `<div>${esc(f.name)} · ${(f.size / 1048576).toFixed(1)}MB</div>`).join("");
+  $("go").disabled = !state.mine;
+  $("hint").textContent = state.mine ? (state.src.length ? "준비됐어요. 분석 시작을 누르세요." : "원본을 넣지 않으면 반복 점검만 합니다.") : "내 영상을 넣으면 시작할 수 있어요.";
+}
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+["mine", "src", "hist"].forEach((k) => {
+  const input = $("f-" + k), drop = $("drop-" + k);
+  input.addEventListener("change", () => setFiles(k, input.files));
+  drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); setFiles(k, e.dataTransfer.files); });
+});
+$("reset").addEventListener("click", () => {
+  Object.assign(state, { mine: null, src: [], hist: [] });
+  ["mine", "src", "hist"].forEach((k) => { $("f-" + k).value = ""; $("l-" + k).innerHTML = ""; });
+  $("s-mine").value = ""; $("s-hist").value = ""; $("go").disabled = true; $("err").hidden = true;
+  $("hint").textContent = "내 영상을 넣으면 시작할 수 있어요.";
+});
+$("go").addEventListener("click", async () => {
+  $("go").disabled = true; $("err").hidden = true; $("prog").hidden = false;
+  $("bar").style.width = "0%"; $("step").textContent = "준비 중"; state.result = null;
+  const t0 = performance.now();
+  try {
+    const texts = { mine: $("s-mine").value, hist: $("s-hist").value.split(/\n\s*\n\s*\n/).map((t) => t.trim()).filter(Boolean) };
+    const r = await analyze({ mine: state.mine, src: state.src, hist: state.hist }, texts,
+      (f, label) => { $("bar").style.width = Math.round(Math.min(1, f) * 100) + "%"; $("step").textContent = label; });
+    $("bar").style.width = "100%"; $("step").textContent = `끝났어요 · ${Math.round((performance.now() - t0) / 1000)}초 걸림`;
+    show(r, state.mine);
+    $("result").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  } catch (e) {
+    $("err").textContent = e.message || "분석하지 못했습니다. 다른 파일로 다시 시도해 주세요."; $("err").hidden = false;
+  } finally { $("go").disabled = !state.mine; }
+});
+
+function segs(labels) { const out = []; labels.forEach((l, i) => { const last = out[out.length - 1]; if (last && last.l === l) last.n++; else out.push({ l, n: 1, s: i }); }); return out; }
+function paintTrack(el, labels) {
+  const n = Math.max(labels.length, 1);
+  el.innerHTML = segs(labels).map((g) => `<i style="width:${(g.n / n * 100).toFixed(3)}%;background:${COLORS[g.l]}" title="${tc(g.s)}~${tc(g.s + g.n)} ${NAMES[g.l]}"></i>`).join("") + '<span class="head"></span>';
+}
+let player = null, total = 1;
+function jump(t) { if (player) { player.currentTime = t; player.play().catch(() => {}); } }
+function trackClick(e) { const r = e.currentTarget.getBoundingClientRect(); jump(Math.max(0, (e.clientX - r.left) / r.width) * total); }
+["t-v", "t-a"].forEach((id) => { $(id).addEventListener("click", trackClick);
+  $(id).addEventListener("keydown", (e) => { if (!player) return; if (e.key === "ArrowRight") jump(player.currentTime + 5); if (e.key === "ArrowLeft") jump(Math.max(0, player.currentTime - 5)); }); });
+
+function show(r, file) {
+  state.result = r; total = Math.max(1, r.timeline.video.length);
+  $("sample-tag").hidden = !!file;
+  $("r-name").textContent = `${r.video} · ${tc(r.duration_sec)}`;
+  for (const [id, num, lv] of [["g-reuse", r.reuse_risk, r.reuse_level], ["g-rep", r.repeat_risk, r.repeat_level]]) {
+    const g = $(id); g.style.setProperty("--g", LV_COLOR[lv]); g.querySelector(".num").textContent = num; g.querySelector(".lv").textContent = lv; }
+  if (state.url) URL.revokeObjectURL(state.url);
+  if (file) { state.url = URL.createObjectURL(file);
+    $("player").innerHTML = `<video controls playsinline preload="metadata" src="${state.url}"></video>`; player = $("player").querySelector("video");
+    player.addEventListener("timeupdate", () => document.querySelectorAll(".head").forEach((h) => h.style.left = Math.min(100, player.currentTime / total * 100) + "%"));
+  } else { player = null; $("player").innerHTML = '<div class="novideo">예시 결과에는 영상이 없습니다. 위에 내 영상을 넣고 분석하면 여기서 재생하며 구간을 확인할 수 있어요.</div>'; }
+  paintTrack($("t-v"), r.timeline.video); paintTrack($("t-a"), r.timeline.audio);
+  $("ticks").innerHTML = [0, 25, 50, 75, 100].map((p) => `<span style="left:${p}%">${tc(r.duration_sec * p / 100)}</span>`).join("");
+  $("legend").innerHTML = ["own", "pip", "full", "mirror"].map((k) => `<span><i style="background:${COLORS[k]}"></i>${NAMES[k]}</span>`).join("")
+    + ["source", "silent"].map((k) => `<span><i style="background:${COLORS[k]}"></i>${NAMES[k]}</span>`).join("")
+    + '<span>소리 트랙의 초록 = 새 소리(내 해설 등)</span>';
+  $("advice").innerHTML = r.advice.map((a) => {
+    const m = a.match(/^(\d+):(\d\d)~(\d+:\d\d)/);
+    if (!m) return `<li>${esc(a)}</li>`;
+    const t = +m[1] * 60 + +m[2];
+    return `<li><button class="tc" data-t="${t}">${m[0]}</button>${esc(a.slice(m[0].length))}</li>`;
+  }).join("");
+  $("advice").querySelectorAll(".tc").forEach((b) => b.addEventListener("click", () => player ? jump(+b.dataset.t) : null));
+  const m = r.metrics, pct = (x) => Math.round(x * 100) + "%";
+  $("metrics").innerHTML = [["원본이 화면 전체에 나온 비율", pct(m.source_fullscreen_ratio)], ["원본이 작은 화면(화면 속 화면)으로 나온 비율", pct(m.source_pip_ratio)],
+    ["좌우 반전된 원본 비율", pct(m.mirrored_ratio)], ["원본 소리 비율", pct(m.source_audio_ratio)], ["내 목소리(해설) 비율", pct(m.my_voice_ratio)],
+    ["원본만 이어진 가장 긴 구간", Math.floor(m.longest_source_only_sec) + "초"], ...r.history.map((h) => [`지난 영상 「${h.video}」와 같은 장면`, pct(h.same_ratio)])]
+    .map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join("");
+}
+$("copy").addEventListener("click", async () => {
+  const r = state.result; if (!r) return;
+  const text = [`[재사용 검수실] ${r.video} (${tc(r.duration_sec)})`, `재사용 위험 ${r.reuse_risk}(${r.reuse_level}) · 반복 위험 ${r.repeat_risk}(${r.repeat_level})`,
+    ...r.advice.map((a, i) => `${i + 1}. ${a}`)].join("\n");
+  try { await navigator.clipboard.writeText(text); $("copied").textContent = "복사했어요."; }
+  catch (e) { $("copied").textContent = ""; $("copy-lab").hidden = false; const ta = $("copy-out"); ta.hidden = false; ta.value = text; ta.focus(); ta.select(); }
+});
+
+window.__reuse = { analyze, score, textSim, state };
+show(JSON.parse($("sample").textContent), null);
+</script>

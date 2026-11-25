@@ -37,7 +37,7 @@
 
 ## 위치
 - 앱: `saju-app/` (빌드 없는 정적 웹, ES 모듈). 루트 `index.html`은 별개 프로젝트(일일계도상소) — 건드리지 않음
-- 재사용·반복 콘텐츠 자가 점검기(2026-11-25 시제품 v0.1, 12지신 강림과 별개): `reuse-check/` — Python CLI(`reuse_check.py`, numpy·Pillow·ffmpeg), 시험 `python3 -m unittest test_reuse_check.py`, 설명 `reuse-check/README.md`
+- 재사용·반복 콘텐츠 자가 점검기(2026-11-25 v0.2, 12지신 강림과 별개): `reuse-check/` — 브라우저 프로그램 「재사용 검수실」 `web/index.html`(설치 없음·영상은 기기 안에서만 분석, 미리보기 아티팩트 https://claude.ai/artifact/RsBhyryaEWvvinzCrAtHuL, 시험 `node web/test_web.mjs`) + Python CLI(`reuse_check.py`, 시험 `python3 -m unittest test_reuse_check.py`), 설명 `reuse-check/README.md`
 - 기획·조사 문서: `docs/` (**최종 방향(2026-11-03): `docs/together-habit-direction.md` — 소중한 사람(짝꿍: 가족·친구·연인 누구나, 엄마·딸은 대표 예시일 뿐 한정 금지)과 함께 운을 습관으로 바꾸는 앱, 날씨→우산 문법, 결정 10가지, v0.30~ 로드맵, 9절 알림·서버(1단계 서버 없이 로컬 알림으로 출시 → 2단계 Firebase)**, **홈 개편: `docs/home-quest-plan.md`**, **최신 기획: `docs/core-saju-review-plan.md` — 핵심 사주 타임라인·엔진 통합·경쟁 앱 리뷰 분석·v0.19~ 로드맵**, 전략: `docs/strategy-v013.md`, 방향: `docs/kaiun-loop-direction.md`, 승천·가챠: `docs/ascension-gacha-report.md`, 소셜 설계: `docs/social-design.md`)
 - 작업 브랜치: **기본 브랜치 `claude/zhuge-liang-advice-window-e8ghwy`가 최신**(PR #1 = v0.15, PR #2 = v0.16~v0.30 병합). 세션 지정 브랜치에서 작업 → 버전 끝날 때 PR로 기본 브랜치에 병합. (예전 작업 브랜치 `claude/exciting-johnson-1f6o78`·`ccr-c85c770a-b6ueyf`는 모두 병합 완료, 기록용)
 - 미리보기(Claude 아티팩트): slug `f5ff35d3-d121-45d3-8a5e-b1b6c7e1fffe`, URL https://claude.ai/artifact/XNrP2AFTcULKijQSe1xzC5

@@ -8,7 +8,14 @@
 > 참고용 점검입니다. 유튜브의 실제 심사 결과를 보장하지 않습니다.
 > 기준: [YouTube 채널 수익 창출 정책](https://support.google.com/youtube/answer/1311392)
 
-## 설치
+## 브라우저 프로그램 「재사용 검수실」 (설치 없음, v0.2)
+- 파일: `web/index.html` 하나. 크롬·엣지·사파리에서 열고 **내 영상 / 가져다 쓴 원본 / 내 지난 영상**을 끌어다 놓거나 골라 넣은 뒤 「분석 시작」.
+- 영상은 기기 안에서만 분석합니다(서버로 보내지 않음). 앞 20분까지 분석.
+- 결과: 재사용·반복 위험 점수, 영상 재생기 + V1(화면)/A1(소리) 트랙(누르면 그 시각으로 이동), 시간 붙은 고칠 점(누르면 이동), 세부 수치, 「결과를 글로 복사」.
+- 미리 보기(비공개, 공유는 페이지의 Share 메뉴): https://claude.ai/artifact/RsBhyryaEWvvinzCrAtHuL
+- 분석 방식은 아래 Python 판과 같음(같은 기준값). 브라우저 시험: `node web/test_web.mjs [webm 폴더]` (Playwright 크로미움은 H.264를 못 열어 시험 영상은 webm)
+
+## 명령어 판 설치 (Python)
 ```bash
 # ffmpeg 필요 (윈도우: https://www.gyan.dev/ffmpeg/builds/ 또는 winget install ffmpeg)
 pip install numpy pillow
