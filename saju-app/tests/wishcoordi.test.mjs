@@ -107,7 +107,7 @@ t('코디(v0.77): 부위마다 하루 3번까지 · 완성하기(또는 기회 �
   assert.equal(C.pickSlot(f.store, D, 'neck', pick('neck', 0), lucky, today).locked, true, '완성 뒤에는 못 바꿈');
   const c = C.claimStars(f.store, D); assert.equal(c.stars, 5); assert.equal(c.gained, 3);
   assert.equal(C.claimStars(c.store, D).gained, 0, '하루 한 번');
-  assert.deepEqual([1, 2, 3, 4, 5].map((n) => C.STAR_REWARD[n] || 0), [0, 0, 1, 2, 3]);
+  assert.deepEqual([1, 2, 3, 4, 5].map((n) => C.STAR_REWARD[n] || 0), [1, 1, 2, 2, 3]);
   assert.ok(C.lockedOn(c.store, '2026-11-7').head === undefined, '다음 날은 다시');
   // 세 부위 기회를 모두 쓰면 저절로 완성
   let s = null; let last;

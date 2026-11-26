@@ -110,7 +110,8 @@ export function claimStreak(store, todayKey) {
 // ---------- v0.59(2026-11-06 사용자 결정): 추천 없음 · 별 3개 = 떡 1 · 4개 = 2 · 5개 = 3 ----------
 // v0.77(2026-11-22 사용자 「아이템 선택을 3번까지 하게 해서 복떡 받을 확률을 높여 줘」): 부위마다 하루 3번까지 바꿔 입기,
 // 「이 코디로 완성하기」를 누르거나 세 부위 기회를 다 쓰면 완성 → 그때 별 수만큼 떡
-export const STAR_REWARD = { 3: 1, 4: 2, 5: 3 };
+// v0.90(2026-11-26 사용자 「별 1~2개도 복떡 1개, 별 3개면 2개, 별 5개면 3개」): 4개는 2개
+export const STAR_REWARD = { 1: 1, 2: 1, 3: 2, 4: 2, 5: 3 };
 export const PICKS_PER_SLOT = 3;
 export const lockedOn = (store, dateKey) => {
   const day = (store?.days || {})[dateKey] || {};

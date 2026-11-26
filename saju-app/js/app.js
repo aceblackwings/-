@@ -6870,18 +6870,18 @@ function coordiHTML() {
   };
   const emptyN = COORDI_SLOTS.filter((s) => !outfit[s.key]).length;
   const foot = done
-    ? `오늘 코디 완성! ${saved?.paid && reward ? `${TTEOK} 복떡 +${reward}을 받았어요` : '별 3개부터 복떡을 받아요 · 내일 다시 입혀 보세요'}`
+    ? `오늘 코디 완성! ${saved?.paid && reward ? `${TTEOK} 복떡 +${reward}을 받았어요` : '내일 다시 입혀 보세요'}`
     : emptyN ? `👆 아직 안 입힌 부위 <b>${emptyN}</b>곳 · 소품을 눌러 입혀 보세요`
     : `별이 마음에 들면 완성하기를 누르세요. 아니면 부위마다 남은 기회로 바꿔 입어 볼 수 있어요`;
   return `<div class="coordi">
     <ol class="cd-steps"><li class="${emptyN < 3 || done ? 'ok' : 'now'}">① 소품 입히기</li><li class="${done ? 'ok' : !emptyN ? 'now' : ''}">② 별 보고 바꿔 보기</li><li class="${done ? 'ok' : ''}">③ 완성하고 ${TTEOK} 받기</li></ol>
-    <p class="cd-guide">머리·목·손에 소품을 하나씩 입혀요. 오늘 기운과 잘 어울리면 별(★)이 늘어나요. 부위마다 <b>하루 ${PICKS_PER_SLOT}번</b>까지 바꿔 입을 수 있어요. 완성하면 별 3개 ${TTEOK}1 · 4개 ${TTEOK}2 · 5개 ${TTEOK}3.</p>
+    <p class="cd-guide">머리·목·손에 소품을 하나씩 입혀요. 오늘 기운과 잘 어울리면 별(★)이 늘어나요. 부위마다 <b>하루 ${PICKS_PER_SLOT}번</b>까지 바꿔 입을 수 있어요. 완성하면 별 1~2개 ${TTEOK}1 · 3~4개 ${TTEOK}2 · 5개 ${TTEOK}3.</p>
     <div class="cd-stage">${coordiWrap(svg, outfit)}
       <div class="cd-score"><small>오늘의 코디 별</small>${heartsHTML(res.hearts)}<b>${esc(res.title)}</b>
         <p class="cd-say" data-casual>💬 ${esc(coordiLine(res.hearts, politeNow()))}</p></div></div>
     ${COORDI_SLOTS.map(row).join('')}
     <p class="cd-left">${foot}</p>
-    ${done ? '' : `<button type="button" class="primary cd-finish" data-cd-finish ${ready ? '' : 'disabled'}>✅ 이 코디로 완성하기 <small>${ready ? (reward ? `(지금 별 ${res.hearts}개 → ${TTEOK} +${reward})` : `(지금 별 ${res.hearts}개 · 3개부터 ${TTEOK})`) : '(세 부위를 모두 입히면 눌러요)'}</small></button>`}
+    ${done ? '' : `<button type="button" class="primary cd-finish" data-cd-finish ${ready ? '' : 'disabled'}>✅ 이 코디로 완성하기 <small>${ready ? (reward ? `(지금 별 ${res.hearts}개 → ${TTEOK} +${reward})` : `(지금 별 ${res.hearts}개)`) : '(세 부위를 모두 입히면 눌러요)'}</small></button>`}
     <p class="cd-streak">🗓️ 연속 코디 <b>${streak}일</b> · ${COORDI_NEED}일 연속이면 🎀 꾸미기 조각 1개 <span class="pc-dots">${Array.from({ length: COORDI_NEED }, (_, i) => `<i class="${i < streak % COORDI_NEED || (streak && streak % COORDI_NEED === 0) ? 'on' : ''}"></i>`).join('')}</span></p>
     <p class="muted cd-note">코디 별은 꾸미기 놀이예요. 오늘 운세 점수와는 상관없어요.</p>
   </div>`;
@@ -6893,7 +6893,7 @@ function settleCoordi(next) {
   const c = coordiClaim(next, f.dateKey); next = c.store;
   const sr = coordiStars(next, f.dateKey); next = sr.store; save(COORDI_KEY, next);
   if (sr.gained) { save(TTEOK_KEY, tteokGift(loadTteok(), `코디 별 ${sr.stars}개`, sr.gained).store); sfx('coin'); toast(`👗 코디 완성 · 별 ${sr.stars}개! ${TTEOK} 복떡 +${sr.gained}`); }
-  else if (sr.done) toast(`👗 코디 완성 · 별 ${sr.stars}개 · 별 3개부터 복떡을 받아요`);
+  else if (sr.done) toast(`👗 코디 완성 · 별 ${sr.stars}개`);
   if (SHOW_SEASON_ITEMS && c.piece) {
     const tt = { ...emptyTteok(), ...(loadTteok() || {}) }; tt.pieces = (tt.pieces || 0) + 1; save(TTEOK_KEY, tt);
     toast(`🎀 ${c.streak}일 연속 코디! 꾸미기 조각 1개를 받았어요`);
@@ -6930,7 +6930,7 @@ function rollCoordi() {
   const c = coordiClaim(r.store, f.dateKey); save(COORDI_KEY, c.store);
   if (r.gained) { save(TTEOK_KEY, tteokGift(loadTteok(), `코디 별 ${r.best}개`, r.gained).store); sfx('coin'); }
   const items = COORDI_SLOTS.map((x) => coordiItemOf(r.store.days[f.dateKey].outfit[x.key])?.name).filter(Boolean).join(' · ');
-  const reward = r.gained ? `${TTEOK} 복떡 +${r.gained}` : r.best >= 3 ? `${TTEOK} 복떡은 더 좋은 별일 때만 더 받아요` : `${TTEOK} 복떡은 별 3개부터`;
+  const reward = r.gained ? `${TTEOK} 복떡 +${r.gained}` : `${TTEOK} 복떡은 더 좋은 별일 때만 더 받아요`;
   toast(`👗 ${items} · 별 ${r.res.hearts}개! ${reward}${r.left ? ` · 한 번 더 할 수 있어요` : ''}`);
   if (SHOW_SEASON_ITEMS && c.piece) {
     const tt = { ...emptyTteok(), ...(loadTteok() || {}) }; tt.pieces = (tt.pieces || 0) + 1; save(TTEOK_KEY, tt);
