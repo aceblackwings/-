@@ -30,7 +30,7 @@ t('풀이: 자리 수 확인, 모든 조합 금지어 없음·undefined 없음·
   assert.throws(() => readTarot({ topic: 'love', spread: 'three', picks: [{ key: 'rat' }] }));
 });
 t('이야기 풀이(v0.47): 34장 모두 그림 이야기·뜻·흐름 성격·건강운, 주제 5개(건강운 포함)', () => {
-  assert.deepEqual(TAROT_TOPICS.map((x) => x.key), ['love', 'job', 'money', 'health', 'day']);
+  assert.deepEqual(TAROT_TOPICS.map((x) => x.key), ['love', 'job', 'money', 'health', 'people', 'day']);
   for (const c of FULL_DECK) { assert.ok(['act', 'build', 'feel', 'turn'].includes(c.tone), c.key); assert.ok(c.scene.length > 20 && c.meaning.length > 20 && c.core && /[.?!]$/.test(c.up.health), c.key); }
   const tones = new Set(FULL_DECK.map((c) => c.tone)); assert.equal(tones.size, 4);
 });

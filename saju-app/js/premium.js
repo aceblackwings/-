@@ -88,8 +88,8 @@ function mendChapters(before, rep) {
   const fix = (t) => {
     if (!t) return t;
     let x = String(t)
-      .replace(/이 책 맨 앞의 「한눈에 정리」/g, '첫 화면 요약의 「한눈에 정리」')
-      .replace(/바로 다음 「한눈에 정리」에/g, '첫 화면 요약의 「한눈에 정리」에');
+      // v0.91: 첫 화면에서 「한눈에 정리」를 뺐으니, 그곳을 가리키던 문장은 통째로 지움
+      .replace(/[^.?!]*「한눈에 정리」[^.?!]*[.?!]\s*/g, '');
     // 한 번 바꾼 번호는 다시 바꾸지 않게 표시(\u0001)를 붙였다가 마지막에 뗌
     x = x.replace(/(\d+)장부터 (\d+)장까지/g, (m, a, b) => { const A = up(+a); const B = down(+b); return A && B && A <= B ? `${A}\u0001장부터 ${B}\u0001장까지` : '이 책 본문'; });
     x = x.replace(/(\d+)~(\d+)장/g, (m, a, b) => { const A = up(+a); const B = down(+b); return !A || !B || A > B ? '첫 화면 요약' : A === B ? `${A}\u0001장` : `${A}~${B}\u0001장`; });

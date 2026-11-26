@@ -107,7 +107,7 @@ t('코디(v0.77): 부위마다 하루 3번까지 · 완성하기(또는 기회 �
   assert.equal(C.pickSlot(f.store, D, 'neck', pick('neck', 0), lucky, today).locked, true, '완성 뒤에는 못 바꿈');
   const c = C.claimStars(f.store, D); assert.equal(c.stars, 5); assert.equal(c.gained, 3);
   assert.equal(C.claimStars(c.store, D).gained, 0, '하루 한 번');
-  assert.deepEqual([1, 2, 3, 4, 5].map((n) => C.STAR_REWARD[n] || 0), [0, 0, 1, 2, 3]);
+  assert.deepEqual([1, 2, 3, 4, 5].map((n) => C.STAR_REWARD[n] || 0), [1, 1, 2, 3, 3]);
   assert.ok(C.lockedOn(c.store, '2026-11-7').head === undefined, '다음 날은 다시');
   // 세 부위 기회를 모두 쓰면 저절로 완성
   let s = null; let last;
@@ -143,6 +143,21 @@ t('걱정 태우기: 저장소를 쓰지 않음 · 불길은 끝까지 번짐', 
     let n = 0;
     while (B.burntShare(g) < B.BURN_DONE && n < 2000) { B.stepFire(g, rnd); if (!B.isBurning(g)) B.rekindle(g); n++; }
     assert.ok(B.burntShare(g) >= B.BURN_DONE, `불길 ${x},${y}`); assert.ok(n < 2000);
+  }
+});
+t('v0.89 자동 코디: 누르면 세 부위 입고 바로 완성 · 하루 2번 · 복떡은 가장 좋은 별 기준', () => {
+  const dk = '2026-11-26';
+  for (let seed = 0; seed < 40; seed++) {
+    let x = seed / 40; const rng = () => { x = (x * 9301 + 0.49297) % 1; return x; };
+    const a = C.autoRoll(C.emptyCoordi(), dk, seed % 5, (seed * 3) % 5, {}, rng);
+    assert.ok(a.ok && a.left === 1 && C.isDone(a.store, dk));
+    assert.ok(C.SLOTS.every((sl) => a.store.days[dk].outfit[sl.key]));
+    assert.equal(a.gained, C.STAR_REWARD[a.res.hearts] || 0);
+    const b = C.autoRoll(a.store, dk, seed % 5, (seed * 3) % 5, {}, rng);
+    assert.ok(b.ok && b.left === 0);
+    assert.equal(a.gained + b.gained, C.STAR_REWARD[Math.max(a.res.hearts, b.res.hearts)] || 0);
+    assert.equal(C.autoRoll(b.store, dk, 0, 0, {}, rng).ok, false);
+    assert.equal(C.claimStars(b.store, dk).gained, 0, '예전 완성 보상과 겹치지 않음');
   }
 });
 console.log(`wishcoordi: ${pass} 통과`);

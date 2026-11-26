@@ -6,7 +6,7 @@ export const PATH = [
   { key: 'cookie', short: '쿠키', icon: '🥠', label: '포춘 쿠키 열기', tab: 'today', why: '오늘의 운세가 나와요 · 지신 아침밥' },
   { key: 'habit', short: '습관', icon: '✅', label: '습관 체크하기', tab: 'today', why: '하나에 복떡 2개 · 지신 저녁밥' },
   { key: 'tarot', short: '타로', icon: '🃏', label: '타로 한 장 보기', tab: 'tarot', why: '복떡 1개 · 지신 간식' },
-  { key: 'coordi', short: '코디', icon: '👗', label: '지신 코디하기', tab: 'hero', why: '별 3개부터 복떡 1~3개' },
+  { key: 'coordi', short: '코디', icon: '👗', label: '지신 코디하기', tab: 'hero', why: '누르면 자동 코디 · 복떡 1~3개' },
 ];
 
 /**

@@ -56,7 +56,7 @@ import { TTEOK, visit as tteokVisit, doTask as tteokDoTask, todayTasks, doneCoun
 import { emoImage, charImage } from './assets.js';
 import { PRODUCTS, buildPremiumYear, buildLifeReport, buildCompatReport, premiumTeaser, compatTeaser, tarotBridge, bundleWorth, BUNDLE_COMPAT, BUNDLE_TTEOK } from './premium.js';
 import { tarotPrice, useTarot, TAROT_COST, TAROT_FREE_PER_DAY, gift as tteokGift, COMPAT_COST, CHARM_TTEOK, CHARM_PRICE, friendKey, useCompat, compatOpen, grandfatherCompat, useCharmTteok, LANTERN_TTEOK, charmTteokCost } from './tteok.js';
-import { pickSlot as coordiPick, claimStars as coordiStars, lockedOn as coordiLocked, STAR_REWARD, PICKS_PER_SLOT, triesLeft as coordiTries, isDone as coordiDone, canFinish as coordiCanFinish, finishDay as coordiFinish } from './coordi.js';
+import { autoRoll as coordiRoll, rollsLeft as coordiRollsLeft, ROLLS_PER_DAY as COORDI_ROLLS, pickSlot as coordiPick, claimStars as coordiStars, lockedOn as coordiLocked, STAR_REWARD, PICKS_PER_SLOT, triesLeft as coordiTries, isDone as coordiDone, canFinish as coordiCanFinish, finishDay as coordiFinish } from './coordi.js';
 import { VIEW_DAYS, viewUntil, markOpened, expired as shopExpired, emptyShop, owns as shopOwns, priceOf, grant as shopGrant, yearKey, compatKey, bundleKey, grantBundle, useCompatCredit, compatCredits, kindOf } from './shop.js';
 import { preloadCharImages, itemImage, tarotImage, coordiImage } from './assets.js';
 /** 계절 한정 소품 그림 (없으면 빈칸) */
@@ -114,7 +114,7 @@ const SEEDS_KEY = 'unmyeong2099.seeds'; // v0.60 걱정 씨앗 {list:[{at, el, a
 const STORE_KEY = 'unmyeong2099.profile';
 // v0.62 부적 만들기 창(아래 openCharmMaker) — 시작할 때 그리는 화면이 쓰므로 위에 둠
 const MAKER_SAMPLE = { wish: '소원 한 줄이 여기에 붓글씨로', burn: '걱정 한 줄이 여기에' };
-const TAROT_WISH = { love: '좋은 인연 만나기', job: '이직에 성공하기', money: '저축 100만 원 모으기', health: '가족 모두 건강하기', day: '' };
+const TAROT_WISH = { love: '좋은 인연 만나기', job: '이직에 성공하기', money: '저축 100만 원 모으기', health: '가족 모두 건강하기', people: '소중한 사람과 사이좋게 지내기', day: '' };
 const CMNUDGE_KEY = 'unmyeong2099.cmnudge';
 const BURNDAY_KEY = 'unmyeong2099.burnday'; // v0.64 걱정 태우기 무료 하루 한 번 {last, count} — 걱정 글 없음
 const COLLECTION_KEY = 'unmyeong2099.collection';
@@ -777,9 +777,8 @@ function sajuStoryNow() {
 function sajuStoryHTML() {
   const st = sajuStoryNow();
   const P = (t) => `<p>${esc(plainText(t))}</p>`;
-  return `<article class="card sj-story"><h3>📖 쉽게 읽는 나 <span class="tag">한눈에 정리</span></h3>
+  return `<article class="card sj-story"><h3>📖 쉽게 읽는 나</h3>
     <p class="bk-hook">${esc(plainText(st.hook))}</p>
-    ${briefHTML(st.brief, plainText)}
     ${st.blocks.map((b) => `<h4>${esc(plainText(b.h))}</h4>${b.paras.map(P).join('')}`).join('')}
     <h4>${esc(plainText(st.hard.h))}</h4>${st.hard.paras.map(P).join('')}
     ${st.more.map((b) => `<h4>${esc(plainText(b.h))}</h4>${b.paras.map(P).join('')}`).join('')}
@@ -2163,7 +2162,8 @@ function bookletData() {
   const st = bookletStory({ y, thisYear: prev, saju: state.saju, name: state.profile.name, gender: state.profile.gender });
   // v0.59 4단계: 첫 화면 = 요약판(결론·할 일), 「자세히 보기」 = 요약판과 같은 문장을 뺀 상세판
   // v0.63 사용자 「한눈에 정리는 한 줄 요약까지만, 꼭 할 일은 삭제」 → v0.63.1 「피할 일만 다시」: 한 줄 요약 + ⛔ 피할 일(상세판 겹침 빼기도 이 둘만 기준)
-  if (st.brief) st.brief = { ...st.brief, h: '📌 한눈에 정리', intro: '', blocks: st.brief.blocks.filter((x, i) => i === 0 || x.h.startsWith('⛔')) };
+  // v0.91 사용자 「2027년 신년운세와 내 사주의 한눈에 정리 삭제」: 첫 화면에서 빼고, 상세판의 「한눈에 정리」 안내 문장도 premium.js가 지움
+  st.brief = null;
   return { d, y, b, sum: yearSummary({ b, st }) };
 }
 
@@ -2187,7 +2187,6 @@ function bookletHTML(bd = bookletData()) {
     <section class="bk-story">
       ${st.scene ? `<p class="bk-scene">🎬 ${esc(PT(st.scene))}</p>` : ''}
       <p class="bk-hook"><b>쉽게 말하면,</b> ${esc(PT(st.hook))}</p>
-      ${briefHTML(st.brief)}
       ${st.chapters.map((c) => `<h3>${esc(PT(c.h))}</h3>${c.paras.map(P).join('')}`).join('')}
       <p class="bk-cliff">${esc(PT(IN_APP ? st.cliff.replace(/[^.]*「자세히 보기」[^.]*\./, '').trim() || st.cliff : st.cliff))}</p>
     </section>
@@ -3233,6 +3232,7 @@ function foldHTML(id, icon, title, sub, body) {
 document.addEventListener('toggle', (e) => {
   const d = e.target; if (!(d instanceof HTMLElement) || !d.matches?.('details.fold') || !d.id) return;
   (state.folds ||= {})[d.id] = d.open;
+  if (d.classList.contains('hero-pane') && d.open) { state.heroPane = d.id.replace('fold-', ''); $$('[data-hero-pane]').forEach((x) => x.classList.toggle('on', x.dataset.heroPane === state.heroPane)); }
   if (d.open) setTimeout(initScratch, 30); // 접혀 있던 긁기 칸(산통 점괘 등)은 펼칠 때 준비
 }, true);
 /** 접힌 곳 안에 있는 대상도 펼친 뒤 보여 주기 */
@@ -3660,7 +3660,7 @@ function renderTarot() {
       <p class="muted">복떡은 오늘 화면의 「나만의 매일 습관」을 체크하면(하나에 2개) 모을 수 있어요. 지신 코디에서 별 3개 이상이어도 받아요.</p>
       <button type="button" class="primary" data-go-habits>✅ 습관 체크하러 가기</button></div>`;
   } else if (T.step === 'topic') {
-    body = `<p class="tr-guide">무엇이 궁금하세요?</p><div class="tr-topics">${TAROT_TOPICS.map((x) => `<button type="button" class="tr-topic" data-tarot-topic="${x.key}"><span>${x.icon}</span><b>${x.label}</b><small>${x.ask}</small></button>`).join('')}</div>`;
+    body = `<p class="tr-guide">무엇이 궁금하세요?</p><div class="tr-topics six">${TAROT_TOPICS.map((x) => `<button type="button" class="tr-topic" data-tarot-topic="${x.key}"><span>${x.icon}</span><b>${x.short || x.label}</b><small>${x.ask}</small></button>`).join('')}</div>`;
   } else if (T.step === 'spread') {
     body = `<p class="tr-guide">${tp.icon} ${tp.label} · 몇 장을 뽑을까요?</p>
       ${(TAROT_SITU[T.topic] || []).length ? `<div class="tr-situ"><p class="muted">지금 내 상황은? <small>(고르면 내 상황에 맞춰 한 번 더 풀어 드려요 · 안 골라도 돼요)</small></p><div class="chips">${TAROT_SITU[T.topic].map((x) => `<button type="button" class="chip" data-tarot-situ="${x.key}" aria-pressed="${T.situ === x.key}">${x.label}</button>`).join('')}</div></div>` : ''}
@@ -3765,13 +3765,12 @@ function renderToday() {
   recordKaiun();
   // v0.43 단순화: 펼친 것은 오늘 운세 점수 + 오늘의 기운 카드 두 개뿐, 나머지는 한 줄 제목으로 접힘
   const bd = bookletData(); const sj = state.saju;
-  // v0.84(사용자 「아이폰에서 보니 뭘 해야 할지 모를 만큼 복잡」): 위 = 접힌 창 4개(2027년 운세 → 내 사주 → 운세 더 보기 → 이번 주 운세),
+  // v0.84(사용자 「아이폰에서 보니 뭘 해야 할지 모를 만큼 복잡」): 위 = 접힌 창 3개(2027년 운세 → 내 사주 → 이번 주 운세 · v0.92 운세 더 보기 삭제),
   // 아래 = 포춘 쿠키 → 매일 습관. 「오늘 이 순서대로 해 보세요」 카드는 뺌(👆 손가락 안내·화면 아래 「다음」 버튼은 그대로)
   $('[data-panel="today"]').innerHTML = `
     <div class="fold-list home-folds">
       ${foldHTML('next', '📜', `${bd.y.sajuYear}년 운세`, `「${bd.b.title}」의 해 · 총운·분야별`, `${santongHTML(bd.y.sajuYear)}${bookletHTML(bd)}${bookletFieldsHTML(bd)}`)}
       ${foldHTML('saju', '🀄', '내 사주', `일간 ${STEMS[sj.dayMaster]}(${STEMS_KO[sj.dayMaster]}) · 필요한 기운 ${ELEMENT_KO[sj.yongsin]}`, sajuOpenHTML())}
-      ${foldHTML('more', '🔮', '운세 더 보기', '이달·올해·10년 · 궁금한 질문', `<div class="fold-go"><button type="button" class="primary" data-go-tab="ask">🔮 궁금한 것 물어보기</button></div>`)}
       ${weekFortuneFold()}
     </div>
     ${easySuggestHTML()}
@@ -3985,6 +3984,17 @@ function heroOptions() {
   return { eq, charms, mood: emote || (cd ? COORDI_MOOD[cd.hearts - 1] : todayEmote(state.fortune)), emote, stage, unlock, season: SHOW_SEASON_ITEMS ? seasonLook(loadSeason()) : null };
 }
 
+/** v0.88 지신 옆 버튼(지신 밥·오늘의 코디): 누르면 아래 칸이 열리고, 다시 누르면 닫힘(하나만 열림) */
+function openHeroPane(k, toggle = true) {
+  state.heroPane = toggle && state.heroPane === k ? null : k;
+  ['food'].forEach((x) => {
+    const d = $(`#fold-${x}`); if (d) d.open = state.heroPane === x;
+    $(`[data-hero-pane="${x}"]`)?.classList.toggle('on', state.heroPane === x);
+  });
+  if (state.heroPane) setTimeout(() => $(`#fold-${state.heroPane}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 30);
+  markCoach();
+}
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-hero-pane]'); if (b) openHeroPane(b.dataset.heroPane); });
 /** v0.85 지신 탭 접힌 창의 한 줄 요약 */
 function foodSub() {
   const n = todayBowls(loadFood(), state.fortune.dateKey).filter((b) => b.done).length;
@@ -4033,24 +4043,24 @@ function renderHero(animate) {
   $('[data-panel="hero"]').innerHTML = `
     <div class="card hero-main">
       <div class="speech hero-say-box"><div class="hero-say">${(state.heroLine ? [state.heroLine] : todayLines().slice(0, 2)).map((l) => `<p>${esc(l)}</p>`).join('')}</div><button type="button" class="say-chat" data-go-tab="chat">💬 지신과 이야기하기</button></div>
-      <div class="hero-stage ${animate ? 'reveal' : ''}" id="hero-stage" title="눌러서 성장 단계 보기">${coordiWrap(decorWrap(svg), loadCoordi().days[f.dateKey]?.outfit)}</div>
-      <p class="muted" style="font-size:0.8rem;text-align:center;margin:6px 0 0">👆 지신을 누르면 앞으로 자랄 모습을 미리 볼 수 있어요</p>
+      <div class="hero-row">
+        <div class="hero-stage ${animate ? 'reveal' : ''}" id="hero-stage" title="눌러서 성장 단계 보기">${coordiWrap(decorWrap(svg), loadCoordi().days[f.dateKey]?.outfit)}</div>
+        <div class="hero-side">
+          <button type="button" class="hs-btn${state.heroPane === 'food' ? ' on' : ''}" data-hero-pane="food"><span>🍚</span><b>지신 밥</b><small>${esc(foodSub())}</small></button>
+          <button type="button" class="hs-btn" data-coordi-roll ${coordiRollsLeft(loadCoordi(), f.dateKey) ? '' : 'disabled'}><span>👗</span><b>오늘의 코디</b><small>${esc(coordiSub())}</small></button>
+        </div>
+      </div>
+      <details class="hero-pane fold" id="fold-food"${state.heroPane === 'food' ? ' open' : ''}><summary hidden>지신 밥</summary><div class="fold-body">${jisinGrowHTML()}</div></details>
+      <p class="muted" style="font-size:0.78rem;text-align:center;margin:6px 0 0">👆 지신을 누르면 앞으로 자랄 모습을 미리 볼 수 있어요</p>
       <h3 class="hero-title" style="text-align:center">${info.title}</h3>
       <p style="margin:0 0 10px;text-align:center"><span class="rarity-badge" style="color:var(--gold)">${stageName(gs.stage, info.female)} · 진화 ${gs.stage}단계</span>${currentDex().title ? ` <span class="rarity-badge" style="color:#ff8fb3">📖 ${currentDex().title}</span>` : ''}${seasonTitle() ? ` <span class="rarity-badge season-title">🏮 ${esc(seasonTitle())}</span>` : ''}</p>
       ${charmShowcaseHTML()}
+      ${kiCardHTML({ inHero: true })}
       ${showBackup() ? backupNudgeHTML() : ''}
       ${SHOW_CHARM_SLOTS ? `<div class="slots two">${slot(0)}${slot(1)}</div>
       ${state.equipOpen ? `<div class="equip-pop" id="equip-pop">${equipBody}</div>` : `<p class="muted" style="font-size:0.8rem;text-align:center;margin:6px 0 0">빈 슬롯을 누르면 부적을 골라 달 수 있어요 (${candidates.length}장 보유)</p>`}` : ''}
     </div>
-    <div class="fold-list hero-folds">
-      ${foldHTML('food', '🍚', '지신 밥', foodSub(), jisinGrowHTML())}
-      ${foldHTML('duo', '🐾', '두 번째 지신', duoSub(), secondJisinHTML())}
-      ${foldHTML('ki', '🎴', '오늘의 기운 카드', kiSub(), kiCardHTML({ inHero: true }))}
-      ${foldHTML('coordi', '👗', '오늘의 코디', coordiSub(), coordiHTML())}
-      ${foldHTML('wish', '🖼️', '이룬 소원 벽', wishSub(), wishWallHTML())}
-      ${foldHTML('burn', '🔥', '걱정 태우기', '걱정 한 줄을 부적과 함께 태워 날려 보내요', burnHTML())}
-      ${showBackup() ? foldHTML('backup', '📦', '기록 백업 · 새 폰으로 옮기기', backupSub(), backupCardHTML()) : ''}
-    </div>`;
+    <div class="fold-list hero-folds">${showBackup() ? foldHTML('backup', '📦', '기록 백업 · 새 폰으로 옮기기', backupSub(), backupCardHTML()) : ''}</div>`;
 
   const panel = $('[data-panel="hero"]');
   bindSeasonWardrobe(panel);
@@ -4794,14 +4804,14 @@ async function addFriendByCode(raw) {
   setTimeout(() => { processDexRewards(); renderCompat(); }, 50);
 }
 
-function friendSocialHTML(fr, idx) {
+function friendSocialHTML(fr, idx, { noCheer = false } = {}) {
   const soc = load(SOC_KEY, { stickers: 0, cheers: {}, gifts: {} });
   const k = `${state.fortune.dateKey}|${fr.name}`;
   const cheered = soc.cheers?.[k]; const gifted = soc.gifts?.[k];
   return `<div class="react">
-    <div class="dlg-title">📣 응원 · 🎁 선물</div>
+    <div class="dlg-title">${noCheer ? '🎁 선물 · 📣 응원 메시지' : '📣 응원 · 🎁 선물'}</div>
     <div class="actions">
-      <button class="${cheered ? 'ghost' : 'primary'}" type="button" data-cheer="${idx}" ${cheered ? 'disabled' : ''}>${cheered ? '오늘 응원 완료' : `📣 ${esc(fr.name)} 응원하기`}</button>
+      ${noCheer ? '' : `<button class="${cheered ? 'ghost' : 'primary'}" type="button" data-cheer="${idx}" ${cheered ? 'disabled' : ''}>${cheered ? '오늘 응원 완료' : `📣 ${esc(fr.name)} 응원하기`}</button>`}
       <button class="ghost" type="button" data-gift="${idx}" ${gifted ? 'disabled' : ''}>${gifted ? '오늘 선물 완료' : '🎁 부적 선물하기'}</button>
     </div>
     ${fr.code && state.rt?.mailbox ? `<label class="rt-msg">응원 메시지 <select id="cheer-msg">${CHEER_MESSAGES.map((m) => `<option value="${m.key}" ${state.cheerMsg === m.key ? 'selected' : ''}>${esc(m.text)}</option>`).join('')}</select></label>
@@ -5616,8 +5626,9 @@ function renderCompat() {
       ${friends.length ? `<div class="chips" style="margin-top:12px">${friends.map((fr, i) => `<button class="chip" type="button" data-friend="${i}" aria-pressed="${i === sel}">${esc(fr.name)}</button>`).join('')}</div>` : ''}
     </div>
     <div id="compat-result">${sel !== null && friends[sel] ? compatResultHTML(friends[sel], sel) : '<div class="card"><p class="muted" style="margin:0">친구를 추가하면 두 캐릭터가 함께 나오는 궁합 카드가 만들어집니다.</p></div>'}</div>
-    <div class="fold-list">
+    <div class="fold-list cp-folds">
       ${(() => { const h = dexHTML(); return h ? foldHTML('dex', '📖', '12띠 수집 도감', '궁합 본 친구 띠를 모아요', h) : ''; })()}
+      ${sel !== null && friends[sel] && !friendSaju(friends[sel]).error ? foldHTML('cpmore', '🎁', '친구와 더 하기', '선물 · 스티커 · 인연 부적 · 저장 · 삭제', compatMoreHTML(friends[sel], sel)) : ''}
     </div>`;
 
   const form = $('#friend-form', panel);
@@ -5809,25 +5820,30 @@ function compatResultHTML(fr, idx) {
   state.compat = { myInfo, friendInfo, compat: c, svg, myName, friendName: fr.name, friendSaju: fs, myStage: stage, myCharms: charms, dialogue, fr };
   // v0.80 쉬운 설명: 등급·점수 막대·근거 목록 대신 한 문단 + 조심할 점(근거는 문단 안에 쉬운 말로)
   const story = compatStory(c, { me: state.profile.name || '', friend: fr.name, meAnimal: myInfo.zodiac.name, friendAnimal: friendInfo.zodiac.name });
-  return `<div class="card">
-    <div class="compat-stage">${svg}</div>
-    <h3 style="margin:12px 0 4px;color:${c.grade.color}">${c.grade.label} · ${c.score}점</h3>
+  // v0.87(사용자): 띠 대화 삭제 · 그림 작게 · 조심할 점 → 자세히 보기(글자 크게) → 스토리 공유·응원하기(글자 작게) → (밖) 12띠 도감 → 친구와 더 하기
+  const soc = load(SOC_KEY, { stickers: 0, cheers: {}, gifts: {} }); const cheered = soc.cheers?.[`${state.fortune.dateKey}|${fr.name}`];
+  return `<div class="card cp-result">
+    <div class="compat-stage cp-small">${svg}</div>
+    <h3 style="margin:10px 0 4px;color:${c.grade.color}">${c.grade.label} · ${c.score}점</h3>
     <p class="ts-why cp-story"><span>${esc(story.para)}</span></p>
     <section class="ts-tile watch ts-one cp-watch"><h4>⚠️ 조심할 점</h4><p>${esc(story.watch)}</p></section>
-    ${dialogueHTML(myInfo, friendInfo, state.compat.dialogue, stage)}
-    <div class="actions" style="margin-top:12px">
+    <div class="cp-offer">${compatOfferHTML(fr)}</div>
+    <div class="cp-acts">
       <button class="primary" type="button" data-story="compat">📸 궁합 카드 스토리 공유</button>
+      <button class="${cheered ? 'ghost' : 'primary'}" type="button" data-cheer="${idx}" ${cheered ? 'disabled' : ''}>${cheered ? '📣 오늘 응원 완료' : `📣 ${esc(fr.name)} 응원하기`}</button>
+    </div>
+  </div>`;
+}
+/** v0.87 궁합 아래 접힌 창 「친구와 더 하기」: 선물·응원 메시지·스티커·인연 부적·PNG·삭제 */
+function compatMoreHTML(fr, idx) {
+  return `${friendSocialHTML(fr, idx, { noCheer: true })}
+    ${stickerReactHTML(fr, idx)}
+    <div class="actions" style="margin-top:12px">
       <button class="ghost" type="button" id="btn-compat-charm">💞 인연 부적 받기</button>
       <button class="ghost" type="button" id="btn-compat-png">PNG 저장</button>
       <button class="ghost" type="button" id="btn-friend-del">친구 삭제</button>
     </div>
-    ${compatOfferHTML(fr)}
-    ${friendSocialHTML(fr, idx)}
-    ${stickerReactHTML(fr, idx)}
-    <div style="display:none">
-    </div>
-    <p class="muted" style="font-size:0.78rem;margin-bottom:0">친구 캐릭터는 생일만으로 만든 임시 캐릭터입니다. 친구가 직접 가입하면 성별·고민·진화가 반영된 진짜 캐릭터로 바뀌어요.</p>
-  </div>`;
+    <p class="muted" style="font-size:0.78rem;margin-bottom:0">친구 캐릭터는 생일만으로 만든 임시 캐릭터입니다. 친구가 직접 가입하면 성별·고민·진화가 반영된 진짜 캐릭터로 바뀌어요.</p>`;
 }
 
 // ---------- 행운 이모티콘 ----------
@@ -6130,7 +6146,7 @@ function openReportPay(kind = 'life', notice = '') {
     goTossPay(kind, { key }, ez).catch((err) => {
       save(PENDING_KEY, null);
       box.querySelectorAll('[data-lp="pay"]').forEach((x) => { x.disabled = false; }); b.textContent = label;
-      toast(err?.message === 'store' ? '이 화면은 기록 저장이 꺼져 있어 결제할 수 없어요. 일반 창에서 열어 주세요' : failLine(err?.code), 6000);
+      toast(err?.message === 'store' ? '이 화면은 기록 저장이 꺼져 있어 결제할 수 없어요. 일반 창에서 열어 주세요' : `${failLine(err?.code)}${err?.code && !/CANCEL/.test(err.code) ? ` (오류 코드 ${err.code}${err?.message ? ` · ${err.message}` : ''})` : ''}`, 9000);
     });
   });
 }
@@ -6703,7 +6719,7 @@ document.addEventListener('click', (e) => {
     box.innerHTML = `<div class="evo-box wish-pop"><img class="lt-kept-big" src="${LT_ART('kept')}" alt="100일 완주 등불"><div class="wish-shine">${wishCharmHTML(col[i], true)}</div>
       <h3 style="margin:8px 0 4px">🏮 100일 완주 · 「${esc(col[i].wish)}」</h3>
       <p data-casual>${esc(keptLine(politeNow()))}</p>
-      <div class="yday-btns" style="grid-template-columns:1fr 1fr"><button type="button" class="ghost" data-close-reward>고마워요</button><button type="button" class="primary" data-go-wall>🖼️ 소원 벽 보기</button></div></div>`;
+      <div class="yday-btns"><button type="button" class="primary" data-close-reward>고마워요</button></div></div>`;
     document.body.appendChild(box);
     box.addEventListener('click', (ev) => {
       if (ev.target.closest('[data-go-wall]')) { box.remove(); selectTab('hero'); setTimeout(() => revealAndScroll('#fold-wish'), 50); return; }
@@ -6805,7 +6821,7 @@ document.addEventListener('click', (e) => {
     <h3 style="margin:8px 0 4px">🌟 소원 성취 · 「${esc(r.wish)}」</h3>
     <p data-casual>${esc(wishDoneLine(r, politeNow()))}</p>
     ${dr.paid ? `<button type="button" class="ghost" data-wish-png="${i}" style="width:100%;margin-bottom:8px">📱 소원 성취 카드 저장</button>` : ''}
-    <div class="yday-btns" style="grid-template-columns:1fr 1fr"><button type="button" class="ghost" data-close-reward>고마워요</button><button type="button" class="primary" data-go-wall>🖼️ 이룬 소원 벽 보기</button></div></div>`;
+    <div class="yday-btns"><button type="button" class="primary" data-close-reward>고마워요</button></div></div>`;
   document.body.appendChild(box);
   box.addEventListener('click', (ev) => {
     if (ev.target.closest('[data-go-wall]')) { box.remove(); selectTab('hero'); setTimeout(() => revealAndScroll('#fold-wish'), 50); return; }
@@ -6852,30 +6868,30 @@ function coordiHTML() {
   };
   const emptyN = COORDI_SLOTS.filter((s) => !outfit[s.key]).length;
   const foot = done
-    ? `오늘 코디 완성! ${saved?.paid && reward ? `${TTEOK} 복떡 +${reward}을 받았어요` : '별 3개부터 복떡을 받아요 · 내일 다시 입혀 보세요'}`
+    ? `오늘 코디 완성! ${saved?.paid && reward ? `${TTEOK} 복떡 +${reward}을 받았어요` : '내일 다시 입혀 보세요'}`
     : emptyN ? `👆 아직 안 입힌 부위 <b>${emptyN}</b>곳 · 소품을 눌러 입혀 보세요`
     : `별이 마음에 들면 완성하기를 누르세요. 아니면 부위마다 남은 기회로 바꿔 입어 볼 수 있어요`;
   return `<div class="coordi">
     <ol class="cd-steps"><li class="${emptyN < 3 || done ? 'ok' : 'now'}">① 소품 입히기</li><li class="${done ? 'ok' : !emptyN ? 'now' : ''}">② 별 보고 바꿔 보기</li><li class="${done ? 'ok' : ''}">③ 완성하고 ${TTEOK} 받기</li></ol>
-    <p class="cd-guide">머리·목·손에 소품을 하나씩 입혀요. 오늘 기운과 잘 어울리면 별(★)이 늘어나요. 부위마다 <b>하루 ${PICKS_PER_SLOT}번</b>까지 바꿔 입을 수 있어요. 완성하면 별 3개 ${TTEOK}1 · 4개 ${TTEOK}2 · 5개 ${TTEOK}3.</p>
+    <p class="cd-guide">머리·목·손에 소품을 하나씩 입혀요. 오늘 기운과 잘 어울리면 별(★)이 늘어나요. 부위마다 <b>하루 ${PICKS_PER_SLOT}번</b>까지 바꿔 입을 수 있어요. 완성하면 별 1~2개 ${TTEOK}1 · 3개 ${TTEOK}2 · 4~5개 ${TTEOK}3.</p>
     <div class="cd-stage">${coordiWrap(svg, outfit)}
       <div class="cd-score"><small>오늘의 코디 별</small>${heartsHTML(res.hearts)}<b>${esc(res.title)}</b>
         <p class="cd-say" data-casual>💬 ${esc(coordiLine(res.hearts, politeNow()))}</p></div></div>
     ${COORDI_SLOTS.map(row).join('')}
     <p class="cd-left">${foot}</p>
-    ${done ? '' : `<button type="button" class="primary cd-finish" data-cd-finish ${ready ? '' : 'disabled'}>✅ 이 코디로 완성하기 <small>${ready ? (reward ? `(지금 별 ${res.hearts}개 → ${TTEOK} +${reward})` : `(지금 별 ${res.hearts}개 · 3개부터 ${TTEOK})`) : '(세 부위를 모두 입히면 눌러요)'}</small></button>`}
+    ${done ? '' : `<button type="button" class="primary cd-finish" data-cd-finish ${ready ? '' : 'disabled'}>✅ 이 코디로 완성하기 <small>${ready ? (reward ? `(지금 별 ${res.hearts}개 → ${TTEOK} +${reward})` : `(지금 별 ${res.hearts}개)`) : '(세 부위를 모두 입히면 눌러요)'}</small></button>`}
     <p class="cd-streak">🗓️ 연속 코디 <b>${streak}일</b> · ${COORDI_NEED}일 연속이면 🎀 꾸미기 조각 1개 <span class="pc-dots">${Array.from({ length: COORDI_NEED }, (_, i) => `<i class="${i < streak % COORDI_NEED || (streak && streak % COORDI_NEED === 0) ? 'on' : ''}"></i>`).join('')}</span></p>
     <p class="muted cd-note">코디 별은 꾸미기 놀이예요. 오늘 운세 점수와는 상관없어요.</p>
   </div>`;
 }
-function refreshCoordi() { const el = $('#fold-coordi .fold-body'); if (el) el.innerHTML = coordiHTML(); }
+function refreshCoordi() { const el = $('#fold-coordi .fold-body'); if (el) el.innerHTML = coordiHTML(); const sm = $('[data-hero-pane="coordi"] small'); if (sm) sm.textContent = coordiSub(); }
 /** 코디 완성 처리(완성 버튼 또는 기회를 다 쓴 때): 별 수만큼 떡 · 7일 연속 조각 */
 function settleCoordi(next) {
   const f = state.fortune;
   const c = coordiClaim(next, f.dateKey); next = c.store;
   const sr = coordiStars(next, f.dateKey); next = sr.store; save(COORDI_KEY, next);
   if (sr.gained) { save(TTEOK_KEY, tteokGift(loadTteok(), `코디 별 ${sr.stars}개`, sr.gained).store); sfx('coin'); toast(`👗 코디 완성 · 별 ${sr.stars}개! ${TTEOK} 복떡 +${sr.gained}`); }
-  else if (sr.done) toast(`👗 코디 완성 · 별 ${sr.stars}개 · 별 3개부터 복떡을 받아요`);
+  else if (sr.done) toast(`👗 코디 완성 · 별 ${sr.stars}개`);
   if (SHOW_SEASON_ITEMS && c.piece) {
     const tt = { ...emptyTteok(), ...(loadTteok() || {}) }; tt.pieces = (tt.pieces || 0) + 1; save(TTEOK_KEY, tt);
     toast(`🎀 ${c.streak}일 연속 코디! 꾸미기 조각 1개를 받았어요`);
@@ -6903,6 +6919,26 @@ document.addEventListener('click', (e) => {
   }
   renderHero(false); refreshCoordi();
 });
+
+/** v0.89 오늘의 코디 = 누르면 세 부위 자동 장착 + 바로 복떡(하루 2번까지, 가장 좋은 별 기준) */
+function rollCoordi() {
+  const f = state.fortune;
+  const r = coordiRoll(loadCoordi(), f.dateKey, f.luck.element, f.todayElement, { season: !!seasonHandItem() });
+  if (!r.ok) { toast('오늘 코디 기회 2번을 다 썼어요. 내일 다시 입혀 보세요'); return; }
+  const c = coordiClaim(r.store, f.dateKey); save(COORDI_KEY, c.store);
+  if (r.gained) { save(TTEOK_KEY, tteokGift(loadTteok(), `코디 별 ${r.best}개`, r.gained).store); sfx('coin'); }
+  const items = COORDI_SLOTS.map((x) => coordiItemOf(r.store.days[f.dateKey].outfit[x.key])?.name).filter(Boolean).join(' · ');
+  const reward = r.gained ? `${TTEOK} 복떡 +${r.gained}` : `${TTEOK} 복떡은 더 좋은 별일 때만 더 받아요`;
+  toast(`👗 ${items} · 별 ${r.res.hearts}개! ${reward}${r.left ? ` · 한 번 더 할 수 있어요` : ''}`);
+  if (SHOW_SEASON_ITEMS && c.piece) {
+    const tt = { ...emptyTteok(), ...(loadTteok() || {}) }; tt.pieces = (tt.pieces || 0) + 1; save(TTEOK_KEY, tt);
+    toast(`🎀 ${c.streak}일 연속 코디! 꾸미기 조각 1개를 받았어요`);
+    if (tt.pieces >= PIECES_PER_ITEM) setTimeout(grantSeasonItem, 300);
+  }
+  state.heroLine = coordiLine(r.res.hearts, politeNow());
+  renderHero(false); $('#hero-stage')?.classList.add('jump');
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-coordi-roll]')) rollCoordi(); });
 
 // ---------- ③ 걱정 태우기 ----------
 function burnHTML() {
@@ -7032,9 +7068,9 @@ function openBurn(worry, idx) {
   });
 }
 function coordiSub() {
-  const d = loadCoordi().days[state.fortune.dateKey];
-  if (!d) return `👆 지신에게 소품을 입히고 ${TTEOK} 복떡 받기`;
-  return coordiDone(loadCoordi(), state.fortune.dateKey) ? `✓ 오늘 완성 ${'★'.repeat(d.hearts)} · 연속 ${coordiStreakOf(loadCoordi(), state.fortune.dateKey)}일` : `입히는 중 ${'★'.repeat(d.hearts)} · 완성하면 ${TTEOK} 복떡`;
+  const st = loadCoordi(); const d = st.days[state.fortune.dateKey]; const left = coordiRollsLeft(st, state.fortune.dateKey);
+  if (!d?.rolls) return `눌러서 자동 코디 · 하루 ${COORDI_ROLLS}번 · ${TTEOK} 복떡`;
+  return left ? `${'★'.repeat(d.best || d.hearts)} · 한 번 더 (${left}번 남음)` : `✓ 오늘 완성 ${'★'.repeat(d.best || d.hearts)}`;
 }
 function wishSub() {
   const col = load(COLLECTION_KEY, []); const a = wishWall(col).length; const b = wishWaiting(col).length;
@@ -7087,7 +7123,7 @@ function goPath(key) {
   setTimeout(() => {
     if (key === 'cookie') $('#fc-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     if (key === 'habit') { const d = $('#dh-card'); if (d) { d.open = true; state.miniOpen = { ...(state.miniOpen || {}), habit: true }; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }
-    if (key === 'coordi') { const d = $('#fold-coordi'); if (d) { d.open = true; (state.folds ||= {})['fold-coordi'] = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }
+    if (key === 'coordi') $('.hero-row')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     markCoach();
   }, 260);
 }
@@ -7123,9 +7159,7 @@ function coachTarget() {
     return null;
   }
   if (tab === 'hero' && !st.coordi) {
-    const d = $('#fold-coordi'); if (!d) return null;
-    if (!d.open) return d.querySelector('summary');
-    return d.querySelector('.cd-row.empty .cd-item:not([disabled])') || d.querySelector('.cd-finish:not([disabled])');
+    return $('[data-coordi-roll]:not([disabled])');
   }
   return null;
 }
