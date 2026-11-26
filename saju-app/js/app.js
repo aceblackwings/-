@@ -3765,11 +3765,15 @@ function renderToday() {
   recordKaiun();
   // v0.43 단순화: 펼친 것은 오늘 운세 점수 + 오늘의 기운 카드 두 개뿐, 나머지는 한 줄 제목으로 접힘
   const bd = bookletData(); const sj = state.saju;
+  // v0.84(사용자 「아이폰에서 보니 뭘 해야 할지 모를 만큼 복잡」): 위 = 접힌 창 4개(2027년 운세 → 내 사주 → 운세 더 보기 → 이번 주 운세),
+  // 아래 = 포춘 쿠키 → 매일 습관. 「오늘 이 순서대로 해 보세요」 카드는 뺌(👆 손가락 안내·화면 아래 「다음」 버튼은 그대로)
   $('[data-panel="today"]').innerHTML = `
-    <div class="fold-list">
+    <div class="fold-list home-folds">
       ${foldHTML('next', '📜', `${bd.y.sajuYear}년 운세`, `「${bd.b.title}」의 해 · 총운·분야별`, `${santongHTML(bd.y.sajuYear)}${bookletHTML(bd)}${bookletFieldsHTML(bd)}`)}
+      ${foldHTML('saju', '🀄', '내 사주', `일간 ${STEMS[sj.dayMaster]}(${STEMS_KO[sj.dayMaster]}) · 필요한 기운 ${ELEMENT_KO[sj.yongsin]}`, sajuOpenHTML())}
+      ${foldHTML('more', '🔮', '운세 더 보기', '이달·올해·10년 · 궁금한 질문', `<div class="fold-go"><button type="button" class="primary" data-go-tab="ask">🔮 궁금한 것 물어보기</button></div>`)}
+      ${weekFortuneFold()}
     </div>
-    ${pathCardHTML()}
     ${easySuggestHTML()}
     ${wishDueHTML()}
     ${wishMidHTML()}
@@ -3777,12 +3781,7 @@ function renderToday() {
     ${showBackup() ? backupNudgeHTML() : ''}
     ${seedAskHTML()}
     ${cookieCardHTML()}
-    ${habitsCardHTML()}
-    <div class="fold-list">
-      ${weekFortuneFold()}
-      ${foldHTML('saju', '🀄', '내 사주', `일간 ${STEMS[sj.dayMaster]}(${STEMS_KO[sj.dayMaster]}) · 필요한 기운 ${ELEMENT_KO[sj.yongsin]}`, sajuOpenHTML())}
-      ${foldHTML('more', '🔮', '운세 더 보기', '이번 주·이달·올해·10년 · 궁금한 질문', `<div class="fold-go"><button type="button" class="primary" data-go-tab="ask">🔮 궁금한 것 물어보기</button></div>`)}
-    </div>`;
+    ${habitsCardHTML()}`;
 
   $('#btn-daily')?.addEventListener('click', claimDaily);
   $('#btn-journey')?.addEventListener('click', doJourneyStep);
