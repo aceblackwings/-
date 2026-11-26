@@ -115,7 +115,7 @@ export function yearStoryChapters(ctx) {
   const watch = checks.filter((c) => c.kind === 'watch').slice(0, 3);
   out.push({ key: 'risk', h: '3장 · 올해 조심할 일과 피할 일', intro: '미리 알고 대비하면 손해를 줄일 수 있어요.', blocks: [
     { h: '⚠️ 올해 닥치기 쉬운 위험', paras: [...T.risk.map(sentence), ...(inner !== god ? [sentence(I.risk[0])] : [])] },
-    { h: '🚫 올해 피해야 할 일', paras: [list([...T.avoid, ...(inner !== god ? [I.avoid[0]] : [])]) + '. 이 중 하나만 지켜도 한 해가 훨씬 가벼워져요.'] },
+    { h: '🚫 올해 피해야 할 일', paras: [list([...T.avoid, ...(inner !== god ? [I.avoid[0]] : [])]) + '. 이 중 하나만 피해도 한 해가 훨씬 가벼워져요.'] },
     ...watch.map((c) => ({ h: `🔎 ${c.title.replace(/\s*\([^)]*\)$/, '')}`, paras: [sentence(c.text), `👉 이렇게 막아요: ${sentence(c.act)}${c.when ? ` 특히 ${c.when}에 한 번 더 챙겨 보세요.` : ''}`], plain: true })),
     { h: '📅 조심할 달', paras: [`${slow.map((x) => `${x.m.solarMonth}월`).join('과 ')}은 한 해 가운데 점수가 가장 낮은 달이에요. 이때는 새 일·큰 결제·계약을 피하고, 하던 일을 정리하세요. ${sentence(TODAY_TALE[slow[0].m.god].watch.replace(/오늘은?/g, '이 달엔'))}`] },
   ] });

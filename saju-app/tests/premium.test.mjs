@@ -82,7 +82,13 @@ t('v0.76 신년운세 자세히 보기: 1장 = 조심할 일과 넘는 법(이�
     assert.match(ch[0].h, /^1장 · 2027년 조심할 일, 이렇게 넘어요/); assert.match(ch[1].h, /^2장 · 위기를 좋은 운으로/);
     assert.deepEqual(ch.map((x) => Number(x.h.match(/^(\d+)장/)[1])), ch.map((x, i) => i + 1), '장 번호가 1부터 차례대로');
     const w = ch[0].blocks.filter((b) => b.h?.startsWith('🔎'));
-    for (const b of w) for (const head of ['왜 생길까:', '이런 장면에서 알아채요:', '① 미리 준비:', '② 그 순간에는:', '③ 지나고 나서:', '🌈 좋은 운으로 바꾸기:']) assert.ok(b.paras.some((x) => x.startsWith(head)), `${b.h} ${head}`);
+    // v0.94 이야기체: 꼬리표(왜 생길까: ·① 미리 준비: …) 대신 이어 주는 말로 같은 내용이 들어감
+    for (const b of w) {
+      const txt = b.paras.join(' ');
+      for (const head of ['알아채는 때는', '미리 ', '그 순간에는', '지나고 나서는']) assert.ok(txt.includes(head), `${b.h} ${head}`);
+      assert.ok(!/[①②③]|왜 생길까:|미리 준비:|좋은 운으로 바꾸기:/.test(txt), `${b.h} 꼬리표가 남지 않음`);
+      assert.ok(b.novel, '읽기 화면에서 작은 제목 숨김');
+    }
     assert.ok(ch[0].blocks.some((b) => b.h?.startsWith('🍵')), '쉬어 갈 달 지나는 법');
     assert.ok(ch[0].blocks.some((b) => b.h?.startsWith('🧭')), '흔들릴 때 세 줄');
     const text = flat(r); assert.ok(!/\(6장\)/.test(text.split('6장 ·')[0] || ''), '옛 장 번호 참조가 남지 않음');
