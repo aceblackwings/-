@@ -2230,7 +2230,7 @@ function premiumYearOf(bd) {
   if (state.pyear?.key === key) return state.pyear.rep;
   const d = bd.d; const prev = d.next ? d.year : null; const ageY = bd.y.sajuYear - state.saju.input.year;
   const nextDw = d.dw?.pillars.find((p) => (p.turnAge ?? p.startAge) >= ageY && (!bd.y.daewoon || p.startAge > bd.y.daewoon.startAge)) || null;
-  const rep = buildPremiumYear({ y: bd.y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, gender: state.profile.gender, concern: state.profile.concern, nextDaewoon: nextDw, calib: retroCalibNow(d.dw), nowYear: sajuYearOf(state.fortune.date), skip: textsOf({ story: bd.sum.story, fields: bd.sum.fields }) }); // v0.76 무료 화면에 실제로 남은 글만 빼기(조심할 점·한 해의 열쇠는 이제 상세판에서만)
+  const rep = buildPremiumYear({ y: bd.y, thisYear: prev, saju: state.saju, gyeok: analyzeGyeok(state.saju), name: state.profile.name, gender: state.profile.gender, concern: state.profile.concern, nextDaewoon: nextDw, calib: retroCalibNow(d.dw), nowYear: sajuYearOf(state.fortune.date), skip: textsOf({ story: bd.sum.story }) }); // v0.93 첫 화면 분야별 운세를 뺐으니 상세판에서 분야 문장은 빼지 않음 // v0.76 무료 화면에 실제로 남은 글만 빼기(조심할 점·한 해의 열쇠는 이제 상세판에서만)
   state.pyear = { key, rep }; return rep;
 }
 function lifeReportNow() {
@@ -2277,8 +2277,8 @@ function premiumYearOfferBox(bd) {
     <h3>조심할 일과 넘는 법부터 열두 달까지 ${kChars(rep.chars)}</h3>
     <p class="hj-desc">${Y}년에 조심할 일이 왜 생기는지, 어떤 장면에서 알아채고 어떻게 넘으면 좋은 운으로 바뀌는지부터 차근차근 풀어 드려요. 이어서 도움이 되는 사람과 띠, 나에게 맞는 일·사업 분야, 열두 달의 장면까지 이어져요.</p>
     ${lifeTocHTML(rep)}
-    <p class="hj-note">${was ? '열람 기간이 끝났어요 · ' : ''}${won(PAY_PRODUCTS.year.price)} · 결제일부터 ${VIEW_DAYS / 30}개월 동안 열람 · 자동 결제 아님 · 운세 점수는 결제와 상관없이 같아요</p>
-    <button type="button" class="hj-buy" data-report-buy="year">📖 ${was ? '다시 열기' : '자세히 보기'} · ${won(PAY_PRODUCTS.year.price)}</button></section>`;
+    <p class="hj-note">${PAY.freeReports ? '🎁 지금은 결제 없이 바로 열려요 · 정식 판매 때 ' : ''}${was && !PAY.freeReports ? '열람 기간이 끝났어요 · ' : ''}${won(PAY_PRODUCTS.year.price)} · 결제일부터 ${VIEW_DAYS / 30}개월 동안 열람 · 자동 결제 아님 · 운세 점수는 결제와 상관없이 같아요</p>
+    <button type="button" class="hj-buy" data-report-buy="year">📖 ${was ? '다시 열기' : '자세히 보기'} · ${PAY.freeReports ? `<s>${won(PAY_PRODUCTS.year.price)}</s> 지금 무료` : won(PAY_PRODUCTS.year.price)}</button></section>`;
 }
 function lifeOfferHTML() { return lifeOfferBox(); }
 /** v0.75 평생 정통사주 자세히 보기 = 유일한 유료 상품(2,900원, 결제일부터 6개월 열람) — 토스 심사 대응(사용자 결정 2026-11-18)
@@ -2310,8 +2310,8 @@ function lifeOfferBox() {
     <h3>여덟 글자를 처음부터 끝까지 ${kChars(rep.chars)}</h3>
     <p class="hj-desc">위 요약은 계속 무료예요. 자세히 보기는 요약에서 말한 것은 빼고, 차례대로 깊이 풀어 드려요.</p>
     ${lifeTocHTML(rep)}
-    <p class="hj-note">${was ? '열람 기간이 끝났어요 · ' : ''}${won(PAY_PRODUCTS.life.price)} · 결제일부터 ${VIEW_DAYS / 30}개월 동안 열람 · 자동 결제 아님 · 운세 점수는 결제와 상관없이 같아요</p>
-    <button type="button" class="hj-buy" data-report-buy="life">📖 ${was ? '다시 열기' : '자세히 보기'} · ${won(PAY_PRODUCTS.life.price)}</button></section>`;
+    <p class="hj-note">${PAY.freeReports ? '🎁 지금은 결제 없이 바로 열려요 · 정식 판매 때 ' : ''}${was && !PAY.freeReports ? '열람 기간이 끝났어요 · ' : ''}${won(PAY_PRODUCTS.life.price)} · 결제일부터 ${VIEW_DAYS / 30}개월 동안 열람 · 자동 결제 아님 · 운세 점수는 결제와 상관없이 같아요</p>
+    <button type="button" class="hj-buy" data-report-buy="life">📖 ${was ? '다시 열기' : '자세히 보기'} · ${PAY.freeReports ? `<s>${won(PAY_PRODUCTS.life.price)}</s> 지금 무료` : won(PAY_PRODUCTS.life.price)}</button></section>`;
 }
 function compatOfferHTML(fr) { return compatOfferBox(fr); }
 function compatOfferBox(fr) {
@@ -2376,8 +2376,8 @@ function completePay(key) {
 function openReader(kind, jump = null) {
   if (PAID_REPORT[kind]) { // v0.75·v0.76 유료: 열람 기간 안에서만
     const k = reportKey(kind);
-    if (!shopOwns(loadShop(), k)) { if (!IN_APP) openReportPay(kind); return; }
-    save(SHOP_KEY, markOpened(loadShop(), k));
+    if (!shopOwns(loadShop(), k)) { if (PAY.freeReports && !IN_APP) { /* v0.93 토스 심사 기간: 결제 없이 열기 */ } else { if (!IN_APP) openReportPay(kind); return; } }
+    else save(SHOP_KEY, markOpened(loadShop(), k));
   }
   const rep = kind === 'year' ? premiumYearOf(bookletData()) : kind === 'life' ? lifeReportNow() : compatReportNow();
   if (!rep) return;
@@ -2404,7 +2404,7 @@ document.addEventListener('click', (e) => {
   const p = e.target.closest('[data-pay]'); if (p) { e.preventDefault(); const key = p.dataset.pay; state.readerJump = p.dataset.jump || null; if (shopOwns(loadShop(), key)) { openReader(key.startsWith('bundle') ? 'year' : key.split(':')[0], state.readerJump); state.readerJump = null; } else openPay(key); return; }
   const ok = e.target.closest('[data-pay-ok]'); if (ok) { completePay(ok.dataset.payOk); return; }
   const r = e.target.closest('[data-read]'); if (r) { openReader(r.dataset.read, r.dataset.jump || null); return; }
-  const rb = e.target.closest('[data-report-buy]'); if (rb) openReportPay(rb.dataset.reportBuy);
+  const rb = e.target.closest('[data-report-buy]'); if (rb) { if (PAY.freeReports) openReader(rb.dataset.reportBuy); else openReportPay(rb.dataset.reportBuy); }
 });
 
 // ---------- 쉬운 모드 (v0.31, easymode.js): 큰 글씨 · 쉬운 말 · 카드 3장 홈 ----------
@@ -3769,7 +3769,7 @@ function renderToday() {
   // 아래 = 포춘 쿠키 → 매일 습관. 「오늘 이 순서대로 해 보세요」 카드는 뺌(👆 손가락 안내·화면 아래 「다음」 버튼은 그대로)
   $('[data-panel="today"]').innerHTML = `
     <div class="fold-list home-folds">
-      ${foldHTML('next', '📜', `${bd.y.sajuYear}년 운세`, `「${bd.b.title}」의 해 · 총운·분야별`, `${santongHTML(bd.y.sajuYear)}${bookletHTML(bd)}${bookletFieldsHTML(bd)}`)}
+      ${foldHTML('next', '📜', `${bd.y.sajuYear}년 운세`, `「${bd.b.title}」의 해 · 총운`, `${santongHTML(bd.y.sajuYear)}${bookletHTML(bd)}`)}
       ${foldHTML('saju', '🀄', '내 사주', `일간 ${STEMS[sj.dayMaster]}(${STEMS_KO[sj.dayMaster]}) · 필요한 기운 ${ELEMENT_KO[sj.yongsin]}`, sajuOpenHTML())}
       ${weekFortuneFold()}
     </div>

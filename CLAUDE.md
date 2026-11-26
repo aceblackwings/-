@@ -17,6 +17,8 @@
 
 ## 최근 버전 (최근 5개 · 그 전 기록은 `docs/changelog.md`)
 
+> **✅ v0.93(2026-11-26, 사용자 「2027년 운세 자세히 보기 밑 2027년 분야별 운세 없애기 · 토스 심사 끝날 때까지 990원·2,900원 누르면 운세 바로 보기, 승인되면 적용」, Claude Code)**: ① 오늘 탭 2027년 운세 창에서 `bookletFieldsHTML`(분야별 운세) 삭제(함수는 남김), 창 요약 「총운」. 상세판 겹침 빼기 `premiumYearOf`의 skip = `story`만(분야 문장은 상세판에 그대로). ② **site.js `PAY.freeReports: true`** = 앱 안 「자세히 보기」(`[data-report-buy]`)가 결제 창 없이 `openReader`로 바로 열림(구매 기록 남기지 않음, `openReader`의 열람 기간 검사도 건너뜀), 버튼 「~~990원~~ 지금 무료」·안내 「🎁 지금은 결제 없이 바로 열려요 · 정식 판매 때 …」. 상품 안내의 「결제창 보기」(`?buy=year|life`)는 토스 심사용으로 결제 창 그대로. **토스 승인 뒤 `freeReports: false`로 바꾸면 다시 결제**(⏰ 잊지 말 것). 확인: `npm test` 통과, Playwright 아이폰 13 — 분야별 운세 없음, 990원·2,900원 버튼 → 결제 창 없이 상세판 열림, `?buy=year` → 결제 창, 오류 0.
+
 > **✅ v0.92(2026-11-26, 사용자 「운세 더 보기도 삭제 · 2027년 운세와 내 사주의 한눈에 정리 삭제됐는지」, Claude Code)**: app.js `renderToday` 오늘 탭 접힌 창 = 2027년 운세 → 내 사주 → 이번 주 운세(🔮 운세 더 보기 `fold-more` 삭제, 질문 화면 `ask` 탭 자체는 남김). 확인: `npm test` 통과, Playwright 아이폰 13에서 두 창을 펼쳐 「한눈에 정리」 0회 · `.brief-box` 0개 · 오류 0.
 
 > **✅ v0.91(2026-11-26, 사용자 「별 4개도 복떡 3개 · 2027년 신년운세와 내 사주의 한눈에 정리 삭제 · 결제 들어가면 다음으로 안 넘어가는 건 토스 심사 때문인가?」, Claude Code)**: coordi.js `STAR_REWARD` = { 1: 1, 2: 1, 3: 2, 4: 3, 5: 3 }. 한눈에 정리: app.js `bookletData`에서 `st.brief = null`(신년운세 첫 화면에서 빠지고 상세판 겹침 빼기 기준에서도 빠짐), `sajuStoryHTML`의 `briefHTML`·「한눈에 정리」 꼬리표 삭제(`briefHTML` 함수는 남김). 상세판(skip)은 원래 brief 장을 빼므로, premium.js `mendChapters`의 `fix`가 「한눈에 정리」를 가리키던 문장(「바로 다음 「한눈에 정리」에…」·「이 책 맨 앞의 「한눈에 정리」를 다시 열어…」)을 통째로 지움 → 신년 상세판 「한눈에 정리」 0회(평생 정통사주 상세판은 그대로). 결제: 결제창을 여는 중 오류가 나면 토스트에 `오류 코드 · 메시지`를 함께 보여 줌(app.js `openReportPay` catch) — 원인(심사·계약·키) 확인용. 확인: `npm test` 통과.
@@ -25,7 +27,6 @@
 
 > **✅ v0.89(2026-11-26, 사용자 「오늘의 코디를 누르면 3개 아이템이 자동으로 장착 · 기회는 2번까지 · 바로 복떡 획득 · 아래쪽 내용은 만들지 말고」, Claude Code)**: coordi.js **`autoRoll(store, dateKey, luckyEl, todayEl, opts, rng)`** = 머리·목·손을 무작위로 한 벌 입히고 바로 완성(`done`), 하루 `ROLLS_PER_DAY` 2번(`rollsLeft`), 복떡은 그날 가장 좋은 별 기준 `STAR_REWARD`(v0.90에서 1~2 → 1 · 3~4 → 2 · 5 → 3으로 바뀜, 두 번째가 더 좋으면 차이만큼 더, `paidN`·`best`, 예전 `claimStars`와 겹치지 않게 `paid`). 한 번에 별 3개 이상 약 38%, 두 번이면 약 62%. app.js 지신 옆 「👗 오늘의 코디」 버튼 = `[data-coordi-roll]` → `rollCoordi`(토스트로 입은 소품·별·복떡, 지신 그림에 바로 입힘, 7일 연속 조각 그대로) · 2번 다 쓰면 버튼 잠김 · 요약 `coordiSub`. 아래 코디 창(`#fold-coordi`·`coordiHTML`)은 지신 탭에서 뺌(함수는 남김). 길잡이 `coachTarget`은 이 버튼을 가리킴. 테스트 wishcoordi 1 추가. 확인: `npm test` 통과, Playwright 아이폰 13 두 번 누르기(두 번째 뒤 잠김) · 가로 넘침 0 · 오류 0.
 
-> **✅ v0.88(2026-11-26, 사용자 「지신 칸에 이룬 소원 벽·걱정 태우기·두 번째 지신 삭제 · 지신 밥·오늘의 코디를 지신 바로 옆에 · 부적 바로 밑에 오늘의 기운 카드」, Claude Code)**: app.js `renderHero` = 말풍선 → `.hero-row`(지신 그림 | `.hero-side` 버튼 두 개 🍚 지신 밥 `foodSub` · 👗 오늘의 코디 `coordiSub`) → 누르면 아래 `details.hero-pane`(`#fold-food` = `jisinGrowHTML`, `#fold-coordi` = `coordiHTML`)가 하나만 열림(`openHeroPane`·`state.heroPane`) → 이름·단계 → 부적·등불 → 오늘의 기운 카드 → (백업 스위치 켜졌을 때만) 기록 백업. 이룬 소원 벽·걱정 태우기·두 번째 지신 창은 지신 탭에서 뺌(함수 `wishWallHTML`·`burnHTML`·`secondJisinHTML`은 남김, 걱정 태우기는 부적 만들기 창에서 계속 무료), 소원 성취·등불 완주 창의 「소원 벽 보기」 버튼도 뺌. 길잡이: `goPath('coordi')`·`coachTarget`이 옆 버튼을 가리킴. 확인: `npm test` 통과, Playwright 아이폰 13 지신 탭(옆 버튼 2개 · 코디 열기 · 밥 열면 코디 닫힘) · 가로 넘침 0 · 오류 0.
 
 
 
@@ -146,7 +147,7 @@
 
 ## 다음 할 일
 - **사용자 쪽(출시 준비)**: 구글 개발자 계정 · 저장소 비밀 값 `ANDROID_KEYSTORE_BASE64`·`ANDROID_KEYSTORE_PASSWORD` 등록 → Actions 다시 실행 → AAB 비공개 테스트 · 테스터 12명 이상 **11/27까지 14일 테스트 시작** → 12/11 프로덕션 신청 (v0.74)
-- **토스 재심사(v0.75·v0.76)**: PR 병합(배포) 뒤 `docs/toss-review.md`의 답변으로 재심사 요청
+- **토스 재심사(v0.75·v0.76)**: PR 병합(배포) 뒤 `docs/toss-review.md`의 답변으로 재심사 요청 → **승인되면 `saju-app/js/site.js` `PAY.freeReports`를 `false`로**(v0.93 심사 기간 무료 열기 끄기)
 - **결제 마무리**: 본인 카드 990원 실제 결제 → 취소 확인, 간편결제 4개(네이버페이 심사·삼성페이 계약·「업체 사정…일시 중지」 원인) 확인, 통신판매업 신고번호 `BIZ.mailOrderNo` (v0.73·v0.73.1)
 - **2차**: 구글 플레이 인앱 결제, 애플 출시, 파일 백업 다시 켜기(`showBackup()` → true, 앱 안 저장 방식으로 재설계)
 - **출시 뒤**: 위 「⏰ 출시 뒤 할 일」 목록부터 사용자에게 알릴 것
