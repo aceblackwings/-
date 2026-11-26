@@ -114,7 +114,7 @@ const SEEDS_KEY = 'unmyeong2099.seeds'; // v0.60 걱정 씨앗 {list:[{at, el, a
 const STORE_KEY = 'unmyeong2099.profile';
 // v0.62 부적 만들기 창(아래 openCharmMaker) — 시작할 때 그리는 화면이 쓰므로 위에 둠
 const MAKER_SAMPLE = { wish: '소원 한 줄이 여기에 붓글씨로', burn: '걱정 한 줄이 여기에' };
-const TAROT_WISH = { love: '좋은 인연 만나기', job: '이직에 성공하기', money: '저축 100만 원 모으기', health: '가족 모두 건강하기', day: '' };
+const TAROT_WISH = { love: '좋은 인연 만나기', job: '이직에 성공하기', money: '저축 100만 원 모으기', health: '가족 모두 건강하기', people: '소중한 사람과 사이좋게 지내기', day: '' };
 const CMNUDGE_KEY = 'unmyeong2099.cmnudge';
 const BURNDAY_KEY = 'unmyeong2099.burnday'; // v0.64 걱정 태우기 무료 하루 한 번 {last, count} — 걱정 글 없음
 const COLLECTION_KEY = 'unmyeong2099.collection';
@@ -3660,7 +3660,7 @@ function renderTarot() {
       <p class="muted">복떡은 오늘 화면의 「나만의 매일 습관」을 체크하면(하나에 2개) 모을 수 있어요. 지신 코디에서 별 3개 이상이어도 받아요.</p>
       <button type="button" class="primary" data-go-habits>✅ 습관 체크하러 가기</button></div>`;
   } else if (T.step === 'topic') {
-    body = `<p class="tr-guide">무엇이 궁금하세요?</p><div class="tr-topics">${TAROT_TOPICS.map((x) => `<button type="button" class="tr-topic" data-tarot-topic="${x.key}"><span>${x.icon}</span><b>${x.label}</b><small>${x.ask}</small></button>`).join('')}</div>`;
+    body = `<p class="tr-guide">무엇이 궁금하세요?</p><div class="tr-topics six">${TAROT_TOPICS.map((x) => `<button type="button" class="tr-topic" data-tarot-topic="${x.key}"><span>${x.icon}</span><b>${x.short || x.label}</b><small>${x.ask}</small></button>`).join('')}</div>`;
   } else if (T.step === 'spread') {
     body = `<p class="tr-guide">${tp.icon} ${tp.label} · 몇 장을 뽑을까요?</p>
       ${(TAROT_SITU[T.topic] || []).length ? `<div class="tr-situ"><p class="muted">지금 내 상황은? <small>(고르면 내 상황에 맞춰 한 번 더 풀어 드려요 · 안 골라도 돼요)</small></p><div class="chips">${TAROT_SITU[T.topic].map((x) => `<button type="button" class="chip" data-tarot-situ="${x.key}" aria-pressed="${T.situ === x.key}">${x.label}</button>`).join('')}</div></div>` : ''}

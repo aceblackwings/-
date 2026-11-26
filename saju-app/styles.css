@@ -2565,3 +2565,10 @@ body:has(#path-pill:not([hidden])) .toast { bottom: calc(84px + env(safe-area-in
 .hero-folds .fd-t b { font-size: .96rem; }
 .hero-folds .fold-body > .jisin-grow, .hero-folds .fold-body > .duo-box { margin: 0; }
 .hero-folds .ki-card > h3 { display: none; }
+
+/* ---------- v0.86 타로 질문 6가지: 3칸 × 2줄로 한 화면에 ---------- */
+.tr-topics.six { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tr-topics.six .tr-topic { min-height: 0; padding: 12px 6px 10px; gap: 2px; border-radius: 16px; align-content: start; }
+.tr-topics.six .tr-topic span { font-size: 1.6rem; line-height: 1.2; }
+.tr-topics.six .tr-topic b { font-size: .92rem; word-break: keep-all; line-height: 1.3; }
+.tr-topics.six .tr-topic small { font-size: .7rem; line-height: 1.35; word-break: keep-all; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }

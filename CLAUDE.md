@@ -17,6 +17,8 @@
 
 ## 최근 버전 (최근 5개 · 그 전 기록은 `docs/changelog.md`)
 
+> **✅ v0.86(2026-11-26, 사용자 「타로 운 보는 것 5가지에 하나 더 6개로, 화면에 깔끔하게」, Claude Code)**: tarot.js `TAROT_TOPICS`에 🤝 **인간관계**(`people`, 「가족·친구·동료와 사이, 어떻게 하면 좋을까?」)를 건강운과 오늘·궁금한 일 사이에 추가. 카드 34장 문장 `PEOPLE_UP`(→ `withStory`가 `up.people`로), 내 상황 `TAROT_SITU.people`(가족·친구·직장·학교) + `SITU_LINE.people`, `ANSWER`·`ANSWER_REV`·`TOPIC_ACT`·`TOPIC_REV`·`FLOW`·`GUIDE`·`TOPIC_WORD`, app.js `TAROT_WISH.people`. 질문 고르기 칸은 `.tr-topics.six` = 3칸 × 2줄(아이콘 작게·설명 3줄까지), 칸 이름이 긴 「오늘·궁금한 일」은 칸에만 `short: '궁금한 일'`(풀이·기록의 이름은 그대로). 테스트 tarot 주제 목록 6개로. 확인: `npm test` 통과, Playwright 아이폰 13 타로 질문 6칸 한 화면 · 인간관계 → 상황 칩 3개 · 가로 넘침 0 · 오류 0.
+
 > **✅ v0.85(2026-11-26, 사용자 「지신 칸은 지신 → 부적과 등불을 바로 아래, 지신 밥·두 번째 지신·오늘의 기운 카드도 똑같이 접어 줘」, Claude Code)**: app.js `renderHero` = 지신 카드(말풍선·그림·이름·단계) 안에 바로 `charmShowcaseHTML`(소원 부적·100일 등불) → 접힌 창 `.hero-folds`: 🍚 지신 밥(`jisinGrowHTML`, 요약 `foodSub` = 오늘 n/3그릇·다음 진화까지) → 🐾 두 번째 지신(`secondJisinHTML`, `duoSub`) → 🎴 오늘의 기운 카드(`kiCardHTML`, `kiSub`, 접힌 창 안에서는 카드 제목 줄 숨김) → 오늘의 코디 → 이룬 소원 벽 → 걱정 태우기. 다른 화면에서 `revealAndScroll('#ki-card'·'#duo-box')`로 부르면 접힌 창이 저절로 열림. CSS는 홈과 같은 촘촘한 접힌 창. 확인: `npm test` 통과, Playwright 아이폰 13 지신 탭(접힌 창 6개, 기운 카드 펼쳐 뽑기·지신 밥 펼치기) · 가로 넘침 0 · 오류 0.
 
 > **✅ v0.84(2026-11-26, 사용자 「아이폰에서 보니 뭘 해야 할지 모를 만큼 복잡 → 2027년 운세 아래에 내 사주·운세 더 보기·이번 주 운세를 닫힌 창으로 맨 위에, 그다음 포춘 쿠키·매일 습관, 쿠키는 조금 작게, 「이 순서대로 해 보세요」 삭제」, Claude Code)**: app.js `renderToday` 순서 = 접힌 창 4개(`.home-folds`: 2027년 운세 → 내 사주 → 운세 더 보기 → 이번 주 운세) → (소원·등불·백업 안내 등 그날 있을 때만) → 포춘 쿠키 → 매일 습관. 홈의 `pathCardHTML` 길잡이 카드는 뺌(👆 손가락 안내 `markCoach`·화면 아래 「다음」 버튼 `paintPathPill`은 그대로, `refreshPathCard`는 카드가 없으면 그냥 넘어감). styles.css 끝 v0.84 묶음: 접힌 창 촘촘하게(간격 8·요약 줄 높이 48), 열기 전 쿠키 카드 기계 `min(200px, 60%)`·그림 최대 190·빈 높이(`min-height`) 없앰·쿠키는 기계 아래로 겹쳐 굴러 나옴. 확인: `npm test` 통과, Playwright 아이폰 13 홈(접힌 창 4개 → 쿠키 → 습관)·기계 돌리기 → 쿠키 쪼개기 · 가로 넘침 0 · 오류 0.
@@ -25,7 +27,6 @@
 
 > **✅ v0.82(2026-11-22, 사용자 「수호신 강림 화면의 예전 「매일 할 일 3가지(뽑기·여정·스티커)」 문구를 지금 흐름에 맞게」, Claude Code)**: app.js `showSummon` 안내 줄을 coach.js `PATH`에서 만들어 「매일 할 일은 4가지예요 / 🥠 쿠키 → ✅ 습관 → 🃏 타로 → 👗 코디 / 손가락이 다음에 누를 곳을 알려 줘요」로 바꿈(길잡이 단계가 바뀌면 자동으로 따라감). 확인: `npm test` 통과, Playwright 390폭 수호신 강림 화면 한 줄·가로 넘침 0.
 
-> **✅ v0.81(2026-11-22, 사용자 「티스토리 유입·결과 도달 측정」, Codex)**: 화면 도달 3단계를 쿠키 없이 Cloudflare Analytics Engine에 집계. 글별 UTM·티스토리 유입을 구분하고, 생년월일·이름·사주 정보는 이벤트에 넣지 않음. SQL과 확인법은 `docs/analytics.md`.
 
 
 
@@ -104,7 +105,7 @@
 | omen.js | **v0.54 오늘의 작은 예언·내일 맛보기**: `omenOf`·`checkable`·`markOmen`·`markShown`·`omenStats`·`markPeek`·`peekedFor`·`tomorrowTeaser`·`shiftDay`. 화면 app.js `omenHTML`·`peekHTML`·`fortuneOn` |
 | diary.js / scratch.js / oheng.js | **v0.55~0.56**: 지신의 기록 `buildDiary`·`logVisit`·`markRead` / 행운 긁기 `scratchTiles`·`markScratched`·`clearedRatio` / 내 오행 채우기 `ohengGuide`·`roleOf`(v0.56, 라디오는 삭제). 화면 app.js `diaryHTML`·`diaryFacts`·`scratchHTML`·`initScratch`·`ohengCardHTML` |
 | dailycard.js | **v0.43 오늘의 기운 카드**: `drawKiCard`·`todayKiCard`·`lackElements`·`pickElement`·`pickRarity`·`stageForDays`·`nextStage`·`kiCardText`·`DAY_STAGES`·`LACK_RATE` |
-| tarot.js / todayfive.js / tteok.js | **v0.42**: 12지신 타로 `TAROT_DECK`·`shuffleDeck`·`readTarot`(v0.78 종합 풀이 `wholeReading`·`FLOW`·`GUIDE` → `r.whole`, v0.79 화면 = `plainTarot` 한 문단 + 조심할 점, 카드 설명 `KID`·`KID_REV`) / 오늘 5분야 `fiveScores`(30~96 넓히기) / 복떡·할 일 3가지·두루마리 잠금 `visit`·`doTask`·`isOpen`·`spend`·`buy` |
+| tarot.js / todayfive.js / tteok.js | **v0.42**: 12지신 타로(v0.86 질문 6가지: 애정·취업·금전·건강·인간관계·궁금한 일) `TAROT_DECK`·`shuffleDeck`·`readTarot`(v0.78 종합 풀이 `wholeReading`·`FLOW`·`GUIDE` → `r.whole`, v0.79 화면 = `plainTarot` 한 문단 + 조심할 점, 카드 설명 `KID`·`KID_REV`) / 오늘 5분야 `fiveScores`(30~96 넓히기) / 복떡·할 일 3가지·두루마리 잠금 `visit`·`doTask`·`isOpen`·`spend`·`buy` |
 | daymission.js | **오늘의 미션 3가지(v0.27)**: ① 이달의 실천(v0.30부터 오늘의 우산)(절기월 기간·테마 + 오늘의 액땜 미션 = `MISSION_KEY`, 완료 시 액막이 정화) ② 돌아보기(어제 기록 있으면 「어제 운세 맞았나요?」, 없으면 이달 좋은 날/오늘 근거를 하루씩 번갈아) ③ 새 기능 열기(길잡이 다음 단계, 다 열면 `ROTATION` 신수 카드·상담·질문·기록함). 셋 다 하면 +5 EXP + 내일 미리보기. 저장 `unmyeong2099.dmission`(14일, `openKey`로 그날 연 기능 기억). 화면: 홈 타임라인 아래 `missionCardHTML`, 클릭은 `[data-dm]` |
 | yearcard.js | **신년(내년) 운세 카드(v0.28)**: `yearCard`(yearOf 값 그대로) → 그해 이름·키워드 3개(`YEAR_HEADLINE` 십신별), 분야별 별(`stars`: 75+★5·65+★4·55+★3·45+★2), 사계절 4칸(`seasonsOf`: 계절 평균 순위로 가장 좋은/쉬어 가는 계절), 꼭 기억할 달 3개(`keyMonths`: 좋은 달 2 + 조심할 달 1, 절기월 기간), 행운 키트(용신 색·수·방향 + 육합·삼합 띠), 다짐(`savePledge`, 그해 12월 `pledgeReviewDue` → 미션 ② 「다짐 돌아보기」). 12달 표는 운세 풀이 `monthsTableHTML`(내년·올해 탭). 저장 `unmyeong2099.pledge` |
 | guide.js | **홈 길잡이(v0.21 → v0.27)**: 기능 소개 11단계(`GUIDE_STEPS`: next→week→ask→cards→draw→records→daewoon→chat→journey→compat→todo, 각 단계 `go`='home:구역' 또는 탭). v0.27부터 별도 카드 없이 미션 ③이 하루 하나씩 보여 줌와 각 단계가 여는 홈 구역, `showNextYear`(9월 이후·입춘 전에만 내년 카드), `isUnlocked`·`completeStep`·`setAll`(전체 보기). 저장 `unmyeong2099.guide` |
