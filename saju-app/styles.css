@@ -2557,3 +2557,11 @@ body:has(#path-pill:not([hidden])) .toast { bottom: calc(84px + env(safe-area-in
 .fc-card:not(.open) .fc-steps { margin: 4px 0 2px; }
 .fc-card:not(.open) .fc-guide { margin-top: 4px; font-size: .9rem; }
 .fc-card:not(.open) .fc-odds { margin-top: 2px; font-size: .72rem; }
+
+/* ---------- v0.85 지신 탭: 지신 → 부적·등불 → 접힌 창(밥·두 번째 지신·기운 카드·코디…) ---------- */
+.hero-folds { gap: 8px; margin-top: 14px; }
+.hero-folds details.fold > summary { padding: 10px 14px; min-height: 48px; gap: 10px; }
+.hero-folds .fd-ic { flex-basis: 34px; height: 34px; border-radius: 12px; font-size: 1.1rem; }
+.hero-folds .fd-t b { font-size: .96rem; }
+.hero-folds .fold-body > .jisin-grow, .hero-folds .fold-body > .duo-box { margin: 0; }
+.hero-folds .ki-card > h3 { display: none; }

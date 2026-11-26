@@ -17,6 +17,8 @@
 
 ## 최근 버전 (최근 5개 · 그 전 기록은 `docs/changelog.md`)
 
+> **✅ v0.85(2026-11-26, 사용자 「지신 칸은 지신 → 부적과 등불을 바로 아래, 지신 밥·두 번째 지신·오늘의 기운 카드도 똑같이 접어 줘」, Claude Code)**: app.js `renderHero` = 지신 카드(말풍선·그림·이름·단계) 안에 바로 `charmShowcaseHTML`(소원 부적·100일 등불) → 접힌 창 `.hero-folds`: 🍚 지신 밥(`jisinGrowHTML`, 요약 `foodSub` = 오늘 n/3그릇·다음 진화까지) → 🐾 두 번째 지신(`secondJisinHTML`, `duoSub`) → 🎴 오늘의 기운 카드(`kiCardHTML`, `kiSub`, 접힌 창 안에서는 카드 제목 줄 숨김) → 오늘의 코디 → 이룬 소원 벽 → 걱정 태우기. 다른 화면에서 `revealAndScroll('#ki-card'·'#duo-box')`로 부르면 접힌 창이 저절로 열림. CSS는 홈과 같은 촘촘한 접힌 창. 확인: `npm test` 통과, Playwright 아이폰 13 지신 탭(접힌 창 6개, 기운 카드 펼쳐 뽑기·지신 밥 펼치기) · 가로 넘침 0 · 오류 0.
+
 > **✅ v0.84(2026-11-26, 사용자 「아이폰에서 보니 뭘 해야 할지 모를 만큼 복잡 → 2027년 운세 아래에 내 사주·운세 더 보기·이번 주 운세를 닫힌 창으로 맨 위에, 그다음 포춘 쿠키·매일 습관, 쿠키는 조금 작게, 「이 순서대로 해 보세요」 삭제」, Claude Code)**: app.js `renderToday` 순서 = 접힌 창 4개(`.home-folds`: 2027년 운세 → 내 사주 → 운세 더 보기 → 이번 주 운세) → (소원·등불·백업 안내 등 그날 있을 때만) → 포춘 쿠키 → 매일 습관. 홈의 `pathCardHTML` 길잡이 카드는 뺌(👆 손가락 안내 `markCoach`·화면 아래 「다음」 버튼 `paintPathPill`은 그대로, `refreshPathCard`는 카드가 없으면 그냥 넘어감). styles.css 끝 v0.84 묶음: 접힌 창 촘촘하게(간격 8·요약 줄 높이 48), 열기 전 쿠키 카드 기계 `min(200px, 60%)`·그림 최대 190·빈 높이(`min-height`) 없앰·쿠키는 기계 아래로 겹쳐 굴러 나옴. 확인: `npm test` 통과, Playwright 아이폰 13 홈(접힌 창 4개 → 쿠키 → 습관)·기계 돌리기 → 쿠키 쪼개기 · 가로 넘침 0 · 오류 0.
 
 > **✅ v0.83(2026-11-23, 사용자 「ockstar.com을 디지털 크리에이티브 홈페이지로 · 12지신은 개발 프로그램에, 유튜브·릴스·틱톡은 영상 제작 플랫폼에, 캐릭터 포피·젠·뀨는 앞으로의 미션으로 · 주소의 동·호수는 삭제」, Claude Code)**: 회사 홈페이지를 검은 바탕 스튜디오 화면으로 바꿈(참고 meta-ent.com: 큰 문구 + 비스듬한 창이 스크롤로 펼쳐짐). 구성 = 첫 화면(세 친구, `studio.js`가 `clip-path`를 스크롤에 맞춰 펼침, 움직임 줄이기 설정이면 고정) → ABOUT(웹개발·플랫폼 영상 제작·아이디어 기획·마케팅) → LAB 개발 프로그램(12지신 강림 + 자체 제작 도구 4) → STUDIO 영상 제작 플랫폼(유튜브 해외첫반응·라디오 우체국, 릴스 @ockstar77, 틱톡 @haeoe_first) → MISSION(포피 = 사고뭉치 장난꾸러기 아기 용, 젠 = 소심하지만 용감해지고 싶은 강아지, 뀨 = 신중한 작전 사령관 고양이, 진행 4단계 중 「캐릭터 완성」) → CONTACT·사업자 정보. 생성기 `tools/company_page.mjs`를 새 화면으로 다시 씀(`homeAddress` = `BIZ.address`에서 동·호수만 뺀 주소, **회사 홈페이지에만** 적용 — 12지신 강림 약관·결제 화면은 `BIZ.address` 그대로). 파일: `company/site/studio.css`·`studio.js`·`img/`(trio·poppy·zen·kyu·poppy-book·poppy-popcorn), 옛 `company.css` 삭제. 테스트 site: 주소에 동·호수 없음 · 캐릭터 이름 · 채널 링크 · 새 파일. 확인: `npm test` 통과, 미리 보기 1024폭·375폭 가로 넘침 0 · 오류 0.
@@ -25,7 +27,6 @@
 
 > **✅ v0.81(2026-11-22, 사용자 「티스토리 유입·결과 도달 측정」, Codex)**: 화면 도달 3단계를 쿠키 없이 Cloudflare Analytics Engine에 집계. 글별 UTM·티스토리 유입을 구분하고, 생년월일·이름·사주 정보는 이벤트에 넣지 않음. SQL과 확인법은 `docs/analytics.md`.
 
-> **✅ v0.80(2026-11-22, 사용자 「궁합도 쉬운 설명으로, 요약식이 아니라 · 「쉽게 말하면」 문구는 빼고 한 문단 + 조심할 점」, Claude Code)**: compat.js **`compatStory(c, {me, friend, meAnimal, friendAnimal})`** → `{para, watch}`. 한 문단 = 「○와 ○의 궁합은 N점, 「등급」이에요」 + 등급 완전한 문장 `GRADE_PLAIN` + 성격 뿌리(일간) `STEM_PLAIN` + 생활 방식(일지) `dayPlain` + 서로 채워 주기(용신) `yongPlain` + 띠 `ddiPlain` + 연인·친구·함께 일하는 사이 중 가장 맞는 쪽(`sub` 최고) + 오늘의 둘(`todayLine`) + 팁. 조심할 점 = `compatWatch` 우선순위(일지 충 → 일간 긴장 → 띠 충 → 원진 → 해 → 형 → 파 → 내가/상대가 도와주는 사이 → 같은 기운 → 등급), 문장 `WATCH`. 화면 app.js `compatResultHTML`: 카드 그림 · 등급·점수 제목 → 문단(`ts-why cp-story`, 「쉽게 말하면」 없음) → `ts-tile watch` 조심할 점 → 띠 대화 → 버튼들. 예전 등급 한 줄·연애/우정/일 막대·근거 목록 4줄·「오늘의 둘」·「오늘의 팁」 줄은 뺌(내용은 문단 안으로). 테스트 readable 1 추가(160쌍: 점수·등급 포함, 「쉽게 말하면」 없음, 금지어·조사, 등급 4가지 이상·조심할 점 5가지 이상). 확인: `npm test` 통과, Playwright 375×667 궁합 탭(친구 1명) 문단 + 조심할 점 · 가로 넘침 0 · 오류 0.
 
 
 

@@ -3985,6 +3985,21 @@ function heroOptions() {
   return { eq, charms, mood: emote || (cd ? COORDI_MOOD[cd.hearts - 1] : todayEmote(state.fortune)), emote, stage, unlock, season: SHOW_SEASON_ITEMS ? seasonLook(loadSeason()) : null };
 }
 
+/** v0.85 지신 탭 접힌 창의 한 줄 요약 */
+function foodSub() {
+  const n = todayBowls(loadFood(), state.fortune.dateKey).filter((b) => b.done).length;
+  const go = growthOf(foodPoints(), jisinStage());
+  return `오늘 ${n}/3그릇${go.next ? ` · 다음 진화까지 밥 ${go.left}점` : ' · 최종 진화 완료'}`;
+}
+function duoSub() {
+  const stage = jisinStage(); const sec = loadSecond();
+  if (!secondUnlocked(stage)) return `${SECOND_UNLOCK}단계가 되면 열려요 · 지금 ${stage}단계`;
+  return sec ? `함께 크는 중 · ${secondLabel(sec)}` : '지금 데려올 수 있어요!';
+}
+function kiSub() {
+  const c = todayKiCard(loadKi(), state.fortune.dateKey);
+  return c ? `오늘 뽑은 카드 · ${kiCardText(c, state.saju).name}` : '하루 한 장 · 눌러서 뽑아요';
+}
 function renderHero(animate) {
   const s = state.saju; const f = state.fortune; const p = state.profile;
   checkPairSlot(); // 공방·뽑기 등 다른 곳에서 모인 경우도
@@ -4022,15 +4037,15 @@ function renderHero(animate) {
       <p class="muted" style="font-size:0.8rem;text-align:center;margin:6px 0 0">👆 지신을 누르면 앞으로 자랄 모습을 미리 볼 수 있어요</p>
       <h3 class="hero-title" style="text-align:center">${info.title}</h3>
       <p style="margin:0 0 10px;text-align:center"><span class="rarity-badge" style="color:var(--gold)">${stageName(gs.stage, info.female)} · 진화 ${gs.stage}단계</span>${currentDex().title ? ` <span class="rarity-badge" style="color:#ff8fb3">📖 ${currentDex().title}</span>` : ''}${seasonTitle() ? ` <span class="rarity-badge season-title">🏮 ${esc(seasonTitle())}</span>` : ''}</p>
-      ${jisinGrowHTML()}
-      ${showBackup() ? backupNudgeHTML() : ''}
       ${charmShowcaseHTML()}
-      ${secondJisinHTML()}
-      ${kiCardHTML({ inHero: true })}
+      ${showBackup() ? backupNudgeHTML() : ''}
       ${SHOW_CHARM_SLOTS ? `<div class="slots two">${slot(0)}${slot(1)}</div>
       ${state.equipOpen ? `<div class="equip-pop" id="equip-pop">${equipBody}</div>` : `<p class="muted" style="font-size:0.8rem;text-align:center;margin:6px 0 0">빈 슬롯을 누르면 부적을 골라 달 수 있어요 (${candidates.length}장 보유)</p>`}` : ''}
     </div>
-    <div class="fold-list">
+    <div class="fold-list hero-folds">
+      ${foldHTML('food', '🍚', '지신 밥', foodSub(), jisinGrowHTML())}
+      ${foldHTML('duo', '🐾', '두 번째 지신', duoSub(), secondJisinHTML())}
+      ${foldHTML('ki', '🎴', '오늘의 기운 카드', kiSub(), kiCardHTML({ inHero: true }))}
       ${foldHTML('coordi', '👗', '오늘의 코디', coordiSub(), coordiHTML())}
       ${foldHTML('wish', '🖼️', '이룬 소원 벽', wishSub(), wishWallHTML())}
       ${foldHTML('burn', '🔥', '걱정 태우기', '걱정 한 줄을 부적과 함께 태워 날려 보내요', burnHTML())}
