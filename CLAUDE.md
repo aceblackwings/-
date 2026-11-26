@@ -17,6 +17,8 @@
 
 ## 최근 버전 (최근 5개 · 그 전 기록은 `docs/changelog.md`)
 
+> **✅ v0.91(2026-11-26, 사용자 「별 4개도 복떡 3개 · 2027년 신년운세와 내 사주의 한눈에 정리 삭제 · 결제 들어가면 다음으로 안 넘어가는 건 토스 심사 때문인가?」, Claude Code)**: coordi.js `STAR_REWARD` = { 1: 1, 2: 1, 3: 2, 4: 3, 5: 3 }. 한눈에 정리: app.js `bookletData`에서 `st.brief = null`(신년운세 첫 화면에서 빠지고 상세판 겹침 빼기 기준에서도 빠짐), `sajuStoryHTML`의 `briefHTML`·「한눈에 정리」 꼬리표 삭제(`briefHTML` 함수는 남김). 상세판(skip)은 원래 brief 장을 빼므로, premium.js `mendChapters`의 `fix`가 「한눈에 정리」를 가리키던 문장(「바로 다음 「한눈에 정리」에…」·「이 책 맨 앞의 「한눈에 정리」를 다시 열어…」)을 통째로 지움 → 신년 상세판 「한눈에 정리」 0회(평생 정통사주 상세판은 그대로). 결제: 결제창을 여는 중 오류가 나면 토스트에 `오류 코드 · 메시지`를 함께 보여 줌(app.js `openReportPay` catch) — 원인(심사·계약·키) 확인용. 확인: `npm test` 통과.
+
 > **✅ v0.90(2026-11-26, 사용자 「별 1~2개도 복떡 1개, 별 3개면 2개, 별 5개면 3개」, Claude Code)**: coordi.js `STAR_REWARD` = { 1: 1, 2: 1, 3: 2, 4: 2, 5: 3 }(4개는 사용자 말이 없어 2개로) → 자동 코디는 누르면 늘 복떡 1개 이상, 두 번째가 더 좋은 별이면 차이만큼 더. 「별 3개부터」 문구 정리(app.js 토스트·`coordiHTML` 안내, coach.js 코디 단계 `why` = 「누르면 자동 코디 · 복떡 1~3개」). 테스트 wishcoordi 보상표 수정. 확인: `npm test` 통과, Playwright 아이폰 13 코디 두 번(별 3개 → 복떡 +2, 두 번째 뒤 잠김) · 오류 0.
 
 > **✅ v0.89(2026-11-26, 사용자 「오늘의 코디를 누르면 3개 아이템이 자동으로 장착 · 기회는 2번까지 · 바로 복떡 획득 · 아래쪽 내용은 만들지 말고」, Claude Code)**: coordi.js **`autoRoll(store, dateKey, luckyEl, todayEl, opts, rng)`** = 머리·목·손을 무작위로 한 벌 입히고 바로 완성(`done`), 하루 `ROLLS_PER_DAY` 2번(`rollsLeft`), 복떡은 그날 가장 좋은 별 기준 `STAR_REWARD`(v0.90에서 1~2 → 1 · 3~4 → 2 · 5 → 3으로 바뀜, 두 번째가 더 좋으면 차이만큼 더, `paidN`·`best`, 예전 `claimStars`와 겹치지 않게 `paid`). 한 번에 별 3개 이상 약 38%, 두 번이면 약 62%. app.js 지신 옆 「👗 오늘의 코디」 버튼 = `[data-coordi-roll]` → `rollCoordi`(토스트로 입은 소품·별·복떡, 지신 그림에 바로 입힘, 7일 연속 조각 그대로) · 2번 다 쓰면 버튼 잠김 · 요약 `coordiSub`. 아래 코디 창(`#fold-coordi`·`coordiHTML`)은 지신 탭에서 뺌(함수는 남김). 길잡이 `coachTarget`은 이 버튼을 가리킴. 테스트 wishcoordi 1 추가. 확인: `npm test` 통과, Playwright 아이폰 13 두 번 누르기(두 번째 뒤 잠김) · 가로 넘침 0 · 오류 0.
@@ -25,7 +27,6 @@
 
 > **✅ v0.87(2026-11-26, 사용자 「궁합에서 원진 관계의 대화 삭제 · 지신 그림 작게 · 조심할 점 바로 아래 궁합 자세히 보기(글자 크게) → 스토리 공유·친구 응원하기(글자 작게) → 12띠 수집 도감」, Claude Code)**: app.js `compatResultHTML` = 궁합 그림(`.cp-small`, 최대 240px) → 등급·점수 → 문단 → 조심할 점 → `.cp-offer` 궁합 자세히 보기(버튼 1.12rem) → `.cp-acts` 두 칸(📸 궁합 카드 스토리 공유 · 📣 친구 응원하기, 0.82rem). 띠 대화(`dialogueHTML`)는 화면에서 뺌(`state.compat.dialogue`는 스토리 카드용으로 남김). `renderCompat` 아래 접힌 창 `.cp-folds` = 📖 12띠 수집 도감 → 🎁 친구와 더 하기(`compatMoreHTML`: 부적 선물·응원 메시지 `friendSocialHTML(fr, idx, { noCheer: true })`·스티커·인연 부적·PNG·친구 삭제). 확인: `npm test` 통과, Playwright 아이폰 13 궁합 탭(친구 1명) 순서 · 가로 넘침 0 · 오류 0.
 
-> **✅ v0.86(2026-11-26, 사용자 「타로 운 보는 것 5가지에 하나 더 6개로, 화면에 깔끔하게」, Claude Code)**: tarot.js `TAROT_TOPICS`에 🤝 **인간관계**(`people`, 「가족·친구·동료와 사이, 어떻게 하면 좋을까?」)를 건강운과 오늘·궁금한 일 사이에 추가. 카드 34장 문장 `PEOPLE_UP`(→ `withStory`가 `up.people`로), 내 상황 `TAROT_SITU.people`(가족·친구·직장·학교) + `SITU_LINE.people`, `ANSWER`·`ANSWER_REV`·`TOPIC_ACT`·`TOPIC_REV`·`FLOW`·`GUIDE`·`TOPIC_WORD`, app.js `TAROT_WISH.people`. 질문 고르기 칸은 `.tr-topics.six` = 3칸 × 2줄(아이콘 작게·설명 3줄까지), 칸 이름이 긴 「오늘·궁금한 일」은 칸에만 `short: '궁금한 일'`(풀이·기록의 이름은 그대로). 테스트 tarot 주제 목록 6개로. 확인: `npm test` 통과, Playwright 아이폰 13 타로 질문 6칸 한 화면 · 인간관계 → 상황 칩 3개 · 가로 넘침 0 · 오류 0.
 
 
 

@@ -777,9 +777,8 @@ function sajuStoryNow() {
 function sajuStoryHTML() {
   const st = sajuStoryNow();
   const P = (t) => `<p>${esc(plainText(t))}</p>`;
-  return `<article class="card sj-story"><h3>📖 쉽게 읽는 나 <span class="tag">한눈에 정리</span></h3>
+  return `<article class="card sj-story"><h3>📖 쉽게 읽는 나</h3>
     <p class="bk-hook">${esc(plainText(st.hook))}</p>
-    ${briefHTML(st.brief, plainText)}
     ${st.blocks.map((b) => `<h4>${esc(plainText(b.h))}</h4>${b.paras.map(P).join('')}`).join('')}
     <h4>${esc(plainText(st.hard.h))}</h4>${st.hard.paras.map(P).join('')}
     ${st.more.map((b) => `<h4>${esc(plainText(b.h))}</h4>${b.paras.map(P).join('')}`).join('')}
@@ -2163,7 +2162,8 @@ function bookletData() {
   const st = bookletStory({ y, thisYear: prev, saju: state.saju, name: state.profile.name, gender: state.profile.gender });
   // v0.59 4단계: 첫 화면 = 요약판(결론·할 일), 「자세히 보기」 = 요약판과 같은 문장을 뺀 상세판
   // v0.63 사용자 「한눈에 정리는 한 줄 요약까지만, 꼭 할 일은 삭제」 → v0.63.1 「피할 일만 다시」: 한 줄 요약 + ⛔ 피할 일(상세판 겹침 빼기도 이 둘만 기준)
-  if (st.brief) st.brief = { ...st.brief, h: '📌 한눈에 정리', intro: '', blocks: st.brief.blocks.filter((x, i) => i === 0 || x.h.startsWith('⛔')) };
+  // v0.91 사용자 「2027년 신년운세와 내 사주의 한눈에 정리 삭제」: 첫 화면에서 빼고, 상세판의 「한눈에 정리」 안내 문장도 premium.js가 지움
+  st.brief = null;
   return { d, y, b, sum: yearSummary({ b, st }) };
 }
 
@@ -2187,7 +2187,6 @@ function bookletHTML(bd = bookletData()) {
     <section class="bk-story">
       ${st.scene ? `<p class="bk-scene">🎬 ${esc(PT(st.scene))}</p>` : ''}
       <p class="bk-hook"><b>쉽게 말하면,</b> ${esc(PT(st.hook))}</p>
-      ${briefHTML(st.brief)}
       ${st.chapters.map((c) => `<h3>${esc(PT(c.h))}</h3>${c.paras.map(P).join('')}`).join('')}
       <p class="bk-cliff">${esc(PT(IN_APP ? st.cliff.replace(/[^.]*「자세히 보기」[^.]*\./, '').trim() || st.cliff : st.cliff))}</p>
     </section>
@@ -6148,7 +6147,7 @@ function openReportPay(kind = 'life', notice = '') {
     goTossPay(kind, { key }, ez).catch((err) => {
       save(PENDING_KEY, null);
       box.querySelectorAll('[data-lp="pay"]').forEach((x) => { x.disabled = false; }); b.textContent = label;
-      toast(err?.message === 'store' ? '이 화면은 기록 저장이 꺼져 있어 결제할 수 없어요. 일반 창에서 열어 주세요' : failLine(err?.code), 6000);
+      toast(err?.message === 'store' ? '이 화면은 기록 저장이 꺼져 있어 결제할 수 없어요. 일반 창에서 열어 주세요' : `${failLine(err?.code)}${err?.code && !/CANCEL/.test(err.code) ? ` (오류 코드 ${err.code}${err?.message ? ` · ${err.message}` : ''})` : ''}`, 9000);
     });
   });
 }
@@ -6875,7 +6874,7 @@ function coordiHTML() {
     : `별이 마음에 들면 완성하기를 누르세요. 아니면 부위마다 남은 기회로 바꿔 입어 볼 수 있어요`;
   return `<div class="coordi">
     <ol class="cd-steps"><li class="${emptyN < 3 || done ? 'ok' : 'now'}">① 소품 입히기</li><li class="${done ? 'ok' : !emptyN ? 'now' : ''}">② 별 보고 바꿔 보기</li><li class="${done ? 'ok' : ''}">③ 완성하고 ${TTEOK} 받기</li></ol>
-    <p class="cd-guide">머리·목·손에 소품을 하나씩 입혀요. 오늘 기운과 잘 어울리면 별(★)이 늘어나요. 부위마다 <b>하루 ${PICKS_PER_SLOT}번</b>까지 바꿔 입을 수 있어요. 완성하면 별 1~2개 ${TTEOK}1 · 3~4개 ${TTEOK}2 · 5개 ${TTEOK}3.</p>
+    <p class="cd-guide">머리·목·손에 소품을 하나씩 입혀요. 오늘 기운과 잘 어울리면 별(★)이 늘어나요. 부위마다 <b>하루 ${PICKS_PER_SLOT}번</b>까지 바꿔 입을 수 있어요. 완성하면 별 1~2개 ${TTEOK}1 · 3개 ${TTEOK}2 · 4~5개 ${TTEOK}3.</p>
     <div class="cd-stage">${coordiWrap(svg, outfit)}
       <div class="cd-score"><small>오늘의 코디 별</small>${heartsHTML(res.hearts)}<b>${esc(res.title)}</b>
         <p class="cd-say" data-casual>💬 ${esc(coordiLine(res.hearts, politeNow()))}</p></div></div>
