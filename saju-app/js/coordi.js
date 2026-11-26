@@ -154,3 +154,24 @@ export function claimStars(store, dateKey) {
   const gained = STAR_REWARD[day.hearts] || 0;
   return { store: { ...s, days: { ...s.days, [dateKey]: { ...day, paid: true } } }, gained, done: true, stars: day.hearts };
 }
+
+// ---------- v0.89(2026-11-26 사용자 「오늘의 코디를 누르면 3개 아이템이 자동으로 장착, 기회는 2번까지, 바로 복떡 획득 · 아래 내용은 만들지 말고」) ----------
+// 누를 때마다 머리·목·손을 무작위로 한 벌 입히고 바로 완성. 하루 2번까지, 복떡은 그날 가장 좋은 별 기준으로(두 번째가 더 좋으면 차이만큼 더 받음)
+export const ROLLS_PER_DAY = 2;
+export const rollsLeft = (store, dateKey) => Math.max(0, ROLLS_PER_DAY - (((store?.days || {})[dateKey] || {}).rolls || 0));
+/**
+ * 자동 코디 한 번 → { store, ok, res, gained(이번에 받을 복떡), best(오늘 가장 좋은 별), left(남은 기회) }
+ * rng는 0~1 함수(테스트에서 고정)
+ */
+export function autoRoll(store, dateKey, luckyEl, todayEl, opts = {}, rng = Math.random) {
+  const s = { ...emptyCoordi(), ...(store || {}) }; const day = s.days[dateKey] || {};
+  if (rollsLeft(s, dateKey) <= 0) return { store: s, ok: false, left: 0 };
+  const outfit = Object.fromEntries(SLOTS.map((x) => { const list = WARDROBE[x.key]; return [x.key, list[Math.floor(rng() * list.length) % list.length].id]; }));
+  const res = coordiHearts(outfit, luckyEl, todayEl, opts);
+  const next = saveDay(s, dateKey, outfit, res.hearts);
+  const best = Math.max(day.best || 0, res.hearts);
+  const owed = STAR_REWARD[best] || 0; const paidN = day.paidN || 0; const gained = Math.max(0, owed - paidN);
+  const rolls = (day.rolls || 0) + 1;
+  next.days[dateKey] = { ...next.days[dateKey], rolls, best, paidN: paidN + gained, paid: true, done: true };
+  return { store: next, ok: true, res, gained, best, left: ROLLS_PER_DAY - rolls };
+}

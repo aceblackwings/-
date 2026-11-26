@@ -17,6 +17,8 @@
 
 ## 최근 버전 (최근 5개 · 그 전 기록은 `docs/changelog.md`)
 
+> **✅ v0.89(2026-11-26, 사용자 「오늘의 코디를 누르면 3개 아이템이 자동으로 장착 · 기회는 2번까지 · 바로 복떡 획득 · 아래쪽 내용은 만들지 말고」, Claude Code)**: coordi.js **`autoRoll(store, dateKey, luckyEl, todayEl, opts, rng)`** = 머리·목·손을 무작위로 한 벌 입히고 바로 완성(`done`), 하루 `ROLLS_PER_DAY` 2번(`rollsLeft`), 복떡은 그날 가장 좋은 별 기준 `STAR_REWARD`(별 3 → 1 · 4 → 2 · 5 → 3, 두 번째가 더 좋으면 차이만큼 더, `paidN`·`best`, 예전 `claimStars`와 겹치지 않게 `paid`). 한 번에 별 3개 이상 약 38%, 두 번이면 약 62%. app.js 지신 옆 「👗 오늘의 코디」 버튼 = `[data-coordi-roll]` → `rollCoordi`(토스트로 입은 소품·별·복떡, 지신 그림에 바로 입힘, 7일 연속 조각 그대로) · 2번 다 쓰면 버튼 잠김 · 요약 `coordiSub`. 아래 코디 창(`#fold-coordi`·`coordiHTML`)은 지신 탭에서 뺌(함수는 남김). 길잡이 `coachTarget`은 이 버튼을 가리킴. 테스트 wishcoordi 1 추가. 확인: `npm test` 통과, Playwright 아이폰 13 두 번 누르기(두 번째 뒤 잠김) · 가로 넘침 0 · 오류 0.
+
 > **✅ v0.88(2026-11-26, 사용자 「지신 칸에 이룬 소원 벽·걱정 태우기·두 번째 지신 삭제 · 지신 밥·오늘의 코디를 지신 바로 옆에 · 부적 바로 밑에 오늘의 기운 카드」, Claude Code)**: app.js `renderHero` = 말풍선 → `.hero-row`(지신 그림 | `.hero-side` 버튼 두 개 🍚 지신 밥 `foodSub` · 👗 오늘의 코디 `coordiSub`) → 누르면 아래 `details.hero-pane`(`#fold-food` = `jisinGrowHTML`, `#fold-coordi` = `coordiHTML`)가 하나만 열림(`openHeroPane`·`state.heroPane`) → 이름·단계 → 부적·등불 → 오늘의 기운 카드 → (백업 스위치 켜졌을 때만) 기록 백업. 이룬 소원 벽·걱정 태우기·두 번째 지신 창은 지신 탭에서 뺌(함수 `wishWallHTML`·`burnHTML`·`secondJisinHTML`은 남김, 걱정 태우기는 부적 만들기 창에서 계속 무료), 소원 성취·등불 완주 창의 「소원 벽 보기」 버튼도 뺌. 길잡이: `goPath('coordi')`·`coachTarget`이 옆 버튼을 가리킴. 확인: `npm test` 통과, Playwright 아이폰 13 지신 탭(옆 버튼 2개 · 코디 열기 · 밥 열면 코디 닫힘) · 가로 넘침 0 · 오류 0.
 
 > **✅ v0.87(2026-11-26, 사용자 「궁합에서 원진 관계의 대화 삭제 · 지신 그림 작게 · 조심할 점 바로 아래 궁합 자세히 보기(글자 크게) → 스토리 공유·친구 응원하기(글자 작게) → 12띠 수집 도감」, Claude Code)**: app.js `compatResultHTML` = 궁합 그림(`.cp-small`, 최대 240px) → 등급·점수 → 문단 → 조심할 점 → `.cp-offer` 궁합 자세히 보기(버튼 1.12rem) → `.cp-acts` 두 칸(📸 궁합 카드 스토리 공유 · 📣 친구 응원하기, 0.82rem). 띠 대화(`dialogueHTML`)는 화면에서 뺌(`state.compat.dialogue`는 스토리 카드용으로 남김). `renderCompat` 아래 접힌 창 `.cp-folds` = 📖 12띠 수집 도감 → 🎁 친구와 더 하기(`compatMoreHTML`: 부적 선물·응원 메시지 `friendSocialHTML(fr, idx, { noCheer: true })`·스티커·인연 부적·PNG·친구 삭제). 확인: `npm test` 통과, Playwright 아이폰 13 궁합 탭(친구 1명) 순서 · 가로 넘침 0 · 오류 0.
@@ -25,7 +27,6 @@
 
 > **✅ v0.85(2026-11-26, 사용자 「지신 칸은 지신 → 부적과 등불을 바로 아래, 지신 밥·두 번째 지신·오늘의 기운 카드도 똑같이 접어 줘」, Claude Code)**: app.js `renderHero` = 지신 카드(말풍선·그림·이름·단계) 안에 바로 `charmShowcaseHTML`(소원 부적·100일 등불) → 접힌 창 `.hero-folds`: 🍚 지신 밥(`jisinGrowHTML`, 요약 `foodSub` = 오늘 n/3그릇·다음 진화까지) → 🐾 두 번째 지신(`secondJisinHTML`, `duoSub`) → 🎴 오늘의 기운 카드(`kiCardHTML`, `kiSub`, 접힌 창 안에서는 카드 제목 줄 숨김) → 오늘의 코디 → 이룬 소원 벽 → 걱정 태우기. 다른 화면에서 `revealAndScroll('#ki-card'·'#duo-box')`로 부르면 접힌 창이 저절로 열림. CSS는 홈과 같은 촘촘한 접힌 창. 확인: `npm test` 통과, Playwright 아이폰 13 지신 탭(접힌 창 6개, 기운 카드 펼쳐 뽑기·지신 밥 펼치기) · 가로 넘침 0 · 오류 0.
 
-> **✅ v0.84(2026-11-26, 사용자 「아이폰에서 보니 뭘 해야 할지 모를 만큼 복잡 → 2027년 운세 아래에 내 사주·운세 더 보기·이번 주 운세를 닫힌 창으로 맨 위에, 그다음 포춘 쿠키·매일 습관, 쿠키는 조금 작게, 「이 순서대로 해 보세요」 삭제」, Claude Code)**: app.js `renderToday` 순서 = 접힌 창 4개(`.home-folds`: 2027년 운세 → 내 사주 → 운세 더 보기 → 이번 주 운세) → (소원·등불·백업 안내 등 그날 있을 때만) → 포춘 쿠키 → 매일 습관. 홈의 `pathCardHTML` 길잡이 카드는 뺌(👆 손가락 안내 `markCoach`·화면 아래 「다음」 버튼 `paintPathPill`은 그대로, `refreshPathCard`는 카드가 없으면 그냥 넘어감). styles.css 끝 v0.84 묶음: 접힌 창 촘촘하게(간격 8·요약 줄 높이 48), 열기 전 쿠키 카드 기계 `min(200px, 60%)`·그림 최대 190·빈 높이(`min-height`) 없앰·쿠키는 기계 아래로 겹쳐 굴러 나옴. 확인: `npm test` 통과, Playwright 아이폰 13 홈(접힌 창 4개 → 쿠키 → 습관)·기계 돌리기 → 쿠키 쪼개기 · 가로 넘침 0 · 오류 0.
 
 
 

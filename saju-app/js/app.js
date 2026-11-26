@@ -56,7 +56,7 @@ import { TTEOK, visit as tteokVisit, doTask as tteokDoTask, todayTasks, doneCoun
 import { emoImage, charImage } from './assets.js';
 import { PRODUCTS, buildPremiumYear, buildLifeReport, buildCompatReport, premiumTeaser, compatTeaser, tarotBridge, bundleWorth, BUNDLE_COMPAT, BUNDLE_TTEOK } from './premium.js';
 import { tarotPrice, useTarot, TAROT_COST, TAROT_FREE_PER_DAY, gift as tteokGift, COMPAT_COST, CHARM_TTEOK, CHARM_PRICE, friendKey, useCompat, compatOpen, grandfatherCompat, useCharmTteok, LANTERN_TTEOK, charmTteokCost } from './tteok.js';
-import { pickSlot as coordiPick, claimStars as coordiStars, lockedOn as coordiLocked, STAR_REWARD, PICKS_PER_SLOT, triesLeft as coordiTries, isDone as coordiDone, canFinish as coordiCanFinish, finishDay as coordiFinish } from './coordi.js';
+import { autoRoll as coordiRoll, rollsLeft as coordiRollsLeft, ROLLS_PER_DAY as COORDI_ROLLS, pickSlot as coordiPick, claimStars as coordiStars, lockedOn as coordiLocked, STAR_REWARD, PICKS_PER_SLOT, triesLeft as coordiTries, isDone as coordiDone, canFinish as coordiCanFinish, finishDay as coordiFinish } from './coordi.js';
 import { VIEW_DAYS, viewUntil, markOpened, expired as shopExpired, emptyShop, owns as shopOwns, priceOf, grant as shopGrant, yearKey, compatKey, bundleKey, grantBundle, useCompatCredit, compatCredits, kindOf } from './shop.js';
 import { preloadCharImages, itemImage, tarotImage, coordiImage } from './assets.js';
 /** 계절 한정 소품 그림 (없으면 빈칸) */
@@ -3989,11 +3989,10 @@ function heroOptions() {
 /** v0.88 지신 옆 버튼(지신 밥·오늘의 코디): 누르면 아래 칸이 열리고, 다시 누르면 닫힘(하나만 열림) */
 function openHeroPane(k, toggle = true) {
   state.heroPane = toggle && state.heroPane === k ? null : k;
-  ['food', 'coordi'].forEach((x) => {
+  ['food'].forEach((x) => {
     const d = $(`#fold-${x}`); if (d) d.open = state.heroPane === x;
     $(`[data-hero-pane="${x}"]`)?.classList.toggle('on', state.heroPane === x);
   });
-  (state.folds ||= {})['fold-coordi'] = state.heroPane === 'coordi';
   if (state.heroPane) setTimeout(() => $(`#fold-${state.heroPane}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 30);
   markCoach();
 }
@@ -4050,11 +4049,10 @@ function renderHero(animate) {
         <div class="hero-stage ${animate ? 'reveal' : ''}" id="hero-stage" title="눌러서 성장 단계 보기">${coordiWrap(decorWrap(svg), loadCoordi().days[f.dateKey]?.outfit)}</div>
         <div class="hero-side">
           <button type="button" class="hs-btn${state.heroPane === 'food' ? ' on' : ''}" data-hero-pane="food"><span>🍚</span><b>지신 밥</b><small>${esc(foodSub())}</small></button>
-          <button type="button" class="hs-btn${state.heroPane === 'coordi' ? ' on' : ''}" data-hero-pane="coordi"><span>👗</span><b>오늘의 코디</b><small>${esc(coordiSub())}</small></button>
+          <button type="button" class="hs-btn" data-coordi-roll ${coordiRollsLeft(loadCoordi(), f.dateKey) ? '' : 'disabled'}><span>👗</span><b>오늘의 코디</b><small>${esc(coordiSub())}</small></button>
         </div>
       </div>
       <details class="hero-pane fold" id="fold-food"${state.heroPane === 'food' ? ' open' : ''}><summary hidden>지신 밥</summary><div class="fold-body">${jisinGrowHTML()}</div></details>
-      <details class="hero-pane fold" id="fold-coordi"${state.heroPane === 'coordi' ? ' open' : ''}><summary hidden>오늘의 코디</summary><div class="fold-body">${coordiHTML()}</div></details>
       <p class="muted" style="font-size:0.78rem;text-align:center;margin:6px 0 0">👆 지신을 누르면 앞으로 자랄 모습을 미리 볼 수 있어요</p>
       <h3 class="hero-title" style="text-align:center">${info.title}</h3>
       <p style="margin:0 0 10px;text-align:center"><span class="rarity-badge" style="color:var(--gold)">${stageName(gs.stage, info.female)} · 진화 ${gs.stage}단계</span>${currentDex().title ? ` <span class="rarity-badge" style="color:#ff8fb3">📖 ${currentDex().title}</span>` : ''}${seasonTitle() ? ` <span class="rarity-badge season-title">🏮 ${esc(seasonTitle())}</span>` : ''}</p>
@@ -6924,6 +6922,26 @@ document.addEventListener('click', (e) => {
   renderHero(false); refreshCoordi();
 });
 
+/** v0.89 오늘의 코디 = 누르면 세 부위 자동 장착 + 바로 복떡(하루 2번까지, 가장 좋은 별 기준) */
+function rollCoordi() {
+  const f = state.fortune;
+  const r = coordiRoll(loadCoordi(), f.dateKey, f.luck.element, f.todayElement, { season: !!seasonHandItem() });
+  if (!r.ok) { toast('오늘 코디 기회 2번을 다 썼어요. 내일 다시 입혀 보세요'); return; }
+  const c = coordiClaim(r.store, f.dateKey); save(COORDI_KEY, c.store);
+  if (r.gained) { save(TTEOK_KEY, tteokGift(loadTteok(), `코디 별 ${r.best}개`, r.gained).store); sfx('coin'); }
+  const items = COORDI_SLOTS.map((x) => coordiItemOf(r.store.days[f.dateKey].outfit[x.key])?.name).filter(Boolean).join(' · ');
+  const reward = r.gained ? `${TTEOK} 복떡 +${r.gained}` : r.best >= 3 ? `${TTEOK} 복떡은 더 좋은 별일 때만 더 받아요` : `${TTEOK} 복떡은 별 3개부터`;
+  toast(`👗 ${items} · 별 ${r.res.hearts}개! ${reward}${r.left ? ` · 한 번 더 할 수 있어요` : ''}`);
+  if (SHOW_SEASON_ITEMS && c.piece) {
+    const tt = { ...emptyTteok(), ...(loadTteok() || {}) }; tt.pieces = (tt.pieces || 0) + 1; save(TTEOK_KEY, tt);
+    toast(`🎀 ${c.streak}일 연속 코디! 꾸미기 조각 1개를 받았어요`);
+    if (tt.pieces >= PIECES_PER_ITEM) setTimeout(grantSeasonItem, 300);
+  }
+  state.heroLine = coordiLine(r.res.hearts, politeNow());
+  renderHero(false); $('#hero-stage')?.classList.add('jump');
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-coordi-roll]')) rollCoordi(); });
+
 // ---------- ③ 걱정 태우기 ----------
 function burnHTML() {
   return `<div class="burn-intro">
@@ -7052,9 +7070,9 @@ function openBurn(worry, idx) {
   });
 }
 function coordiSub() {
-  const d = loadCoordi().days[state.fortune.dateKey];
-  if (!d) return `👆 지신에게 소품을 입히고 ${TTEOK} 복떡 받기`;
-  return coordiDone(loadCoordi(), state.fortune.dateKey) ? `✓ 오늘 완성 ${'★'.repeat(d.hearts)} · 연속 ${coordiStreakOf(loadCoordi(), state.fortune.dateKey)}일` : `입히는 중 ${'★'.repeat(d.hearts)} · 완성하면 ${TTEOK} 복떡`;
+  const st = loadCoordi(); const d = st.days[state.fortune.dateKey]; const left = coordiRollsLeft(st, state.fortune.dateKey);
+  if (!d?.rolls) return `눌러서 자동 코디 · 하루 ${COORDI_ROLLS}번 · ${TTEOK} 복떡`;
+  return left ? `${'★'.repeat(d.best || d.hearts)} · 한 번 더 (${left}번 남음)` : `✓ 오늘 완성 ${'★'.repeat(d.best || d.hearts)}`;
 }
 function wishSub() {
   const col = load(COLLECTION_KEY, []); const a = wishWall(col).length; const b = wishWaiting(col).length;
@@ -7107,7 +7125,7 @@ function goPath(key) {
   setTimeout(() => {
     if (key === 'cookie') $('#fc-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     if (key === 'habit') { const d = $('#dh-card'); if (d) { d.open = true; state.miniOpen = { ...(state.miniOpen || {}), habit: true }; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }
-    if (key === 'coordi') { openHeroPane('coordi', false); $('.hero-row')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    if (key === 'coordi') $('.hero-row')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     markCoach();
   }, 260);
 }
@@ -7143,9 +7161,7 @@ function coachTarget() {
     return null;
   }
   if (tab === 'hero' && !st.coordi) {
-    const d = $('#fold-coordi'); if (!d) return null;
-    if (!d.open) return $('[data-hero-pane="coordi"]');
-    return d.querySelector('.cd-row.empty .cd-item:not([disabled])') || d.querySelector('.cd-finish:not([disabled])');
+    return $('[data-coordi-roll]:not([disabled])');
   }
   return null;
 }
