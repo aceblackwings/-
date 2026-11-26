@@ -26,6 +26,10 @@ export const PAY = {
   tossClientKey: 'live_ck_c19xYLanYqVhbcHhjpj0hO3F8rnOqjoGzV',
   confirmUrl: '/api/pay/confirm', // 결제 승인 함수 (functions/api/pay/confirm.js)
   sdk: 'https://js.tosspayments.com/v2/standard',
+  // v0.93(2026-11-26 사용자 「토스 심사가 끝날 때까지 990원·2,900원을 누르면 운세를 바로 볼 수 있게, 승인되면 적용」):
+  // true = 앱 안 「자세히 보기」 버튼이 결제 없이 바로 열림(구매 기록은 남기지 않음). 상품 안내의 「결제창 보기」(?buy=)는 심사용으로 결제 창 그대로.
+  // 토스 승인 뒤 false로 바꾸면 다시 결제.
+  freeReports: true,
 };
 
 /** v0.74 구글 플레이 앱(Capacitor) 안에서 열렸는지. 앱 1차(A안)는 유료 부적·등불·결제를 모두 숨긴다(스토어 정책: 앱 안 디지털 상품은 스토어 결제만). */
