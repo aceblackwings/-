@@ -58,7 +58,7 @@ t('본문 핵심 장: 위험·피할 일·인연·사업 분야·이겨 내는 �
     for (const k of ['wind', 'why', 'risk', 'people', 'money', 'fix', 'months', 'fields', 'close']) assert.ok(y.sections.some((s) => s.key === k), `상세판 ${k}`);
     for (const k of ['me', 'hard', 'risk', 'people', 'body', 'work', 'fix']) assert.ok(life.sections.some((s) => s.key === k), `정통사주 ${k}`);
     const money = y.sections.find((s) => s.key === 'money').blocks.flatMap((b) => b.paras).join(' ');
-    assert.ok((money.match(/· /g) || []).length >= 6, '사업 분야 6개 이상');
+    assert.ok(EL_TALE[p.s.yongsin].biz.every(([f]) => money.includes(f)), '사업 분야 6개가 모두 들어감(v0.94 이야기체)');
   }
 });
 t('같은 문장이 한 권 안에서 두 번 나오지 않음(20자 이상)', () => {
@@ -130,7 +130,8 @@ t('v0.51 직설 문장: 한눈에 정리(할 일·피할 일·언제)가 맨 앞
     const [y, , life] = reports(p);
     for (const r of [y, life]) {
       const i = r.sections.findIndex((x) => x.key === 'brief'); assert.ok(i >= 0 && i <= 1, `${r.kind} 한눈에 정리 위치 ${i}`);
-      const b = r.sections[i].blocks; assert.ok(b.find((x) => x.h.startsWith('✅')).paras.length >= 3); assert.ok(b.find((x) => x.h.startsWith('⛔')).paras.length >= 2);
+      const b = r.sections[i].blocks; const sn = (x) => x.paras.join(' ').split(/[,.?!]\s+/).length; // v0.94 이야기체: 목록이 문장으로 이어짐
+      assert.ok(sn(b.find((x) => x.h.startsWith('✅'))) >= 3); assert.match(b.find((x) => x.h.startsWith('⛔')).paras.join(' '), /피하세요|멀리하세요/);
       for (const x of mainText(r)) assert.ok(!MET.test(x), `${r.kind} 비유: ${x.match(MET)?.[0]} | ${x}`);
     }
     const st = bookletStory({ y: yearOf(p.s, 2027, p.g), thisYear: yearOf(p.s, 2026, p.g), saju: p.s, name: '은하', gender: p.g });

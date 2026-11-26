@@ -3,6 +3,7 @@
 // - 모든 글은 엔진 값(period.js·saju.js·relations.js·yearcheck.js…)에서 만들어 같은 입력이면 늘 같은 글
 // - 설계 원칙 3: 결제는 「더 자세히 읽기」만 연다. 점수는 무료 화면과 같은 값(여기서 점수를 바꾸지 않음)
 // - 순수 로직만(테스트: tests/premium.test.mjs — 분량·조사·금지어·결정성)
+import { novelize } from './novel.js';
 import { josa, iyeyo, hasBatchim } from './josa.js';
 import { GOD_READING, crossLine, turnLine, STAGE_PERIOD } from './reading.js';
 import { categoryScores, monthDays, yearOf } from './period.js';
@@ -67,6 +68,7 @@ function finish(rep, yr = null, skip = null) {
   const sections = (skip ? rep.sections.filter((s) => s.key !== 'brief') : rep.sections).map(sec);
   let out = dedupeReport({ ...rep, sub: P(rep.sub), sections }, skip ? skip.map((t) => P(t)) : []);
   if (skip) out = mendChapters(sections, out);
+  out = dedupeReport(novelize(out), skip ? skip.map((t) => P(t)) : []); // v0.94 소설처럼 이어 읽히게(번호·목록·작은 제목 → 이어지는 문장) · 목록이 문장이 되며 같아진 문장은 한 번만
   out.summarized = !!skip;
   out.toc = tocOf(out); out.chars = charCount(out);
   return out;
@@ -352,7 +354,10 @@ export function tarotBridge(rep, topic) {
   const bi = field && fsec >= 0 ? rep.sections[fsec].blocks.findIndex((b) => b.h.startsWith(label)) : -1;
   if (bi >= 0) {
     const ps = rep.sections[fsec].blocks[bi].paras;
-    const two = (ps.find((x) => x.includes('두 달은')) || ps[1]).split(/(?<=요\.)\s+/)[0]; const watch = ps.find((x) => x.startsWith('조심할 장면')) || ps[2];
+    // v0.94 이야기체로 문단이 합쳐졌으니 문장 단위로 찾음
+    const sents = ps.join(' ').split(/(?<=[.?!])\s+/);
+    const two = sents.find((x) => x.includes('두 달은')) || sents[1];
+    const wi = sents.findIndex((x) => x.includes('조심할 장면')); const watch = wi >= 0 ? sents.slice(wi, wi + 2).join(' ') : sents[2];
     return { field, label, sec: fsec, block: bi, q: [
       { q: `${label}에 가장 힘이 실리는 두 달은?`, a: two },
       { q: `${label}에서 조심할 장면 두 가지는?`, a: watch },

@@ -1,3 +1,4 @@
+import { novelBlock } from './novel.js'; // v0.94 이야기체
 import {
   computeSaju, tenGod, seededRandom, BIRTH_CITIES, cityLon, STEMS, STEMS_KO, BRANCHES, BRANCHES_KO, STEM_ELEMENT, BRANCH_ELEMENT,
   BRANCH_MAIN_STEM, ELEMENT_KO, ELEMENT_HANJA, pillarLabel, pillarLabelKo,
@@ -779,9 +780,7 @@ function sajuStoryHTML() {
   const P = (t) => `<p>${esc(plainText(t))}</p>`;
   return `<article class="card sj-story"><h3>📖 쉽게 읽는 나</h3>
     <p class="bk-hook">${esc(plainText(st.hook))}</p>
-    ${st.blocks.map((b) => `<h4>${esc(plainText(b.h))}</h4>${b.paras.map(P).join('')}`).join('')}
-    <h4>${esc(plainText(st.hard.h))}</h4>${st.hard.paras.map(P).join('')}
-    ${st.more.map((b) => `<h4>${esc(plainText(b.h))}</h4>${b.paras.map(P).join('')}`).join('')}
+    ${[...st.blocks, st.hard, ...st.more].map((b) => { const n = novelBlock({ ...b, h: plainText(b.h), paras: b.paras.map((x) => plainText(x)) }); return `${/^\d+장/.test(n.h) ? `<h4>${esc(n.h)}</h4>` : ''}${n.paras.map((x) => `<p>${esc(x)}</p>`).join('')}`; }).join('')}
     <p class="bk-cliff">${esc(plainText(st.cliff))}</p>
   </article>`;
 }
@@ -2383,7 +2382,7 @@ function openReader(kind, jump = null) {
   if (!rep) return;
   document.querySelectorAll('.hj-reader').forEach((x) => x.remove());
   const P = (t) => `<p>${esc(t)}</p>`;
-  const secHTML = (s, i) => `<section class="hj-sec" id="hj-s${i}"><h3>${esc(s.h)}</h3>${s.intro ? `<p class="hj-intro">${esc(s.intro)}</p>` : ''}${s.blocks.map((b, j) => `<div class="hj-blk${b.cliff ? ' hj-cliff' : ''}" id="hj-s${i}-b${j}">${b.h ? `<h4>${esc(b.h)}</h4>` : ''}${b.paras.map(P).join('')}</div>`).join('')}</section>`;
+  const secHTML = (s, i) => `<section class="hj-sec" id="hj-s${i}"><h3>${esc(s.h)}</h3>${s.intro ? `<p class="hj-intro">${esc(s.intro)}</p>` : ''}${s.blocks.map((b, j) => `<div class="hj-blk${b.cliff ? ' hj-cliff' : ''}${b.novel ? ' novel' : ''}" id="hj-s${i}-b${j}">${b.h && !b.novel ? `<h4>${esc(b.h)}</h4>` : ''}${b.paras.map(P).join('')}</div>`).join('')}</section>`;
   const box = document.createElement('div'); box.className = 'hj-reader hanji'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', rep.title);
   box.innerHTML = `<header class="hj-bar"><button type="button" class="hj-close" data-reader-close aria-label="닫기">✕</button><span>${esc(rep.title)}</span><small>${kChars(rep.chars)}</small></header>
     <article class="hj-book" data-formal>
