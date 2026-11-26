@@ -2540,3 +2540,28 @@ body:has(#path-pill:not([hidden])) .toast { bottom: calc(84px + env(safe-area-in
 /* v0.80 궁합 쉬운 설명: 한 문단 + 조심할 점 */
 .ts-why.cp-story { margin: 8px 0 12px; }
 .cp-watch { margin: 0 0 12px; }
+
+/* ---------- v0.84 홈 한눈에(사용자 「아이폰에서 보니 뭘 해야 할지 모를 만큼 복잡」) ----------
+   위 = 접힌 창 4개를 촘촘하게, 아래 = 작아진 포춘 쿠키 → 매일 습관 */
+[data-panel="today"] .home-folds { gap: 8px; margin-top: 14px; }
+.home-folds details.fold > summary { padding: 10px 14px; min-height: 48px; gap: 10px; }
+.home-folds .fd-ic { flex-basis: 34px; height: 34px; border-radius: 12px; font-size: 1.1rem; }
+.home-folds .fd-t b { font-size: .96rem; }
+[data-panel="today"] > .card, [data-panel="today"] > article.card { margin: 14px 0; }
+[data-panel="today"] > .fc-card:not(.open) { padding: 12px 14px 14px; }
+.fc-card:not(.open) .fc-h { font-size: 1.02rem; margin-bottom: 2px; }
+.fc-card:not(.open) .fc-stage { min-height: 0; }
+.fc-card:not(.open) .fc-cookie { width: 110px; height: 84px; margin-top: -28px; }
+.fc-card:not(.open) .fc-machine { width: min(200px, 60%); }
+.fc-card:not(.open) .fc-combo { max-height: 190px; }
+.fc-card:not(.open) .fc-steps { margin: 4px 0 2px; }
+.fc-card:not(.open) .fc-guide { margin-top: 4px; font-size: .9rem; }
+.fc-card:not(.open) .fc-odds { margin-top: 2px; font-size: .72rem; }
+
+/* ---------- v0.85 지신 탭: 지신 → 부적·등불 → 접힌 창(밥·두 번째 지신·기운 카드·코디…) ---------- */
+.hero-folds { gap: 8px; margin-top: 14px; }
+.hero-folds details.fold > summary { padding: 10px 14px; min-height: 48px; gap: 10px; }
+.hero-folds .fd-ic { flex-basis: 34px; height: 34px; border-radius: 12px; font-size: 1.1rem; }
+.hero-folds .fd-t b { font-size: .96rem; }
+.hero-folds .fold-body > .jisin-grow, .hero-folds .fold-body > .duo-box { margin: 0; }
+.hero-folds .ki-card > h3 { display: none; }
