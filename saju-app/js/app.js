@@ -3233,6 +3233,7 @@ function foldHTML(id, icon, title, sub, body) {
 document.addEventListener('toggle', (e) => {
   const d = e.target; if (!(d instanceof HTMLElement) || !d.matches?.('details.fold') || !d.id) return;
   (state.folds ||= {})[d.id] = d.open;
+  if (d.classList.contains('hero-pane') && d.open) { state.heroPane = d.id.replace('fold-', ''); $$('[data-hero-pane]').forEach((x) => x.classList.toggle('on', x.dataset.heroPane === state.heroPane)); }
   if (d.open) setTimeout(initScratch, 30); // 접혀 있던 긁기 칸(산통 점괘 등)은 펼칠 때 준비
 }, true);
 /** 접힌 곳 안에 있는 대상도 펼친 뒤 보여 주기 */
@@ -3985,6 +3986,18 @@ function heroOptions() {
   return { eq, charms, mood: emote || (cd ? COORDI_MOOD[cd.hearts - 1] : todayEmote(state.fortune)), emote, stage, unlock, season: SHOW_SEASON_ITEMS ? seasonLook(loadSeason()) : null };
 }
 
+/** v0.88 지신 옆 버튼(지신 밥·오늘의 코디): 누르면 아래 칸이 열리고, 다시 누르면 닫힘(하나만 열림) */
+function openHeroPane(k, toggle = true) {
+  state.heroPane = toggle && state.heroPane === k ? null : k;
+  ['food', 'coordi'].forEach((x) => {
+    const d = $(`#fold-${x}`); if (d) d.open = state.heroPane === x;
+    $(`[data-hero-pane="${x}"]`)?.classList.toggle('on', state.heroPane === x);
+  });
+  (state.folds ||= {})['fold-coordi'] = state.heroPane === 'coordi';
+  if (state.heroPane) setTimeout(() => $(`#fold-${state.heroPane}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 30);
+  markCoach();
+}
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-hero-pane]'); if (b) openHeroPane(b.dataset.heroPane); });
 /** v0.85 지신 탭 접힌 창의 한 줄 요약 */
 function foodSub() {
   const n = todayBowls(loadFood(), state.fortune.dateKey).filter((b) => b.done).length;
@@ -4033,24 +4046,25 @@ function renderHero(animate) {
   $('[data-panel="hero"]').innerHTML = `
     <div class="card hero-main">
       <div class="speech hero-say-box"><div class="hero-say">${(state.heroLine ? [state.heroLine] : todayLines().slice(0, 2)).map((l) => `<p>${esc(l)}</p>`).join('')}</div><button type="button" class="say-chat" data-go-tab="chat">💬 지신과 이야기하기</button></div>
-      <div class="hero-stage ${animate ? 'reveal' : ''}" id="hero-stage" title="눌러서 성장 단계 보기">${coordiWrap(decorWrap(svg), loadCoordi().days[f.dateKey]?.outfit)}</div>
-      <p class="muted" style="font-size:0.8rem;text-align:center;margin:6px 0 0">👆 지신을 누르면 앞으로 자랄 모습을 미리 볼 수 있어요</p>
+      <div class="hero-row">
+        <div class="hero-stage ${animate ? 'reveal' : ''}" id="hero-stage" title="눌러서 성장 단계 보기">${coordiWrap(decorWrap(svg), loadCoordi().days[f.dateKey]?.outfit)}</div>
+        <div class="hero-side">
+          <button type="button" class="hs-btn${state.heroPane === 'food' ? ' on' : ''}" data-hero-pane="food"><span>🍚</span><b>지신 밥</b><small>${esc(foodSub())}</small></button>
+          <button type="button" class="hs-btn${state.heroPane === 'coordi' ? ' on' : ''}" data-hero-pane="coordi"><span>👗</span><b>오늘의 코디</b><small>${esc(coordiSub())}</small></button>
+        </div>
+      </div>
+      <details class="hero-pane fold" id="fold-food"${state.heroPane === 'food' ? ' open' : ''}><summary hidden>지신 밥</summary><div class="fold-body">${jisinGrowHTML()}</div></details>
+      <details class="hero-pane fold" id="fold-coordi"${state.heroPane === 'coordi' ? ' open' : ''}><summary hidden>오늘의 코디</summary><div class="fold-body">${coordiHTML()}</div></details>
+      <p class="muted" style="font-size:0.78rem;text-align:center;margin:6px 0 0">👆 지신을 누르면 앞으로 자랄 모습을 미리 볼 수 있어요</p>
       <h3 class="hero-title" style="text-align:center">${info.title}</h3>
       <p style="margin:0 0 10px;text-align:center"><span class="rarity-badge" style="color:var(--gold)">${stageName(gs.stage, info.female)} · 진화 ${gs.stage}단계</span>${currentDex().title ? ` <span class="rarity-badge" style="color:#ff8fb3">📖 ${currentDex().title}</span>` : ''}${seasonTitle() ? ` <span class="rarity-badge season-title">🏮 ${esc(seasonTitle())}</span>` : ''}</p>
       ${charmShowcaseHTML()}
+      ${kiCardHTML({ inHero: true })}
       ${showBackup() ? backupNudgeHTML() : ''}
       ${SHOW_CHARM_SLOTS ? `<div class="slots two">${slot(0)}${slot(1)}</div>
       ${state.equipOpen ? `<div class="equip-pop" id="equip-pop">${equipBody}</div>` : `<p class="muted" style="font-size:0.8rem;text-align:center;margin:6px 0 0">빈 슬롯을 누르면 부적을 골라 달 수 있어요 (${candidates.length}장 보유)</p>`}` : ''}
     </div>
-    <div class="fold-list hero-folds">
-      ${foldHTML('food', '🍚', '지신 밥', foodSub(), jisinGrowHTML())}
-      ${foldHTML('duo', '🐾', '두 번째 지신', duoSub(), secondJisinHTML())}
-      ${foldHTML('ki', '🎴', '오늘의 기운 카드', kiSub(), kiCardHTML({ inHero: true }))}
-      ${foldHTML('coordi', '👗', '오늘의 코디', coordiSub(), coordiHTML())}
-      ${foldHTML('wish', '🖼️', '이룬 소원 벽', wishSub(), wishWallHTML())}
-      ${foldHTML('burn', '🔥', '걱정 태우기', '걱정 한 줄을 부적과 함께 태워 날려 보내요', burnHTML())}
-      ${showBackup() ? foldHTML('backup', '📦', '기록 백업 · 새 폰으로 옮기기', backupSub(), backupCardHTML()) : ''}
-    </div>`;
+    <div class="fold-list hero-folds">${showBackup() ? foldHTML('backup', '📦', '기록 백업 · 새 폰으로 옮기기', backupSub(), backupCardHTML()) : ''}</div>`;
 
   const panel = $('[data-panel="hero"]');
   bindSeasonWardrobe(panel);
@@ -6709,7 +6723,7 @@ document.addEventListener('click', (e) => {
     box.innerHTML = `<div class="evo-box wish-pop"><img class="lt-kept-big" src="${LT_ART('kept')}" alt="100일 완주 등불"><div class="wish-shine">${wishCharmHTML(col[i], true)}</div>
       <h3 style="margin:8px 0 4px">🏮 100일 완주 · 「${esc(col[i].wish)}」</h3>
       <p data-casual>${esc(keptLine(politeNow()))}</p>
-      <div class="yday-btns" style="grid-template-columns:1fr 1fr"><button type="button" class="ghost" data-close-reward>고마워요</button><button type="button" class="primary" data-go-wall>🖼️ 소원 벽 보기</button></div></div>`;
+      <div class="yday-btns"><button type="button" class="primary" data-close-reward>고마워요</button></div></div>`;
     document.body.appendChild(box);
     box.addEventListener('click', (ev) => {
       if (ev.target.closest('[data-go-wall]')) { box.remove(); selectTab('hero'); setTimeout(() => revealAndScroll('#fold-wish'), 50); return; }
@@ -6811,7 +6825,7 @@ document.addEventListener('click', (e) => {
     <h3 style="margin:8px 0 4px">🌟 소원 성취 · 「${esc(r.wish)}」</h3>
     <p data-casual>${esc(wishDoneLine(r, politeNow()))}</p>
     ${dr.paid ? `<button type="button" class="ghost" data-wish-png="${i}" style="width:100%;margin-bottom:8px">📱 소원 성취 카드 저장</button>` : ''}
-    <div class="yday-btns" style="grid-template-columns:1fr 1fr"><button type="button" class="ghost" data-close-reward>고마워요</button><button type="button" class="primary" data-go-wall>🖼️ 이룬 소원 벽 보기</button></div></div>`;
+    <div class="yday-btns"><button type="button" class="primary" data-close-reward>고마워요</button></div></div>`;
   document.body.appendChild(box);
   box.addEventListener('click', (ev) => {
     if (ev.target.closest('[data-go-wall]')) { box.remove(); selectTab('hero'); setTimeout(() => revealAndScroll('#fold-wish'), 50); return; }
@@ -6874,7 +6888,7 @@ function coordiHTML() {
     <p class="muted cd-note">코디 별은 꾸미기 놀이예요. 오늘 운세 점수와는 상관없어요.</p>
   </div>`;
 }
-function refreshCoordi() { const el = $('#fold-coordi .fold-body'); if (el) el.innerHTML = coordiHTML(); }
+function refreshCoordi() { const el = $('#fold-coordi .fold-body'); if (el) el.innerHTML = coordiHTML(); const sm = $('[data-hero-pane="coordi"] small'); if (sm) sm.textContent = coordiSub(); }
 /** 코디 완성 처리(완성 버튼 또는 기회를 다 쓴 때): 별 수만큼 떡 · 7일 연속 조각 */
 function settleCoordi(next) {
   const f = state.fortune;
@@ -7093,7 +7107,7 @@ function goPath(key) {
   setTimeout(() => {
     if (key === 'cookie') $('#fc-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     if (key === 'habit') { const d = $('#dh-card'); if (d) { d.open = true; state.miniOpen = { ...(state.miniOpen || {}), habit: true }; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }
-    if (key === 'coordi') { const d = $('#fold-coordi'); if (d) { d.open = true; (state.folds ||= {})['fold-coordi'] = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }
+    if (key === 'coordi') { openHeroPane('coordi', false); $('.hero-row')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     markCoach();
   }, 260);
 }
@@ -7130,7 +7144,7 @@ function coachTarget() {
   }
   if (tab === 'hero' && !st.coordi) {
     const d = $('#fold-coordi'); if (!d) return null;
-    if (!d.open) return d.querySelector('summary');
+    if (!d.open) return $('[data-hero-pane="coordi"]');
     return d.querySelector('.cd-row.empty .cd-item:not([disabled])') || d.querySelector('.cd-finish:not([disabled])');
   }
   return null;
