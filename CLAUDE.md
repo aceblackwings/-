@@ -17,6 +17,8 @@
 
 ## 최근 버전 (최근 5개 · 그 전 기록은 `docs/changelog.md`)
 
+> **✅ v0.87(2026-11-26, 사용자 「궁합에서 원진 관계의 대화 삭제 · 지신 그림 작게 · 조심할 점 바로 아래 궁합 자세히 보기(글자 크게) → 스토리 공유·친구 응원하기(글자 작게) → 12띠 수집 도감」, Claude Code)**: app.js `compatResultHTML` = 궁합 그림(`.cp-small`, 최대 240px) → 등급·점수 → 문단 → 조심할 점 → `.cp-offer` 궁합 자세히 보기(버튼 1.12rem) → `.cp-acts` 두 칸(📸 궁합 카드 스토리 공유 · 📣 친구 응원하기, 0.82rem). 띠 대화(`dialogueHTML`)는 화면에서 뺌(`state.compat.dialogue`는 스토리 카드용으로 남김). `renderCompat` 아래 접힌 창 `.cp-folds` = 📖 12띠 수집 도감 → 🎁 친구와 더 하기(`compatMoreHTML`: 부적 선물·응원 메시지 `friendSocialHTML(fr, idx, { noCheer: true })`·스티커·인연 부적·PNG·친구 삭제). 확인: `npm test` 통과, Playwright 아이폰 13 궁합 탭(친구 1명) 순서 · 가로 넘침 0 · 오류 0.
+
 > **✅ v0.86(2026-11-26, 사용자 「타로 운 보는 것 5가지에 하나 더 6개로, 화면에 깔끔하게」, Claude Code)**: tarot.js `TAROT_TOPICS`에 🤝 **인간관계**(`people`, 「가족·친구·동료와 사이, 어떻게 하면 좋을까?」)를 건강운과 오늘·궁금한 일 사이에 추가. 카드 34장 문장 `PEOPLE_UP`(→ `withStory`가 `up.people`로), 내 상황 `TAROT_SITU.people`(가족·친구·직장·학교) + `SITU_LINE.people`, `ANSWER`·`ANSWER_REV`·`TOPIC_ACT`·`TOPIC_REV`·`FLOW`·`GUIDE`·`TOPIC_WORD`, app.js `TAROT_WISH.people`. 질문 고르기 칸은 `.tr-topics.six` = 3칸 × 2줄(아이콘 작게·설명 3줄까지), 칸 이름이 긴 「오늘·궁금한 일」은 칸에만 `short: '궁금한 일'`(풀이·기록의 이름은 그대로). 테스트 tarot 주제 목록 6개로. 확인: `npm test` 통과, Playwright 아이폰 13 타로 질문 6칸 한 화면 · 인간관계 → 상황 칩 3개 · 가로 넘침 0 · 오류 0.
 
 > **✅ v0.85(2026-11-26, 사용자 「지신 칸은 지신 → 부적과 등불을 바로 아래, 지신 밥·두 번째 지신·오늘의 기운 카드도 똑같이 접어 줘」, Claude Code)**: app.js `renderHero` = 지신 카드(말풍선·그림·이름·단계) 안에 바로 `charmShowcaseHTML`(소원 부적·100일 등불) → 접힌 창 `.hero-folds`: 🍚 지신 밥(`jisinGrowHTML`, 요약 `foodSub` = 오늘 n/3그릇·다음 진화까지) → 🐾 두 번째 지신(`secondJisinHTML`, `duoSub`) → 🎴 오늘의 기운 카드(`kiCardHTML`, `kiSub`, 접힌 창 안에서는 카드 제목 줄 숨김) → 오늘의 코디 → 이룬 소원 벽 → 걱정 태우기. 다른 화면에서 `revealAndScroll('#ki-card'·'#duo-box')`로 부르면 접힌 창이 저절로 열림. CSS는 홈과 같은 촘촘한 접힌 창. 확인: `npm test` 통과, Playwright 아이폰 13 지신 탭(접힌 창 6개, 기운 카드 펼쳐 뽑기·지신 밥 펼치기) · 가로 넘침 0 · 오류 0.
@@ -25,7 +27,6 @@
 
 > **✅ v0.83(2026-11-23, 사용자 「ockstar.com을 디지털 크리에이티브 홈페이지로 · 12지신은 개발 프로그램에, 유튜브·릴스·틱톡은 영상 제작 플랫폼에, 캐릭터 포피·젠·뀨는 앞으로의 미션으로 · 주소의 동·호수는 삭제」, Claude Code)**: 회사 홈페이지를 검은 바탕 스튜디오 화면으로 바꿈(참고 meta-ent.com: 큰 문구 + 비스듬한 창이 스크롤로 펼쳐짐). 구성 = 첫 화면(세 친구, `studio.js`가 `clip-path`를 스크롤에 맞춰 펼침, 움직임 줄이기 설정이면 고정) → ABOUT(웹개발·플랫폼 영상 제작·아이디어 기획·마케팅) → LAB 개발 프로그램(12지신 강림 + 자체 제작 도구 4) → STUDIO 영상 제작 플랫폼(유튜브 해외첫반응·라디오 우체국, 릴스 @ockstar77, 틱톡 @haeoe_first) → MISSION(포피 = 사고뭉치 장난꾸러기 아기 용, 젠 = 소심하지만 용감해지고 싶은 강아지, 뀨 = 신중한 작전 사령관 고양이, 진행 4단계 중 「캐릭터 완성」) → CONTACT·사업자 정보. 생성기 `tools/company_page.mjs`를 새 화면으로 다시 씀(`homeAddress` = `BIZ.address`에서 동·호수만 뺀 주소, **회사 홈페이지에만** 적용 — 12지신 강림 약관·결제 화면은 `BIZ.address` 그대로). 파일: `company/site/studio.css`·`studio.js`·`img/`(trio·poppy·zen·kyu·poppy-book·poppy-popcorn), 옛 `company.css` 삭제. 테스트 site: 주소에 동·호수 없음 · 캐릭터 이름 · 채널 링크 · 새 파일. 확인: `npm test` 통과, 미리 보기 1024폭·375폭 가로 넘침 0 · 오류 0.
 
-> **✅ v0.82(2026-11-22, 사용자 「수호신 강림 화면의 예전 「매일 할 일 3가지(뽑기·여정·스티커)」 문구를 지금 흐름에 맞게」, Claude Code)**: app.js `showSummon` 안내 줄을 coach.js `PATH`에서 만들어 「매일 할 일은 4가지예요 / 🥠 쿠키 → ✅ 습관 → 🃏 타로 → 👗 코디 / 손가락이 다음에 누를 곳을 알려 줘요」로 바꿈(길잡이 단계가 바뀌면 자동으로 따라감). 확인: `npm test` 통과, Playwright 390폭 수호신 강림 화면 한 줄·가로 넘침 0.
 
 
 

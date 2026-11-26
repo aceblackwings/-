@@ -4794,14 +4794,14 @@ async function addFriendByCode(raw) {
   setTimeout(() => { processDexRewards(); renderCompat(); }, 50);
 }
 
-function friendSocialHTML(fr, idx) {
+function friendSocialHTML(fr, idx, { noCheer = false } = {}) {
   const soc = load(SOC_KEY, { stickers: 0, cheers: {}, gifts: {} });
   const k = `${state.fortune.dateKey}|${fr.name}`;
   const cheered = soc.cheers?.[k]; const gifted = soc.gifts?.[k];
   return `<div class="react">
-    <div class="dlg-title">📣 응원 · 🎁 선물</div>
+    <div class="dlg-title">${noCheer ? '🎁 선물 · 📣 응원 메시지' : '📣 응원 · 🎁 선물'}</div>
     <div class="actions">
-      <button class="${cheered ? 'ghost' : 'primary'}" type="button" data-cheer="${idx}" ${cheered ? 'disabled' : ''}>${cheered ? '오늘 응원 완료' : `📣 ${esc(fr.name)} 응원하기`}</button>
+      ${noCheer ? '' : `<button class="${cheered ? 'ghost' : 'primary'}" type="button" data-cheer="${idx}" ${cheered ? 'disabled' : ''}>${cheered ? '오늘 응원 완료' : `📣 ${esc(fr.name)} 응원하기`}</button>`}
       <button class="ghost" type="button" data-gift="${idx}" ${gifted ? 'disabled' : ''}>${gifted ? '오늘 선물 완료' : '🎁 부적 선물하기'}</button>
     </div>
     ${fr.code && state.rt?.mailbox ? `<label class="rt-msg">응원 메시지 <select id="cheer-msg">${CHEER_MESSAGES.map((m) => `<option value="${m.key}" ${state.cheerMsg === m.key ? 'selected' : ''}>${esc(m.text)}</option>`).join('')}</select></label>
@@ -5616,8 +5616,9 @@ function renderCompat() {
       ${friends.length ? `<div class="chips" style="margin-top:12px">${friends.map((fr, i) => `<button class="chip" type="button" data-friend="${i}" aria-pressed="${i === sel}">${esc(fr.name)}</button>`).join('')}</div>` : ''}
     </div>
     <div id="compat-result">${sel !== null && friends[sel] ? compatResultHTML(friends[sel], sel) : '<div class="card"><p class="muted" style="margin:0">친구를 추가하면 두 캐릭터가 함께 나오는 궁합 카드가 만들어집니다.</p></div>'}</div>
-    <div class="fold-list">
+    <div class="fold-list cp-folds">
       ${(() => { const h = dexHTML(); return h ? foldHTML('dex', '📖', '12띠 수집 도감', '궁합 본 친구 띠를 모아요', h) : ''; })()}
+      ${sel !== null && friends[sel] && !friendSaju(friends[sel]).error ? foldHTML('cpmore', '🎁', '친구와 더 하기', '선물 · 스티커 · 인연 부적 · 저장 · 삭제', compatMoreHTML(friends[sel], sel)) : ''}
     </div>`;
 
   const form = $('#friend-form', panel);
@@ -5809,25 +5810,30 @@ function compatResultHTML(fr, idx) {
   state.compat = { myInfo, friendInfo, compat: c, svg, myName, friendName: fr.name, friendSaju: fs, myStage: stage, myCharms: charms, dialogue, fr };
   // v0.80 쉬운 설명: 등급·점수 막대·근거 목록 대신 한 문단 + 조심할 점(근거는 문단 안에 쉬운 말로)
   const story = compatStory(c, { me: state.profile.name || '', friend: fr.name, meAnimal: myInfo.zodiac.name, friendAnimal: friendInfo.zodiac.name });
-  return `<div class="card">
-    <div class="compat-stage">${svg}</div>
-    <h3 style="margin:12px 0 4px;color:${c.grade.color}">${c.grade.label} · ${c.score}점</h3>
+  // v0.87(사용자): 띠 대화 삭제 · 그림 작게 · 조심할 점 → 자세히 보기(글자 크게) → 스토리 공유·응원하기(글자 작게) → (밖) 12띠 도감 → 친구와 더 하기
+  const soc = load(SOC_KEY, { stickers: 0, cheers: {}, gifts: {} }); const cheered = soc.cheers?.[`${state.fortune.dateKey}|${fr.name}`];
+  return `<div class="card cp-result">
+    <div class="compat-stage cp-small">${svg}</div>
+    <h3 style="margin:10px 0 4px;color:${c.grade.color}">${c.grade.label} · ${c.score}점</h3>
     <p class="ts-why cp-story"><span>${esc(story.para)}</span></p>
     <section class="ts-tile watch ts-one cp-watch"><h4>⚠️ 조심할 점</h4><p>${esc(story.watch)}</p></section>
-    ${dialogueHTML(myInfo, friendInfo, state.compat.dialogue, stage)}
-    <div class="actions" style="margin-top:12px">
+    <div class="cp-offer">${compatOfferHTML(fr)}</div>
+    <div class="cp-acts">
       <button class="primary" type="button" data-story="compat">📸 궁합 카드 스토리 공유</button>
+      <button class="${cheered ? 'ghost' : 'primary'}" type="button" data-cheer="${idx}" ${cheered ? 'disabled' : ''}>${cheered ? '📣 오늘 응원 완료' : `📣 ${esc(fr.name)} 응원하기`}</button>
+    </div>
+  </div>`;
+}
+/** v0.87 궁합 아래 접힌 창 「친구와 더 하기」: 선물·응원 메시지·스티커·인연 부적·PNG·삭제 */
+function compatMoreHTML(fr, idx) {
+  return `${friendSocialHTML(fr, idx, { noCheer: true })}
+    ${stickerReactHTML(fr, idx)}
+    <div class="actions" style="margin-top:12px">
       <button class="ghost" type="button" id="btn-compat-charm">💞 인연 부적 받기</button>
       <button class="ghost" type="button" id="btn-compat-png">PNG 저장</button>
       <button class="ghost" type="button" id="btn-friend-del">친구 삭제</button>
     </div>
-    ${compatOfferHTML(fr)}
-    ${friendSocialHTML(fr, idx)}
-    ${stickerReactHTML(fr, idx)}
-    <div style="display:none">
-    </div>
-    <p class="muted" style="font-size:0.78rem;margin-bottom:0">친구 캐릭터는 생일만으로 만든 임시 캐릭터입니다. 친구가 직접 가입하면 성별·고민·진화가 반영된 진짜 캐릭터로 바뀌어요.</p>
-  </div>`;
+    <p class="muted" style="font-size:0.78rem;margin-bottom:0">친구 캐릭터는 생일만으로 만든 임시 캐릭터입니다. 친구가 직접 가입하면 성별·고민·진화가 반영된 진짜 캐릭터로 바뀌어요.</p>`;
 }
 
 // ---------- 행운 이모티콘 ----------
