@@ -17,6 +17,8 @@
 
 ## 최근 버전 (최근 5개 · 그 전 기록은 `docs/changelog.md`)
 
+> **✅ v0.92(2026-11-26, 사용자 「운세 더 보기도 삭제 · 2027년 운세와 내 사주의 한눈에 정리 삭제됐는지」, Claude Code)**: app.js `renderToday` 오늘 탭 접힌 창 = 2027년 운세 → 내 사주 → 이번 주 운세(🔮 운세 더 보기 `fold-more` 삭제, 질문 화면 `ask` 탭 자체는 남김). 확인: `npm test` 통과, Playwright 아이폰 13에서 두 창을 펼쳐 「한눈에 정리」 0회 · `.brief-box` 0개 · 오류 0.
+
 > **✅ v0.91(2026-11-26, 사용자 「별 4개도 복떡 3개 · 2027년 신년운세와 내 사주의 한눈에 정리 삭제 · 결제 들어가면 다음으로 안 넘어가는 건 토스 심사 때문인가?」, Claude Code)**: coordi.js `STAR_REWARD` = { 1: 1, 2: 1, 3: 2, 4: 3, 5: 3 }. 한눈에 정리: app.js `bookletData`에서 `st.brief = null`(신년운세 첫 화면에서 빠지고 상세판 겹침 빼기 기준에서도 빠짐), `sajuStoryHTML`의 `briefHTML`·「한눈에 정리」 꼬리표 삭제(`briefHTML` 함수는 남김). 상세판(skip)은 원래 brief 장을 빼므로, premium.js `mendChapters`의 `fix`가 「한눈에 정리」를 가리키던 문장(「바로 다음 「한눈에 정리」에…」·「이 책 맨 앞의 「한눈에 정리」를 다시 열어…」)을 통째로 지움 → 신년 상세판 「한눈에 정리」 0회(평생 정통사주 상세판은 그대로). 결제: 결제창을 여는 중 오류가 나면 토스트에 `오류 코드 · 메시지`를 함께 보여 줌(app.js `openReportPay` catch) — 원인(심사·계약·키) 확인용. 확인: `npm test` 통과.
 
 > **✅ v0.90(2026-11-26, 사용자 「별 1~2개도 복떡 1개, 별 3개면 2개, 별 5개면 3개」, Claude Code)**: coordi.js `STAR_REWARD` = { 1: 1, 2: 1, 3: 2, 4: 2, 5: 3 }(4개는 사용자 말이 없어 2개로) → 자동 코디는 누르면 늘 복떡 1개 이상, 두 번째가 더 좋은 별이면 차이만큼 더. 「별 3개부터」 문구 정리(app.js 토스트·`coordiHTML` 안내, coach.js 코디 단계 `why` = 「누르면 자동 코디 · 복떡 1~3개」). 테스트 wishcoordi 보상표 수정. 확인: `npm test` 통과, Playwright 아이폰 13 코디 두 번(별 3개 → 복떡 +2, 두 번째 뒤 잠김) · 오류 0.
@@ -25,7 +27,6 @@
 
 > **✅ v0.88(2026-11-26, 사용자 「지신 칸에 이룬 소원 벽·걱정 태우기·두 번째 지신 삭제 · 지신 밥·오늘의 코디를 지신 바로 옆에 · 부적 바로 밑에 오늘의 기운 카드」, Claude Code)**: app.js `renderHero` = 말풍선 → `.hero-row`(지신 그림 | `.hero-side` 버튼 두 개 🍚 지신 밥 `foodSub` · 👗 오늘의 코디 `coordiSub`) → 누르면 아래 `details.hero-pane`(`#fold-food` = `jisinGrowHTML`, `#fold-coordi` = `coordiHTML`)가 하나만 열림(`openHeroPane`·`state.heroPane`) → 이름·단계 → 부적·등불 → 오늘의 기운 카드 → (백업 스위치 켜졌을 때만) 기록 백업. 이룬 소원 벽·걱정 태우기·두 번째 지신 창은 지신 탭에서 뺌(함수 `wishWallHTML`·`burnHTML`·`secondJisinHTML`은 남김, 걱정 태우기는 부적 만들기 창에서 계속 무료), 소원 성취·등불 완주 창의 「소원 벽 보기」 버튼도 뺌. 길잡이: `goPath('coordi')`·`coachTarget`이 옆 버튼을 가리킴. 확인: `npm test` 통과, Playwright 아이폰 13 지신 탭(옆 버튼 2개 · 코디 열기 · 밥 열면 코디 닫힘) · 가로 넘침 0 · 오류 0.
 
-> **✅ v0.87(2026-11-26, 사용자 「궁합에서 원진 관계의 대화 삭제 · 지신 그림 작게 · 조심할 점 바로 아래 궁합 자세히 보기(글자 크게) → 스토리 공유·친구 응원하기(글자 작게) → 12띠 수집 도감」, Claude Code)**: app.js `compatResultHTML` = 궁합 그림(`.cp-small`, 최대 240px) → 등급·점수 → 문단 → 조심할 점 → `.cp-offer` 궁합 자세히 보기(버튼 1.12rem) → `.cp-acts` 두 칸(📸 궁합 카드 스토리 공유 · 📣 친구 응원하기, 0.82rem). 띠 대화(`dialogueHTML`)는 화면에서 뺌(`state.compat.dialogue`는 스토리 카드용으로 남김). `renderCompat` 아래 접힌 창 `.cp-folds` = 📖 12띠 수집 도감 → 🎁 친구와 더 하기(`compatMoreHTML`: 부적 선물·응원 메시지 `friendSocialHTML(fr, idx, { noCheer: true })`·스티커·인연 부적·PNG·친구 삭제). 확인: `npm test` 통과, Playwright 아이폰 13 궁합 탭(친구 1명) 순서 · 가로 넘침 0 · 오류 0.
 
 
 
